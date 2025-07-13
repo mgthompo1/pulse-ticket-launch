@@ -104,7 +104,7 @@ const TicketWidget = () => {
   const [ticketTypes, setTicketTypes] = useState([]);
   const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [ticketQuantities, setTicketQuantities] = useState({});
+  const [ticketQuantities, setTicketQuantities] = useState<Record<string, number>>({});
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
     email: "",
@@ -154,7 +154,7 @@ const TicketWidget = () => {
           setTicketTypes(tickets || []);
 
           // Initialize quantities
-          const initialQuantities = {};
+          const initialQuantities: Record<string, number> = {};
           tickets?.forEach(ticket => {
             initialQuantities[ticket.id] = 0;
           });
@@ -220,7 +220,11 @@ const TicketWidget = () => {
       description: `Order ${orderId} confirmed. Check your email for tickets.`
     });
     // Reset form
-    setTicketQuantities({});
+    const initialQuantities: Record<string, number> = {};
+    ticketTypes.forEach(ticket => {
+      initialQuantities[ticket.id] = 0;
+    });
+    setTicketQuantities(initialQuantities);
     setCustomerInfo({ name: "", email: "", phone: "" });
     setShowPayment(false);
   };
