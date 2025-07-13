@@ -56,7 +56,12 @@ const OrgDashboard = () => {
   // Load organization and check Stripe status
   React.useEffect(() => {
     const loadOrganization = async () => {
-      if (!user) return;
+      if (!user) {
+        console.log("No user found, cannot load organization");
+        return;
+      }
+
+      console.log("Loading organization for user:", user.id);
 
       const { data: orgs, error } = await supabase
         .from("organizations")
@@ -66,10 +71,20 @@ const OrgDashboard = () => {
 
       if (error) {
         console.error("Error loading organization:", error);
+        
+        // If no organization exists, show a message to create one
+        if (error.code === 'PGRST116') {
+          toast({
+            title: "No Organization Found",
+            description: "Please create an organization first to manage events.",
+            variant: "destructive"
+          });
+        }
         return;
       }
 
       if (orgs) {
+        console.log("Organization loaded:", orgs);
         setOrganizationId(orgs.id);
         setStripeConnected(!!(orgs as any).stripe_account_id);
         setStripeOnboardingComplete(!!(orgs as any).stripe_onboarding_complete);
@@ -601,27 +616,97 @@ const OrgDashboard = () => {
 
           {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Organization Settings</CardTitle>
-                <CardDescription>Manage your account preferences</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="org-name">Organization Name</Label>
-                  <Input id="org-name" placeholder="Your organization name" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contact-email">Contact Email</Label>
-                  <Input id="contact-email" type="email" placeholder="contact@yourorg.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="website">Website</Label>
-                  <Input id="website" placeholder="https://yourwebsite.com" />
-                </div>
-                <Button className="gradient-primary">Save Settings</Button>
-              </CardContent>
-            </Card>
+            {!organizationId ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Create Organization</CardTitle>
+                  <CardDescription>Create your organization to start managing events</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="org-name">Organization Name</Label>
+                    <Input id="org-name" placeholder="Your organization name" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-email">Contact Email</Label>
+                    <Input id="contact-email" type="email" placeholder="contact@yourorg.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="website">Website (Optional)</Label>
+                    <Input id="website" placeholder="https://yourwebsite.com" />
+                  </div>
+                  <Button 
+                    onClick={async () => {
+                      const name = (document.getElementById('org-name') as HTMLInputElement).value;
+                      const email = (document.getElementById('contact-email') as HTMLInputElement).value;
+                      const website = (document.getElementById('website') as HTMLInputElement).value;
+                      
+                      if (!name || !email) {
+                        toast({
+                          title: "Error",
+                          description: "Please fill in organization name and email",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+                      
+                      try {
+                        const { data, error } = await supabase
+                          .from("organizations")
+                          .insert([{
+                            name,
+                            email,
+                            website: website || null,
+                            user_id: user.id
+                          }])
+                          .select()
+                          .single();
+                          
+                        if (error) throw error;
+                        
+                        setOrganizationId(data.id);
+                        toast({
+                          title: "Success",
+                          description: "Organization created successfully!"
+                        });
+                      } catch (error) {
+                        console.error("Error creating organization:", error);
+                        toast({
+                          title: "Error",
+                          description: `Failed to create organization: ${error.message}`,
+                          variant: "destructive"
+                        });
+                      }
+                    }}
+                    className="gradient-primary"
+                  >
+                    Create Organization
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Organization Settings</CardTitle>
+                  <CardDescription>Manage your account preferences</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="org-name-edit">Organization Name</Label>
+                    <Input id="org-name-edit" placeholder="Your organization name" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contact-email-edit">Contact Email</Label>
+                    <Input id="contact-email-edit" type="email" placeholder="contact@yourorg.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="website-edit">Website</Label>
+                    <Input id="website-edit" placeholder="https://yourwebsite.com" />
+                  </div>
+                  <Button className="gradient-primary">Save Settings</Button>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
         
