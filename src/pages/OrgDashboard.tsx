@@ -127,6 +127,16 @@ const OrgDashboard = () => {
     setIsCreatingEvent(true);
     
     try {
+      // Check if organization is loaded
+      if (!organizationId) {
+        toast({
+          title: "Error",
+          description: "Organization not loaded. Please refresh the page.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       if (!eventForm.name || !eventForm.date || !eventForm.venue || !eventForm.capacity) {
         toast({
           title: "Error",
@@ -136,6 +146,16 @@ const OrgDashboard = () => {
         return;
       }
 
+      console.log("Creating event with data:", {
+        name: eventForm.name,
+        event_date: eventForm.date,
+        venue: eventForm.venue,
+        capacity: parseInt(eventForm.capacity),
+        description: eventForm.description,
+        organization_id: organizationId,
+        status: "draft"
+      });
+
       const { data, error } = await supabase
         .from("events")
         .insert([
@@ -144,7 +164,7 @@ const OrgDashboard = () => {
             event_date: eventForm.date,
             venue: eventForm.venue,
             capacity: parseInt(eventForm.capacity),
-            description: eventForm.description,
+            description: eventForm.description || null,
             organization_id: organizationId,
             status: "draft"
           }
@@ -152,7 +172,12 @@ const OrgDashboard = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Database error:", error);
+        throw error;
+      }
+
+      console.log("Event created successfully:", data);
 
       toast({
         title: "Success",
@@ -184,7 +209,7 @@ const OrgDashboard = () => {
       console.error("Error creating event:", error);
       toast({
         title: "Error",
-        description: "Failed to create event",
+        description: `Failed to create event: ${error.message || 'Unknown error'}`,
         variant: "destructive"
       });
     } finally {
