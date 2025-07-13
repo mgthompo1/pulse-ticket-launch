@@ -10,7 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard } from "lucide-react";
+import AIEventGenerator from "@/components/AIEventGenerator";
+import AIChatbot from "@/components/AIChatbot";
+import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell } from "lucide-react";
 
 const OrgDashboard = () => {
   const [events, setEvents] = useState([
@@ -133,7 +135,7 @@ const OrgDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-7 lg:w-fit">
+          <TabsList className="grid w-full grid-cols-8 lg:w-fit">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Overview
@@ -141,6 +143,10 @@ const OrgDashboard = () => {
             <TabsTrigger value="events" className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               Events
+            </TabsTrigger>
+            <TabsTrigger value="ai-tools" className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              AI Tools
             </TabsTrigger>
             <TabsTrigger value="payments" className="flex items-center gap-2">
               <CreditCard className="w-4 h-4" />
@@ -274,6 +280,11 @@ const OrgDashboard = () => {
                 <Button className="gradient-primary">Create Event</Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* AI Tools Tab */}
+          <TabsContent value="ai-tools" className="space-y-6">
+            <AIEventGenerator />
           </TabsContent>
 
           {/* Payments Tab */}
@@ -457,6 +468,9 @@ const OrgDashboard = () => {
             </Card>
           </TabsContent>
         </Tabs>
+        
+        {/* AI Chatbot */}
+        <AIChatbot context={{ organizationId }} />
       </div>
     </div>
   );

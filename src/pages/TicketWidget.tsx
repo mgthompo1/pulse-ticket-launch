@@ -54,9 +54,20 @@ const PaymentForm = ({ eventId, tickets, customerInfo, total, onSuccess }) => {
           variant: "destructive"
         });
       } else {
+        // Update order status to trigger email
+        await supabase
+          .from("orders")
+          .update({ status: "paid" })
+          .eq("id", data.orderId);
+
+        // Send confirmation email
+        await supabase.functions.invoke("send-ticket-email", {
+          body: { orderId: data.orderId }
+        });
+
         toast({
           title: "Payment successful!",
-          description: "Your tickets have been confirmed."
+          description: "Your tickets have been confirmed and sent to your email."
         });
         onSuccess(data.orderId);
       }

@@ -14,6 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_generated_content: {
+        Row: {
+          content_type: string
+          created_at: string
+          generated_content: Json
+          id: string
+          input_data: Json
+          used: boolean
+          user_id: string | null
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          generated_content: Json
+          id?: string
+          input_data: Json
+          used?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          generated_content?: Json
+          id?: string
+          input_data?: Json
+          used?: boolean
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      chat_sessions: {
+        Row: {
+          context: Json | null
+          created_at: string
+          id: string
+          messages: Json
+          session_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          messages?: Json
+          session_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          messages?: Json
+          session_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      email_notifications: {
+        Row: {
+          email_type: string
+          id: string
+          order_id: string | null
+          recipient_email: string
+          sent_at: string
+          status: string
+          subject: string
+        }
+        Insert: {
+          email_type: string
+          id?: string
+          order_id?: string | null
+          recipient_email: string
+          sent_at?: string
+          status?: string
+          subject: string
+        }
+        Update: {
+          email_type?: string
+          id?: string
+          order_id?: string | null
+          recipient_email?: string
+          sent_at?: string
+          status?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           capacity: number
