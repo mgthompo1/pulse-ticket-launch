@@ -27,6 +27,7 @@ export const Navigation = () => {
   const navItems = [
     { name: "Features", id: "features" },
     { name: "Pricing", id: "pricing" },
+    { name: "Support", id: "support" },
   ];
 
   return (
