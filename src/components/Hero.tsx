@@ -47,7 +47,7 @@ export const Hero = () => {
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <Button variant="hero" size="xl" className="group" onClick={handleStartTrial}>
-              Start Your Free Trial
+              Sign Up Now
               <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </Button>
             <Button variant="outline" size="xl" className="group" onClick={handleWatchDemo}>
