@@ -115,7 +115,13 @@ const TicketWidget = () => {
 
   useEffect(() => {
     const loadEventData = async () => {
-      if (!orgId) return;
+      console.log("orgId from params:", orgId);
+      
+      if (!orgId || orgId === ":orgId") {
+        console.error("Invalid orgId:", orgId);
+        setLoading(false);
+        return;
+      }
 
       try {
         // Get organization
@@ -125,7 +131,12 @@ const TicketWidget = () => {
           .eq("id", orgId)
           .single();
 
-        if (orgError) throw orgError;
+        console.log("Organization query result:", { org, orgError });
+
+        if (orgError) {
+          console.error("Organization error:", orgError);
+          throw orgError;
+        }
         setOrganization(org);
 
         // Get published events for this organization
@@ -241,9 +252,35 @@ const TicketWidget = () => {
     return (
       <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
         <Card className="max-w-md">
-          <CardContent className="p-8 text-center">
-            <h2 className="text-xl font-semibold mb-2">No Events Available</h2>
-            <p className="text-muted-foreground">This organization doesn't have any published events at the moment.</p>
+          <CardContent className="p-8 text-center space-y-4">
+            {!orgId || orgId === ":orgId" ? (
+              <>
+                <h2 className="text-xl font-semibold mb-2">Invalid URL</h2>
+                <p className="text-muted-foreground">
+                  Please access this widget with a valid organization ID in the URL.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Expected format: /widget/[organization-id]
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Current URL: {window.location.pathname}
+                </p>
+              </>
+            ) : organization ? (
+              <>
+                <h2 className="text-xl font-semibold mb-2">No Events Available</h2>
+                <p className="text-muted-foreground">
+                  {organization.name} doesn't have any published events at the moment.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-semibold mb-2">Organization Not Found</h2>
+                <p className="text-muted-foreground">
+                  The organization with ID "{orgId}" could not be found.
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
