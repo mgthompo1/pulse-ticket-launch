@@ -65,7 +65,7 @@ export const Navigation = () => {
               Sign In
             </Button>
             <Button variant="gradient" size="sm" onClick={handleStartTrial}>
-              Start Free Trial
+              Sign Up Now
             </Button>
           </div>
 
@@ -99,7 +99,7 @@ export const Navigation = () => {
                 Sign In
               </Button>
               <Button variant="gradient" size="sm" onClick={handleStartTrial}>
-                Start Free Trial
+                Sign Up Now
               </Button>
             </div>
           </div>
