@@ -42,35 +42,50 @@ ALTER TABLE public.concession_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.check_ins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pos_transactions ENABLE ROW LEVEL SECURITY;
 
+-- Create security definer functions for RLS policies
+CREATE OR REPLACE FUNCTION public.user_can_access_event(event_id UUID)
+RETURNS BOOLEAN
+LANGUAGE SQL
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM events e
+    JOIN organizations o ON e.organization_id = o.id
+    WHERE e.id = event_id AND o.user_id = auth.uid()
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.user_can_access_ticket(ticket_id UUID)
+RETURNS BOOLEAN
+LANGUAGE SQL
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM tickets t
+    JOIN order_items oi ON t.order_item_id = oi.id
+    JOIN orders ord ON oi.order_id = ord.id
+    JOIN events e ON ord.event_id = e.id
+    JOIN organizations org ON e.organization_id = org.id
+    WHERE t.id = ticket_id AND org.user_id = auth.uid()
+  );
+$$;
+
 -- RLS Policies for concession_items
 CREATE POLICY "Event organizers can manage concession items" ON public.concession_items
 FOR ALL
-USING (event_id IN (
-  SELECT e.id FROM events e
-  JOIN organizations o ON e.organization_id = o.id
-  WHERE o.user_id = auth.uid()
-));
+USING (public.user_can_access_event(event_id));
 
 -- RLS Policies for check_ins
 CREATE POLICY "Event organizers can manage check-ins" ON public.check_ins
 FOR ALL
-USING (ticket_id IN (
-  SELECT t.id FROM tickets t
-  JOIN order_items oi ON t.order_item_id = oi.id
-  JOIN orders ord ON oi.order_id = ord.id
-  JOIN events e ON ord.event_id = e.id
-  JOIN organizations org ON e.organization_id = org.id
-  WHERE org.user_id = auth.uid()
-));
+USING (public.user_can_access_ticket(ticket_id));
 
 -- RLS Policies for pos_transactions
 CREATE POLICY "Event organizers can manage POS transactions" ON public.pos_transactions
 FOR ALL
-USING (event_id IN (
-  SELECT e.id FROM events e
-  JOIN organizations o ON e.organization_id = o.id
-  WHERE o.user_id = auth.uid()
-));
+USING (public.user_can_access_event(event_id));
 
 -- Add indexes for better performance
 CREATE INDEX idx_concession_items_event_id ON public.concession_items(event_id);
