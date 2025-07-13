@@ -17,8 +17,8 @@ import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plu
 const OrgDashboard = () => {
   const [events, setEvents] = useState([
     {
-      id: 1,
-      name: "Tech Conference 2024",
+      id: "1",
+      name: "Tech Conference 2024", 
       date: "2024-03-15",
       venue: "Convention Center",
       tickets: { sold: 245, total: 500 },
@@ -26,7 +26,7 @@ const OrgDashboard = () => {
       status: "active"
     },
     {
-      id: 2,
+      id: "2", 
       name: "Music Festival",
       date: "2024-04-20",
       venue: "Central Park",
@@ -42,6 +42,16 @@ const OrgDashboard = () => {
   const [organizationId, setOrganizationId] = useState<string>("");
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Event form state
+  const [eventForm, setEventForm] = useState({
+    name: "",
+    date: "",
+    venue: "",
+    capacity: "",
+    description: ""
+  });
+  const [isCreatingEvent, setIsCreatingEvent] = useState(false);
 
   // Load organization and check Stripe status
   React.useEffect(() => {
@@ -113,6 +123,86 @@ const OrgDashboard = () => {
     }
   };
 
+  const handleCreateEvent = async () => {
+    setIsCreatingEvent(true);
+    
+    try {
+      if (!eventForm.name || !eventForm.date || !eventForm.venue || !eventForm.capacity) {
+        toast({
+          title: "Error",
+          description: "Please fill in all required fields",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("events")
+        .insert([
+          {
+            name: eventForm.name,
+            event_date: eventForm.date,
+            venue: eventForm.venue,
+            capacity: parseInt(eventForm.capacity),
+            description: eventForm.description,
+            organization_id: organizationId,
+            status: "draft"
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Event created successfully!"
+      });
+
+      // Reset form
+      setEventForm({
+        name: "",
+        date: "",
+        venue: "",
+        capacity: "",
+        description: ""
+      });
+
+      // Add to local events state (for UI update)
+      const newEvent = {
+        id: data.id,
+        name: data.name,
+        date: data.event_date,
+        venue: data.venue,
+        tickets: { sold: 0, total: data.capacity },
+        revenue: "$0",
+        status: "draft"
+      };
+      setEvents(prev => [...prev, newEvent]);
+
+    } catch (error) {
+      console.error("Error creating event:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create event",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingEvent(false);
+    }
+  };
+
+  const handleCreateEventClick = () => {
+    setActiveTab("events");
+  };
+
+  const handleEventFormChange = (field: string, value: string) => {
+    setEventForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -125,7 +215,7 @@ const OrgDashboard = () => {
               </h1>
               <p className="text-muted-foreground mt-2">Manage your events and ticketing platform</p>
             </div>
-            <Button className="gradient-primary hover-scale">
+            <Button onClick={handleCreateEventClick} className="gradient-primary hover-scale">
               <Plus className="w-4 h-4 mr-2" />
               Create Event
             </Button>
@@ -266,26 +356,59 @@ const OrgDashboard = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="event-name">Event Name</Label>
-                    <Input id="event-name" placeholder="Enter event name" />
+                    <Input 
+                      id="event-name" 
+                      placeholder="Enter event name" 
+                      value={eventForm.name}
+                      onChange={(e) => handleEventFormChange("name", e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="event-date">Event Date</Label>
-                    <Input id="event-date" type="date" />
+                    <Input 
+                      id="event-date" 
+                      type="date" 
+                      value={eventForm.date}
+                      onChange={(e) => handleEventFormChange("date", e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="venue">Venue</Label>
-                    <Input id="venue" placeholder="Event location" />
+                    <Input 
+                      id="venue" 
+                      placeholder="Event location" 
+                      value={eventForm.venue}
+                      onChange={(e) => handleEventFormChange("venue", e.target.value)}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="capacity">Capacity</Label>
-                    <Input id="capacity" type="number" placeholder="Max attendees" />
+                    <Input 
+                      id="capacity" 
+                      type="number" 
+                      placeholder="Max attendees" 
+                      value={eventForm.capacity}
+                      onChange={(e) => handleEventFormChange("capacity", e.target.value)}
+                    />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
-                  <Textarea id="description" placeholder="Event description" rows={3} />
+                  <Textarea 
+                    id="description" 
+                    placeholder="Event description" 
+                    rows={3} 
+                    value={eventForm.description}
+                    onChange={(e) => handleEventFormChange("description", e.target.value)}
+                  />
                 </div>
-                <Button className="gradient-primary">Create Event</Button>
+                <Button 
+                  onClick={handleCreateEvent} 
+                  disabled={isCreatingEvent}
+                  className="gradient-primary"
+                >
+                  {isCreatingEvent ? "Creating..." : "Create Event"}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>

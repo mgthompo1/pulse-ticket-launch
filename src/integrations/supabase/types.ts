@@ -336,6 +336,8 @@ export type Database = {
           id: string
           logo_url: string | null
           name: string
+          stripe_account_id: string | null
+          stripe_onboarding_complete: boolean | null
           updated_at: string
           user_id: string
           website: string | null
@@ -348,6 +350,8 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name: string
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean | null
           updated_at?: string
           user_id: string
           website?: string | null
@@ -360,6 +364,8 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name?: string
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean | null
           updated_at?: string
           user_id?: string
           website?: string | null
