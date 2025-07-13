@@ -1,48 +1,179 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Calendar, MapPin, Clock, Users, Ticket, CreditCard, ShoppingCart, Minus, Plus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Calendar, MapPin, Clock, Users, Ticket, CreditCard, ShoppingCart, Minus, Plus, Loader2 } from "lucide-react";
+
+const stripePromise = loadStripe("pk_test_51QX4c8L8rGzBRPl8KE6yOJCjvqFgBYcYIvFiO8LlvQhYHV8vKbNvVN1eR4mDcaOFQHdgJQoWZhEaKmCOhGgSFGzD00fZ9aWyOT");
+
+const PaymentForm = ({ eventId, tickets, customerInfo, total, onSuccess }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [processing, setProcessing] = useState(false);
+  const { toast } = useToast();
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!stripe || !elements) return;
+
+    setProcessing(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("create-payment-intent", {
+        body: {
+          eventId,
+          tickets,
+          customerInfo
+        }
+      });
+
+      if (error) throw error;
+
+      const result = await stripe.confirmCardPayment(data.clientSecret, {
+        payment_method: {
+          card: elements.getElement(CardElement)!,
+          billing_details: {
+            name: customerInfo.name,
+            email: customerInfo.email,
+          },
+        }
+      });
+
+      if (result.error) {
+        toast({
+          title: "Payment failed",
+          description: result.error.message,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Payment successful!",
+          description: "Your tickets have been confirmed."
+        });
+        onSuccess(data.orderId);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="p-4 border rounded-lg">
+        <CardElement />
+      </div>
+      <Button 
+        type="submit" 
+        className="w-full gradient-primary hover-scale" 
+        size="lg"
+        disabled={!stripe || processing}
+      >
+        {processing ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Processing...
+          </>
+        ) : (
+          <>
+            <CreditCard className="w-4 h-4 mr-2" />
+            Pay ${total}
+          </>
+        )}
+      </Button>
+    </form>
+  );
+};
 
 const TicketWidget = () => {
-  const [ticketQuantities, setTicketQuantities] = useState({
-    general: 0,
-    vip: 0,
-    student: 0
+  const { orgId } = useParams();
+  const [event, setEvent] = useState(null);
+  const [ticketTypes, setTicketTypes] = useState([]);
+  const [organization, setOrganization] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [ticketQuantities, setTicketQuantities] = useState({});
+  const [customerInfo, setCustomerInfo] = useState({
+    name: "",
+    email: "",
+    phone: ""
   });
+  const [showPayment, setShowPayment] = useState(false);
+  const { toast } = useToast();
 
-  const [selectedSeats, setSelectedSeats] = useState([]);
+  useEffect(() => {
+    const loadEventData = async () => {
+      if (!orgId) return;
 
-  const ticketTypes = [
-    {
-      id: "general",
-      name: "General Admission",
-      price: 49,
-      description: "Access to main event area",
-      available: 245,
-      total: 500
-    },
-    {
-      id: "vip",
-      name: "VIP Experience",
-      price: 149,
-      description: "Premium seating + backstage access",
-      available: 23,
-      total: 50
-    },
-    {
-      id: "student",
-      name: "Student Discount",
-      price: 29,
-      description: "Valid student ID required",
-      available: 89,
-      total: 100
-    }
-  ];
+      try {
+        // Get organization
+        const { data: org, error: orgError } = await supabase
+          .from("organizations")
+          .select("*")
+          .eq("id", orgId)
+          .single();
+
+        if (orgError) throw orgError;
+        setOrganization(org);
+
+        // Get published events for this organization
+        const { data: events, error: eventsError } = await supabase
+          .from("events")
+          .select("*")
+          .eq("organization_id", orgId)
+          .eq("status", "published")
+          .order("event_date", { ascending: true })
+          .limit(1);
+
+        if (eventsError) throw eventsError;
+        
+        if (events && events.length > 0) {
+          const eventData = events[0];
+          setEvent(eventData);
+
+          // Get ticket types for this event  
+          const { data: tickets, error: ticketsError } = await supabase
+            .from("ticket_types")
+            .select("*")
+            .eq("event_id", eventData.id)
+            .order("price", { ascending: true });
+
+          if (ticketsError) throw ticketsError;
+          setTicketTypes(tickets || []);
+
+          // Initialize quantities
+          const initialQuantities = {};
+          tickets?.forEach(ticket => {
+            initialQuantities[ticket.id] = 0;
+          });
+          setTicketQuantities(initialQuantities);
+        }
+      } catch (error) {
+        console.error("Error loading event data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load event information",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEventData();
+  }, [orgId]);
 
   const updateQuantity = (ticketId, change) => {
     setTicketQuantities(prev => ({
@@ -53,13 +184,67 @@ const TicketWidget = () => {
 
   const getTotalPrice = () => {
     return ticketTypes.reduce((total, ticket) => {
-      return total + (ticket.price * ticketQuantities[ticket.id]);
+      return total + (ticket.price * (ticketQuantities[ticket.id] || 0));
     }, 0);
   };
 
-  const getTotalTickets = () => {
-    return Object.values(ticketQuantities).reduce((sum, qty) => sum + qty, 0);
+  const getTotalTickets = (): number => {
+    return Object.values(ticketQuantities).reduce((sum: number, qty: number) => sum + qty, 0);
   };
+
+  const getPlatformFee = (): number => {
+    const subtotal = getTotalPrice();
+    const totalTickets = getTotalTickets();
+    return Math.round(subtotal * 0.01) + (totalTickets * 0.5); // 1% + $0.50 per ticket
+  };
+
+  const getTotal = (): number => {
+    return getTotalPrice() + getPlatformFee();
+  };
+
+  const handleProceedToPayment = () => {
+    if (!customerInfo.name || !customerInfo.email) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in your name and email",
+        variant: "destructive"
+      });
+      return;
+    }
+    setShowPayment(true);
+  };
+
+  const handlePaymentSuccess = (orderId) => {
+    toast({
+      title: "Success!",
+      description: `Order ${orderId} confirmed. Check your email for tickets.`
+    });
+    // Reset form
+    setTicketQuantities({});
+    setCustomerInfo({ name: "", email: "", phone: "" });
+    setShowPayment(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="p-8 text-center">
+            <h2 className="text-xl font-semibold mb-2">No Events Available</h2>
+            <p className="text-muted-foreground">This organization doesn't have any published events at the moment.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-subtle">
@@ -69,27 +254,25 @@ const TicketWidget = () => {
           <CardContent className="p-8">
             <div className="text-center space-y-4">
               <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                Tech Conference 2024
+                {event.name}
               </h1>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Join industry leaders for three days of innovation, networking, and cutting-edge technology discussions.
+                {event.description}
               </p>
               <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-primary" />
-                  <span>March 15-17, 2024</span>
+                  <span>{new Date(event.event_date).toLocaleDateString()}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-primary" />
-                  <span>San Francisco Convention Center</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-primary" />
-                  <span>9:00 AM - 6:00 PM</span>
-                </div>
+                {event.venue && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-primary" />
+                    <span>{event.venue}</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-primary" />
-                  <span>2,000 Expected Attendees</span>
+                  <span>{event.capacity} Capacity</span>
                 </div>
               </div>
             </div>
@@ -114,8 +297,8 @@ const TicketWidget = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="font-semibold text-lg">{ticket.name}</h3>
-                          <Badge variant={ticket.available > 10 ? "default" : "destructive"}>
-                            {ticket.available} left
+                          <Badge variant={(ticket.quantity_available - ticket.quantity_sold) > 10 ? "default" : "destructive"}>
+                            {ticket.quantity_available - ticket.quantity_sold} left
                           </Badge>
                         </div>
                         <p className="text-muted-foreground text-sm mb-3">{ticket.description}</p>
@@ -126,18 +309,18 @@ const TicketWidget = () => {
                               variant="outline"
                               size="sm"
                               onClick={() => updateQuantity(ticket.id, -1)}
-                              disabled={ticketQuantities[ticket.id] === 0}
+                              disabled={(ticketQuantities[ticket.id] || 0) === 0}
                             >
                               <Minus className="w-4 h-4" />
                             </Button>
                             <span className="w-8 text-center font-medium">
-                              {ticketQuantities[ticket.id]}
+                              {ticketQuantities[ticket.id] || 0}
                             </span>
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => updateQuantity(ticket.id, 1)}
-                              disabled={ticketQuantities[ticket.id] >= 10 || ticket.available === 0}
+                              disabled={(ticketQuantities[ticket.id] || 0) >= 10 || (ticket.quantity_available - ticket.quantity_sold) === 0}
                             >
                               <Plus className="w-4 h-4" />
                             </Button>
@@ -209,16 +392,16 @@ const TicketWidget = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 {ticketTypes.map((ticket) => 
-                  ticketQuantities[ticket.id] > 0 && (
+                  (ticketQuantities[ticket.id] || 0) > 0 && (
                     <div key={ticket.id} className="flex justify-between">
                       <div>
                         <p className="font-medium">{ticket.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          ${ticket.price} × {ticketQuantities[ticket.id]}
+                          ${ticket.price} × {ticketQuantities[ticket.id] || 0}
                         </p>
                       </div>
                       <span className="font-medium">
-                        ${ticket.price * ticketQuantities[ticket.id]}
+                        ${ticket.price * (ticketQuantities[ticket.id] || 0)}
                       </span>
                     </div>
                   )
@@ -233,13 +416,13 @@ const TicketWidget = () => {
                         <span>${getTotalPrice()}</span>
                       </div>
                       <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>Service Fee</span>
-                        <span>${Math.round(getTotalPrice() * 0.05)}</span>
+                        <span>Platform Fee (1% + $0.50/ticket)</span>
+                        <span>${getPlatformFee()}</span>
                       </div>
                       <Separator />
                       <div className="flex justify-between font-bold text-lg">
                         <span>Total</span>
-                        <span>${getTotalPrice() + Math.round(getTotalPrice() * 0.05)}</span>
+                        <span>${getTotal()}</span>
                       </div>
                     </div>
                   </>
@@ -255,20 +438,59 @@ const TicketWidget = () => {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Full Name</Label>
-                    <Input id="name" placeholder="Enter your name" />
+                    <Input 
+                      id="name" 
+                      placeholder="Enter your name"
+                      value={customerInfo.name}
+                      onChange={(e) => setCustomerInfo(prev => ({ ...prev, name: e.target.value }))}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address</Label>
-                    <Input id="email" type="email" placeholder="your@email.com" />
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      placeholder="your@email.com"
+                      value={customerInfo.email}
+                      onChange={(e) => setCustomerInfo(prev => ({ ...prev, email: e.target.value }))}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" placeholder="(555) 123-4567" />
+                    <Input 
+                      id="phone" 
+                      placeholder="(555) 123-4567"
+                      value={customerInfo.phone}
+                      onChange={(e) => setCustomerInfo(prev => ({ ...prev, phone: e.target.value }))}
+                    />
                   </div>
-                  <Button className="w-full gradient-primary hover-scale" size="lg">
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    Proceed to Payment
-                  </Button>
+                  
+                  {!showPayment ? (
+                    <Button 
+                      className="w-full gradient-primary hover-scale" 
+                      size="lg"
+                      onClick={handleProceedToPayment}
+                    >
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Proceed to Payment
+                    </Button>
+                  ) : (
+                    <Elements stripe={stripePromise}>
+                      <PaymentForm
+                        eventId={event.id}
+                        tickets={ticketTypes
+                          .filter(ticket => (ticketQuantities[ticket.id] || 0) > 0)
+                          .map(ticket => ({
+                            ticketTypeId: ticket.id,
+                            quantity: ticketQuantities[ticket.id] || 0
+                          }))
+                        }
+                        customerInfo={customerInfo}
+                        total={getTotal()}
+                        onSuccess={handlePaymentSuccess}
+                      />
+                    </Elements>
+                  )}
                 </CardContent>
               </Card>
             )}

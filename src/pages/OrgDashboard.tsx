@@ -1,4 +1,5 @@
 import { useState } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,7 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard } from "lucide-react";
 
 const OrgDashboard = () => {
   const [events, setEvents] = useState([
@@ -31,6 +35,81 @@ const OrgDashboard = () => {
   ]);
 
   const [activeTab, setActiveTab] = useState("overview");
+  const [stripeConnected, setStripeConnected] = useState(false);
+  const [stripeOnboardingComplete, setStripeOnboardingComplete] = useState(false);
+  const [organizationId, setOrganizationId] = useState<string>("");
+  const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Load organization and check Stripe status
+  React.useEffect(() => {
+    const loadOrganization = async () => {
+      if (!user) return;
+
+      const { data: orgs, error } = await supabase
+        .from("organizations")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error) {
+        console.error("Error loading organization:", error);
+        return;
+      }
+
+      if (orgs) {
+        setOrganizationId(orgs.id);
+        setStripeConnected(!!(orgs as any).stripe_account_id);
+        setStripeOnboardingComplete(!!(orgs as any).stripe_onboarding_complete);
+      }
+    };
+
+    loadOrganization();
+  }, [user]);
+
+  const handleStripeConnect = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("create-connect-account", {
+        body: { organizationId }
+      });
+
+      if (error) throw error;
+
+      window.open(data.url, "_blank");
+      toast({
+        title: "Stripe Connect",
+        description: "Complete your Stripe setup in the new window."
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to connect Stripe account",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const checkStripeStatus = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("check-connect-status", {
+        body: { organizationId }
+      });
+
+      if (error) throw error;
+
+      setStripeConnected(data.connected);
+      setStripeOnboardingComplete(data.onboarding_complete);
+      
+      if (data.onboarding_complete) {
+        toast({
+          title: "Success",
+          description: "Stripe account is fully connected!"
+        });
+      }
+    } catch (error) {
+      console.error("Error checking Stripe status:", error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -54,7 +133,7 @@ const OrgDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-6 lg:w-fit">
+          <TabsList className="grid w-full grid-cols-7 lg:w-fit">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Overview
@@ -62,6 +141,10 @@ const OrgDashboard = () => {
             <TabsTrigger value="events" className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               Events
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="flex items-center gap-2">
+              <CreditCard className="w-4 h-4" />
+              Payments
             </TabsTrigger>
             <TabsTrigger value="design" className="flex items-center gap-2">
               <Palette className="w-4 h-4" />
@@ -189,6 +272,61 @@ const OrgDashboard = () => {
                   <Textarea id="description" placeholder="Event description" rows={3} />
                 </div>
                 <Button className="gradient-primary">Create Event</Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Payments Tab */}
+          <TabsContent value="payments" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  Stripe Connect Setup
+                </CardTitle>
+                <CardDescription>Connect your Stripe account to start accepting payments</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!stripeConnected ? (
+                  <div className="text-center space-y-4">
+                    <p className="text-muted-foreground">
+                      Connect your Stripe account to start accepting payments for your events.
+                    </p>
+                    <Button onClick={handleStripeConnect} className="gradient-primary">
+                      Connect Stripe Account
+                    </Button>
+                  </div>
+                ) : !stripeOnboardingComplete ? (
+                  <div className="text-center space-y-4">
+                    <Badge variant="outline" className="mb-2">
+                      Setup In Progress
+                    </Badge>
+                    <p className="text-muted-foreground">
+                      Your Stripe account is connected but setup is not complete.
+                    </p>
+                    <Button onClick={checkStripeStatus} variant="outline">
+                      Check Status
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="text-center space-y-4">
+                    <Badge className="mb-2">
+                      ✓ Connected
+                    </Badge>
+                    <p className="text-green-600">
+                      Your Stripe account is fully set up and ready to accept payments!
+                    </p>
+                    <div className="bg-muted p-4 rounded-lg space-y-2">
+                      <h4 className="font-medium">Platform Fees</h4>
+                      <p className="text-sm text-muted-foreground">
+                        1.00% + $0.50 per ticket sold
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Platform fees are automatically deducted from each transaction
+                      </p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
