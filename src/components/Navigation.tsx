@@ -2,15 +2,31 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Ticket } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleScrollTo = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+    setIsOpen(false);
+  };
+
+  const handleSignIn = () => {
+    navigate('/auth');
+  };
+
+  const handleStartTrial = () => {
+    navigate('/auth');
+  };
 
   const navItems = [
-    { name: "Features", href: "#features" },
-    { name: "Pricing", href: "#pricing" },
-    { name: "Templates", href: "#templates" },
-    { name: "Support", href: "#support" },
+    { name: "Features", id: "features" },
+    { name: "Pricing", id: "pricing" },
   ];
 
   return (
@@ -31,23 +47,23 @@ export const Navigation = () => {
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-8">
               {navItems.map((item) => (
-                <a
+                <button
                   key={item.name}
-                  href={item.href}
+                  onClick={() => handleScrollTo(item.id)}
                   className="text-muted-foreground hover:text-foreground px-3 py-2 rounded-md text-sm font-medium transition-smooth hover:bg-accent/50"
                 >
                   {item.name}
-                </a>
+                </button>
               ))}
             </div>
           </div>
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center space-x-4">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={handleSignIn}>
               Sign In
             </Button>
-            <Button variant="gradient" size="sm">
+            <Button variant="gradient" size="sm" onClick={handleStartTrial}>
               Start Free Trial
             </Button>
           </div>
@@ -68,21 +84,20 @@ export const Navigation = () => {
       <div className={cn("md:hidden", isOpen ? "block" : "hidden")}>
         <div className="px-2 pt-2 pb-3 space-y-1 bg-background/95 backdrop-blur-lg border-b border-border/50">
           {navItems.map((item) => (
-            <a
+            <button
               key={item.name}
-              href={item.href}
-              className="text-muted-foreground hover:text-foreground block px-3 py-2 rounded-md text-base font-medium transition-smooth hover:bg-accent/50"
-              onClick={() => setIsOpen(false)}
+              onClick={() => handleScrollTo(item.id)}
+              className="text-muted-foreground hover:text-foreground block px-3 py-2 rounded-md text-base font-medium transition-smooth hover:bg-accent/50 w-full text-left"
             >
               {item.name}
-            </a>
+            </button>
           ))}
           <div className="border-t border-border/50 pt-4 pb-3">
             <div className="flex flex-col space-y-3 px-3">
-              <Button variant="ghost" size="sm" className="justify-start">
+              <Button variant="ghost" size="sm" className="justify-start" onClick={handleSignIn}>
                 Sign In
               </Button>
-              <Button variant="gradient" size="sm">
+              <Button variant="gradient" size="sm" onClick={handleStartTrial}>
                 Start Free Trial
               </Button>
             </div>

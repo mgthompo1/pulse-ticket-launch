@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, Zap, Crown, Building } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const plans = [
   {
@@ -71,6 +72,11 @@ const plans = [
 ];
 
 export const Pricing = () => {
+  const navigate = useNavigate();
+
+  const handlePlanClick = (planName: string) => {
+    navigate('/auth');
+  };
   return (
     <section id="pricing" className="py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -136,6 +142,7 @@ export const Pricing = () => {
                   variant={plan.ctaVariant} 
                   size="lg" 
                   className="w-full group-hover:scale-105 transition-transform"
+                  onClick={() => handlePlanClick(plan.name)}
                 >
                   {plan.cta}
                 </Button>
