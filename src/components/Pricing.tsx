@@ -6,68 +6,30 @@ import { useNavigate } from "react-router-dom";
 
 const plans = [
   {
-    name: "Starter",
+    name: "Simple & Transparent",
     icon: Zap,
-    price: "Free",
-    period: "forever",
-    description: "Perfect for small events and testing the platform",
-    badge: "Most Popular",
+    price: "1.00%",
+    period: "+ $0.50 per ticket",
+    description: "Pay only when you sell tickets - no monthly fees, no hidden costs",
+    badge: "All Features Included",
     badgeVariant: "default" as const,
     features: [
-      "Up to 100 tickets per event",
-      "Basic customization",
-      "Email support",
-      "Standard reporting",
+      "Unlimited events & tickets",
+      "Complete customization",
+      "Advanced analytics & reporting",
+      "Reserved seating & interactive charts",
+      "Email marketing campaigns",
+      "Discount codes & promotions",
+      "White-label ticketing widget",
       "Mobile-optimized checkout",
-      "Payment processing"
+      "24/7 priority support",
+      "API access & integrations",
+      "AI-powered insights",
+      "Multi-venue management"
     ],
-    cta: "Start Free",
-    ctaVariant: "outline" as const
-  },
-  {
-    name: "Professional",
-    icon: Crown,
-    price: "$29",
-    period: "per month",
-    description: "For growing events and professional organizers",
-    badge: "Best Value",
-    badgeVariant: "default" as const,
-    features: [
-      "Unlimited tickets",
-      "Advanced customization",
-      "Priority support",
-      "Advanced analytics",
-      "Reserved seating",
-      "Email campaigns",
-      "Discount codes",
-      "Custom branding",
-      "API access"
-    ],
-    cta: "Start Professional Trial",
+    cta: "Start Selling Tickets",
     ctaVariant: "gradient" as const,
     popular: true
-  },
-  {
-    name: "Enterprise",
-    icon: Building,
-    price: "Custom",
-    period: "pricing",
-    description: "For large organizations and high-volume events",
-    badge: "Custom Solution",
-    badgeVariant: "secondary" as const,
-    features: [
-      "Everything in Professional",
-      "White-label solution",
-      "Dedicated account manager",
-      "Custom integrations",
-      "SLA guarantees",
-      "Advanced security",
-      "Multi-venue management",
-      "Custom reporting",
-      "24/7 phone support"
-    ],
-    cta: "Contact Sales",
-    ctaVariant: "outline" as const
   }
 ];
 
@@ -86,18 +48,18 @@ export const Pricing = () => {
             💎 Simple Pricing
           </Badge>
           <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
-            Choose Your Perfect
+            Pay Only When You
             <span className="block bg-gradient-primary bg-clip-text text-transparent">
-              Ticketing Plan
+              Sell Tickets
             </span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Start free, scale as you grow. No hidden fees, transparent pricing, and incredible value at every level.
+            No monthly fees, no setup costs, no hidden charges. Just a simple platform fee when you make sales.
           </p>
         </div>
 
-        {/* Pricing grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        {/* Single pricing card */}
+        <div className="flex justify-center max-w-2xl mx-auto">
           {plans.map((plan, index) => (
             <Card 
               key={index}
@@ -162,18 +124,37 @@ export const Pricing = () => {
 
         {/* Bottom section */}
         <div className="text-center mt-16 space-y-6">
+          <div className="bg-gradient-secondary/50 rounded-lg p-6 max-w-4xl mx-auto">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Complete Fee Breakdown</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="bg-card/50 rounded-lg p-4">
+                <div className="font-medium text-foreground mb-2">Platform Fee</div>
+                <div className="text-2xl font-bold text-primary">1.00% + $0.50</div>
+                <div className="text-muted-foreground">per ticket sold</div>
+              </div>
+              <div className="bg-card/50 rounded-lg p-4">
+                <div className="font-medium text-foreground mb-2">Payment Processing</div>
+                <div className="text-lg font-semibold text-muted-foreground">2.9% + 30¢</div>
+                <div className="text-muted-foreground">standard Stripe fees</div>
+              </div>
+            </div>
+            <div className="mt-4 text-xs text-muted-foreground">
+              Example: On a $20 ticket, total fees are $1.38 (6.9%) - you keep $18.62
+            </div>
+          </div>
+          
           <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
             <div className="flex items-center space-x-2">
               <Check className="h-4 w-4 text-green-500" />
-              <span>14-day free trial</span>
+              <span>No monthly fees</span>
             </div>
             <div className="flex items-center space-x-2">
               <Check className="h-4 w-4 text-green-500" />
-              <span>No setup fees</span>
+              <span>No setup costs</span>
             </div>
             <div className="flex items-center space-x-2">
               <Check className="h-4 w-4 text-green-500" />
-              <span>Cancel anytime</span>
+              <span>All features included</span>
             </div>
             <div className="flex items-center space-x-2">
               <Check className="h-4 w-4 text-green-500" />
@@ -182,9 +163,9 @@ export const Pricing = () => {
           </div>
           
           <p className="text-muted-foreground">
-            Questions about pricing? 
+            Questions about fees or features? 
             <a href="#support" className="text-primary hover:text-primary-glow ml-1 underline">
-              Contact our sales team
+              Contact our support team
             </a>
           </p>
         </div>
