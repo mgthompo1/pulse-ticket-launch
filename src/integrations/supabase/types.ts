@@ -74,6 +74,72 @@ export type Database = {
         }
         Relationships: []
       }
+      check_ins: {
+        Row: {
+          checked_in_at: string
+          checked_in_by: string | null
+          created_at: string
+          id: string
+          lanyard_printed: boolean | null
+          notes: string | null
+          ticket_id: string
+        }
+        Insert: {
+          checked_in_at?: string
+          checked_in_by?: string | null
+          created_at?: string
+          id?: string
+          lanyard_printed?: boolean | null
+          notes?: string | null
+          ticket_id: string
+        }
+        Update: {
+          checked_in_at?: string
+          checked_in_by?: string | null
+          created_at?: string
+          id?: string
+          lanyard_printed?: boolean | null
+          notes?: string | null
+          ticket_id?: string
+        }
+        Relationships: []
+      }
+      concession_items: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          event_id: string
+          id: string
+          name: string
+          price: number
+          stock_quantity: number | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          event_id: string
+          id?: string
+          name: string
+          price: number
+          stock_quantity?: number | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          event_id?: string
+          id?: string
+          name?: string
+          price?: number
+          stock_quantity?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_notifications: {
         Row: {
           email_type: string
@@ -252,6 +318,13 @@ export type Database = {
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "guest_status_view"
+            referencedColumns: ["event_id"]
+          },
         ]
       }
       organizations: {
@@ -290,6 +363,48 @@ export type Database = {
           updated_at?: string
           user_id?: string
           website?: string | null
+        }
+        Relationships: []
+      }
+      pos_transactions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_email: string | null
+          customer_name: string | null
+          event_id: string
+          id: string
+          items: Json
+          payment_method: string
+          status: string
+          stripe_payment_intent_id: string | null
+          total_amount: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          event_id: string
+          id?: string
+          items?: Json
+          payment_method?: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          total_amount: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          event_id?: string
+          id?: string
+          items?: Json
+          payment_method?: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          total_amount?: number
         }
         Relationships: []
       }
@@ -341,10 +456,18 @@ export type Database = {
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ticket_types_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "guest_status_view"
+            referencedColumns: ["event_id"]
+          },
         ]
       }
       tickets: {
         Row: {
+          checked_in: boolean | null
           created_at: string
           id: string
           order_item_id: string
@@ -353,6 +476,7 @@ export type Database = {
           used_at: string | null
         }
         Insert: {
+          checked_in?: boolean | null
           created_at?: string
           id?: string
           order_item_id: string
@@ -361,6 +485,7 @@ export type Database = {
           used_at?: string | null
         }
         Update: {
+          checked_in?: boolean | null
           created_at?: string
           id?: string
           order_item_id?: string
@@ -380,7 +505,28 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      guest_status_view: {
+        Row: {
+          check_in_notes: string | null
+          checked_in: boolean | null
+          checked_in_at: string | null
+          checked_in_by: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          event_id: string | null
+          event_name: string | null
+          lanyard_printed: boolean | null
+          order_date: string | null
+          price: number | null
+          quantity: number | null
+          ticket_code: string | null
+          ticket_id: string | null
+          ticket_status: string | null
+          ticket_type: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       generate_ticket_code: {

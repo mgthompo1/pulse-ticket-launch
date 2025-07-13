@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import AIEventGenerator from "@/components/AIEventGenerator";
 import AIChatbot from "@/components/AIChatbot";
-import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell } from "lucide-react";
+import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor } from "lucide-react";
 
 const OrgDashboard = () => {
   const [events, setEvents] = useState([
@@ -226,21 +226,29 @@ const OrgDashboard = () => {
               <CardContent>
                 <div className="space-y-4">
                   {events.map((event) => (
-                    <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="space-y-1">
-                        <h3 className="font-medium">{event.name}</h3>
-                        <p className="text-sm text-muted-foreground">{event.date} • {event.venue}</p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="text-sm font-medium">{event.tickets.sold}/{event.tickets.total} tickets</p>
-                          <p className="text-sm text-muted-foreground">{event.revenue}</p>
-                        </div>
-                        <Badge variant={event.status === "active" ? "default" : "secondary"}>
-                          {event.status}
-                        </Badge>
-                      </div>
-                    </div>
+                     <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                       <div className="space-y-1">
+                         <h3 className="font-medium">{event.name}</h3>
+                         <p className="text-sm text-muted-foreground">{event.date} • {event.venue}</p>
+                       </div>
+                       <div className="flex items-center gap-4">
+                         <div className="text-right">
+                           <p className="text-sm font-medium">{event.tickets.sold}/{event.tickets.total} tickets</p>
+                           <p className="text-sm text-muted-foreground">{event.revenue}</p>
+                         </div>
+                         <Badge variant={event.status === "active" ? "default" : "secondary"}>
+                           {event.status}
+                         </Badge>
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           onClick={() => window.open(`/ticket2live/${event.id}`, '_blank')}
+                         >
+                           <Monitor className="h-4 w-4 mr-2" />
+                           Ticket2LIVE
+                         </Button>
+                       </div>
+                     </div>
                   ))}
                 </div>
               </CardContent>

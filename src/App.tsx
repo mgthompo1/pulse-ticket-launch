@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import OrgDashboard from "./pages/OrgDashboard";
 import TicketWidget from "./pages/TicketWidget";
 import MasterAdmin from "./pages/MasterAdmin";
+import Ticket2LIVE from "./pages/Ticket2LIVE";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/dashboard" element={<OrgDashboard />} />
             <Route path="/widget/:orgId?" element={<TicketWidget />} />
             <Route path="/admin" element={<MasterAdmin />} />
+            <Route path="/ticket2live/:eventId" element={<Ticket2LIVE />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
