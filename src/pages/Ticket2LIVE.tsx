@@ -116,9 +116,15 @@ const Ticket2LIVE = () => {
         .single();
 
       if (error) throw error;
+      console.log("Organization config loaded:", event?.organizations);
       setOrganizationConfig(event?.organizations);
     } catch (error) {
       console.error("Error loading organization config:", error);
+      toast({
+        title: "Configuration Error",
+        description: "Failed to load Windcave configuration",
+        variant: "destructive"
+      });
     }
   };
 
@@ -889,11 +895,23 @@ const Ticket2LIVE = () => {
                       </Button>
                     ) : paymentMethod === "windcave_hit" ? (
                       <div className="space-y-3">
-                        {!organizationConfig?.windcave_enabled ? (
+                        {!organizationConfig ? (
+                          <div className="bg-yellow-50 p-4 rounded-lg">
+                            <p className="text-sm text-yellow-800">
+                              Loading Windcave configuration...
+                            </p>
+                          </div>
+                        ) : !organizationConfig.windcave_enabled ? (
                           <div className="bg-yellow-50 p-4 rounded-lg">
                             <p className="text-sm text-yellow-800">
                               Windcave HIT terminal is not configured for this organization. 
                               Please configure it in the organization settings.
+                            </p>
+                          </div>
+                        ) : !organizationConfig.windcave_station_id ? (
+                          <div className="bg-yellow-50 p-4 rounded-lg">
+                            <p className="text-sm text-yellow-800">
+                              Windcave station ID is missing. Please configure it in organization settings.
                             </p>
                           </div>
                         ) : (
@@ -923,7 +941,7 @@ const Ticket2LIVE = () => {
                         ) : (
                           <Button 
                             onClick={handleWindcaveHITPayment} 
-                            disabled={loading || !organizationConfig?.windcave_enabled} 
+                            disabled={loading || !organizationConfig?.windcave_enabled || !organizationConfig?.windcave_station_id} 
                             className="w-full"
                           >
                             <CreditCard className="mr-2 h-4 w-4" />
