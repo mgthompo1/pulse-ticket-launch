@@ -79,7 +79,10 @@ serve(async (req) => {
       expires: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes
     };
 
-    console.log("Creating Windcave session:", sessionData);
+    console.log("=== WINDCAVE API REQUEST ===");
+    console.log("Endpoint:", windcaveEndpoint);
+    console.log("Request payload:", JSON.stringify(sessionData, null, 2));
+    console.log("Authorization header:", `Basic ${btoa(`${org.windcave_username}:${org.windcave_api_key}`)}`);
 
     const windcaveResponse = await fetch(windcaveEndpoint, {
       method: "POST",
@@ -90,11 +93,18 @@ serve(async (req) => {
       body: JSON.stringify(sessionData)
     });
 
+    console.log("=== WINDCAVE API RESPONSE ===");
+    console.log("Status:", windcaveResponse.status);
+    console.log("Status Text:", windcaveResponse.statusText);
+    console.log("Headers:", Object.fromEntries(windcaveResponse.headers.entries()));
+
     const windcaveResult = await windcaveResponse.json();
+    console.log("Response body:", JSON.stringify(windcaveResult, null, 2));
 
     if (!windcaveResponse.ok) {
-      console.error("Windcave API error:", windcaveResult);
-      throw new Error(`Windcave API error: ${windcaveResult.message || "Unknown error"}`);
+      console.error("Windcave API error - Status:", windcaveResponse.status);
+      console.error("Windcave API error - Body:", windcaveResult);
+      throw new Error(`Windcave API error (${windcaveResponse.status}): ${windcaveResult.message || windcaveResult.error || "Unknown error"}`);
     }
 
     console.log("Windcave session created:", windcaveResult);
