@@ -128,12 +128,19 @@ const TicketWidget = () => {
 
         if (error) throw error;
 
-        console.log("Windcave response received:", data);
+        console.log("=== WINDCAVE FRONTEND RESPONSE ===");
+        console.log("Full Windcave response received:", JSON.stringify(data, null, 2));
+        console.log("Has redirectUrl:", !!data.redirectUrl);
+        console.log("RedirectUrl value:", data.redirectUrl);
+        console.log("Debug info:", data.debug);
+        console.log("Windcave response object:", data.windcaveResponse);
 
         if (data.redirectUrl) {
+          console.log("Redirecting to:", data.redirectUrl);
           window.location.href = data.redirectUrl;
         } else {
           console.error("No redirect URL found. Full response:", data);
+          alert(`Windcave Error: No redirect URL received. Check console for details. Session ID: ${data.sessionId || 'N/A'}`);
           throw new Error(`No redirect URL received from Windcave. Debug info: ${JSON.stringify(data.debug || {})}`);
         }
       } else {
