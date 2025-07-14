@@ -123,28 +123,24 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         )}
 
         {paymentProvider === 'windcave' && (
-          <>
-            <CurrencySelector 
-              currency={currency} 
-              onCurrencyChange={setCurrency} 
-            />
-            <WindcaveConfiguration 
-              windcaveUsername={windcaveUsername}
-              windcaveApiKey={windcaveApiKey}
-              windcaveEndpoint={windcaveEndpoint}
-              windcaveEnabled={windcaveEnabled}
-              windcaveHitUsername={windcaveHitUsername}
-              windcaveHitKey={windcaveHitKey}
-              windcaveStationId={windcaveStationId}
-              onWindcaveUsernameChange={setWindcaveUsername}
-              onWindcaveApiKeyChange={setWindcaveApiKey}
-              onWindcaveEndpointChange={setWindcaveEndpoint}
-              onWindcaveEnabledChange={setWindcaveEnabled}
-              onWindcaveHitUsernameChange={setWindcaveHitUsername}
-              onWindcaveHitKeyChange={setWindcaveHitKey}
-              onWindcaveStationIdChange={setWindcaveStationId}
-            />
-          </>
+          <WindcaveConfiguration 
+            windcaveUsername={windcaveUsername}
+            windcaveApiKey={windcaveApiKey}
+            windcaveEndpoint={windcaveEndpoint}
+            windcaveEnabled={windcaveEnabled}
+            windcaveHitUsername={windcaveHitUsername}
+            windcaveHitKey={windcaveHitKey}
+            windcaveStationId={windcaveStationId}
+            currency={currency}
+            onWindcaveUsernameChange={setWindcaveUsername}
+            onWindcaveApiKeyChange={setWindcaveApiKey}
+            onWindcaveEndpointChange={setWindcaveEndpoint}
+            onWindcaveEnabledChange={setWindcaveEnabled}
+            onWindcaveHitUsernameChange={setWindcaveHitUsername}
+            onWindcaveHitKeyChange={setWindcaveHitKey}
+            onWindcaveStationIdChange={setWindcaveStationId}
+            onCurrencyChange={setCurrency}
+          />
         )}
 
         {paymentProvider === 'applepay' && (

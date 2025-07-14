@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { CurrencySelector } from './CurrencySelector';
 
 interface WindcaveConfigurationProps {
   windcaveUsername: string;
@@ -12,6 +13,7 @@ interface WindcaveConfigurationProps {
   windcaveHitUsername: string;
   windcaveHitKey: string;
   windcaveStationId: string;
+  currency: string;
   onWindcaveUsernameChange: (value: string) => void;
   onWindcaveApiKeyChange: (value: string) => void;
   onWindcaveEndpointChange: (value: string) => void;
@@ -19,6 +21,7 @@ interface WindcaveConfigurationProps {
   onWindcaveHitUsernameChange: (value: string) => void;
   onWindcaveHitKeyChange: (value: string) => void;
   onWindcaveStationIdChange: (value: string) => void;
+  onCurrencyChange: (value: string) => void;
 }
 
 export const WindcaveConfiguration = ({
@@ -29,6 +32,7 @@ export const WindcaveConfiguration = ({
   windcaveHitUsername,
   windcaveHitKey,
   windcaveStationId,
+  currency,
   onWindcaveUsernameChange,
   onWindcaveApiKeyChange,
   onWindcaveEndpointChange,
@@ -36,9 +40,14 @@ export const WindcaveConfiguration = ({
   onWindcaveHitUsernameChange,
   onWindcaveHitKeyChange,
   onWindcaveStationIdChange,
+  onCurrencyChange,
 }: WindcaveConfigurationProps) => {
   return (
     <>
+      <CurrencySelector 
+        currency={currency} 
+        onCurrencyChange={onCurrencyChange} 
+      />
       <div className="space-y-2">
         <Label htmlFor="windcaveUsername">Windcave Username</Label>
         <Input
