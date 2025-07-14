@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 
 // Initialize Stripe with a test publishable key (you can add your real key later)
-const stripePromise = loadStripe("pk_test_51234567890abcdef"); // Replace with your actual Stripe publishable key
+const stripePromise = loadStripe("pk_live_51RkWYvIkAZJOEIBEU4kM4sZ1jv3Jkdhfcr953tdGveqHA83bUo6pDA3KBSUUe9QbWbgTnT9uvXWSUO65PEFqlZ06009YvC3tjO");
 
 interface BillingDashboardProps {
   organizationId: string;
