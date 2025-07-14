@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Calendar, Mail, Download } from "lucide-react";
+import { CheckCircle, Calendar, Mail, Download, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { TicketDisplay } from "@/components/TicketDisplay";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const PaymentSuccess = () => {
   const location = useLocation();
@@ -11,11 +13,12 @@ const PaymentSuccess = () => {
   const [orderDetails, setOrderDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [downloadingTickets, setDownloadingTickets] = useState(false);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [showTickets, setShowTickets] = useState(false);
 
-  const downloadTickets = async () => {
+  const loadTickets = async () => {
     if (!orderDetails) return;
     
-    setDownloadingTickets(true);
     try {
       // Get tickets for this order
       const { data: orderItems, error: orderItemsError } = await supabase
@@ -33,8 +36,8 @@ const PaymentSuccess = () => {
         return;
       }
 
-      // Create PDF content
-      const tickets = orderItems.flatMap(item => 
+      // Format tickets for display
+      const formattedTickets = orderItems.flatMap(item => 
         item.tickets.map((ticket: any) => ({
           ...ticket,
           ticketTypeName: item.ticket_types.name,
@@ -44,34 +47,19 @@ const PaymentSuccess = () => {
         }))
       );
 
-      // Generate simple text file with ticket details for now
-      const ticketContent = tickets.map((ticket, index) => 
-        `TICKET ${index + 1}\n` +
-        `Event: ${ticket.eventName}\n` +
-        `Date: ${new Date(ticket.eventDate).toLocaleDateString()}\n` +
-        `Ticket Type: ${ticket.ticketTypeName}\n` +
-        `Ticket Code: ${ticket.ticket_code}\n` +
-        `Customer: ${ticket.customerName}\n` +
-        `Status: ${ticket.status}\n` +
-        `\n${'='.repeat(40)}\n\n`
-      ).join('');
-
-      // Create and download file
-      const blob = new Blob([ticketContent], { type: 'text/plain' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `tickets-${orderDetails.id}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
+      setTickets(formattedTickets);
     } catch (error) {
-      console.error('Error downloading tickets:', error);
-    } finally {
-      setDownloadingTickets(false);
+      console.error('Error loading tickets:', error);
     }
+  };
+
+  const viewTickets = async () => {
+    await loadTickets();
+    setShowTickets(true);
+  };
+
+  const printTickets = () => {
+    window.print();
   };
 
   useEffect(() => {
@@ -93,7 +81,7 @@ const PaymentSuccess = () => {
           if (sessionId) {
             const { data: orderBySession, error: sessionError } = await supabase
               .from('orders')
-              .select('*, events(name, event_date)')
+              .select('*, events(name, event_date, venue, logo_url, description)')
               .eq('windcave_session_id', sessionId)
               .single();
 
@@ -108,7 +96,7 @@ const PaymentSuccess = () => {
             console.log('Trying to find most recent completed order...');
             const { data: recentOrder, error: recentError } = await supabase
               .from('orders')
-              .select('*, events(name, event_date)')
+              .select('*, events(name, event_date, venue, logo_url, description)')
               .in('status', ['completed', 'paid'])
               .order('created_at', { ascending: false })
               .limit(1)
@@ -131,7 +119,7 @@ const PaymentSuccess = () => {
           // If no URL params, show the most recent completed order
           const { data: recentOrder, error: recentError } = await supabase
             .from('orders')
-            .select('*, events(name, event_date)')
+            .select('*, events(name, event_date, venue, logo_url, description)')
             .in('status', ['completed', 'paid'])
             .order('created_at', { ascending: false })
             .limit(1)
@@ -197,10 +185,39 @@ const PaymentSuccess = () => {
             <Button className="w-full" onClick={() => navigate('/')}>
               Return to Home
             </Button>
-            <Button variant="outline" className="w-full" onClick={downloadTickets} disabled={downloadingTickets}>
-              <Download className="h-4 w-4 mr-2" />
-              {downloadingTickets ? 'Downloading...' : 'Download Tickets'}
-            </Button>
+            <Dialog open={showTickets} onOpenChange={setShowTickets}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="w-full" onClick={viewTickets}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Tickets
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Your Tickets</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-6 py-4">
+                  {tickets.map((ticket, index) => (
+                    <div key={ticket.id} className="print:break-after-page">
+                      <TicketDisplay 
+                        ticket={ticket}
+                        eventDetails={{
+                          venue: orderDetails?.events?.venue,
+                          logo_url: orderDetails?.events?.logo_url,
+                          description: orderDetails?.events?.description
+                        }}
+                      />
+                    </div>
+                  ))}
+                  <div className="flex gap-2 pt-4 print:hidden">
+                    <Button onClick={printTickets} className="flex-1">
+                      <Download className="h-4 w-4 mr-2" />
+                      Print/Save Tickets
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardContent>
       </Card>

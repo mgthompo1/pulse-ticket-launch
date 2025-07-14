@@ -6,6 +6,28 @@
 All colors MUST be HSL.
 */
 
+/* Print styles for tickets */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  .print\\:break-after-page,
+  .print\\:break-after-page * {
+    visibility: visible;
+  }
+  
+  .print\\:break-after-page {
+    page-break-after: always;
+    margin: 0;
+    padding: 20px;
+  }
+  
+  .print\\:hidden {
+    display: none !important;
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 99%;
