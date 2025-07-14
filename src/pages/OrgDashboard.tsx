@@ -33,7 +33,8 @@ const OrgDashboard = () => {
     username: "",
     apiKey: "",
     endpoint: "UAT" as "SEC" | "UAT",
-    enabled: false
+    enabled: false,
+    applePayMerchantId: ""
   });
   const { toast } = useToast();
   const { user } = useAuth();
@@ -121,7 +122,8 @@ const OrgDashboard = () => {
           username: (orgs as any).windcave_username || "",
           apiKey: (orgs as any).windcave_api_key || "",
           endpoint: (orgs as any).windcave_endpoint || "UAT",
-          enabled: !!(orgs as any).windcave_enabled
+          enabled: !!(orgs as any).windcave_enabled,
+          applePayMerchantId: (orgs as any).apple_pay_merchant_id || ""
         });
         
         // Load events for this organization
@@ -274,7 +276,8 @@ const OrgDashboard = () => {
           windcave_api_key: windcaveConfig.apiKey,
           windcave_endpoint: windcaveConfig.endpoint,
           windcave_enabled: true,
-          payment_provider: "windcave"
+          payment_provider: "windcave",
+          apple_pay_merchant_id: windcaveConfig.applePayMerchantId
         })
         .eq("id", organizationId);
 
@@ -1585,6 +1588,20 @@ const OrgDashboard = () => {
                           </Select>
                           <p className="text-xs text-muted-foreground">
                             Use UAT for testing, SEC for live transactions
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="apple-pay-merchant-id">Apple Pay Merchant ID (Optional)</Label>
+                          <Input
+                            id="apple-pay-merchant-id"
+                            type="text"
+                            placeholder="merchant.com.yourcompany.app"
+                            value={windcaveConfig.applePayMerchantId}
+                            onChange={(e) => setWindcaveConfig(prev => ({ ...prev, applePayMerchantId: e.target.value }))}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Required for Apple Pay support. Register your domain at Apple Developer.
                           </p>
                         </div>
 

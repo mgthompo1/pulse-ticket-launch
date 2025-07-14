@@ -56,7 +56,8 @@ const TicketWidget = () => {
             windcave_enabled,
             windcave_username,
             windcave_api_key,
-            windcave_endpoint
+            windcave_endpoint,
+            apple_pay_merchant_id
           )
         `)
         .eq("id", eventId)
@@ -239,7 +240,15 @@ const TicketWidget = () => {
             countryCode: "NZ",
             currencyCode: "NZD",
             supportedNetworks: ["visa", "mastercard", "amex"],
-            isTest: true
+            isTest: true,
+            // Apple Pay configuration
+            applePay: eventData?.organizations?.apple_pay_merchant_id ? {
+              merchantId: eventData.organizations.apple_pay_merchant_id,
+              countryCode: "NZ",
+              currencyCode: "NZD",
+              supportedNetworks: ["visa", "mastercard", "amex", "discover"],
+              merchantCapabilities: ["supports3DS", "supportsEMV", "supportsCredit", "supportsDebit"]
+            } : undefined
           },
           card: {
             supportedCards: ["visa", "mastercard", "amex"],

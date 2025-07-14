@@ -426,6 +426,7 @@ export type Database = {
       }
       organizations: {
         Row: {
+          apple_pay_merchant_id: string | null
           billing_setup_completed: boolean
           billing_setup_required: boolean
           brand_colors: Json | null
@@ -447,6 +448,7 @@ export type Database = {
           windcave_username: string | null
         }
         Insert: {
+          apple_pay_merchant_id?: string | null
           billing_setup_completed?: boolean
           billing_setup_required?: boolean
           brand_colors?: Json | null
@@ -468,6 +470,7 @@ export type Database = {
           windcave_username?: string | null
         }
         Update: {
+          apple_pay_merchant_id?: string | null
           billing_setup_completed?: boolean
           billing_setup_required?: boolean
           brand_colors?: Json | null
