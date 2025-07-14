@@ -277,6 +277,12 @@ const TicketWidget = () => {
               });
               
               try {
+                console.log("=== CALLING WINDCAVE DROPIN SUCCESS ===");
+                console.log("About to call function with:", {
+                  sessionId: sessionId,
+                  eventId: eventData.id
+                });
+                
                 // Call the Drop In success function to finalize the order
                 const { data, error } = await supabase.functions.invoke('windcave-dropin-success', {
                   body: { 
@@ -284,6 +290,10 @@ const TicketWidget = () => {
                     eventId: eventData.id
                   }
                 });
+
+                console.log("=== FUNCTION RESPONSE ===");
+                console.log("Data:", data);
+                console.log("Error:", error);
 
                 if (error) {
                   console.error("=== WINDCAVE DROPIN SUCCESS ERROR ===");

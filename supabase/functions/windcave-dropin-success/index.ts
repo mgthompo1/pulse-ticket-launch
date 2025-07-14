@@ -19,13 +19,22 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
+    // First, let's try to read the request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      logStep("Request body parsed", requestBody);
+    } catch (bodyError) {
+      logStep("Error parsing request body", bodyError);
+      throw new Error(`Failed to parse request body: ${bodyError.message}`);
+    }
+
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
 
-    const requestBody = await req.json();
     const { sessionId, eventId } = requestBody;
     
     logStep("Processing Windcave Drop In success", { sessionId, eventId, requestBody });
