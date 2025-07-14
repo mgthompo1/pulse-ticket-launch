@@ -12,7 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import AIEventGenerator from "@/components/AIEventGenerator";
 import AIChatbot from "@/components/AIChatbot";
-import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor } from "lucide-react";
+import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const OrgDashboard = () => {
   const [events, setEvents] = useState([
@@ -42,6 +43,7 @@ const OrgDashboard = () => {
   const [organizationId, setOrganizationId] = useState<string>("");
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Event form state
   const [eventForm, setEventForm] = useState({
@@ -243,6 +245,27 @@ const OrgDashboard = () => {
     }));
   };
 
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast({
+        title: "Signed Out",
+        description: "You have been successfully signed out."
+      });
+      
+      navigate("/");
+    } catch (error) {
+      console.error("Error signing out:", error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -255,10 +278,20 @@ const OrgDashboard = () => {
               </h1>
               <p className="text-muted-foreground mt-2">Manage your events and ticketing platform</p>
             </div>
-            <Button onClick={handleCreateEventClick} className="gradient-primary hover-scale">
-              <Plus className="w-4 h-4 mr-2" />
-              Create Event
-            </Button>
+            <div className="flex items-center gap-4">
+              <Button onClick={handleCreateEventClick} className="gradient-primary hover-scale">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Event
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleSignOut}
+                className="flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </Button>
+            </div>
           </div>
         </div>
       </div>
