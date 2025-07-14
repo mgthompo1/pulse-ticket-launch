@@ -731,37 +731,13 @@ const OrgDashboard = () => {
       <div className="border-b bg-gradient-to-r from-primary/5 to-secondary/5">
         <div className="container mx-auto px-4 py-4 md:py-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                  Organization Dashboard
-                </h1>
-                <Badge 
-                  variant={testMode ? "secondary" : "default"} 
-                  className={testMode ? "bg-yellow-100 text-yellow-800 border-yellow-300" : "bg-green-100 text-green-800 border-green-300"}
-                >
-                  {testMode ? "TEST MODE" : "LIVE MODE"}
-                </Badge>
-              </div>
-              <p className="text-muted-foreground text-sm md:text-base">
-                {testMode 
-                  ? "Test your events and see indicative platform fees without real transactions" 
-                  : "Live mode - all transactions are real and will be processed"
-                }
-              </p>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                Organization Dashboard
+              </h1>
+              <p className="text-muted-foreground mt-1 md:mt-2 text-sm md:text-base">Manage your events and ticketing platform</p>
             </div>
             <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="test-mode-toggle" className="text-sm whitespace-nowrap">
-                  {testMode ? "Test" : "Live"}
-                </Label>
-                <Switch
-                  id="test-mode-toggle"
-                  checked={!testMode}
-                  onCheckedChange={() => handleToggleTestMode()}
-                  className="data-[state=checked]:bg-green-600"
-                />
-              </div>
               <Button onClick={handleCreateEventClick} className="gradient-primary hover-scale flex-1 sm:flex-none" size="sm">
                 <Plus className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Create Event</span>
