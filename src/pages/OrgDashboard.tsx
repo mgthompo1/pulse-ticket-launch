@@ -33,6 +33,13 @@ const OrgDashboard = () => {
   const [stripeOnboardingComplete, setStripeOnboardingComplete] = useState(false);
   const [organizationId, setOrganizationId] = useState<string>("");
   const [paymentProvider, setPaymentProvider] = useState<"stripe" | "windcave">("stripe");
+  const [testMode, setTestMode] = useState<boolean>(true);
+  const [testModeAnalytics, setTestModeAnalytics] = useState({
+    totalEvents: 0,
+    totalOrders: 0,
+    totalRevenue: 0,
+    estimatedPlatformFees: 0
+  });
   const [windcaveConfig, setWindcaveConfig] = useState({
     username: "",
     apiKey: "",
@@ -141,6 +148,7 @@ const OrgDashboard = () => {
       if (orgs) {
         console.log("Organization loaded:", orgs);
         setOrganizationId(orgs.id);
+        setTestMode(orgs.test_mode ?? true);
         setStripeConnected(!!(orgs as any).stripe_account_id);
         setStripeOnboardingComplete(!!(orgs as any).stripe_onboarding_complete);
         setPaymentProvider((orgs as any).payment_provider || "stripe");
@@ -157,6 +165,8 @@ const OrgDashboard = () => {
         
         // Load events for this organization
         loadEvents(orgs.id);
+        // Load test mode analytics
+        loadTestModeAnalytics(orgs.id);
       }
     };
 
@@ -168,6 +178,7 @@ const OrgDashboard = () => {
       .from("events")
       .select("*")
       .eq("organization_id", orgId)
+      .eq("test_mode", testMode)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -184,10 +195,82 @@ const OrgDashboard = () => {
         capacity: event.capacity,
         description: event.description,
         status: event.status,
+        test_mode: event.test_mode,
         tickets: { sold: 0, total: event.capacity }, // Will be updated with real data
         revenue: "$0" // Will be updated with real data
       }));
       setEvents(formattedEvents);
+    }
+  };
+
+  const loadTestModeAnalytics = async (orgId: string) => {
+    const { data: analyticsData, error } = await supabase
+      .from("test_mode_analytics")
+      .select("*")
+      .eq("organization_id", orgId)
+      .eq("test_mode", testMode)
+      .single();
+
+    if (error) {
+      console.error("Error loading test mode analytics:", error);
+      // Set default values if no data
+      setTestModeAnalytics({
+        totalEvents: 0,
+        totalOrders: 0,
+        totalRevenue: 0,
+        estimatedPlatformFees: 0
+      });
+      return;
+    }
+
+    if (analyticsData) {
+      setTestModeAnalytics({
+        totalEvents: analyticsData.total_events || 0,
+        totalOrders: analyticsData.total_orders || 0,
+        totalRevenue: analyticsData.total_revenue || 0,
+        estimatedPlatformFees: analyticsData.estimated_platform_fees || 0
+      });
+    }
+  };
+
+  const handleToggleTestMode = async () => {
+    if (!organizationId) return;
+
+    try {
+      const newTestMode = !testMode;
+      
+      const { error } = await supabase
+        .from("organizations")
+        .update({ test_mode: newTestMode })
+        .eq("id", organizationId);
+
+      if (error) {
+        console.error("Error updating test mode:", error);
+        toast({
+          title: "Error",
+          description: "Failed to update test mode",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setTestMode(newTestMode);
+      
+      // Reload events and analytics for the new mode
+      loadEvents(organizationId);
+      loadTestModeAnalytics(organizationId);
+
+      toast({
+        title: "Success",
+        description: `Switched to ${newTestMode ? 'Test' : 'Live'} mode`,
+      });
+    } catch (error) {
+      console.error("Error toggling test mode:", error);
+      toast({
+        title: "Error",
+        description: "Failed to toggle test mode",
+        variant: "destructive"
+      });
     }
   };
 
@@ -401,6 +484,7 @@ const OrgDashboard = () => {
             capacity: parseInt(eventForm.capacity),
             description: eventForm.description || null,
             organization_id: organizationId,
+            test_mode: testMode,
             status: "draft"
           }
         ])
@@ -647,13 +731,37 @@ const OrgDashboard = () => {
       <div className="border-b bg-gradient-to-r from-primary/5 to-secondary/5">
         <div className="container mx-auto px-4 py-4 md:py-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                Organization Dashboard
-              </h1>
-              <p className="text-muted-foreground mt-1 md:mt-2 text-sm md:text-base">Manage your events and ticketing platform</p>
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                  Organization Dashboard
+                </h1>
+                <Badge 
+                  variant={testMode ? "secondary" : "default"} 
+                  className={testMode ? "bg-yellow-100 text-yellow-800 border-yellow-300" : "bg-green-100 text-green-800 border-green-300"}
+                >
+                  {testMode ? "TEST MODE" : "LIVE MODE"}
+                </Badge>
+              </div>
+              <p className="text-muted-foreground text-sm md:text-base">
+                {testMode 
+                  ? "Test your events and see indicative platform fees without real transactions" 
+                  : "Live mode - all transactions are real and will be processed"
+                }
+              </p>
             </div>
             <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="test-mode-toggle" className="text-sm whitespace-nowrap">
+                  {testMode ? "Test" : "Live"}
+                </Label>
+                <Switch
+                  id="test-mode-toggle"
+                  checked={!testMode}
+                  onCheckedChange={() => handleToggleTestMode()}
+                  className="data-[state=checked]:bg-green-600"
+                />
+              </div>
               <Button onClick={handleCreateEventClick} className="gradient-primary hover-scale flex-1 sm:flex-none" size="sm">
                 <Plus className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Create Event</span>
