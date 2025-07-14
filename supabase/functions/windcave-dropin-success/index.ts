@@ -25,8 +25,10 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { sessionId, eventId } = await req.json();
-    logStep("Processing Windcave Drop In success", { sessionId, eventId });
+    const requestBody = await req.json();
+    const { sessionId, eventId } = requestBody;
+    
+    logStep("Processing Windcave Drop In success", { sessionId, eventId, requestBody });
 
     if (!sessionId || !eventId) {
       throw new Error("Missing required parameters: sessionId and eventId are required");
@@ -34,7 +36,6 @@ serve(async (req) => {
 
     // Try multiple approaches to find the order since sessionId format might vary
     let order = null;
-    let orderError = null;
 
     // First try: exact sessionId match
     const { data: order1, error: error1 } = await supabaseClient
@@ -46,6 +47,7 @@ serve(async (req) => {
 
     if (order1) {
       order = order1;
+      logStep("Order found with exact sessionId match", { orderId: order.id });
     } else {
       // Second try: check if sessionId is a URL and extract the last part
       const sessionIdPart = sessionId.includes('/') ? sessionId.split('/').pop() : sessionId;
@@ -56,17 +58,17 @@ serve(async (req) => {
         .eq("event_id", eventId)
         .maybeSingle();
       
-      order = order2;
-      orderError = error2;
+      if (order2) {
+        order = order2;
+        logStep("Order found with sessionId part match", { orderId: order.id, sessionIdPart });
+      }
     }
 
     if (!order) {
       logStep("Order not found with any sessionId variation", { 
         originalSessionId: sessionId, 
         sessionIdPart: sessionId.includes('/') ? sessionId.split('/').pop() : sessionId,
-        eventId, 
-        error1, 
-        orderError 
+        eventId
       });
       throw new Error("Order not found for this session");
     }
@@ -105,66 +107,51 @@ serve(async (req) => {
     logStep("Order status updated to completed", { orderId: order.id });
     
     // Generate tickets for completed orders
-    try {
-      const { data: orderItems } = await supabaseClient
-        .from("order_items")
-        .select("*")
-        .eq("order_id", order.id);
+    const { data: orderItems } = await supabaseClient
+      .from("order_items")
+      .select("*")
+      .eq("order_id", order.id);
 
-      if (orderItems && orderItems.length > 0) {
-        const tickets = [];
-        for (const item of orderItems) {
-          for (let i = 0; i < item.quantity; i++) {
-            tickets.push({
-              order_item_id: item.id,
-              ticket_code: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              status: 'valid'
-            });
-          }
-        }
-        
-        const { error: ticketsError } = await supabaseClient
-          .from("tickets")
-          .insert(tickets);
-          
-        if (ticketsError) {
-          logStep("Error creating tickets", ticketsError);
-          throw new Error("Failed to create tickets");
-        } else {
-          logStep("Tickets created successfully", { ticketCount: tickets.length });
-        }
-
-        // Send ticket confirmation email
-        try {
-          await supabaseClient.functions.invoke('send-ticket-email', {
-            body: { orderId: order.id }
-          });
-          logStep("Ticket email sent", { orderId: order.id });
-        } catch (emailError) {
-          logStep("Error sending ticket email", emailError);
-          // Don't fail the whole process if email fails
-        }
-
-        return new Response(JSON.stringify({
-          success: true,
-          message: "Payment completed successfully",
-          orderId: order.id,
-          ticketCount: tickets.length
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        });
-      } else {
-        throw new Error("No order items found");
-      }
-    } catch (ticketError) {
-      logStep("Error in ticket generation", ticketError);
-      throw new Error("Failed to generate tickets");
+    if (!orderItems || orderItems.length === 0) {
+      logStep("No order items found for order", { orderId: order.id });
+      throw new Error("No order items found");
     }
+
+    const tickets = [];
+    for (const item of orderItems) {
+      for (let i = 0; i < item.quantity; i++) {
+        tickets.push({
+          order_item_id: item.id,
+          ticket_code: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          status: 'valid'
+        });
+      }
+    }
+    
+    const { error: ticketsError } = await supabaseClient
+      .from("tickets")
+      .insert(tickets);
+      
+    if (ticketsError) {
+      logStep("Error creating tickets", ticketsError);
+      throw new Error("Failed to create tickets");
+    }
+
+    logStep("Tickets created successfully", { ticketCount: tickets.length });
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: "Payment completed successfully",
+      orderId: order.id,
+      ticketCount: tickets.length
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR", { message: errorMessage });
+    logStep("ERROR", { message: errorMessage, stack: error?.stack });
     
     return new Response(JSON.stringify({ 
       success: false,
