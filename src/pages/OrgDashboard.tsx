@@ -988,44 +988,100 @@ const OrgDashboard = () => {
 
           {/* Payments Tab */}
           <TabsContent value="payments" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Stripe Connect Setup
-                </CardTitle>
-                <CardDescription>Connect your Stripe account to start accepting payments</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {!stripeConnected ? (
-                  <div className="text-center space-y-4">
-                    <p className="text-muted-foreground">
-                      Connect your Stripe account to start accepting payments for your events.
-                    </p>
-                    <Button onClick={handleStripeConnect} className="gradient-primary">
-                      Connect Stripe Account
-                    </Button>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card className="gradient-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="w-5 h-5" />
+                    Stripe Connect Setup
+                  </CardTitle>
+                  <CardDescription>
+                    Each organization needs its own Stripe account to receive payments directly
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                    <h4 className="font-medium text-blue-900">How Stripe Connect Works:</h4>
+                    <ul className="text-sm text-blue-800 space-y-1">
+                      <li>• Your organization gets its own Stripe account</li>
+                      <li>• Payments go directly to your account</li>
+                      <li>• You control your own payouts and fees</li>
+                      <li>• Complete financial independence</li>
+                    </ul>
                   </div>
-                ) : !stripeOnboardingComplete ? (
-                  <div className="text-center space-y-4">
-                    <Badge variant="outline" className="mb-2">
-                      Setup In Progress
+                  
+                  <div className="flex items-center justify-between">
+                    <span>Stripe Account</span>
+                    <Badge variant={stripeConnected ? "default" : "secondary"}>
+                      {stripeConnected ? "Connected" : "Not Connected"}
                     </Badge>
-                    <p className="text-muted-foreground">
-                      Your Stripe account is connected but setup is not complete.
-                    </p>
-                    <Button onClick={checkStripeStatus} variant="outline">
-                      Check Status
-                    </Button>
                   </div>
-                ) : (
-                  <div className="text-center space-y-4">
-                    <Badge className="mb-2">
-                      ✓ Connected
+                  
+                  <div className="flex items-center justify-between">
+                    <span>Onboarding Status</span>
+                    <Badge variant={stripeOnboardingComplete ? "default" : "secondary"}>
+                      {stripeOnboardingComplete ? "Complete" : "Incomplete"}
                     </Badge>
-                    <p className="text-green-600">
-                      Your Stripe account is fully set up and ready to accept payments!
-                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    {!stripeConnected ? (
+                      <div className="space-y-2">
+                        <Button onClick={handleStripeConnect} className="w-full gradient-primary">
+                          Create Stripe Connect Account
+                        </Button>
+                        <p className="text-xs text-muted-foreground">
+                          This will create a new Stripe account for your organization
+                        </p>
+                      </div>
+                    ) : !stripeOnboardingComplete ? (
+                      <div className="space-y-2">
+                        <Button onClick={handleStripeConnect} className="w-full gradient-primary">
+                          Complete Stripe Onboarding
+                        </Button>
+                        <Button onClick={checkStripeStatus} variant="outline" className="w-full">
+                          Check Status
+                        </Button>
+                        <p className="text-xs text-muted-foreground">
+                          Complete your bank details and business information
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Badge variant="default" className="w-full justify-center py-2">
+                          ✓ Ready to Accept Payments
+                        </Badge>
+                        <Button onClick={checkStripeStatus} variant="outline" className="w-full">
+                          Refresh Status
+                        </Button>
+                        <p className="text-xs text-muted-foreground">
+                          Your Stripe account is fully set up and ready
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="gradient-card">
+                <CardHeader>
+                  <CardTitle>Payment Processing</CardTitle>
+                  <CardDescription>
+                    How payments work with your Stripe account
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-2">
+                    <h4 className="font-medium text-green-900">Benefits:</h4>
+                    <ul className="text-sm text-green-800 space-y-1">
+                      <li>• Direct deposits to your bank account</li>
+                      <li>• Full access to Stripe dashboard</li>
+                      <li>• Your own dispute management</li>
+                      <li>• Complete transaction history</li>
+                    </ul>
+                  </div>
+
+                  {stripeOnboardingComplete && (
                     <div className="bg-muted p-4 rounded-lg space-y-2">
                       <h4 className="font-medium">Platform Fees</h4>
                       <p className="text-sm text-muted-foreground">
@@ -1035,10 +1091,20 @@ const OrgDashboard = () => {
                         Platform fees are automatically deducted from each transaction
                       </p>
                     </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Supported Payment Methods:</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Credit & Debit Cards</li>
+                      <li>• Digital Wallets (Apple Pay, Google Pay)</li>
+                      <li>• Bank Transfers (ACH)</li>
+                      <li>• Buy Now, Pay Later options</li>
+                    </ul>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Design Tab */}
