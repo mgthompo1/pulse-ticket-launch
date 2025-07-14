@@ -64,19 +64,19 @@ serve(async (req) => {
       ? "https://sec.windcave.com/api/v1/sessions"
       : "https://uat.windcave.com/api/v1/sessions";
 
-    // Create Windcave session
+    // Create Windcave session - following documentation format
     const sessionData = {
       type: "purchase",
-      amount: Math.round(totalAmount * 100), // Convert to cents
+      amount: totalAmount.toFixed(2), // Windcave expects decimal format, not cents
       currency: "NZD", // Default to NZD, could be configurable
       merchantReference: `event-${eventId}-${Date.now()}`,
+      language: "en",
       callbackUrls: {
         approved: `${req.headers.get("origin")}/payment-success`,
         declined: `${req.headers.get("origin")}/payment-failed`,
         cancelled: `${req.headers.get("origin")}/payment-cancelled`
       },
-      methods: ["card"], // Enable card payments
-      expires: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes
+      notificationUrl: `${req.headers.get("origin")}/api/windcave-webhook`
     };
 
     console.log("=== WINDCAVE API REQUEST ===");
@@ -115,16 +115,20 @@ serve(async (req) => {
       throw new Error("Invalid Windcave response: Missing session ID");
     }
 
-    // Extract the redirect URL - Windcave might use different field names
+    // Extract the redirect URL from links array following documentation
     let redirectUrl = null;
-    if (windcaveResult.links?.userInterface) {
-      redirectUrl = windcaveResult.links.userInterface;
-    } else if (windcaveResult.links?.hosted) {
-      redirectUrl = windcaveResult.links.hosted;
-    } else if (windcaveResult.hostedUrl) {
-      redirectUrl = windcaveResult.hostedUrl;
-    } else if (windcaveResult.redirectUrl) {
-      redirectUrl = windcaveResult.redirectUrl;
+    if (windcaveResult.links && Array.isArray(windcaveResult.links)) {
+      // Look for hpp (hosted payment page) link as per documentation
+      const hppLink = windcaveResult.links.find(link => link.rel === "hpp");
+      if (hppLink) {
+        redirectUrl = hppLink.href;
+      } else {
+        // Fallback to seamless_hpp if available
+        const seamlessHppLink = windcaveResult.links.find(link => link.rel === "seamless_hpp");
+        if (seamlessHppLink) {
+          redirectUrl = seamlessHppLink.href;
+        }
+      }
     }
 
     console.log("Extracted redirect URL:", redirectUrl);
