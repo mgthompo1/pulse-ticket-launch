@@ -1,1 +1,64 @@
 project_id = "yoxsewbpoqxscsutqlcb"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[storage]
+enabled = true
+port = 54327
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+port = 54328
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://localhost:3000"]
+jwt_expiry = 3600
+refresh_token_rotation_enabled = true
+security_update_password_require_reauthentication = true
+
+[rest]
+enabled = true
+port = 54329
+
+[realtime]
+enabled = true
+port = 54330
+
+[functions.ai-chatbot]
+verify_jwt = false
+
+[functions.ai-event-generator]
+verify_jwt = false
+
+[functions.windcave-session]
+verify_jwt = false
+
+[functions.verify-windcave-payment]
+verify_jwt = false
+
+[functions.windcave-payment-status]
+verify_jwt = false
+
+[functions.windcave-dropin-success]
+verify_jwt = false
+
+[functions.windcave-hit-terminal]
+verify_jwt = false

@@ -263,16 +263,46 @@ const TicketWidget = () => {
               window.windcaveDropIn = null;
             }
             
-            // Extract session ID from links for verification
+            // Extract session ID from links for completion
             const sessionId = links[0]?.href?.split('/').pop();
             
-            if (sessionId) {
+            if (sessionId && eventData) {
               toast({
                 title: "Payment Successful!",
-                description: "Verifying your payment...",
+                description: "Finalizing your order...",
               });
               
-              await verifyPaymentStatus(sessionId);
+              try {
+                // Call the Drop In success function to finalize the order
+                const { data, error } = await supabase.functions.invoke('windcave-dropin-success', {
+                  body: { 
+                    sessionId: sessionId,
+                    eventId: eventData.id
+                  }
+                });
+
+                if (error) {
+                  throw error;
+                }
+
+                toast({
+                  title: "Order Complete!",
+                  description: `Your tickets have been confirmed. Check your email for details.`,
+                });
+                
+                // Redirect to success page
+                setTimeout(() => {
+                  window.location.href = '/payment-success';
+                }, 1500);
+                
+              } catch (error) {
+                console.error("Error finalizing order:", error);
+                toast({
+                  title: "Payment Processed",
+                  description: "Payment successful but there was an issue finalizing your order. Please contact support.",
+                  variant: "destructive"
+                });
+              }
             } else {
               toast({
                 title: "Payment Complete",
