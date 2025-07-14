@@ -123,22 +123,28 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         )}
 
         {paymentProvider === 'windcave' && (
-          <WindcaveConfiguration 
-            windcaveUsername={windcaveUsername}
-            windcaveApiKey={windcaveApiKey}
-            windcaveEndpoint={windcaveEndpoint}
-            windcaveEnabled={windcaveEnabled}
-            windcaveHitUsername={windcaveHitUsername}
-            windcaveHitKey={windcaveHitKey}
-            windcaveStationId={windcaveStationId}
-            onWindcaveUsernameChange={setWindcaveUsername}
-            onWindcaveApiKeyChange={setWindcaveApiKey}
-            onWindcaveEndpointChange={setWindcaveEndpoint}
-            onWindcaveEnabledChange={setWindcaveEnabled}
-            onWindcaveHitUsernameChange={setWindcaveHitUsername}
-            onWindcaveHitKeyChange={setWindcaveHitKey}
-            onWindcaveStationIdChange={setWindcaveStationId}
-          />
+          <>
+            <CurrencySelector 
+              currency={currency} 
+              onCurrencyChange={setCurrency} 
+            />
+            <WindcaveConfiguration 
+              windcaveUsername={windcaveUsername}
+              windcaveApiKey={windcaveApiKey}
+              windcaveEndpoint={windcaveEndpoint}
+              windcaveEnabled={windcaveEnabled}
+              windcaveHitUsername={windcaveHitUsername}
+              windcaveHitKey={windcaveHitKey}
+              windcaveStationId={windcaveStationId}
+              onWindcaveUsernameChange={setWindcaveUsername}
+              onWindcaveApiKeyChange={setWindcaveApiKey}
+              onWindcaveEndpointChange={setWindcaveEndpoint}
+              onWindcaveEnabledChange={setWindcaveEnabled}
+              onWindcaveHitUsernameChange={setWindcaveHitUsername}
+              onWindcaveHitKeyChange={setWindcaveHitKey}
+              onWindcaveStationIdChange={setWindcaveStationId}
+            />
+          </>
         )}
 
         {paymentProvider === 'applepay' && (

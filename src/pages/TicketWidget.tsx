@@ -467,11 +467,12 @@ const TicketWidget = () => {
       console.log("=== VERIFYING PAYMENT STATUS ===");
       console.log("Session ID:", sessionId);
       
-      const { data, error } = await supabase.functions.invoke("verify-windcave-payment", {
+      // Try the payment status check function
+      const { data, error } = await supabase.functions.invoke("windcave-payment-status", {
         body: { 
-          sessionId: sessionId,
           eventId,
-          customerInfo
+          txnRef: sessionId,
+          orderId: sessionId
         }
       });
 
@@ -489,7 +490,7 @@ const TicketWidget = () => {
         return { success: false, error };
       }
 
-      if (data?.success) {
+      if (data?.success && data?.status === 'completed') {
         console.log("=== PAYMENT VERIFIED SUCCESSFULLY ===");
         
         // Clear any existing polling
