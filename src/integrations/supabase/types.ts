@@ -915,6 +915,103 @@ export type Database = {
           },
         ]
       }
+      xero_connections: {
+        Row: {
+          access_token: string | null
+          connection_status: string | null
+          created_at: string
+          id: string
+          last_sync_at: string | null
+          organization_id: string
+          refresh_token: string | null
+          sync_settings: Json | null
+          tenant_id: string
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          connection_status?: string | null
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          organization_id: string
+          refresh_token?: string | null
+          sync_settings?: Json | null
+          tenant_id: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          connection_status?: string | null
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          organization_id?: string
+          refresh_token?: string | null
+          sync_settings?: Json | null
+          tenant_id?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xero_connections_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      xero_sync_logs: {
+        Row: {
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          error_message: string | null
+          id: string
+          operation_type: string
+          status: string
+          sync_data: Json | null
+          xero_connection_id: string
+          xero_entity_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error_message?: string | null
+          id?: string
+          operation_type: string
+          status: string
+          sync_data?: Json | null
+          xero_connection_id: string
+          xero_entity_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error_message?: string | null
+          id?: string
+          operation_type?: string
+          status?: string
+          sync_data?: Json | null
+          xero_connection_id?: string
+          xero_entity_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xero_sync_logs_xero_connection_id_fkey"
+            columns: ["xero_connection_id"]
+            isOneToOne: false
+            referencedRelation: "xero_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       guest_status_view: {
