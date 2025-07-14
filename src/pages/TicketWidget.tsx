@@ -653,7 +653,7 @@ const TicketWidget = () => {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Cart Summary */}
-            <Card className="sticky top-8 animate-fade-in">
+            <Card className="animate-fade-in">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ShoppingCart className="h-5 w-5" />
