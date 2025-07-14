@@ -50,7 +50,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         setWindcaveHitUsername(data.windcave_hit_username || '');
         setWindcaveHitKey(data.windcave_hit_key || '');
         setWindcaveStationId(data.windcave_station_id || '');
-        setCurrency(data.currency || 'NZD');
+        setCurrency((data as any).currency || 'NZD');
         setApplePayMerchantId(data.apple_pay_merchant_id || '');
       }
     };
