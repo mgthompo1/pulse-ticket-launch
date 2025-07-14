@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import AIEventGenerator from "@/components/AIEventGenerator";
 import AIChatbot from "@/components/AIChatbot";
+import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -47,6 +48,7 @@ const OrgDashboard = () => {
   });
   const [isCreatingTicketType, setIsCreatingTicketType] = useState(false);
   const [ticketTypes, setTicketTypes] = useState([]);
+  const [showSeatMapDesigner, setShowSeatMapDesigner] = useState(false);
 
   // Load organization and events
   React.useEffect(() => {
@@ -844,9 +846,12 @@ const OrgDashboard = () => {
                                 Seat mapping will be available in a future update. For now, use general admission tickets.
                               </p>
                             </div>
-                            <Button variant="outline" disabled className="w-full mt-4">
+                            <Button 
+                              onClick={() => setShowSeatMapDesigner(true)}
+                              className="w-full mt-4"
+                            >
                               <Palette className="w-4 h-4 mr-2" />
-                              Design Seat Map (Coming Soon)
+                              Design Seat Map
                             </Button>
                           </CardContent>
                         </Card>
@@ -1235,6 +1240,15 @@ const OrgDashboard = () => {
         
         {/* AI Chatbot */}
         <AIChatbot context={{ organizationId }} />
+
+        {/* Seat Map Designer Modal */}
+        {showSeatMapDesigner && selectedEvent && (
+          <SeatMapDesigner
+            eventId={selectedEvent.id}
+            eventName={selectedEvent.name}
+            onClose={() => setShowSeatMapDesigner(false)}
+          />
+        )}
       </div>
     </div>
   );

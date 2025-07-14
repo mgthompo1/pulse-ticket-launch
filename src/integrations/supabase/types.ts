@@ -414,6 +414,101 @@ export type Database = {
         }
         Relationships: []
       }
+      seat_maps: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          layout_data: Json
+          name: string
+          total_seats: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          layout_data?: Json
+          name?: string
+          total_seats?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          layout_data?: Json
+          name?: string
+          total_seats?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seat_maps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seat_maps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "guest_status_view"
+            referencedColumns: ["event_id"]
+          },
+        ]
+      }
+      seats: {
+        Row: {
+          created_at: string
+          id: string
+          is_available: boolean
+          price_override: number | null
+          row_label: string
+          seat_map_id: string
+          seat_number: string
+          seat_type: string
+          section: string | null
+          x_position: number
+          y_position: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          price_override?: number | null
+          row_label: string
+          seat_map_id: string
+          seat_number: string
+          seat_type?: string
+          section?: string | null
+          x_position: number
+          y_position: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          price_override?: number | null
+          row_label?: string
+          seat_map_id?: string
+          seat_number?: string
+          seat_type?: string
+          section?: string | null
+          x_position?: number
+          y_position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seats_seat_map_id_fkey"
+            columns: ["seat_map_id"]
+            isOneToOne: false
+            referencedRelation: "seat_maps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ticket_types: {
         Row: {
           created_at: string
