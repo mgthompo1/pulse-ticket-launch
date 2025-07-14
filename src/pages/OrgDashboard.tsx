@@ -931,21 +931,41 @@ const OrgDashboard = () => {
                             <div className="space-y-3">
                               <div className="flex items-center justify-between">
                                 <Label htmlFor="collect-phone">Collect Phone Number</Label>
-                                <input type="checkbox" id="collect-phone" className="rounded" />
+                                <input 
+                                  type="checkbox" 
+                                  id="collect-phone" 
+                                  className="rounded" 
+                                  defaultChecked={selectedEvent?.requires_approval || false}
+                                  onChange={(e) => console.log('Collect phone:', e.target.checked)}
+                                />
                               </div>
                               <div className="flex items-center justify-between">
                                 <Label htmlFor="require-approval">Require Approval</Label>
-                                <input type="checkbox" id="require-approval" className="rounded" />
+                                <input 
+                                  type="checkbox" 
+                                  id="require-approval" 
+                                  className="rounded"
+                                  defaultChecked={selectedEvent?.requires_approval || false}
+                                  onChange={(e) => console.log('Require approval:', e.target.checked)}
+                                />
                               </div>
                               <div className="flex items-center justify-between">
                                 <Label htmlFor="custom-fields">Custom Questions</Label>
-                                <Button variant="outline" size="sm">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => toast({ title: "Custom Questions", description: "Feature coming soon!" })}
+                                >
                                   <Plus className="w-4 h-4 mr-2" />
                                   Add
                                 </Button>
                               </div>
                             </div>
-                            <Button className="w-full mt-4" variant="outline">
+                            <Button 
+                              className="w-full mt-4" 
+                              variant="outline"
+                              onClick={() => toast({ title: "Advanced Settings", description: "Feature coming soon!" })}
+                            >
                               <Settings className="w-4 h-4 mr-2" />
                               Advanced Settings
                             </Button>
