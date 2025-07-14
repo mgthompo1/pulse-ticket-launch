@@ -99,6 +99,27 @@ serve(async (req) => {
 
     console.log("Windcave session created:", windcaveResult);
 
+    // Check if we have the expected response structure
+    if (!windcaveResult.id) {
+      console.error("Missing session ID in Windcave response:", windcaveResult);
+      throw new Error("Invalid Windcave response: Missing session ID");
+    }
+
+    // Extract the redirect URL - Windcave might use different field names
+    let redirectUrl = null;
+    if (windcaveResult.links?.userInterface) {
+      redirectUrl = windcaveResult.links.userInterface;
+    } else if (windcaveResult.links?.hosted) {
+      redirectUrl = windcaveResult.links.hosted;
+    } else if (windcaveResult.hostedUrl) {
+      redirectUrl = windcaveResult.hostedUrl;
+    } else if (windcaveResult.redirectUrl) {
+      redirectUrl = windcaveResult.redirectUrl;
+    }
+
+    console.log("Extracted redirect URL:", redirectUrl);
+    console.log("Full Windcave response structure:", JSON.stringify(windcaveResult, null, 2));
+
     // Store the order in the database
     const { data: order, error: orderError } = await supabaseClient
       .from("orders")
@@ -138,8 +159,15 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       sessionId: windcaveResult.id,
-      redirectUrl: windcaveResult.state === "created" ? windcaveResult.links?.userInterface : null,
-      orderId: order.id
+      redirectUrl: redirectUrl,
+      orderId: order.id,
+      windcaveResponse: windcaveResult, // Include full response for debugging
+      debug: {
+        state: windcaveResult.state,
+        links: windcaveResult.links,
+        hasUserInterface: !!windcaveResult.links?.userInterface,
+        hasHosted: !!windcaveResult.links?.hosted
+      }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

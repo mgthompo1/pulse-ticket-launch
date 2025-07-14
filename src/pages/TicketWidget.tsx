@@ -128,10 +128,13 @@ const TicketWidget = () => {
 
         if (error) throw error;
 
+        console.log("Windcave response received:", data);
+
         if (data.redirectUrl) {
           window.location.href = data.redirectUrl;
         } else {
-          throw new Error("No redirect URL received from Windcave");
+          console.error("No redirect URL found. Full response:", data);
+          throw new Error(`No redirect URL received from Windcave. Debug info: ${JSON.stringify(data.debug || {})}`);
         }
       } else {
         // Handle Stripe payment (existing logic)
