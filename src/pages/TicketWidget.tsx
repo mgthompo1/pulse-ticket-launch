@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Minus, Plus, ShoppingCart, ArrowLeft, Calendar, Globe, Ticket, CreditCard } from "lucide-react";
+import MerchandiseSelector from "@/components/MerchandiseSelector";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { loadStripe } from "@stripe/stripe-js";
@@ -25,6 +26,7 @@ const TicketWidget = () => {
   const [eventData, setEventData] = useState<any>(null);
   const [ticketTypes, setTicketTypes] = useState<any[]>([]);
   const [cart, setCart] = useState<any[]>([]);
+  const [merchandiseCart, setMerchandiseCart] = useState<any[]>([]);
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
     email: "",
@@ -135,15 +137,21 @@ const TicketWidget = () => {
     }
   };
 
+  const getMerchandiseTotal = () => {
+    return merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
+  };
+
   const getTotalAmount = () => {
-    return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const ticketTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const merchandiseTotal = getMerchandiseTotal();
+    return ticketTotal + merchandiseTotal;
   };
 
   const handleCheckout = async () => {
-    if (cart.length === 0) {
+    if (cart.length === 0 && merchandiseCart.length === 0) {
       toast({
         title: "Error",
-        description: "Please add tickets to your cart first",
+        description: "Please add tickets or merchandise to your cart first",
         variant: "destructive"
       });
       return;
@@ -159,12 +167,24 @@ const TicketWidget = () => {
     }
 
     try {
+      // Prepare items for checkout (both tickets and merchandise)
+      const allItems = [
+        ...cart.map(item => ({ ...item, type: 'ticket' })),
+        ...merchandiseCart.map(item => ({ 
+          ...item.merchandise, 
+          quantity: item.quantity,
+          type: 'merchandise',
+          selectedSize: item.selectedSize,
+          selectedColor: item.selectedColor
+        }))
+      ];
+
       if (paymentProvider === "windcave") {
         // Create Windcave session and initialize Drop-In
         const { data, error } = await supabase.functions.invoke("windcave-session", {
           body: { 
             eventId, 
-            items: cart,
+            items: allItems,
             customerInfo 
           }
         });
@@ -192,7 +212,7 @@ const TicketWidget = () => {
         const { data, error } = await supabase.functions.invoke("create-payment-intent", {
           body: { 
             eventId, 
-            items: cart,
+            items: allItems,
             customerInfo 
           }
         });
@@ -609,8 +629,14 @@ const TicketWidget = () => {
               </CardContent>
             </Card>
 
+            {/* Merchandise Selection */}
+            <MerchandiseSelector 
+              eventId={eventId!} 
+              onCartUpdate={setMerchandiseCart}
+            />
+
             {/* Customer Information - Only show if cart has items */}
-            {cart.length > 0 && (
+            {(cart.length > 0 || merchandiseCart.length > 0) && (
               <Card className="animate-fade-in">
                 <CardHeader>
                   <CardTitle>Your Information</CardTitle>
@@ -662,22 +688,23 @@ const TicketWidget = () => {
                 <CardTitle className="flex items-center gap-2">
                   <ShoppingCart className="h-5 w-5" />
                   Order Summary
-                  {cart.length > 0 && (
+                  {(cart.length > 0 || merchandiseCart.length > 0) && (
                     <Badge variant="secondary" className="ml-auto">
-                      {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                      {cart.reduce((sum, item) => sum + item.quantity, 0) + merchandiseCart.reduce((sum, item) => sum + item.quantity, 0)}
                     </Badge>
                   )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {cart.length === 0 ? (
+                {cart.length === 0 && merchandiseCart.length === 0 ? (
                   <div className="text-center py-6">
                     <ShoppingCart className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
                     <p className="text-muted-foreground">Your cart is empty</p>
-                    <p className="text-sm text-muted-foreground mt-1">Add some tickets to get started</p>
+                    <p className="text-sm text-muted-foreground mt-1">Add tickets or merchandise to get started</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
+                    {/* Ticket Cart Items */}
                     {cart.map((item) => (
                       <div key={item.id} className="flex justify-between items-start gap-3 p-3 bg-accent/10 rounded-lg">
                         <div className="flex-1">
@@ -705,9 +732,41 @@ const TicketWidget = () => {
                         </div>
                       </div>
                     ))}
+
+                    {/* Merchandise Cart Items */}
+                    {merchandiseCart.map((item, index) => (
+                      <div key={`merch-${index}`} className="flex justify-between items-start gap-3 p-3 bg-primary/5 rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium">{item.merchandise.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            ${item.merchandise.price} each
+                            {item.selectedSize && ` • Size: ${item.selectedSize}`}
+                            {item.selectedColor && ` • Color: ${item.selectedColor}`}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-8 text-center font-medium">{item.quantity}</span>
+                          <span className="text-sm font-medium">
+                            ${(item.merchandise.price * item.quantity).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                     
                     <div className="border-t pt-3">
-                      <div className="flex justify-between items-center text-lg font-bold">
+                      {cart.length > 0 && (
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm">Tickets:</span>
+                          <span className="text-sm">${cart.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}</span>
+                        </div>
+                      )}
+                      {merchandiseCart.length > 0 && (
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm">Merchandise:</span>
+                          <span className="text-sm">${getMerchandiseTotal().toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
                         <span>Total:</span>
                         <span className="text-primary">${getTotalAmount().toFixed(2)}</span>
                       </div>
@@ -717,7 +776,7 @@ const TicketWidget = () => {
                       onClick={handleCheckout}
                       className="w-full mt-4"
                       size="lg"
-                      disabled={!customerInfo.name || !customerInfo.email}
+                      disabled={!customerInfo.name || !customerInfo.email || (cart.length === 0 && merchandiseCart.length === 0)}
                     >
                       <CreditCard className="h-4 w-4 mr-2" />
                       Proceed to Payment

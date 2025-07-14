@@ -143,13 +143,34 @@ serve(async (req) => {
       throw new Error("Failed to create order record");
     }
 
-    // Create order items
-    const orderItems = items.map((item: any) => ({
-      order_id: order.id,
-      ticket_type_id: item.id,
-      quantity: parseInt(item.quantity),
-      unit_price: parseFloat(item.price)
-    }));
+    // Create order items for both tickets and merchandise
+    const orderItems = [];
+    
+    for (const item of items) {
+      if (item.type === 'merchandise') {
+        // Merchandise item
+        orderItems.push({
+          order_id: order.id,
+          merchandise_id: item.id,
+          item_type: 'merchandise',
+          quantity: parseInt(item.quantity),
+          unit_price: parseFloat(item.price),
+          merchandise_options: {
+            selectedSize: item.selectedSize,
+            selectedColor: item.selectedColor
+          }
+        });
+      } else {
+        // Ticket item (default/legacy)
+        orderItems.push({
+          order_id: order.id,
+          ticket_type_id: item.id,
+          item_type: 'ticket',
+          quantity: parseInt(item.quantity),
+          unit_price: parseFloat(item.price)
+        });
+      }
+    }
 
     const { error: orderItemsError } = await supabaseClient
       .from("order_items")

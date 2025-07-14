@@ -364,32 +364,111 @@ export type Database = {
         }
         Relationships: []
       }
+      merchandise: {
+        Row: {
+          category: string | null
+          color_options: string[] | null
+          created_at: string
+          description: string | null
+          event_id: string
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          name: string
+          price: number
+          size_options: string[] | null
+          stock_quantity: number | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          color_options?: string[] | null
+          created_at?: string
+          description?: string | null
+          event_id: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name: string
+          price: number
+          size_options?: string[] | null
+          stock_quantity?: number | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          color_options?: string[] | null
+          created_at?: string
+          description?: string | null
+          event_id?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string
+          price?: number
+          size_options?: string[] | null
+          stock_quantity?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchandise_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchandise_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "guest_status_view"
+            referencedColumns: ["event_id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string
           id: string
+          item_type: string | null
+          merchandise_id: string | null
+          merchandise_options: Json | null
           order_id: string
           quantity: number
-          ticket_type_id: string
+          ticket_type_id: string | null
           unit_price: number
         }
         Insert: {
           created_at?: string
           id?: string
+          item_type?: string | null
+          merchandise_id?: string | null
+          merchandise_options?: Json | null
           order_id: string
           quantity: number
-          ticket_type_id: string
+          ticket_type_id?: string | null
           unit_price: number
         }
         Update: {
           created_at?: string
           id?: string
+          item_type?: string | null
+          merchandise_id?: string | null
+          merchandise_options?: Json | null
           order_id?: string
           quantity?: number
-          ticket_type_id?: string
+          ticket_type_id?: string | null
           unit_price?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "order_items_merchandise_id_fkey"
+            columns: ["merchandise_id"]
+            isOneToOne: false
+            referencedRelation: "merchandise"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_items_order_id_fkey"
             columns: ["order_id"]
