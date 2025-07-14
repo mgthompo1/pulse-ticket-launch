@@ -18,8 +18,8 @@ import {
   Clock
 } from "lucide-react";
 
-// Initialize Stripe (you'll need to add your publishable key)
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || "pk_test_...");
+// Initialize Stripe with a test publishable key (you can add your real key later)
+const stripePromise = loadStripe("pk_test_51234567890abcdef"); // Replace with your actual Stripe publishable key
 
 interface BillingDashboardProps {
   organizationId: string;
