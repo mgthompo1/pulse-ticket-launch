@@ -14,6 +14,7 @@ import {
   Sparkles,
   Zap
 } from "lucide-react";
+import { useLandingPageContent } from "@/hooks/useLandingPageContent";
 
 const features = [
   {
@@ -91,22 +92,23 @@ const features = [
 ];
 
 export const Features = () => {
+  const { getContentByKey } = useLandingPageContent();
   return (
     <section id="features" className="py-20 bg-gradient-secondary">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <div className="text-center mb-16">
           <Badge variant="secondary" className="mb-4 px-4 py-2 text-sm font-medium bg-primary/10 text-primary border-primary/20">
-            ✨ Powerful Features
+            {getContentByKey('features', 'badge_text') || '✨ Powerful Features'}
           </Badge>
           <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
-            Everything You Need to
+            {getContentByKey('features', 'title') || 'Everything You Need to'}
             <span className="block bg-gradient-primary bg-clip-text text-transparent">
-              Sell More Tickets
+              {getContentByKey('features', 'title_accent') || 'Sell More Tickets'}
             </span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            From simple events to complex productions, our platform adapts to your needs with professional-grade tools and stunning design.
+            {getContentByKey('features', 'description') || 'From simple events to complex productions, our platform adapts to your needs with professional-grade tools and stunning design.'}
           </p>
         </div>
 
@@ -142,11 +144,11 @@ export const Features = () => {
         {/* Bottom CTA */}
         <div className="text-center mt-16">
           <p className="text-lg text-muted-foreground mb-6">
-            Ready to transform your event ticketing experience?
+            {getContentByKey('features', 'bottom_cta_text') || 'Ready to transform your event ticketing experience?'}
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Badge variant="secondary" className="px-4 py-2 text-sm font-medium bg-green-500/10 text-green-600 border-green-500/20">
-              💳 No setup fees • Free 14-day trial
+              {getContentByKey('features', 'bottom_badge_text') || '💳 No setup fees • Free 14-day trial'}
             </Badge>
           </div>
         </div>

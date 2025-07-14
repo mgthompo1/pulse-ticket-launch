@@ -4,12 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { useLandingPageContent } from "@/hooks/useLandingPageContent";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Users, 
@@ -30,14 +32,21 @@ import {
   Server,
   Globe,
   UserCheck,
-  Ban
+  Ban,
+  Edit,
+  Save,
+  Type,
+  FileText
 } from "lucide-react";
 
 const MasterAdmin = () => {
   const { isAdminAuthenticated, adminUser, loading: authLoading, logout } = useAdminAuth();
+  const { content, loading: contentLoading, updateContent, refreshContent } = useLandingPageContent();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
+  const [editingContent, setEditingContent] = useState<{[key: string]: string}>({});
+  const [savingContent, setSavingContent] = useState<{[key: string]: boolean}>({});
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -70,6 +79,66 @@ const MasterAdmin = () => {
       description: "You have been successfully logged out of the master admin panel",
     });
     navigate("/");
+  };
+
+  const handleContentEdit = (id: string, currentValue: string) => {
+    setEditingContent(prev => ({ ...prev, [id]: currentValue }));
+  };
+
+  const handleContentSave = async (id: string) => {
+    const newValue = editingContent[id];
+    if (!newValue || newValue.trim() === "") return;
+
+    setSavingContent(prev => ({ ...prev, [id]: true }));
+    
+    try {
+      const result = await updateContent(id, newValue.trim());
+      
+      if (result.success) {
+        toast({
+          title: "Content Updated",
+          description: "Landing page content has been successfully updated",
+        });
+        setEditingContent(prev => {
+          const newState = { ...prev };
+          delete newState[id];
+          return newState;
+        });
+      } else {
+        toast({
+          title: "Update Failed",
+          description: "Failed to update content. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An error occurred while updating content",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingContent(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const handleContentCancel = (id: string) => {
+    setEditingContent(prev => {
+      const newState = { ...prev };
+      delete newState[id];
+      return newState;
+    });
+  };
+
+  const groupContentBySection = () => {
+    const grouped: {[key: string]: typeof content} = {};
+    content.forEach(item => {
+      if (!grouped[item.section]) {
+        grouped[item.section] = [];
+      }
+      grouped[item.section].push(item);
+    });
+    return grouped;
   };
 
   const organizations = [
@@ -141,9 +210,10 @@ const MasterAdmin = () => {
 
       <div className="container mx-auto p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="organizations">Organizations</TabsTrigger>
+            <TabsTrigger value="content">Content</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="system">System</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -288,6 +358,142 @@ const MasterAdmin = () => {
                     ))}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Content Management Tab */}
+          <TabsContent value="content" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Type className="w-5 h-5" />
+                  Landing Page Content Management
+                </CardTitle>
+                <CardDescription>
+                  Edit all text content that appears on the customer-facing landing page
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {contentLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <span className="ml-2">Loading content...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {Object.entries(groupContentBySection()).map(([section, items]) => (
+                      <div key={section} className="space-y-4">
+                        <div className="border-b pb-2">
+                          <h3 className="text-lg font-semibold capitalize flex items-center gap-2">
+                            <FileText className="w-4 h-4" />
+                            {section.replace('_', ' ')} Section
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {section === 'hero' && 'Main banner section at the top of the page'}
+                            {section === 'hero_stats' && 'Statistics displayed in the hero section'}
+                            {section === 'features' && 'Features section content'}
+                            {section === 'pricing' && 'Pricing section content'}
+                            {section === 'pricing_bottom' && 'Additional pricing information'}
+                          </p>
+                        </div>
+                        
+                        <div className="grid gap-4">
+                          {items.map((item) => (
+                            <div key={item.id} className="border rounded-lg p-4 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <label className="font-medium text-sm">
+                                    {item.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                  </label>
+                                  {item.description && (
+                                    <p className="text-xs text-muted-foreground">{item.description}</p>
+                                  )}
+                                </div>
+                                <div className="flex gap-2">
+                                  {editingContent[item.id] !== undefined ? (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        onClick={() => handleContentSave(item.id)}
+                                        disabled={savingContent[item.id]}
+                                        className="h-8"
+                                      >
+                                        {savingContent[item.id] ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <Save className="h-3 w-3" />
+                                        )}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleContentCancel(item.id)}
+                                        disabled={savingContent[item.id]}
+                                        className="h-8"
+                                      >
+                                        Cancel
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleContentEdit(item.id, item.value)}
+                                      className="h-8"
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {editingContent[item.id] !== undefined ? (
+                                <div className="space-y-2">
+                                  {item.content_type === 'text' && item.value.length > 100 ? (
+                                    <Textarea
+                                      value={editingContent[item.id]}
+                                      onChange={(e) => setEditingContent(prev => ({ 
+                                        ...prev, 
+                                        [item.id]: e.target.value 
+                                      }))}
+                                      className="min-h-[100px]"
+                                      placeholder="Enter content..."
+                                    />
+                                  ) : (
+                                    <Input
+                                      value={editingContent[item.id]}
+                                      onChange={(e) => setEditingContent(prev => ({ 
+                                        ...prev, 
+                                        [item.id]: e.target.value 
+                                      }))}
+                                      placeholder="Enter content..."
+                                    />
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="bg-muted/50 p-3 rounded text-sm">
+                                  {item.value}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    
+                    <div className="flex justify-center pt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={refreshContent}
+                        disabled={contentLoading}
+                      >
+                        <Database className="h-4 w-4 mr-2" />
+                        Refresh Content
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

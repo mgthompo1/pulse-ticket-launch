@@ -328,6 +328,39 @@ export type Database = {
           },
         ]
       }
+      landing_page_content: {
+        Row: {
+          content_type: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          key: string
+          section: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          key: string
+          section: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          key?: string
+          section?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string

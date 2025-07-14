@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Check, Zap, Crown, Building } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useLandingPageContent } from "@/hooks/useLandingPageContent";
 
 const plans = [
   {
@@ -35,6 +36,7 @@ const plans = [
 
 export const Pricing = () => {
   const navigate = useNavigate();
+  const { getContentByKey } = useLandingPageContent();
 
   const handlePlanClick = (planName: string) => {
     navigate('/auth');
@@ -45,16 +47,16 @@ export const Pricing = () => {
         {/* Section header */}
         <div className="text-center mb-16">
           <Badge variant="secondary" className="mb-4 px-4 py-2 text-sm font-medium bg-primary/10 text-primary border-primary/20">
-            💎 Simple Pricing
+            {getContentByKey('pricing', 'badge_text') || '💎 Simple Pricing'}
           </Badge>
           <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
-            Pay Only When You
+            {getContentByKey('pricing', 'title') || 'Pay Only When You'}
             <span className="block bg-gradient-primary bg-clip-text text-transparent">
-              Sell Tickets
+              {getContentByKey('pricing', 'title_accent') || 'Sell Tickets'}
             </span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            No monthly fees, no setup costs, no hidden charges. Just a simple platform fee when you make sales.
+            {getContentByKey('pricing', 'description') || 'No monthly fees, no setup costs, no hidden charges. Just a simple platform fee when you make sales.'}
           </p>
         </div>
 
