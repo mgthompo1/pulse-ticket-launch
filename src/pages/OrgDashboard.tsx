@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,6 +25,13 @@ const OrgDashboard = () => {
   const [stripeConnected, setStripeConnected] = useState(false);
   const [stripeOnboardingComplete, setStripeOnboardingComplete] = useState(false);
   const [organizationId, setOrganizationId] = useState<string>("");
+  const [paymentProvider, setPaymentProvider] = useState<"stripe" | "windcave">("stripe");
+  const [windcaveConfig, setWindcaveConfig] = useState({
+    username: "",
+    apiKey: "",
+    endpoint: "UAT" as "SEC" | "UAT",
+    enabled: false
+  });
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -85,6 +93,13 @@ const OrgDashboard = () => {
         setOrganizationId(orgs.id);
         setStripeConnected(!!(orgs as any).stripe_account_id);
         setStripeOnboardingComplete(!!(orgs as any).stripe_onboarding_complete);
+        setPaymentProvider((orgs as any).payment_provider || "stripe");
+        setWindcaveConfig({
+          username: (orgs as any).windcave_username || "",
+          apiKey: (orgs as any).windcave_api_key || "",
+          endpoint: (orgs as any).windcave_endpoint || "UAT",
+          enabled: !!(orgs as any).windcave_enabled
+        });
         
         // Load events for this organization
         loadEvents(orgs.id);
@@ -206,6 +221,82 @@ const OrgDashboard = () => {
       }
     } catch (error) {
       console.error("Error checking Stripe status:", error);
+    }
+  };
+
+  const handleWindcaveConfig = async () => {
+    try {
+      if (!organizationId) {
+        toast({
+          title: "Error",
+          description: "No organization found. Please refresh the page and try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!windcaveConfig.username || !windcaveConfig.apiKey) {
+        toast({
+          title: "Error",
+          description: "Please provide both Windcave username and API key.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from("organizations")
+        .update({
+          windcave_username: windcaveConfig.username,
+          windcave_api_key: windcaveConfig.apiKey,
+          windcave_endpoint: windcaveConfig.endpoint,
+          windcave_enabled: true,
+          payment_provider: "windcave"
+        })
+        .eq("id", organizationId);
+
+      if (error) throw error;
+
+      setPaymentProvider("windcave");
+      setWindcaveConfig(prev => ({ ...prev, enabled: true }));
+
+      toast({
+        title: "Success",
+        description: "Windcave configuration saved successfully!"
+      });
+    } catch (error) {
+      console.error("Error saving Windcave config:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save Windcave configuration",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handlePaymentProviderChange = async (provider: "stripe" | "windcave") => {
+    try {
+      if (!organizationId) return;
+
+      const { error } = await supabase
+        .from("organizations")
+        .update({ payment_provider: provider })
+        .eq("id", organizationId);
+
+      if (error) throw error;
+
+      setPaymentProvider(provider);
+      toast({
+        title: "Success",
+        description: `Payment provider switched to ${provider === "stripe" ? "Stripe" : "Windcave"}`
+      });
+    } catch (error) {
+      console.error("Error switching payment provider:", error);
+      toast({
+        title: "Error",
+        description: "Failed to switch payment provider",
+        variant: "destructive"
+      });
     }
   };
 
@@ -1017,122 +1108,312 @@ const OrgDashboard = () => {
 
           {/* Payments Tab */}
           <TabsContent value="payments" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="gradient-card">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="w-5 h-5" />
-                    Stripe Connect Setup
-                  </CardTitle>
-                  <CardDescription>
-                    Each organization needs its own Stripe account to receive payments directly
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
-                    <h4 className="font-medium text-blue-900">How Stripe Connect Works:</h4>
-                    <ul className="text-sm text-blue-800 space-y-1">
-                      <li>• Your organization gets its own Stripe account</li>
-                      <li>• Payments go directly to your account</li>
-                      <li>• You control your own payouts and fees</li>
-                      <li>• Complete financial independence</li>
-                    </ul>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <span>Stripe Account</span>
-                    <Badge variant={stripeConnected ? "default" : "secondary"}>
-                      {stripeConnected ? "Connected" : "Not Connected"}
-                    </Badge>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <span>Onboarding Status</span>
-                    <Badge variant={stripeOnboardingComplete ? "default" : "secondary"}>
-                      {stripeOnboardingComplete ? "Complete" : "Incomplete"}
-                    </Badge>
-                  </div>
-
-                  <div className="space-y-2">
-                    {!stripeConnected ? (
-                      <div className="space-y-2">
-                        <Button onClick={handleStripeConnect} className="w-full gradient-primary">
-                          Create Stripe Connect Account
-                        </Button>
-                        <p className="text-xs text-muted-foreground">
-                          This will create a new Stripe account for your organization
-                        </p>
+            {/* Payment Provider Selection */}
+            <Card className="gradient-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5" />
+                  Choose Payment Provider
+                </CardTitle>
+                <CardDescription>
+                  Select which payment gateway to use for processing ticket sales
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div 
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      paymentProvider === "stripe" 
+                        ? "border-primary bg-primary/5" 
+                        : "border-muted hover:border-primary/50"
+                    }`}
+                    onClick={() => handlePaymentProviderChange("stripe")}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-[#635BFF] rounded-lg flex items-center justify-center text-white font-bold">S</div>
+                      <div>
+                        <h3 className="font-medium">Stripe Connect</h3>
+                        <p className="text-sm text-muted-foreground">Global payment processing</p>
                       </div>
-                    ) : !stripeOnboardingComplete ? (
-                      <div className="space-y-2">
-                        <Button onClick={handleStripeConnect} className="w-full gradient-primary">
-                          Complete Stripe Onboarding
-                        </Button>
-                        <Button onClick={checkStripeStatus} variant="outline" className="w-full">
-                          Check Status
-                        </Button>
-                        <p className="text-xs text-muted-foreground">
-                          Complete your bank details and business information
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <Badge variant="default" className="w-full justify-center py-2">
-                          ✓ Ready to Accept Payments
-                        </Badge>
-                        <Button onClick={checkStripeStatus} variant="outline" className="w-full">
-                          Refresh Status
-                        </Button>
-                        <p className="text-xs text-muted-foreground">
-                          Your Stripe account is fully set up and ready
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="gradient-card">
-                <CardHeader>
-                  <CardTitle>Payment Processing</CardTitle>
-                  <CardDescription>
-                    How payments work with your Stripe account
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-2">
-                    <h4 className="font-medium text-green-900">Benefits:</h4>
-                    <ul className="text-sm text-green-800 space-y-1">
-                      <li>• Direct deposits to your bank account</li>
-                      <li>• Full access to Stripe dashboard</li>
-                      <li>• Your own dispute management</li>
-                      <li>• Complete transaction history</li>
-                    </ul>
-                  </div>
-
-                  {stripeOnboardingComplete && (
-                    <div className="bg-muted p-4 rounded-lg space-y-2">
-                      <h4 className="font-medium">Platform Fees</h4>
-                      <p className="text-sm text-muted-foreground">
-                        1.00% + $0.50 per ticket sold
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Platform fees are automatically deducted from each transaction
-                      </p>
+                      {paymentProvider === "stripe" && (
+                        <Badge className="ml-auto">Active</Badge>
+                      )}
                     </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <h4 className="font-medium">Supported Payment Methods:</h4>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Credit & Debit Cards</li>
-                      <li>• Digital Wallets (Apple Pay, Google Pay)</li>
-                      <li>• Bank Transfers (ACH)</li>
-                      <li>• Buy Now, Pay Later options</li>
-                    </ul>
                   </div>
-                </CardContent>
-              </Card>
+                  
+                  <div 
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      paymentProvider === "windcave" 
+                        ? "border-primary bg-primary/5" 
+                        : "border-muted hover:border-primary/50"
+                    }`}
+                    onClick={() => handlePaymentProviderChange("windcave")}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-[#00A6FB] rounded-lg flex items-center justify-center text-white font-bold">W</div>
+                      <div>
+                        <h3 className="font-medium">Windcave</h3>
+                        <p className="text-sm text-muted-foreground">ANZ/New Zealand focused</p>
+                      </div>
+                      {paymentProvider === "windcave" && (
+                        <Badge className="ml-auto">Active</Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Stripe Configuration */}
+              {paymentProvider === "stripe" && (
+                <>
+                  <Card className="gradient-card">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CreditCard className="w-5 h-5" />
+                        Stripe Connect Setup
+                      </CardTitle>
+                      <CardDescription>
+                        Each organization needs its own Stripe account to receive payments directly
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                        <h4 className="font-medium text-blue-900">How Stripe Connect Works:</h4>
+                        <ul className="text-sm text-blue-800 space-y-1">
+                          <li>• Your organization gets its own Stripe account</li>
+                          <li>• Payments go directly to your account</li>
+                          <li>• You control your own payouts and fees</li>
+                          <li>• Complete financial independence</li>
+                        </ul>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <span>Stripe Account</span>
+                        <Badge variant={stripeConnected ? "default" : "secondary"}>
+                          {stripeConnected ? "Connected" : "Not Connected"}
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <span>Onboarding Status</span>
+                        <Badge variant={stripeOnboardingComplete ? "default" : "secondary"}>
+                          {stripeOnboardingComplete ? "Complete" : "Incomplete"}
+                        </Badge>
+                      </div>
+
+                      <div className="space-y-2">
+                        {!stripeConnected ? (
+                          <div className="space-y-2">
+                            <Button onClick={handleStripeConnect} className="w-full gradient-primary">
+                              Create Stripe Connect Account
+                            </Button>
+                            <p className="text-xs text-muted-foreground">
+                              This will create a new Stripe account for your organization
+                            </p>
+                          </div>
+                        ) : !stripeOnboardingComplete ? (
+                          <div className="space-y-2">
+                            <Button onClick={handleStripeConnect} className="w-full gradient-primary">
+                              Complete Stripe Onboarding
+                            </Button>
+                            <Button onClick={checkStripeStatus} variant="outline" className="w-full">
+                              Check Status
+                            </Button>
+                            <p className="text-xs text-muted-foreground">
+                              Complete your bank details and business information
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <Badge variant="default" className="w-full justify-center py-2">
+                              ✓ Ready to Accept Payments
+                            </Badge>
+                            <Button onClick={checkStripeStatus} variant="outline" className="w-full">
+                              Refresh Status
+                            </Button>
+                            <p className="text-xs text-muted-foreground">
+                              Your Stripe account is fully set up and ready
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="gradient-card">
+                    <CardHeader>
+                      <CardTitle>Stripe Payment Processing</CardTitle>
+                      <CardDescription>
+                        How payments work with your Stripe account
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-2">
+                        <h4 className="font-medium text-green-900">Benefits:</h4>
+                        <ul className="text-sm text-green-800 space-y-1">
+                          <li>• Direct deposits to your bank account</li>
+                          <li>• Full access to Stripe dashboard</li>
+                          <li>• Your own dispute management</li>
+                          <li>• Complete transaction history</li>
+                        </ul>
+                      </div>
+
+                      {stripeOnboardingComplete && (
+                        <div className="bg-muted p-4 rounded-lg space-y-2">
+                          <h4 className="font-medium">Platform Fees</h4>
+                          <p className="text-sm text-muted-foreground">
+                            1.00% + $0.50 per ticket sold
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Platform fees are automatically deducted from each transaction
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Supported Payment Methods:</h4>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          <li>• Credit & Debit Cards</li>
+                          <li>• Digital Wallets (Apple Pay, Google Pay)</li>
+                          <li>• Bank Transfers (ACH)</li>
+                          <li>• Buy Now, Pay Later options</li>
+                        </ul>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+
+              {/* Windcave Configuration */}
+              {paymentProvider === "windcave" && (
+                <>
+                  <Card className="gradient-card">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CreditCard className="w-5 h-5" />
+                        Windcave API Configuration
+                      </CardTitle>
+                      <CardDescription>
+                        Configure your Windcave API credentials for payment processing
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                        <h4 className="font-medium text-blue-900">About Windcave:</h4>
+                        <ul className="text-sm text-blue-800 space-y-1">
+                          <li>• Leading payment processor in ANZ region</li>
+                          <li>• Direct bank settlement in NZD/AUD</li>
+                          <li>• PCI compliant drop-in payment forms</li>
+                          <li>• Support for local payment methods</li>
+                        </ul>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="windcave-username">API Username</Label>
+                          <Input
+                            id="windcave-username"
+                            type="text"
+                            placeholder="Enter your Windcave API username"
+                            value={windcaveConfig.username}
+                            onChange={(e) => setWindcaveConfig(prev => ({ ...prev, username: e.target.value }))}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="windcave-api-key">API Key</Label>
+                          <Input
+                            id="windcave-api-key"
+                            type="password"
+                            placeholder="Enter your Windcave API key"
+                            value={windcaveConfig.apiKey}
+                            onChange={(e) => setWindcaveConfig(prev => ({ ...prev, apiKey: e.target.value }))}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="windcave-endpoint">Environment</Label>
+                          <Select
+                            value={windcaveConfig.endpoint}
+                            onValueChange={(value: "SEC" | "UAT") => 
+                              setWindcaveConfig(prev => ({ ...prev, endpoint: value }))
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="UAT">UAT (Testing)</SelectItem>
+                              <SelectItem value="SEC">SEC (Production)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">
+                            Use UAT for testing, SEC for live transactions
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span>Configuration Status</span>
+                          <Badge variant={windcaveConfig.enabled ? "default" : "secondary"}>
+                            {windcaveConfig.enabled ? "Configured" : "Not Configured"}
+                          </Badge>
+                        </div>
+
+                        <Button onClick={handleWindcaveConfig} className="w-full gradient-primary">
+                          Save Windcave Configuration
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="gradient-card">
+                    <CardHeader>
+                      <CardTitle>Windcave Payment Processing</CardTitle>
+                      <CardDescription>
+                        Features and benefits of Windcave integration
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-2">
+                        <h4 className="font-medium text-green-900">Benefits:</h4>
+                        <ul className="text-sm text-green-800 space-y-1">
+                          <li>• Direct settlement to your bank account</li>
+                          <li>• Competitive ANZ region rates</li>
+                          <li>• PCI compliant hosted payment pages</li>
+                          <li>• Local customer support</li>
+                        </ul>
+                      </div>
+
+                      {windcaveConfig.enabled && (
+                        <div className="bg-muted p-4 rounded-lg space-y-2">
+                          <h4 className="font-medium">Current Environment</h4>
+                          <p className="text-sm text-muted-foreground">
+                            {windcaveConfig.endpoint === "UAT" ? "Testing (UAT)" : "Production (SEC)"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {windcaveConfig.endpoint === "UAT" 
+                              ? "Switch to SEC when ready to go live"
+                              : "Live environment - real transactions will be processed"
+                            }
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Supported Payment Methods:</h4>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          <li>• Visa, Mastercard, American Express</li>
+                          <li>• Apple Pay, Google Pay</li>
+                          <li>• EFTPOS (New Zealand)</li>
+                          <li>• Local bank cards</li>
+                        </ul>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
             </div>
           </TabsContent>
 

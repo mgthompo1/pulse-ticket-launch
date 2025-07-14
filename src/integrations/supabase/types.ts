@@ -336,11 +336,16 @@ export type Database = {
           id: string
           logo_url: string | null
           name: string
+          payment_provider: string | null
           stripe_account_id: string | null
           stripe_onboarding_complete: boolean | null
           updated_at: string
           user_id: string
           website: string | null
+          windcave_api_key: string | null
+          windcave_enabled: boolean | null
+          windcave_endpoint: string | null
+          windcave_username: string | null
         }
         Insert: {
           brand_colors?: Json | null
@@ -350,11 +355,16 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name: string
+          payment_provider?: string | null
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean | null
           updated_at?: string
           user_id: string
           website?: string | null
+          windcave_api_key?: string | null
+          windcave_enabled?: boolean | null
+          windcave_endpoint?: string | null
+          windcave_username?: string | null
         }
         Update: {
           brand_colors?: Json | null
@@ -364,11 +374,16 @@ export type Database = {
           id?: string
           logo_url?: string | null
           name?: string
+          payment_provider?: string | null
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean | null
           updated_at?: string
           user_id?: string
           website?: string | null
+          windcave_api_key?: string | null
+          windcave_enabled?: boolean | null
+          windcave_endpoint?: string | null
+          windcave_username?: string | null
         }
         Relationships: []
       }
