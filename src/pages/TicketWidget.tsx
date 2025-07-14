@@ -14,6 +14,7 @@ import { loadStripe } from "@stripe/stripe-js";
 declare global {
   interface Window {
     WindcavePayments?: any;
+    windcaveDropIn?: any;
   }
 }
 
@@ -237,77 +238,68 @@ const TicketWidget = () => {
       }
 
       try {
-        const dropInOptions = {
+        const data = {
           container: "windcave-drop-in",
           links: links,
-          totalValue: totalAmount.toFixed(2),
-          mobilePayments: {
-            merchantName: eventData?.organizations?.name || "Event Tickets",
-            countryCode: "NZ",
-            currencyCode: "NZD",
-            supportedNetworks: ["visa", "mastercard", "amex"],
-            isTest: true,
-            // Apple Pay configuration
-            applePay: eventData?.organizations?.apple_pay_merchant_id ? {
-              merchantId: eventData.organizations.apple_pay_merchant_id,
-              countryCode: "NZ",
-              currencyCode: "NZD",
-              supportedNetworks: ["visa", "mastercard", "amex", "discover"],
-              merchantCapabilities: ["supports3DS", "supportsEMV", "supportsCredit", "supportsDebit"]
-            } : undefined
-          },
           card: {
             supportedCards: ["visa", "mastercard", "amex"],
             sideIcons: ["visa", "mastercard", "amex"]
           },
-          // Enhanced callback handling
-          onSuccess: async (result: any) => {
+          onSuccess: async (status: any) => {
             console.log("=== WINDCAVE SUCCESS CALLBACK ===");
-            console.log("Success result:", result);
-            console.log("Result type:", typeof result);
+            console.log("Success status:", status);
             
-            // Extract session ID from result or fallback to links
-            let sessionId = result?.sessionId || result?.session_id || result?.id;
-            
-            if (!sessionId) {
-              // Fallback to extracting from links
-              sessionId = windcaveLinks.find(link => link.sessionId)?.sessionId || 
-                         windcaveLinks[0]?.href?.split('/').pop();
-            }
-            
-            console.log("Using session ID for verification:", sessionId);
-            
-            if (!sessionId) {
-              console.error("No session ID found for verification");
-              toast({
-                title: "Payment Error",
-                description: "Unable to verify payment. Please contact support.",
-                variant: "destructive"
-              });
+            // Critical: Handle 3DSecure authentication flow
+            if (status == "3DSecure") {
+              console.log("3DSecure authentication in progress...");
               return;
             }
             
-            // Show immediate success feedback
-            toast({
-              title: "Payment Processing",
-              description: "Verifying your payment...",
-            });
-
-            // Start verification process
-            await verifyPaymentStatus(sessionId);
+            console.log("Transaction finished");
+            
+            // Close the drop-in widget
+            if (window.windcaveDropIn) {
+              window.windcaveDropIn.close();
+              window.windcaveDropIn = null;
+            }
+            
+            // Extract session ID from links for verification
+            const sessionId = links[0]?.href?.split('/').pop();
+            
+            if (sessionId) {
+              toast({
+                title: "Payment Successful!",
+                description: "Verifying your payment...",
+              });
+              
+              await verifyPaymentStatus(sessionId);
+            } else {
+              toast({
+                title: "Payment Complete",
+                description: "Your payment has been processed successfully!",
+              });
+              
+              // Redirect to success page
+              setTimeout(() => {
+                window.location.href = '/payment-success';
+              }, 1500);
+            }
           },
           onError: (error: any) => {
             console.error("=== WINDCAVE ERROR CALLBACK ===");
-            console.error("Error:", error);
+            console.error("Transaction failed:", error);
+            
+            // Close the drop-in widget
+            if (window.windcaveDropIn) {
+              window.windcaveDropIn.close();
+              window.windcaveDropIn = null;
+            }
             
             let errorMessage = "Payment failed. Please try again.";
-            
             if (typeof error === 'string') {
               errorMessage = error;
             } else if (error?.message) {
               errorMessage = error.message;
-            } else if (error?.reason) {
-              errorMessage = error.reason;
             }
             
             toast({
@@ -317,122 +309,14 @@ const TicketWidget = () => {
             });
             
             setShowPaymentForm(false);
-          },
-          onCancel: () => {
-            console.log("=== WINDCAVE CANCEL CALLBACK ===");
-            toast({
-              title: "Payment Cancelled",
-              description: "You can try again when ready.",
-            });
-            setShowPaymentForm(false);
-          },
-          // Add polling callback for status updates
-          onStatusUpdate: (status: any) => {
-            console.log("=== WINDCAVE STATUS UPDATE ===");
-            console.log("Status update:", status);
-            
-            if (status?.state === 'completed' || status?.status === 'approved') {
-              // Extract session ID from status or fallback to links
-              let sessionId = status?.sessionId || status?.session_id || status?.id;
-              
-              if (!sessionId) {
-                sessionId = windcaveLinks.find(link => link.sessionId)?.sessionId || 
-                           windcaveLinks[0]?.href?.split('/').pop();
-              }
-              
-              if (sessionId) {
-                verifyPaymentStatus(sessionId);
-              }
-            }
           }
         };
 
-        console.log("Initializing Windcave Drop-In with options:", dropInOptions);
-
-        const dropIn = window.WindcavePayments.DropIn.create(
-          dropInOptions,
-          (controller: any) => {
-            console.log("=== DROP-IN CREATED ===");
-            console.log("Controller:", controller);
-            setWindcaveDropIn(controller);
-            
-            // Set up aggressive polling for payment status
-            let pollCount = 0;
-            const maxPolls = 60; // Poll for 5 minutes (5 second intervals)
-            
-            const statusInterval = setInterval(async () => {
-              pollCount++;
-              console.log(`=== STATUS POLL ${pollCount}/${maxPolls} ===`);
-              
-              try {
-                // Extract session ID for polling
-                const sessionId = extractSessionId();
-                
-                if (!sessionId) {
-                  console.warn("No session ID available for polling");
-                  return;
-                }
-                
-                // Check with our backend first
-                const statusCheck = await verifyPaymentStatus(sessionId, false); // Silent check
-                
-                if (statusCheck?.success) {
-                  console.log("Payment verified through polling!");
-                  clearInterval(statusInterval);
-                  return;
-                }
-                
-                // If controller has status method, use it
-                if (controller && typeof controller.getStatus === 'function') {
-                  const dropInStatus = controller.getStatus();
-                  console.log("Drop-In status:", dropInStatus);
-                  
-                  if (dropInStatus === 'completed' || dropInStatus === 'success' || dropInStatus === 'approved') {
-                    console.log("Drop-In reports success, verifying...");
-                    await verifyPaymentStatus(sessionId);
-                    clearInterval(statusInterval);
-                    return;
-                  }
-                }
-                
-                // Stop polling after max attempts
-                if (pollCount >= maxPolls) {
-                  console.log("Max polling attempts reached");
-                  clearInterval(statusInterval);
-                  
-                  // Final verification attempt
-                  toast({
-                    title: "Checking Payment Status",
-                    description: "Performing final verification...",
-                  });
-                  
-                  setTimeout(async () => {
-                    const finalSessionId = extractSessionId();
-                    if (finalSessionId) {
-                      await verifyPaymentStatus(finalSessionId);
-                    }
-                  }, 2000);
-                }
-                
-              } catch (pollError) {
-                console.log("Polling error:", pollError);
-              }
-            }, 5000); // Poll every 5 seconds
-            
-            // Store interval for cleanup
-            (window as any).windcaveStatusInterval = statusInterval;
-          },
-          (error: any) => {
-            console.error("=== DROP-IN CREATION FAILED ===");
-            console.error("Error:", error);
-            toast({
-              title: "Payment System Error",
-              description: "Unable to load payment form. Please refresh and try again.",
-              variant: "destructive"
-            });
-            setShowPaymentForm(false);
-          }
-        );
+        console.log("Initializing Windcave Drop-In with data:", data);
+        
+        // Create the drop-in using the simpler approach from the example
+        window.windcaveDropIn = window.WindcavePayments.DropIn.create(data);
+        
       } catch (error) {
         console.error("=== DROP-IN INITIALIZATION ERROR ===");
         console.error("Error:", error);
