@@ -265,6 +265,13 @@ const TicketWidget = () => {
             supportedCards: ["visa", "mastercard", "amex"],
             sideIcons: ["visa", "mastercard", "amex"]
           },
+          // Apple Pay configuration
+          applePay: eventData?.organizations?.apple_pay_merchant_id ? {
+            merchantId: eventData.organizations.apple_pay_merchant_id,
+            merchantName: eventData.organizations.name || "Event Tickets",
+            countryCode: "NZ", // You might want to make this configurable
+            currencyCode: eventData.organizations.currency?.toUpperCase() || "NZD"
+          } : undefined,
           onSuccess: async (status: any) => {
             console.log("=== WINDCAVE SUCCESS CALLBACK ===");
             console.log("Success status:", status);
