@@ -27,7 +27,6 @@ const OrgDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Event form state
   const [eventForm, setEventForm] = useState({
     name: "",
     date: "",
@@ -36,6 +35,18 @@ const OrgDashboard = () => {
     description: ""
   });
   const [isCreatingEvent, setIsCreatingEvent] = useState(false);
+
+  // Ticket type form state
+  const [ticketTypeForm, setTicketTypeForm] = useState({
+    name: "",
+    description: "",
+    price: "",
+    quantity: "",
+    saleStartDate: "",
+    saleEndDate: ""
+  });
+  const [isCreatingTicketType, setIsCreatingTicketType] = useState(false);
+  const [ticketTypes, setTicketTypes] = useState([]);
 
   // Load organization and events
   React.useEffect(() => {
@@ -107,6 +118,21 @@ const OrgDashboard = () => {
       }));
       setEvents(formattedEvents);
     }
+  };
+
+  const loadTicketTypes = async (eventId: string) => {
+    const { data: ticketTypesData, error } = await supabase
+      .from("ticket_types")
+      .select("*")
+      .eq("event_id", eventId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error loading ticket types:", error);
+      return;
+    }
+
+    setTicketTypes(ticketTypesData || []);
   };
 
   const handleStripeConnect = async () => {
@@ -270,6 +296,86 @@ const OrgDashboard = () => {
 
   const handleCreateEventClick = () => {
     setActiveTab("events");
+  };
+
+  const handleCreateTicketType = async () => {
+    if (!selectedEvent) {
+      toast({
+        title: "Error",
+        description: "No event selected",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsCreatingTicketType(true);
+    
+    try {
+      if (!ticketTypeForm.name || !ticketTypeForm.price || !ticketTypeForm.quantity) {
+        toast({
+          title: "Error",
+          description: "Please fill in all required fields",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("ticket_types")
+        .insert([
+          {
+            event_id: selectedEvent.id,
+            name: ticketTypeForm.name,
+            description: ticketTypeForm.description || null,
+            price: parseFloat(ticketTypeForm.price),
+            quantity_available: parseInt(ticketTypeForm.quantity),
+            sale_start_date: ticketTypeForm.saleStartDate || null,
+            sale_end_date: ticketTypeForm.saleEndDate || null
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Database error:", error);
+        throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: "Ticket type created successfully!"
+      });
+
+      // Reset form
+      setTicketTypeForm({
+        name: "",
+        description: "",
+        price: "",
+        quantity: "",
+        saleStartDate: "",
+        saleEndDate: ""
+      });
+
+      // Reload ticket types
+      loadTicketTypes(selectedEvent.id);
+
+    } catch (error) {
+      console.error("Error creating ticket type:", error);
+      toast({
+        title: "Error",
+        description: `Failed to create ticket type: ${error.message || 'Unknown error'}`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingTicketType(false);
+    }
+  };
+
+  const handleTicketTypeFormChange = (field: string, value: string) => {
+    setTicketTypeForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   const handleEventFormChange = (field: string, value: string) => {
@@ -446,6 +552,8 @@ const OrgDashboard = () => {
                            onClick={() => {
                              setSelectedEvent(event);
                              setActiveTab("event-details");
+                             // Load ticket types when selecting an event
+                             loadTicketTypes(event.id);
                            }}
                          >
                            <Users className="h-4 w-4 mr-2" />
@@ -487,17 +595,122 @@ const OrgDashboard = () => {
                     {/* Ticket Types Section */}
                     <div>
                       <h3 className="text-lg font-semibold mb-4">Ticket Types</h3>
+                      
+                      {/* Existing Ticket Types */}
+                      {ticketTypes.length > 0 && (
+                        <div className="mb-6">
+                          <h4 className="text-base font-medium mb-3">Current Ticket Types</h4>
+                          <div className="grid gap-4">
+                            {ticketTypes.map((ticketType) => (
+                              <Card key={ticketType.id} className="border-l-4 border-l-primary">
+                                <CardContent className="pt-4">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <h5 className="font-medium">{ticketType.name}</h5>
+                                      {ticketType.description && (
+                                        <p className="text-sm text-muted-foreground mt-1">{ticketType.description}</p>
+                                      )}
+                                      <div className="flex items-center gap-4 mt-2">
+                                        <span className="text-lg font-bold text-primary">
+                                          ${ticketType.price}
+                                        </span>
+                                        <span className="text-sm text-muted-foreground">
+                                          {ticketType.quantity_sold}/{ticketType.quantity_available} sold
+                                        </span>
+                                      </div>
+                                      {(ticketType.sale_start_date || ticketType.sale_end_date) && (
+                                        <div className="text-xs text-muted-foreground mt-1">
+                                          {ticketType.sale_start_date && `Sale starts: ${new Date(ticketType.sale_start_date).toLocaleDateString()}`}
+                                          {ticketType.sale_start_date && ticketType.sale_end_date && " • "}
+                                          {ticketType.sale_end_date && `Sale ends: ${new Date(ticketType.sale_end_date).toLocaleDateString()}`}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <Button variant="outline" size="sm">
+                                      <Edit className="h-4 w-4 mr-2" />
+                                      Edit
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Create New Ticket Type */}
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-base">Create Ticket Type</CardTitle>
+                          <CardTitle className="text-base">Create New Ticket Type</CardTitle>
+                          <CardDescription>Set up pricing, quantities, and sale periods for your event tickets.</CardDescription>
                         </CardHeader>
-                        <CardContent>
-                          <p className="text-muted-foreground">
-                            Set up different ticket types with pricing, quantities, and sale periods.
-                          </p>
-                          <Button className="mt-4" variant="outline">
+                        <CardContent className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="ticket-name">Ticket Name *</Label>
+                              <Input 
+                                id="ticket-name" 
+                                placeholder="e.g., General Admission, VIP, Early Bird" 
+                                value={ticketTypeForm.name}
+                                onChange={(e) => handleTicketTypeFormChange("name", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="ticket-price">Price (USD) *</Label>
+                              <Input 
+                                id="ticket-price" 
+                                type="number" 
+                                step="0.01"
+                                placeholder="29.99" 
+                                value={ticketTypeForm.price}
+                                onChange={(e) => handleTicketTypeFormChange("price", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="ticket-quantity">Available Quantity *</Label>
+                              <Input 
+                                id="ticket-quantity" 
+                                type="number" 
+                                placeholder="100" 
+                                value={ticketTypeForm.quantity}
+                                onChange={(e) => handleTicketTypeFormChange("quantity", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="ticket-description">Description (Optional)</Label>
+                              <Input 
+                                id="ticket-description" 
+                                placeholder="Brief description of what's included" 
+                                value={ticketTypeForm.description}
+                                onChange={(e) => handleTicketTypeFormChange("description", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="sale-start">Sale Start Date (Optional)</Label>
+                              <Input 
+                                id="sale-start" 
+                                type="datetime-local" 
+                                value={ticketTypeForm.saleStartDate}
+                                onChange={(e) => handleTicketTypeFormChange("saleStartDate", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="sale-end">Sale End Date (Optional)</Label>
+                              <Input 
+                                id="sale-end" 
+                                type="datetime-local" 
+                                value={ticketTypeForm.saleEndDate}
+                                onChange={(e) => handleTicketTypeFormChange("saleEndDate", e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <Button 
+                            onClick={handleCreateTicketType} 
+                            disabled={isCreatingTicketType}
+                            className="w-full"
+                          >
                             <Plus className="w-4 h-4 mr-2" />
-                            Add Ticket Type
+                            {isCreatingTicketType ? "Creating..." : "Create Ticket Type"}
                           </Button>
                         </CardContent>
                       </Card>
@@ -593,23 +806,47 @@ const OrgDashboard = () => {
                             <p className="text-muted-foreground mb-4">
                               Customize the ticket purchase flow and checkout experience.
                             </p>
-                            <Button variant="outline">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <Label htmlFor="collect-phone">Collect Phone Number</Label>
+                                <input type="checkbox" id="collect-phone" className="rounded" />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <Label htmlFor="require-approval">Require Approval</Label>
+                                <input type="checkbox" id="require-approval" className="rounded" />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <Label htmlFor="custom-fields">Custom Questions</Label>
+                                <Button variant="outline" size="sm">
+                                  <Plus className="w-4 h-4 mr-2" />
+                                  Add
+                                </Button>
+                              </div>
+                            </div>
+                            <Button className="w-full mt-4" variant="outline">
                               <Settings className="w-4 h-4 mr-2" />
-                              Configure Checkout
+                              Advanced Settings
                             </Button>
                           </CardContent>
                         </Card>
                         <Card>
                           <CardHeader>
-                            <CardTitle className="text-base">Seat Map (Coming Soon)</CardTitle>
+                            <CardTitle className="text-base">Seat Map & Venue Layout</CardTitle>
                           </CardHeader>
                           <CardContent>
                             <p className="text-muted-foreground mb-4">
-                              Create custom seating arrangements for your venue.
+                              Create custom seating arrangements for your venue. This feature allows for assigned seating and better event organization.
                             </p>
-                            <Button variant="outline" disabled>
+                            <div className="bg-muted/20 border border-dashed border-muted-foreground/30 rounded-lg p-6 text-center">
+                              <Palette className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                              <p className="text-sm text-muted-foreground mb-3">Advanced Feature</p>
+                              <p className="text-xs text-muted-foreground">
+                                Seat mapping will be available in a future update. For now, use general admission tickets.
+                              </p>
+                            </div>
+                            <Button variant="outline" disabled className="w-full mt-4">
                               <Palette className="w-4 h-4 mr-2" />
-                              Design Seat Map
+                              Design Seat Map (Coming Soon)
                             </Button>
                           </CardContent>
                         </Card>
@@ -723,6 +960,8 @@ const OrgDashboard = () => {
                             onClick={() => {
                               setSelectedEvent(event);
                               setActiveTab("event-details");
+                              // Load ticket types when selecting an event
+                              loadTicketTypes(event.id);
                             }}
                           >
                             <Edit className="h-4 w-4 mr-2" />
