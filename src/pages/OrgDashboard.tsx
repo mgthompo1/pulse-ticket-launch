@@ -800,51 +800,46 @@ const OrgDashboard = () => {
       <div className="container mx-auto px-4 py-4 md:py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8">
           <div className="overflow-x-auto">
-            <TabsList className="inline-flex h-auto p-1 bg-muted rounded-lg min-w-full">
-              <TabsTrigger value="overview" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+            <TabsList className="grid w-full grid-cols-4 md:grid-cols-9 h-auto p-1 bg-muted rounded-lg">
+              <TabsTrigger value="overview" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
                 <BarChart3 className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Overview</span>
+                <span className="hidden md:inline">Overview</span>
               </TabsTrigger>
-              <TabsTrigger value="events" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+              <TabsTrigger value="events" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
                 <Calendar className="w-3 h-3 md:w-4 md:h-4" />
-                Events
+                <span className="hidden sm:inline md:inline">Events</span>
               </TabsTrigger>
-              <TabsTrigger value="event-details" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap" disabled={!selectedEvent}>
+              <TabsTrigger value="event-details" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm" disabled={!selectedEvent}>
                 <Users className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Event Details</span>
-                <span className="sm:hidden">Details</span>
+                <span className="hidden md:inline">Details</span>
               </TabsTrigger>
-              <TabsTrigger value="ai-tools" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+              <TabsTrigger value="ai-tools" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
                 <Sparkles className="w-3 h-3 md:w-4 md:h-4" />
-                AI
+                <span className="hidden sm:inline md:inline">AI</span>
               </TabsTrigger>
-              <TabsTrigger value="payments" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+              <TabsTrigger value="payments" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
                 <CreditCard className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Payments</span>
-                <span className="sm:hidden">Pay</span>
+                <span className="hidden md:inline">Payments</span>
               </TabsTrigger>
-              <TabsTrigger value="design" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+              <TabsTrigger value="design" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
                 <Palette className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Design</span>
+                <span className="hidden md:inline">Design</span>
               </TabsTrigger>
-              <TabsTrigger value="marketing" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+              <TabsTrigger value="marketing" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
                 <Mail className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Marketing</span>
-                <span className="sm:hidden">Market</span>
+                <span className="hidden md:inline">Marketing</span>
               </TabsTrigger>
-              <TabsTrigger value="billing" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+              <TabsTrigger value="billing" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
                 <CreditCard className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Billing</span>
-                <span className="sm:hidden">Bill</span>
+                <span className="hidden md:inline">Billing</span>
               </TabsTrigger>
-              <TabsTrigger value="integrations" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+              <TabsTrigger value="integrations" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
                 <Link className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Integrations</span>
-                <span className="sm:hidden">Apps</span>
+                <span className="hidden md:inline">Apps</span>
               </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+              <TabsTrigger value="settings" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
                 <Settings className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline">Settings</span>
+                <span className="hidden md:inline">Settings</span>
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1820,27 +1815,71 @@ const OrgDashboard = () => {
                 </CardContent>
               </Card>
             ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Organization Settings</CardTitle>
-                  <CardDescription>Manage your account preferences</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="org-name-edit">Organization Name</Label>
-                    <Input id="org-name-edit" placeholder="Your organization name" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contact-email-edit">Contact Email</Label>
-                    <Input id="contact-email-edit" type="email" placeholder="contact@yourorg.com" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="website-edit">Website</Label>
-                    <Input id="website-edit" placeholder="https://yourwebsite.com" />
-                  </div>
-                  <Button className="gradient-primary">Save Settings</Button>
-                </CardContent>
-              </Card>
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Organization Settings</CardTitle>
+                    <CardDescription>Manage your account preferences</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="org-name-edit">Organization Name</Label>
+                      <Input id="org-name-edit" placeholder="Your organization name" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="contact-email-edit">Contact Email</Label>
+                      <Input id="contact-email-edit" type="email" placeholder="contact@yourorg.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="website-edit">Website</Label>
+                      <Input id="website-edit" placeholder="https://yourwebsite.com" />
+                    </div>
+                    <Button className="gradient-primary">Save Settings</Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Platform Settings</CardTitle>
+                    <CardDescription>Configure how your platform operates</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="text-base">Test Mode</Label>
+                        <div className="text-[0.8rem] text-muted-foreground">
+                          When enabled, no real payments are processed and events are marked as test events
+                        </div>
+                      </div>
+                      <Switch
+                        checked={testMode}
+                        onCheckedChange={handleToggleTestMode}
+                      />
+                    </div>
+                    
+                    {testMode && (
+                      <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
+                        <div className="flex">
+                          <div className="flex-shrink-0">
+                            <Monitor className="h-5 w-5 text-orange-400" />
+                          </div>
+                          <div className="ml-3">
+                            <h3 className="text-sm font-medium text-orange-800">
+                              Test Mode Active
+                            </h3>
+                            <div className="mt-2 text-sm text-orange-700">
+                              <p>
+                                You are currently in test mode. No real payments will be processed and all events will be marked as test events.
+                                Switch to live mode when you're ready to accept real payments.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </TabsContent>
         </Tabs>
