@@ -19,6 +19,8 @@ import AIChatbot from "@/components/AIChatbot";
 import BillingDashboard from "@/components/BillingDashboard";
 import { EventLogoUploader } from "@/components/events/EventLogoUploader";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
+import EventCustomization from "@/components/EventCustomization";
+import AttendeeManagement from "@/components/AttendeeManagement";
 import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X, Link } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -712,6 +714,90 @@ const OrgDashboard = () => {
           {/* Event Details Tab */}
           <TabsContent value="event-details" className="space-y-6">
             {selectedEvent ? (
+              <Tabs defaultValue="overview" className="space-y-4">
+                <TabsList className="grid w-full grid-cols-5">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="tickets">Tickets</TabsTrigger>
+                  <TabsTrigger value="customization">Customization</TabsTrigger>
+                  <TabsTrigger value="attendees">Attendees</TabsTrigger>
+                  <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="overview" className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center justify-between">
+                        <span>{selectedEvent.name} - Management</span>
+                        <Badge variant={selectedEvent.status === "published" ? "default" : "secondary"}>
+                          {selectedEvent.status}
+                        </Badge>
+                      </CardTitle>
+                      <CardDescription>
+                        {selectedEvent.date} • {selectedEvent.venue} • Capacity: {selectedEvent.capacity}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="bg-gradient-to-r from-primary/5 to-secondary/5 border rounded-lg p-4">
+                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                          <Globe className="w-5 h-5" />
+                          Event Widget
+                        </h3>
+                        <div className="flex gap-2">
+                          <Input 
+                            value={`${window.location.origin}/widget/${selectedEvent.id}`} 
+                            readOnly 
+                            className="font-mono text-sm"
+                          />
+                          <Button variant="outline" onClick={() => window.open(`/widget/${selectedEvent.id}`, '_blank')}>
+                            View Widget
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="customization">
+                  <EventCustomization eventId={selectedEvent.id} />
+                </TabsContent>
+
+                <TabsContent value="attendees">
+                  <AttendeeManagement eventId={selectedEvent.id} />
+                </TabsContent>
+
+                <TabsContent value="tickets">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Ticket Management</CardTitle>
+                      <CardDescription>Configure ticket types and pricing</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-muted-foreground">Ticket management interface will be here</p>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="analytics">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Event Analytics</CardTitle>
+                      <CardDescription>View detailed event performance metrics</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-muted-foreground">Analytics dashboard will be here</p>
+                    </CardContent>
+                  </Card>
+          </TabsContent>
+              </Tabs>
+            ) : (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-muted-foreground">Select an event from the Events tab to manage its details.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
               <>
                 <Card>
                   <CardHeader>

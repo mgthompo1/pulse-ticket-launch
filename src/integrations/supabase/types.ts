@@ -280,6 +280,7 @@ export type Database = {
           capacity: number
           created_at: string
           description: string | null
+          email_customization: Json | null
           event_date: string
           featured_image_url: string | null
           id: string
@@ -288,13 +289,16 @@ export type Database = {
           organization_id: string
           requires_approval: boolean | null
           status: string
+          ticket_customization: Json | null
           updated_at: string
           venue: string | null
+          widget_customization: Json | null
         }
         Insert: {
           capacity?: number
           created_at?: string
           description?: string | null
+          email_customization?: Json | null
           event_date: string
           featured_image_url?: string | null
           id?: string
@@ -303,13 +307,16 @@ export type Database = {
           organization_id: string
           requires_approval?: boolean | null
           status?: string
+          ticket_customization?: Json | null
           updated_at?: string
           venue?: string | null
+          widget_customization?: Json | null
         }
         Update: {
           capacity?: number
           created_at?: string
           description?: string | null
+          email_customization?: Json | null
           event_date?: string
           featured_image_url?: string | null
           id?: string
@@ -318,8 +325,10 @@ export type Database = {
           organization_id?: string
           requires_approval?: boolean | null
           status?: string
+          ticket_customization?: Json | null
           updated_at?: string
           venue?: string | null
+          widget_customization?: Json | null
         }
         Relationships: [
           {
