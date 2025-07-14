@@ -16,26 +16,8 @@ import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plu
 import { useNavigate } from "react-router-dom";
 
 const OrgDashboard = () => {
-  const [events, setEvents] = useState([
-    {
-      id: "1",
-      name: "Tech Conference 2024", 
-      date: "2024-03-15",
-      venue: "Convention Center",
-      tickets: { sold: 245, total: 500 },
-      revenue: "$12,250",
-      status: "active"
-    },
-    {
-      id: "2", 
-      name: "Music Festival",
-      date: "2024-04-20",
-      venue: "Central Park",
-      tickets: { sold: 1200, total: 2000 },
-      revenue: "$60,000",
-      status: "active"
-    }
-  ]);
+  const [events, setEvents] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState(null);
 
   const [activeTab, setActiveTab] = useState("overview");
   const [stripeConnected, setStripeConnected] = useState(false);
@@ -55,7 +37,7 @@ const OrgDashboard = () => {
   });
   const [isCreatingEvent, setIsCreatingEvent] = useState(false);
 
-  // Load organization and check Stripe status
+  // Load organization and events
   React.useEffect(() => {
     const loadOrganization = async () => {
       if (!user) {
@@ -90,11 +72,42 @@ const OrgDashboard = () => {
         setOrganizationId(orgs.id);
         setStripeConnected(!!(orgs as any).stripe_account_id);
         setStripeOnboardingComplete(!!(orgs as any).stripe_onboarding_complete);
+        
+        // Load events for this organization
+        loadEvents(orgs.id);
       }
     };
 
     loadOrganization();
   }, [user]);
+
+  const loadEvents = async (orgId: string) => {
+    const { data: eventsData, error } = await supabase
+      .from("events")
+      .select("*")
+      .eq("organization_id", orgId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error loading events:", error);
+      return;
+    }
+
+    if (eventsData) {
+      const formattedEvents = eventsData.map(event => ({
+        id: event.id,
+        name: event.name,
+        date: event.event_date,
+        venue: event.venue,
+        capacity: event.capacity,
+        description: event.description,
+        status: event.status,
+        tickets: { sold: 0, total: event.capacity }, // Will be updated with real data
+        revenue: "$0" // Will be updated with real data
+      }));
+      setEvents(formattedEvents);
+    }
+  };
 
   const handleStripeConnect = async () => {
     try {
@@ -210,17 +223,10 @@ const OrgDashboard = () => {
         description: ""
       });
 
-      // Add to local events state (for UI update)
-      const newEvent = {
-        id: data.id,
-        name: data.name,
-        date: data.event_date,
-        venue: data.venue,
-        tickets: { sold: 0, total: data.capacity },
-        revenue: "$0",
-        status: "draft"
-      };
-      setEvents(prev => [...prev, newEvent]);
+      // Reload events to get the updated list
+      if (organizationId) {
+        loadEvents(organizationId);
+      }
 
     } catch (error) {
       console.error("Error creating event:", error);
@@ -298,7 +304,7 @@ const OrgDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-8 lg:w-fit">
+          <TabsList className="grid w-full grid-cols-9 lg:w-fit">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Overview
@@ -306,6 +312,10 @@ const OrgDashboard = () => {
             <TabsTrigger value="events" className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               Events
+            </TabsTrigger>
+            <TabsTrigger value="event-details" className="flex items-center gap-2" disabled={!selectedEvent}>
+              <Users className="w-4 h-4" />
+              Event Details
             </TabsTrigger>
             <TabsTrigger value="ai-tools" className="flex items-center gap-2">
               <Sparkles className="w-4 h-4" />
@@ -399,9 +409,20 @@ const OrgDashboard = () => {
                            <p className="text-sm font-medium">{event.tickets.sold}/{event.tickets.total} tickets</p>
                            <p className="text-sm text-muted-foreground">{event.revenue}</p>
                          </div>
-                         <Badge variant={event.status === "active" ? "default" : "secondary"}>
+                         <Badge variant={event.status === "published" ? "default" : "secondary"}>
                            {event.status}
                          </Badge>
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           onClick={() => {
+                             setSelectedEvent(event);
+                             setActiveTab("event-details");
+                           }}
+                         >
+                           <Users className="h-4 w-4 mr-2" />
+                           Manage
+                         </Button>
                          <Button
                            variant="outline"
                            size="sm"
@@ -416,6 +437,168 @@ const OrgDashboard = () => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Event Details Tab */}
+          <TabsContent value="event-details" className="space-y-6">
+            {selectedEvent ? (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>{selectedEvent.name} - Management</span>
+                      <Badge variant={selectedEvent.status === "published" ? "default" : "secondary"}>
+                        {selectedEvent.status}
+                      </Badge>
+                    </CardTitle>
+                    <CardDescription>
+                      {selectedEvent.date} • {selectedEvent.venue} • Capacity: {selectedEvent.capacity}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Ticket Types Section */}
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">Ticket Types</h3>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">Create Ticket Type</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-muted-foreground">
+                            Set up different ticket types with pricing, quantities, and sale periods.
+                          </p>
+                          <Button className="mt-4" variant="outline">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Ticket Type
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Attendee Management */}
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">Attendee Management</h3>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">Guest List & Check-ins</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-muted-foreground mb-4">
+                            View ticket sales, manage attendees, and handle event check-ins.
+                          </p>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <Card>
+                              <CardContent className="pt-6">
+                                <div className="text-center">
+                                  <div className="text-2xl font-bold">0</div>
+                                  <p className="text-sm text-muted-foreground">Tickets Sold</p>
+                                </div>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="pt-6">
+                                <div className="text-center">
+                                  <div className="text-2xl font-bold">0</div>
+                                  <p className="text-sm text-muted-foreground">Checked In</p>
+                                </div>
+                              </CardContent>
+                            </Card>
+                            <Card>
+                              <CardContent className="pt-6">
+                                <div className="text-center">
+                                  <div className="text-2xl font-bold">$0</div>
+                                  <p className="text-sm text-muted-foreground">Revenue</p>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Widget Integration */}
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">Ticketing Widget</h3>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">Embed Ticket Sales</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <p className="text-muted-foreground">
+                            Generate an embed code to add ticket sales to your website.
+                          </p>
+                          <div className="bg-muted p-4 rounded-lg">
+                            <code className="text-sm">
+                              {`<iframe src="${window.location.origin}/widget/${selectedEvent.id}" width="100%" height="600" frameborder="0"></iframe>`}
+                            </code>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline"
+                              onClick={() => {
+                                navigator.clipboard.writeText(`<iframe src="${window.location.origin}/widget/${selectedEvent.id}" width="100%" height="600" frameborder="0"></iframe>`);
+                                toast({ title: "Copied!", description: "Widget code copied to clipboard" });
+                              }}
+                            >
+                              Copy Code
+                            </Button>
+                            <Button 
+                              variant="outline"
+                              onClick={() => window.open(`/widget/${selectedEvent.id}`, '_blank')}
+                            >
+                              Preview Widget
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Customization Options */}
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">Event Customization</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-base">Checkout Customization</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-muted-foreground mb-4">
+                              Customize the ticket purchase flow and checkout experience.
+                            </p>
+                            <Button variant="outline">
+                              <Settings className="w-4 h-4 mr-2" />
+                              Configure Checkout
+                            </Button>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-base">Seat Map (Coming Soon)</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p className="text-muted-foreground mb-4">
+                              Create custom seating arrangements for your venue.
+                            </p>
+                            <Button variant="outline" disabled>
+                              <Palette className="w-4 h-4 mr-2" />
+                              Design Seat Map
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <p className="text-muted-foreground">Select an event from the Events tab to manage its details.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Events Tab */}
@@ -482,6 +665,46 @@ const OrgDashboard = () => {
                 >
                   {isCreatingEvent ? "Creating..." : "Create Event"}
                 </Button>
+              </CardContent>
+            </Card>
+
+            {/* Existing Events List */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Your Events</CardTitle>
+                <CardDescription>Manage and view details for your existing events</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {events.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No events created yet. Create your first event above!</p>
+                  ) : (
+                    events.map((event) => (
+                      <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="space-y-1">
+                          <h3 className="font-medium">{event.name}</h3>
+                          <p className="text-sm text-muted-foreground">{event.date} • {event.venue}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <Badge variant={event.status === "published" ? "default" : "secondary"}>
+                            {event.status}
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedEvent(event);
+                              setActiveTab("event-details");
+                            }}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Manage Event
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
