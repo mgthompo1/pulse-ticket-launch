@@ -464,6 +464,7 @@ export type Database = {
           billing_setup_required: boolean
           brand_colors: Json | null
           created_at: string
+          currency: string | null
           custom_css: string | null
           email: string
           id: string
@@ -489,6 +490,7 @@ export type Database = {
           billing_setup_required?: boolean
           brand_colors?: Json | null
           created_at?: string
+          currency?: string | null
           custom_css?: string | null
           email: string
           id?: string
@@ -514,6 +516,7 @@ export type Database = {
           billing_setup_required?: boolean
           brand_colors?: Json | null
           created_at?: string
+          currency?: string | null
           custom_css?: string | null
           email?: string
           id?: string
