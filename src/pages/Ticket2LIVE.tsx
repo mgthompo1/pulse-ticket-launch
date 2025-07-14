@@ -48,12 +48,30 @@ const Ticket2LIVE = () => {
   const [ticketCode, setTicketCode] = useState("");
   const [checkInNotes, setCheckInNotes] = useState("");
   const [customerInfo, setCustomerInfo] = useState({ name: "", email: "" });
+  
+  // Concession management state
+  const [newItem, setNewItem] = useState({
+    name: "",
+    description: "",
+    price: "",
+    category: "food",
+    stock_quantity: ""
+  });
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  
+  // Ticket sales state
+  const [ticketTypes, setTicketTypes] = useState<any[]>([]);
+  const [ticketCart, setTicketCart] = useState<any[]>([]);
+  
+  // Payment state
+  const [paymentMethod, setPaymentMethod] = useState<"stripe_terminal" | "cash">("stripe_terminal");
 
   // Load event data
   useEffect(() => {
     if (eventId) {
       loadGuests();
       loadConcessionItems();
+      loadTicketTypes();
     }
   }, [eventId]);
 
@@ -83,6 +101,68 @@ const Ticket2LIVE = () => {
       setConcessionItems(data || []);
     } catch (error) {
       console.error("Error loading concession items:", error);
+    }
+  };
+
+  const loadTicketTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("ticket_types")
+        .select("*")
+        .eq("event_id", eventId);
+
+      if (error) throw error;
+      setTicketTypes(data || []);
+    } catch (error) {
+      console.error("Error loading ticket types:", error);
+    }
+  };
+
+  const handleCreateConcessionItem = async () => {
+    if (!newItem.name || !newItem.price) {
+      toast({ title: "Please fill in required fields", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("concession_items")
+        .insert([
+          {
+            event_id: eventId,
+            name: newItem.name,
+            description: newItem.description,
+            price: parseFloat(newItem.price),
+            category: newItem.category,
+            stock_quantity: parseInt(newItem.stock_quantity) || 0
+          }
+        ]);
+
+      if (error) throw error;
+
+      toast({ title: "Item created successfully!" });
+      setNewItem({ name: "", description: "", price: "", category: "food", stock_quantity: "" });
+      loadConcessionItems();
+    } catch (error) {
+      console.error("Error creating item:", error);
+      toast({ title: "Failed to create item", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteConcessionItem = async (itemId: string) => {
+    try {
+      const { error } = await supabase
+        .from("concession_items")
+        .delete()
+        .eq("id", itemId);
+
+      if (error) throw error;
+
+      toast({ title: "Item deleted successfully!" });
+      loadConcessionItems();
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      toast({ title: "Failed to delete item", variant: "destructive" });
     }
   };
 
@@ -165,6 +245,19 @@ const Ticket2LIVE = () => {
     }
   };
 
+  const addTicketToCart = (ticketType: any) => {
+    const existingTicket = ticketCart.find(ticket => ticket.id === ticketType.id);
+    if (existingTicket) {
+      setTicketCart(ticketCart.map(ticket => 
+        ticket.id === ticketType.id 
+          ? { ...ticket, quantity: ticket.quantity + 1 }
+          : ticket
+      ));
+    } else {
+      setTicketCart([...ticketCart, { ...ticketType, quantity: 1 }]);
+    }
+  };
+
   const removeFromCart = (itemId: string) => {
     setCart(cart.filter(item => item.id !== itemId));
   };
@@ -180,20 +273,70 @@ const Ticket2LIVE = () => {
   };
 
   const getCartTotal = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    const concessionTotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    const ticketTotal = ticketCart.reduce((total, ticket) => total + (ticket.price * ticket.quantity), 0);
+    return concessionTotal + ticketTotal;
   };
 
-  const handleStripeTerminalPayment = async () => {
-    if (cart.length === 0) return;
+  const handleCashPayment = async () => {
+    if (cart.length === 0 && ticketCart.length === 0) return;
 
     setLoading(true);
     try {
+      const allItems = [
+        ...cart.map(item => ({ type: 'concession', ...item })),
+        ...ticketCart.map(ticket => ({ type: 'ticket', ...ticket }))
+      ];
+
+      const { data, error } = await supabase
+        .from("pos_transactions")
+        .insert([
+          {
+            event_id: eventId,
+            payment_method: "cash",
+            total_amount: getCartTotal(),
+            items: allItems,
+            customer_name: customerInfo.name || null,
+            customer_email: customerInfo.email || null,
+            status: "completed"
+          }
+        ]);
+
+      if (error) throw error;
+
+      toast({ 
+        title: "Cash Payment Recorded", 
+        description: `Total: $${getCartTotal().toFixed(2)}` 
+      });
+      
+      // Clear carts
+      setCart([]);
+      setTicketCart([]);
+      setCustomerInfo({ name: "", email: "" });
+    } catch (error) {
+      console.error("Cash payment error:", error);
+      toast({ title: "Failed to record cash payment", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStripeTerminalPayment = async () => {
+    if (cart.length === 0 && ticketCart.length === 0) return;
+
+    setLoading(true);
+    try {
+      const allItems = [
+        ...cart.map(item => ({ type: 'concession', ...item })),
+        ...ticketCart.map(ticket => ({ type: 'ticket', ...ticket }))
+      ];
+
       const { data, error } = await supabase.functions.invoke("stripe-terminal", {
         body: {
           action: "create_payment_intent",
           amount: getCartTotal(),
           eventId,
-          items: cart,
+          items: allItems,
           customerInfo,
         },
       });
@@ -206,8 +349,9 @@ const Ticket2LIVE = () => {
         description: "Connect to Stripe Terminal to complete payment" 
       });
       
-      // Clear cart after successful payment initiation
+      // Clear carts after successful payment initiation
       setCart([]);
+      setTicketCart([]);
       setCustomerInfo({ name: "", email: "" });
     } catch (error) {
       console.error("Payment error:", error);
@@ -265,7 +409,7 @@ const Ticket2LIVE = () => {
           <TabsTrigger value="checkin">Check-In</TabsTrigger>
           <TabsTrigger value="pos">Point of Sale</TabsTrigger>
           <TabsTrigger value="guests">Guest Status</TabsTrigger>
-          <TabsTrigger value="concessions">Concessions</TabsTrigger>
+          <TabsTrigger value="concessions">Manage Items</TabsTrigger>
         </TabsList>
 
         {/* Check-In Tab */}
@@ -306,47 +450,125 @@ const Ticket2LIVE = () => {
 
         {/* Point of Sale Tab */}
         <TabsContent value="pos">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Concession Items</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {concessionItems.map((item) => (
-                    <div key={item.id} className="border rounded-lg p-4">
-                      <h3 className="font-semibold">{item.name}</h3>
-                      <p className="text-sm text-muted-foreground">{item.description}</p>
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="font-bold">${item.price.toFixed(2)}</span>
-                        <Button size="sm" onClick={() => addToCart(item)}>
-                          <Plus className="h-4 w-4" />
-                        </Button>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Products Section */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Ticket Sales */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Event Tickets</CardTitle>
+                  <CardDescription>Sell tickets directly at the event</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {ticketTypes.map((ticket) => (
+                      <div key={ticket.id} className="border rounded-lg p-4 bg-blue-50/50">
+                        <h3 className="font-semibold">{ticket.name}</h3>
+                        <p className="text-sm text-muted-foreground">{ticket.description}</p>
+                        <div className="flex justify-between items-center mt-2">
+                          <span className="font-bold text-blue-600">${ticket.price}</span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">
+                              {ticket.quantity_available - ticket.quantity_sold} left
+                            </Badge>
+                            <Button size="sm" onClick={() => addTicketToCart(ticket)}>
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
+              {/* Concession Items */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Concession Items</CardTitle>
+                  <CardDescription>Food, drinks, and merchandise</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {concessionItems.map((item) => (
+                      <div key={item.id} className="border rounded-lg p-4 bg-green-50/50">
+                        <h3 className="font-semibold">{item.name}</h3>
+                        <p className="text-sm text-muted-foreground">{item.description}</p>
+                        <div className="flex justify-between items-center mt-2">
+                          <span className="font-bold text-green-600">${item.price.toFixed(2)}</span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{item.stock_quantity} in stock</Badge>
+                            <Button size="sm" onClick={() => addToCart(item)}>
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Cart & Payment Section */}
             <Card>
               <CardHeader>
                 <CardTitle>Cart & Payment</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {cart.length === 0 ? (
-                  <p className="text-muted-foreground">Cart is empty</p>
-                ) : (
-                  <>
-                    {cart.map((item) => (
-                      <div key={item.id} className="flex justify-between items-center">
-                        <div>
-                          <span className="font-medium">{item.name}</span>
-                          <span className="text-sm text-muted-foreground ml-2">
-                            ${item.price.toFixed(2)} each
-                          </span>
+                {/* Ticket Cart */}
+                {ticketCart.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-blue-600 mb-2">Tickets</h4>
+                    {ticketCart.map((ticket) => (
+                      <div key={`ticket-${ticket.id}`} className="flex justify-between items-center py-2 border-b">
+                        <div className="flex-1">
+                          <span className="font-medium">{ticket.name}</span>
+                          <div className="text-sm text-muted-foreground">
+                            ${ticket.price} each
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setTicketCart(ticketCart.map(t => 
+                              t.id === ticket.id 
+                                ? { ...t, quantity: Math.max(0, t.quantity - 1) }
+                                : t
+                            ).filter(t => t.quantity > 0))}
+                          >
+                            -
+                          </Button>
+                          <span className="px-2 min-w-[2rem] text-center">{ticket.quantity}</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setTicketCart(ticketCart.map(t => 
+                              t.id === ticket.id ? { ...t, quantity: t.quantity + 1 } : t
+                            ))}
+                          >
+                            +
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Concession Cart */}
+                {cart.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-green-600 mb-2">Concessions</h4>
+                    {cart.map((item) => (
+                      <div key={`concession-${item.id}`} className="flex justify-between items-center py-2 border-b">
+                        <div className="flex-1">
+                          <span className="font-medium">{item.name}</span>
+                          <div className="text-sm text-muted-foreground">
+                            ${item.price.toFixed(2)} each
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
                           <Button
                             size="sm"
                             variant="outline"
@@ -354,7 +576,7 @@ const Ticket2LIVE = () => {
                           >
                             -
                           </Button>
-                          <span className="px-2">{item.quantity}</span>
+                          <span className="px-2 min-w-[2rem] text-center">{item.quantity}</span>
                           <Button
                             size="sm"
                             variant="outline"
@@ -365,7 +587,13 @@ const Ticket2LIVE = () => {
                         </div>
                       </div>
                     ))}
-                    
+                  </div>
+                )}
+                
+                {cart.length === 0 && ticketCart.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">Cart is empty</p>
+                ) : (
+                  <>
                     <div className="border-t pt-4">
                       <div className="flex justify-between font-bold text-lg">
                         <span>Total:</span>
@@ -375,21 +603,40 @@ const Ticket2LIVE = () => {
 
                     <div className="space-y-2">
                       <Input
-                        placeholder="Customer Name"
+                        placeholder="Customer Name (Optional)"
                         value={customerInfo.name}
                         onChange={(e) => setCustomerInfo({...customerInfo, name: e.target.value})}
                       />
                       <Input
-                        placeholder="Customer Email"
+                        placeholder="Customer Email (Optional)"
                         value={customerInfo.email}
                         onChange={(e) => setCustomerInfo({...customerInfo, email: e.target.value})}
                       />
                     </div>
 
-                    <Button onClick={handleStripeTerminalPayment} disabled={loading} className="w-full">
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      Process Payment (Stripe Terminal)
-                    </Button>
+                    <div className="space-y-2">
+                      <Label>Payment Method</Label>
+                      <Select value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="stripe_terminal">Stripe Terminal (Card)</SelectItem>
+                          <SelectItem value="cash">Cash</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {paymentMethod === "stripe_terminal" ? (
+                      <Button onClick={handleStripeTerminalPayment} disabled={loading} className="w-full">
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        Process Card Payment
+                      </Button>
+                    ) : (
+                      <Button onClick={handleCashPayment} disabled={loading} className="w-full" variant="outline">
+                        💵 Record Cash Payment
+                      </Button>
+                    )}
                   </>
                 )}
               </CardContent>
@@ -442,18 +689,123 @@ const Ticket2LIVE = () => {
 
         {/* Concessions Management Tab */}
         <TabsContent value="concessions">
-          <Card>
-            <CardHeader>
-              <CardTitle>Manage Concession Items</CardTitle>
-              <CardDescription>Add and manage items available for sale</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Concession management interface would go here. 
-                This would allow adding new items, updating prices, and managing inventory.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            {/* Add New Item */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Add New Concession Item</CardTitle>
+                <CardDescription>Create new items for sale at your event</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Item Name *</Label>
+                    <Input
+                      placeholder="e.g., Hot Dog, Soda, T-Shirt"
+                      value={newItem.name}
+                      onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Price (USD) *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="5.99"
+                      value={newItem.price}
+                      onChange={(e) => setNewItem({...newItem, price: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Select value={newItem.category} onValueChange={(value) => setNewItem({...newItem, category: value})}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="food">Food</SelectItem>
+                        <SelectItem value="drinks">Drinks</SelectItem>
+                        <SelectItem value="merchandise">Merchandise</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Stock Quantity</Label>
+                    <Input
+                      type="number"
+                      placeholder="50"
+                      value={newItem.stock_quantity}
+                      onChange={(e) => setNewItem({...newItem, stock_quantity: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2">
+                  <Label>Description</Label>
+                  <Textarea
+                    placeholder="Optional description of the item"
+                    value={newItem.description}
+                    onChange={(e) => setNewItem({...newItem, description: e.target.value})}
+                  />
+                </div>
+                <Button onClick={handleCreateConcessionItem} className="mt-4">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Item
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Existing Items */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Current Concession Items</CardTitle>
+                <CardDescription>Manage your existing inventory</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {concessionItems.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">
+                    No concession items yet. Add your first item above!
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {concessionItems.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-4">
+                            <div>
+                              <h3 className="font-semibold">{item.name}</h3>
+                              {item.description && (
+                                <p className="text-sm text-muted-foreground">{item.description}</p>
+                              )}
+                              <div className="flex items-center gap-4 mt-1">
+                                <span className="font-bold text-green-600">${item.price.toFixed(2)}</span>
+                                <Badge variant="outline">{item.category}</Badge>
+                                <Badge variant={item.stock_quantity > 10 ? "default" : "destructive"}>
+                                  {item.stock_quantity} in stock
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm">
+                            Edit
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => handleDeleteConcessionItem(item.id)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
