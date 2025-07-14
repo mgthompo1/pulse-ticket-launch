@@ -111,21 +111,49 @@ const OrgDashboard = () => {
 
   const handleStripeConnect = async () => {
     try {
+      console.log("Starting Stripe Connect process...");
+      console.log("Organization ID:", organizationId);
+      
+      if (!organizationId) {
+        toast({
+          title: "Error",
+          description: "No organization found. Please refresh the page and try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log("Calling create-connect-account function...");
       const { data, error } = await supabase.functions.invoke("create-connect-account", {
         body: { organizationId }
       });
 
-      if (error) throw error;
+      console.log("Function response:", { data, error });
 
+      if (error) {
+        console.error("Function error:", error);
+        throw error;
+      }
+
+      if (!data?.url) {
+        throw new Error("No URL returned from Stripe Connect");
+      }
+
+      console.log("Opening Stripe Connect URL:", data.url);
       window.open(data.url, "_blank");
+      
       toast({
         title: "Stripe Connect",
         description: "Complete your Stripe setup in the new window."
       });
     } catch (error) {
+      console.error("Stripe Connect error:", error);
+      
+      const errorMessage = error?.message || error?.details || "Failed to connect Stripe account";
+      
       toast({
         title: "Error",
-        description: "Failed to connect Stripe account",
+        description: `Stripe Connect failed: ${errorMessage}`,
         variant: "destructive"
       });
     }
