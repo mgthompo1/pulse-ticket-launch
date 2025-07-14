@@ -787,7 +787,7 @@ const OrgDashboard = () => {
                       <p className="text-muted-foreground">Analytics dashboard will be here</p>
                     </CardContent>
                   </Card>
-          </TabsContent>
+                </TabsContent>
               </Tabs>
             ) : (
               <Card>
@@ -1343,6 +1343,7 @@ const OrgDashboard = () => {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
           </TabsContent>
 
           {/* Events Tab */}
