@@ -809,7 +809,7 @@ export type Database = {
     }
     Functions: {
       calculate_platform_fee: {
-        Args: { transaction_amount: number }
+        Args: { order_id: number } | { transaction_amount: number }
         Returns: number
       }
       generate_ticket_code: {

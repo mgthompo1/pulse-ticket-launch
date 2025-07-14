@@ -59,7 +59,6 @@ const TicketWidget = () => {
           )
         `)
         .eq("id", eventId)
-        .eq("status", "published")
         .single();
 
       if (eventError) {
