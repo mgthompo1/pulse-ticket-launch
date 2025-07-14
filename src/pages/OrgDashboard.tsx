@@ -69,6 +69,18 @@ const OrgDashboard = () => {
   const [ticketTypes, setTicketTypes] = useState([]);
   const [showSeatMapDesigner, setShowSeatMapDesigner] = useState(false);
   
+  // Edit ticket type state
+  const [editingTicketType, setEditingTicketType] = useState(null);
+  const [editTicketTypeForm, setEditTicketTypeForm] = useState({
+    name: "",
+    description: "",
+    price: "",
+    quantity: "",
+    saleStartDate: "",
+    saleEndDate: ""
+  });
+  const [isUpdatingTicketType, setIsUpdatingTicketType] = useState(false);
+  
   // Custom questions state
   const [customQuestions, setCustomQuestions] = useState([]);
   const [showCustomQuestionsDialog, setShowCustomQuestionsDialog] = useState(false);
@@ -510,6 +522,90 @@ const OrgDashboard = () => {
     }
   };
 
+  const handleEditTicketType = (ticketType: any) => {
+    setEditingTicketType(ticketType);
+    setEditTicketTypeForm({
+      name: ticketType.name,
+      description: ticketType.description || "",
+      price: ticketType.price.toString(),
+      quantity: ticketType.quantity_available.toString(),
+      saleStartDate: ticketType.sale_start_date || "",
+      saleEndDate: ticketType.sale_end_date || ""
+    });
+  };
+
+  const handleUpdateTicketType = async () => {
+    if (!editingTicketType) return;
+
+    setIsUpdatingTicketType(true);
+    
+    try {
+      if (!editTicketTypeForm.name || !editTicketTypeForm.price || !editTicketTypeForm.quantity) {
+        toast({
+          title: "Error",
+          description: "Please fill in all required fields",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from("ticket_types")
+        .update({
+          name: editTicketTypeForm.name,
+          description: editTicketTypeForm.description || null,
+          price: parseFloat(editTicketTypeForm.price),
+          quantity_available: parseInt(editTicketTypeForm.quantity),
+          sale_start_date: editTicketTypeForm.saleStartDate || null,
+          sale_end_date: editTicketTypeForm.saleEndDate || null
+        })
+        .eq("id", editingTicketType.id);
+
+      if (error) {
+        console.error("Database error:", error);
+        throw error;
+      }
+
+      toast({
+        title: "Success",
+        description: "Ticket type updated successfully!"
+      });
+
+      // Reset form and close dialog
+      setEditingTicketType(null);
+      setEditTicketTypeForm({
+        name: "",
+        description: "",
+        price: "",
+        quantity: "",
+        saleStartDate: "",
+        saleEndDate: ""
+      });
+
+      // Reload ticket types
+      if (selectedEvent) {
+        loadTicketTypes(selectedEvent.id);
+      }
+
+    } catch (error) {
+      console.error("Error updating ticket type:", error);
+      toast({
+        title: "Error",
+        description: `Failed to update ticket type: ${error.message || 'Unknown error'}`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdatingTicketType(false);
+    }
+  };
+
+  const handleEditTicketTypeFormChange = (field: string, value: string) => {
+    setEditTicketTypeForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   const handleTicketTypeFormChange = (field: string, value: string) => {
     setTicketTypeForm(prev => ({
       ...prev,
@@ -883,7 +979,7 @@ const OrgDashboard = () => {
                                   <Badge variant={ticketType.quantity_sold < ticketType.quantity_available ? "default" : "secondary"}>
                                     {ticketType.quantity_sold < ticketType.quantity_available ? "Available" : "Sold Out"}
                                   </Badge>
-                                  <Button variant="outline" size="sm">
+                                  <Button variant="outline" size="sm" onClick={() => handleEditTicketType(ticketType)}>
                                     <Edit className="w-4 h-4 mr-2" />
                                     Edit
                                   </Button>
@@ -900,6 +996,83 @@ const OrgDashboard = () => {
                         )}
                       </CardContent>
                     </Card>
+
+                    {/* Edit Ticket Type Dialog */}
+                    <Dialog open={!!editingTicketType} onOpenChange={(open) => !open && setEditingTicketType(null)}>
+                      <DialogContent className="sm:max-w-[600px]">
+                        <DialogHeader>
+                          <DialogTitle>Edit Ticket Type</DialogTitle>
+                          <DialogDescription>
+                            Update the details for this ticket type
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-ticket-name">Ticket Name</Label>
+                              <Input 
+                                id="edit-ticket-name" 
+                                placeholder="e.g., General Admission" 
+                                value={editTicketTypeForm.name}
+                                onChange={(e) => handleEditTicketTypeFormChange("name", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-ticket-price">Price ($)</Label>
+                              <Input 
+                                id="edit-ticket-price" 
+                                type="number" 
+                                step="0.01"
+                                placeholder="0.00" 
+                                value={editTicketTypeForm.price}
+                                onChange={(e) => handleEditTicketTypeFormChange("price", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-ticket-quantity">Available Quantity</Label>
+                              <Input 
+                                id="edit-ticket-quantity" 
+                                type="number" 
+                                placeholder="100" 
+                                value={editTicketTypeForm.quantity}
+                                onChange={(e) => handleEditTicketTypeFormChange("quantity", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-sale-start">Sale Start Date</Label>
+                              <Input 
+                                id="edit-sale-start" 
+                                type="datetime-local" 
+                                value={editTicketTypeForm.saleStartDate}
+                                onChange={(e) => handleEditTicketTypeFormChange("saleStartDate", e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                              <Label htmlFor="edit-ticket-description">Description (Optional)</Label>
+                              <Textarea 
+                                id="edit-ticket-description" 
+                                placeholder="Description of this ticket type..." 
+                                value={editTicketTypeForm.description}
+                                onChange={(e) => handleEditTicketTypeFormChange("description", e.target.value)}
+                                rows={3}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setEditingTicketType(null)}>
+                            Cancel
+                          </Button>
+                          <Button 
+                            onClick={handleUpdateTicketType} 
+                            disabled={isUpdatingTicketType || !editTicketTypeForm.name || !editTicketTypeForm.price || !editTicketTypeForm.quantity}
+                            className="gradient-primary"
+                          >
+                            {isUpdatingTicketType ? "Updating..." : "Update Ticket Type"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </TabsContent>
 
