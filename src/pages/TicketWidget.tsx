@@ -239,24 +239,88 @@ const TicketWidget = () => {
             supportedCards: ["visa", "mastercard", "amex"],
             sideIcons: ["visa", "mastercard", "amex"]
           },
-          onSuccess: (status: string) => {
-            console.log("Payment success:", status);
-            if (status === "Done") {
-              toast({
-                title: "Payment Successful",
-                description: "Your payment has been processed successfully!"
-              });
-              // Redirect to success page or handle success
-              window.location.href = "/payment-success";
+          onSuccess: async (status: string, sessionId?: string) => {
+            console.log("Payment success callback:", { status, sessionId });
+            
+            if (status === "Done" || status === "success") {
+              // Verify payment status with backend
+              try {
+                const { data, error } = await supabase.functions.invoke("verify-windcave-payment", {
+                  body: { 
+                    sessionId: sessionId || windcaveLinks[0]?.sessionId,
+                    eventId,
+                    customerInfo
+                  }
+                });
+
+                if (error) {
+                  console.error("Payment verification error:", error);
+                  toast({
+                    title: "Payment Verification Failed",
+                    description: "Please contact support if payment was deducted.",
+                    variant: "destructive"
+                  });
+                  return;
+                }
+
+                toast({
+                  title: "Payment Successful",
+                  description: "Your tickets have been purchased successfully!"
+                });
+                
+                // Redirect to success page with order details
+                window.location.href = `/payment-success?orderId=${data.orderId}`;
+              } catch (verificationError) {
+                console.error("Payment verification error:", verificationError);
+                toast({
+                  title: "Payment Processing",
+                  description: "Payment completed. Verifying status...",
+                });
+                // Fallback redirect
+                setTimeout(() => {
+                  window.location.href = "/payment-success";
+                }, 2000);
+              }
             }
           },
           onError: (stage: string, error: any) => {
             console.error("Payment error:", { stage, error });
+            
+            let errorMessage = "Payment failed. Please try again.";
+            
+            if (typeof error === 'string') {
+              errorMessage = error;
+            } else if (error?.message) {
+              errorMessage = error.message;
+            } else if (error?.reason) {
+              errorMessage = error.reason;
+            }
+            
             toast({
-              title: "Payment Error",
-              description: `Payment failed at ${stage}: ${error.message || error}`,
+              title: "Payment Failed",
+              description: errorMessage,
               variant: "destructive"
             });
+            
+            // Reset payment form
+            setShowPaymentForm(false);
+          },
+          onCancel: () => {
+            console.log("Payment cancelled by user");
+            toast({
+              title: "Payment Cancelled",
+              description: "You can try again when ready.",
+            });
+            setShowPaymentForm(false);
+          },
+          onTimeout: () => {
+            console.log("Payment session timed out");
+            toast({
+              title: "Session Expired",
+              description: "Payment session has expired. Please try again.",
+              variant: "destructive"
+            });
+            setShowPaymentForm(false);
           }
         };
 
@@ -267,28 +331,63 @@ const TicketWidget = () => {
           (controller: any) => {
             console.log("Drop-In successfully created:", controller);
             setWindcaveDropIn(controller);
+            
+            // Set up periodic status checking
+            const statusInterval = setInterval(async () => {
+              try {
+                if (controller && controller.getStatus) {
+                  const status = controller.getStatus();
+                  console.log("Drop-In status:", status);
+                  
+                  if (status === 'completed' || status === 'success') {
+                    clearInterval(statusInterval);
+                  }
+                }
+              } catch (statusError) {
+                console.log("Status check error:", statusError);
+              }
+            }, 5000); // Check every 5 seconds
+            
+            // Clear interval after 10 minutes
+            setTimeout(() => {
+              clearInterval(statusInterval);
+            }, 600000);
           },
           (error: any) => {
             console.error("Failed to create Drop-In:", error);
             toast({
-              title: "Payment Error",
-              description: "Failed to initialize payment form",
+              title: "Payment System Error",
+              description: "Unable to load payment form. Please refresh and try again.",
               variant: "destructive"
             });
+            setShowPaymentForm(false);
           }
         );
       } catch (error) {
         console.error("Error initializing Windcave Drop-In:", error);
         toast({
-          title: "Payment Error",
-          description: "Failed to initialize payment form",
+          title: "Payment System Error",
+          description: "Failed to initialize payment form. Please refresh and try again.",
           variant: "destructive"
         });
+        setShowPaymentForm(false);
       }
     } else {
       console.log("WindcavePayments not available yet, retrying...");
-      // Retry after a short delay
-      setTimeout(() => initializeWindcaveDropIn(links, totalAmount), 500);
+      // Retry after a short delay, with max retries
+      const retryCount = (window as any).windcaveRetryCount || 0;
+      if (retryCount < 10) {
+        (window as any).windcaveRetryCount = retryCount + 1;
+        setTimeout(() => initializeWindcaveDropIn(links, totalAmount), 1000);
+      } else {
+        console.error("WindcavePayments failed to load after multiple retries");
+        toast({
+          title: "Payment System Unavailable",
+          description: "Unable to load payment system. Please refresh the page.",
+          variant: "destructive"
+        });
+        setShowPaymentForm(false);
+      }
     }
   };
 
@@ -562,14 +661,26 @@ const TicketWidget = () => {
                   <div 
                     ref={dropInRef}
                     id="windcave-drop-in"
-                    className="border rounded-lg p-4 min-h-[300px] bg-background"
+                    className="border rounded-lg p-4 min-h-[300px] bg-background relative"
                   >
                     <div className="flex items-center justify-center h-full">
                       <div className="text-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                        <p className="text-sm text-muted-foreground">Loading payment form...</p>
+                        <p className="text-sm text-muted-foreground">Loading secure payment form...</p>
+                        <p className="text-xs text-muted-foreground mt-2">This may take a few moments</p>
                       </div>
                     </div>
+                  </div>
+                  
+                  {/* Payment Status Messages */}
+                  <div className="mt-4 p-3 bg-muted/20 rounded-lg">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span>Secure payment powered by Windcave</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Your payment information is encrypted and secure. Do not refresh this page during payment.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
