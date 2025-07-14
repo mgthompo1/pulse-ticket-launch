@@ -118,6 +118,34 @@ serve(async (req) => {
 
     console.log("Successfully created", createdTickets?.length || 0, "tickets");
 
+    // Send ticket email
+    console.log("Sending ticket email...");
+    try {
+      // Get event details for email
+      const { data: event, error: eventError } = await supabaseClient
+        .from("events")
+        .select("name, event_date")
+        .eq("id", eventId)
+        .single();
+
+      if (!eventError && event) {
+        await supabaseClient.functions.invoke('send-ticket-email', {
+          body: {
+            orderId: order.id,
+            customerEmail: order.customer_email,
+            customerName: order.customer_name,
+            eventName: event.name,
+            eventDate: event.event_date,
+            ticketCount: createdTickets?.length || 0
+          }
+        });
+        console.log("Ticket email sent successfully");
+      }
+    } catch (emailError) {
+      console.log("Email sending failed:", emailError);
+      // Don't fail the whole process for email issues
+    }
+
     return new Response(JSON.stringify({
       success: true,
       message: "Payment completed and tickets created successfully",

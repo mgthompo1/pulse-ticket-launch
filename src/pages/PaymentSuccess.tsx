@@ -10,6 +10,69 @@ const PaymentSuccess = () => {
   const navigate = useNavigate();
   const [orderDetails, setOrderDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [downloadingTickets, setDownloadingTickets] = useState(false);
+
+  const downloadTickets = async () => {
+    if (!orderDetails) return;
+    
+    setDownloadingTickets(true);
+    try {
+      // Get tickets for this order
+      const { data: orderItems, error: orderItemsError } = await supabase
+        .from('order_items')
+        .select('*, tickets(*), ticket_types(name)')
+        .eq('order_id', orderDetails.id);
+
+      if (orderItemsError) {
+        console.error('Error fetching tickets:', orderItemsError);
+        return;
+      }
+
+      if (!orderItems || orderItems.length === 0) {
+        console.error('No tickets found for this order');
+        return;
+      }
+
+      // Create PDF content
+      const tickets = orderItems.flatMap(item => 
+        item.tickets.map((ticket: any) => ({
+          ...ticket,
+          ticketTypeName: item.ticket_types.name,
+          eventName: orderDetails.events?.name,
+          eventDate: orderDetails.events?.event_date,
+          customerName: orderDetails.customer_name
+        }))
+      );
+
+      // Generate simple text file with ticket details for now
+      const ticketContent = tickets.map((ticket, index) => 
+        `TICKET ${index + 1}\n` +
+        `Event: ${ticket.eventName}\n` +
+        `Date: ${new Date(ticket.eventDate).toLocaleDateString()}\n` +
+        `Ticket Type: ${ticket.ticketTypeName}\n` +
+        `Ticket Code: ${ticket.ticket_code}\n` +
+        `Customer: ${ticket.customerName}\n` +
+        `Status: ${ticket.status}\n` +
+        `\n${'='.repeat(40)}\n\n`
+      ).join('');
+
+      // Create and download file
+      const blob = new Blob([ticketContent], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `tickets-${orderDetails.id}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+    } catch (error) {
+      console.error('Error downloading tickets:', error);
+    } finally {
+      setDownloadingTickets(false);
+    }
+  };
 
   useEffect(() => {
     const updateOrderStatus = async () => {
@@ -22,11 +85,11 @@ const PaymentSuccess = () => {
         console.log('Payment success params:', { sessionId, merchantReference });
 
         if (sessionId || merchantReference) {
-          // Find the order using the session ID
+          // Find the order using the windcave session ID
           const { data: order, error } = await supabase
             .from('orders')
             .select('*, events(name, event_date)')
-            .eq('stripe_session_id', sessionId) // We stored Windcave session ID in this field
+            .eq('windcave_session_id', sessionId)
             .single();
 
           if (error) {
@@ -100,9 +163,9 @@ const PaymentSuccess = () => {
             <Button className="w-full" onClick={() => navigate('/')}>
               Return to Home
             </Button>
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full" onClick={downloadTickets} disabled={downloadingTickets}>
               <Download className="h-4 w-4 mr-2" />
-              Download Tickets
+              {downloadingTickets ? 'Downloading...' : 'Download Tickets'}
             </Button>
           </div>
         </CardContent>
