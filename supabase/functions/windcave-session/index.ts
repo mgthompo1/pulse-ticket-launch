@@ -75,8 +75,8 @@ serve(async (req) => {
         approved: `${req.headers.get("origin")}/payment-success`,
         declined: `${req.headers.get("origin")}/payment-failed`,
         cancelled: `${req.headers.get("origin")}/payment-cancelled`
-      },
-      notificationUrl: `${req.headers.get("origin")}/api/windcave-webhook`
+      }
+      // Remove notificationUrl for drop-in implementation
     };
 
     console.log("=== WINDCAVE API REQUEST ===");
@@ -115,24 +115,13 @@ serve(async (req) => {
       throw new Error("Invalid Windcave response: Missing session ID");
     }
 
-    // Extract the redirect URL from links array following documentation
-    let redirectUrl = null;
-    if (windcaveResult.links && Array.isArray(windcaveResult.links)) {
-      // Look for hpp (hosted payment page) link as per documentation
-      const hppLink = windcaveResult.links.find(link => link.rel === "hpp");
-      if (hppLink) {
-        redirectUrl = hppLink.href;
-      } else {
-        // Fallback to seamless_hpp if available
-        const seamlessHppLink = windcaveResult.links.find(link => link.rel === "seamless_hpp");
-        if (seamlessHppLink) {
-          redirectUrl = seamlessHppLink.href;
-        }
-      }
+    // For Drop-In implementation, we return the full links array instead of extracting redirect URL
+    if (!windcaveResult.links || !Array.isArray(windcaveResult.links)) {
+      console.error("Missing links array in Windcave response:", windcaveResult);
+      throw new Error("Invalid Windcave response: Missing links array");
     }
 
-    console.log("Extracted redirect URL:", redirectUrl);
-    console.log("Full Windcave response structure:", JSON.stringify(windcaveResult, null, 2));
+    console.log("Links array received:", JSON.stringify(windcaveResult.links, null, 2));
 
     // Store the order in the database
     const { data: order, error: orderError } = await supabaseClient
@@ -173,14 +162,13 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       sessionId: windcaveResult.id,
-      redirectUrl: redirectUrl,
+      links: windcaveResult.links, // Return full links array for Drop-In
       orderId: order.id,
+      totalAmount: totalAmount,
       windcaveResponse: windcaveResult, // Include full response for debugging
       debug: {
         state: windcaveResult.state,
-        links: windcaveResult.links,
-        hasUserInterface: !!windcaveResult.links?.userInterface,
-        hasHosted: !!windcaveResult.links?.hosted
+        linksCount: windcaveResult.links?.length || 0
       }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
