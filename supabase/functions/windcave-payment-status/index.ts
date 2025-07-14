@@ -28,9 +28,24 @@ serve(async (req) => {
     const { eventId, txnRef, orderId } = await req.json();
     logStep("Checking payment status", { eventId, txnRef, orderId });
 
-    if (!eventId || (!txnRef && !orderId)) {
-      throw new Error("Missing required parameters: eventId and either txnRef or orderId are required");
+    if (!eventId || !txnRef) {
+      throw new Error("Missing required parameters: eventId and txnRef are required");
     }
+
+    // Find the order by session ID (stored in stripe_session_id field)
+    const { data: order, error: orderError } = await supabaseClient
+      .from("orders")
+      .select("*")
+      .eq("stripe_session_id", txnRef)
+      .eq("event_id", eventId)
+      .single();
+
+    if (orderError || !order) {
+      logStep("Order not found", { txnRef, eventId, orderError });
+      throw new Error("Order not found for this session");
+    }
+
+    logStep("Order found", { orderId: order.id, currentStatus: order.status });
 
     // Get event and organization details
     const { data: event, error: eventError } = await supabaseClient
@@ -38,11 +53,10 @@ serve(async (req) => {
       .select(`
         *,
         organizations!inner(
-          windcave_hit_username,
-          windcave_hit_key,
+          windcave_username,
+          windcave_api_key,
           windcave_endpoint,
           windcave_enabled,
-          windcave_station_id,
           currency
         )
       `)
@@ -54,96 +68,146 @@ serve(async (req) => {
     }
 
     const org = event.organizations;
-    if (!org.windcave_enabled || !org.windcave_hit_username || !org.windcave_hit_key) {
-      throw new Error("Windcave HIT terminal not configured for this organization");
-    }
-
-    const terminalStationId = org.windcave_station_id;
-    if (!terminalStationId) {
-      throw new Error("Terminal station ID not configured for this organization");
+    if (!org.windcave_enabled || !org.windcave_username || !org.windcave_api_key) {
+      throw new Error("Windcave not configured for this organization");
     }
 
     // Determine API endpoint based on environment
     const baseUrl = org.windcave_endpoint === "SEC" 
-      ? "https://sec.windcave.com/hit/pos.aspx"
-      : "https://uat.windcave.com/hit/pos.aspx";
+      ? "https://sec.windcave.com/api/v1/sessions"
+      : "https://uat.windcave.com/api/v1/sessions";
 
-    // Create status check XML request
-    const statusXml = `<?xml version="1.0" encoding="utf-8"?>
-<Pxr user="${org.windcave_hit_username}" key="${org.windcave_hit_key}">
-  <Station>${terminalStationId}</Station>
-  <TxnType>Status</TxnType>
-  <TxnRef>${txnRef || 'STATUS-CHECK'}</TxnRef>
-</Pxr>`;
+    const sessionUrl = `${baseUrl}/${txnRef}`;
+    
+    logStep("Checking session status with Windcave", { sessionUrl });
 
-    logStep("Sending status check to Windcave", { baseUrl, txnRef });
-
-    // Make request to Windcave HIT API
-    const response = await fetch(baseUrl, {
-      method: "POST",
+    // Check session status with Windcave API
+    const response = await fetch(sessionUrl, {
+      method: "GET",
       headers: {
-        "Content-Type": "text/xml; charset=utf-8",
-        "Accept": "text/xml"
-      },
-      body: statusXml
+        "Accept": "application/json",
+        "Authorization": `Basic ${btoa(`${org.windcave_username}:${org.windcave_api_key}`)}`
+      }
     });
 
-    const responseText = await response.text();
-    logStep("Windcave status response", { status: response.status, responseText });
+    const responseData = await response.json();
+    logStep("Windcave session response", { status: response.status, data: responseData });
 
     if (!response.ok) {
-      throw new Error(`Windcave HIT API error: Status ${response.status} - ${responseText}`);
+      throw new Error(`Windcave API error: Status ${response.status} - ${JSON.stringify(responseData)}`);
     }
 
-    // Simple XML parsing to check for success indicators
-    const isSuccess = responseText.includes('<Success>1</Success>') || 
-                      responseText.includes('<Response>00</Response>') ||
-                      responseText.includes('Success') ||
-                      responseText.includes('Approved');
-
-    const isPending = responseText.includes('Pending') || 
-                      responseText.includes('Processing') ||
-                      responseText.includes('InProgress');
-
-    const isDeclined = responseText.includes('Declined') || 
-                       responseText.includes('Failed') ||
-                       responseText.includes('Error');
+    // Check the session state
+    const sessionState = responseData.state;
+    const isCompleted = sessionState === 'completed';
+    const isDeclined = sessionState === 'declined' || sessionState === 'failed';
+    const isPending = sessionState === 'processing' || sessionState === 'pending';
 
     let paymentStatus = 'pending';
-    if (isSuccess) {
+    if (isCompleted) {
       paymentStatus = 'completed';
     } else if (isDeclined) {
       paymentStatus = 'failed';
     }
 
-    logStep("Payment status determined", { paymentStatus, isSuccess, isPending, isDeclined });
+    logStep("Payment status determined", { 
+      sessionState, 
+      paymentStatus, 
+      isCompleted, 
+      isDeclined, 
+      isPending 
+    });
 
-    // If payment is successful, update order status
-    if (isSuccess && orderId) {
+    // If payment is successful and order isn't already completed, update order status
+    if (isCompleted && order.status !== 'completed') {
+      logStep("Updating order to completed", { orderId: order.id });
+      
       const { error: updateError } = await supabaseClient
         .from("orders")
         .update({ 
           status: "completed",
           updated_at: new Date().toISOString()
         })
-        .eq("id", orderId);
+        .eq("id", order.id);
 
       if (updateError) {
         logStep("Error updating order status", updateError);
       } else {
-        logStep("Order status updated to completed", { orderId });
+        logStep("Order status updated to completed", { orderId: order.id });
+        
+        // Generate tickets for completed orders
+        try {
+          const { data: orderItems } = await supabaseClient
+            .from("order_items")
+            .select("*")
+            .eq("order_id", order.id);
+
+          if (orderItems && orderItems.length > 0) {
+            const tickets = [];
+            for (const item of orderItems) {
+              for (let i = 0; i < item.quantity; i++) {
+                tickets.push({
+                  order_item_id: item.id,
+                  ticket_code: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                  status: 'valid'
+                });
+              }
+            }
+            
+            const { error: ticketsError } = await supabaseClient
+              .from("tickets")
+              .insert(tickets);
+              
+            if (ticketsError) {
+              logStep("Error creating tickets", ticketsError);
+            } else {
+              logStep("Tickets created successfully", { ticketCount: tickets.length });
+            }
+          }
+        } catch (ticketError) {
+          logStep("Error in ticket generation", ticketError);
+        }
+      }
+    } else if (isDeclined && order.status !== 'failed') {
+      // Update failed orders
+      const { error: updateError } = await supabaseClient
+        .from("orders")
+        .update({ 
+          status: "failed",
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", order.id);
+
+      if (updateError) {
+        logStep("Error updating order to failed", updateError);
+      } else {
+        logStep("Order status updated to failed", { orderId: order.id });
+      }
+    }
+
+    // Count tickets for successful response
+    let ticketCount = 0;
+    if (isCompleted) {
+      const { data: orderItems } = await supabaseClient
+        .from("order_items")
+        .select("quantity")
+        .eq("order_id", order.id);
+      
+      if (orderItems) {
+        ticketCount = orderItems.reduce((sum, item) => sum + item.quantity, 0);
       }
     }
 
     return new Response(JSON.stringify({
-      success: isSuccess,
+      success: isCompleted,
       status: paymentStatus,
-      message: isSuccess ? "Payment completed successfully" : 
+      message: isCompleted ? "Payment completed successfully" : 
                isDeclined ? "Payment was declined" : 
                "Payment is still being processed",
-      rawResponse: responseText,
-      orderId,
-      txnRef
+      sessionState: sessionState,
+      orderId: order.id,
+      txnRef,
+      ticketCount: ticketCount
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
