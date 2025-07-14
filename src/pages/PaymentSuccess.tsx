@@ -83,29 +83,63 @@ const PaymentSuccess = () => {
         const merchantReference = urlParams.get('merchantReference');
         
         console.log('Payment success params:', { sessionId, merchantReference });
+        console.log('Full URL search:', location.search);
 
         if (sessionId || merchantReference) {
-          // Find the order using the windcave session ID
-          const { data: order, error } = await supabase
+          // Try to find the most recent completed/paid order first
+          let order = null;
+          
+          // First try to find by windcave_session_id
+          if (sessionId) {
+            const { data: orderBySession, error: sessionError } = await supabase
+              .from('orders')
+              .select('*, events(name, event_date)')
+              .eq('windcave_session_id', sessionId)
+              .single();
+
+            if (!sessionError && orderBySession) {
+              order = orderBySession;
+              console.log('Found order by session ID:', order.id);
+            }
+          }
+
+          // If not found by session, try to find the most recent completed order
+          if (!order) {
+            console.log('Trying to find most recent completed order...');
+            const { data: recentOrder, error: recentError } = await supabase
+              .from('orders')
+              .select('*, events(name, event_date)')
+              .in('status', ['completed', 'paid'])
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (!recentError && recentOrder) {
+              order = recentOrder;
+              console.log('Found most recent completed order:', order.id);
+            }
+          }
+
+          if (order) {
+            setOrderDetails(order);
+            console.log('Order details set:', order);
+          } else {
+            console.error('No order found');
+          }
+        } else {
+          console.log('No session parameters found, looking for most recent order...');
+          // If no URL params, show the most recent completed order
+          const { data: recentOrder, error: recentError } = await supabase
             .from('orders')
             .select('*, events(name, event_date)')
-            .eq('windcave_session_id', sessionId)
+            .in('status', ['completed', 'paid'])
+            .order('created_at', { ascending: false })
+            .limit(1)
             .single();
 
-          if (error) {
-            console.error('Error finding order:', error);
-          } else if (order) {
-            // Update order status to completed
-            const { error: updateError } = await supabase
-              .from('orders')
-              .update({ status: 'completed' })
-              .eq('id', order.id);
-
-            if (updateError) {
-              console.error('Error updating order:', updateError);
-            } else {
-              setOrderDetails(order);
-            }
+          if (!recentError && recentOrder) {
+            setOrderDetails(recentOrder);
+            console.log('Showing most recent order:', recentOrder.id);
           }
         }
       } catch (error) {
