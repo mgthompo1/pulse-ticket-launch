@@ -440,7 +440,7 @@ const OrgDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-9 lg:w-fit">
+          <TabsList className="grid w-full grid-cols-8 lg:w-fit">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Overview
@@ -464,10 +464,6 @@ const OrgDashboard = () => {
             <TabsTrigger value="design" className="flex items-center gap-2">
               <Palette className="w-4 h-4" />
               Design
-            </TabsTrigger>
-            <TabsTrigger value="embed" className="flex items-center gap-2">
-              <Globe className="w-4 h-4" />
-              Embed
             </TabsTrigger>
             <TabsTrigger value="marketing" className="flex items-center gap-2">
               <Mail className="w-4 h-4" />
@@ -594,6 +590,39 @@ const OrgDashboard = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
+                    {/* Event Widget Section */}
+                    <div className="bg-gradient-to-r from-primary/5 to-secondary/5 border rounded-lg p-4">
+                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                        <Globe className="w-5 h-5" />
+                        Event Widget
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Share this link for customers to purchase tickets
+                      </p>
+                      <div className="flex gap-2 mb-3">
+                        <Input 
+                          value={`${window.location.origin}/widget/${selectedEvent.id}`} 
+                          readOnly 
+                          className="font-mono text-sm"
+                        />
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.origin}/widget/${selectedEvent.id}`);
+                            toast({ title: "Copied!", description: "Widget URL copied to clipboard" });
+                          }}
+                        >
+                          Copy
+                        </Button>
+                        <Button 
+                          onClick={() => window.open(`/widget/${selectedEvent.id}`, '_blank')}
+                          className="gradient-primary"
+                        >
+                          <Globe className="w-4 h-4 mr-2" />
+                          View Widget
+                        </Button>
+                      </div>
+                    </div>
                     {/* Ticket Types Section */}
                     <div>
                       <h3 className="text-lg font-semibold mb-4">Ticket Types</h3>
@@ -1157,31 +1186,6 @@ const OrgDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Embed Tab */}
-          <TabsContent value="embed" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Embed Your Ticketing Widget</CardTitle>
-                <CardDescription>Add ticketing to your website</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Embed Code</Label>
-                  <div className="bg-muted p-4 rounded-lg font-mono text-sm">
-                    &lt;iframe src="https://ticket2.com/widget/your-org-id" width="100%" height="600"&gt;&lt;/iframe&gt;
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Widget URL</Label>
-                  <div className="flex gap-2">
-                    <Input value="https://ticket2.com/widget/your-org-id" readOnly />
-                    <Button variant="outline">Copy</Button>
-                  </div>
-                </div>
-                <Button className="gradient-primary">Generate New Widget</Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           {/* Marketing Tab */}
           <TabsContent value="marketing" className="space-y-6">
