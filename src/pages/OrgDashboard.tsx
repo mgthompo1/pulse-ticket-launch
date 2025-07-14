@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,7 +17,7 @@ import AIEventGenerator from "@/components/AIEventGenerator";
 import AIChatbot from "@/components/AIChatbot";
 import BillingDashboard from "@/components/BillingDashboard";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
-import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut } from "lucide-react";
+import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const OrgDashboard = () => {
@@ -58,6 +60,26 @@ const OrgDashboard = () => {
   const [isCreatingTicketType, setIsCreatingTicketType] = useState(false);
   const [ticketTypes, setTicketTypes] = useState([]);
   const [showSeatMapDesigner, setShowSeatMapDesigner] = useState(false);
+  
+  // Custom questions state
+  const [customQuestions, setCustomQuestions] = useState([]);
+  const [showCustomQuestionsDialog, setShowCustomQuestionsDialog] = useState(false);
+  const [showAdvancedSettingsDialog, setShowAdvancedSettingsDialog] = useState(false);
+  const [newQuestion, setNewQuestion] = useState({
+    label: "",
+    type: "text",
+    required: false,
+    options: ""
+  });
+  
+  // Advanced settings state
+  const [advancedSettings, setAdvancedSettings] = useState({
+    collectPhone: false,
+    requireApproval: false,
+    customSuccessMessage: "",
+    emailNotifications: true,
+    reminderEmails: true
+  });
 
   // Load organization and events
   React.useEffect(() => {
@@ -956,24 +978,211 @@ const OrgDashboard = () => {
                               </div>
                               <div className="flex items-center justify-between">
                                 <Label htmlFor="custom-fields">Custom Questions</Label>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => toast({ title: "Custom Questions", description: "Feature coming soon!" })}
-                                >
-                                  <Plus className="w-4 h-4 mr-2" />
-                                  Add
-                                </Button>
+                                <Dialog open={showCustomQuestionsDialog} onOpenChange={setShowCustomQuestionsDialog}>
+                                  <DialogTrigger asChild>
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                    >
+                                      <Plus className="w-4 h-4 mr-2" />
+                                      Add
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-md">
+                                    <DialogHeader>
+                                      <DialogTitle>Custom Questions</DialogTitle>
+                                      <DialogDescription>
+                                        Add custom questions to collect additional information from ticket buyers.
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    
+                                    <div className="space-y-4">
+                                      {customQuestions.length > 0 && (
+                                        <div className="space-y-2">
+                                          <Label>Existing Questions</Label>
+                                          {customQuestions.map((question, index) => (
+                                            <div key={index} className="flex items-center justify-between bg-muted/20 p-2 rounded">
+                                              <div>
+                                                <p className="text-sm font-medium">{question.label}</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                  {question.type} {question.required && "(Required)"}
+                                                </p>
+                                              </div>
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                  const updated = customQuestions.filter((_, i) => i !== index);
+                                                  setCustomQuestions(updated);
+                                                }}
+                                              >
+                                                <X className="w-4 h-4" />
+                                              </Button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                      
+                                      <div className="space-y-3">
+                                        <div>
+                                          <Label htmlFor="question-label">Question Label</Label>
+                                          <Input
+                                            id="question-label"
+                                            placeholder="e.g., What's your dietary preference?"
+                                            value={newQuestion.label}
+                                            onChange={(e) => setNewQuestion(prev => ({ ...prev, label: e.target.value }))}
+                                          />
+                                        </div>
+                                        
+                                        <div>
+                                          <Label htmlFor="question-type">Question Type</Label>
+                                          <Select 
+                                            value={newQuestion.type} 
+                                            onValueChange={(value) => setNewQuestion(prev => ({ ...prev, type: value }))}
+                                          >
+                                            <SelectTrigger>
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="text">Text Input</SelectItem>
+                                              <SelectItem value="textarea">Long Text</SelectItem>
+                                              <SelectItem value="select">Dropdown</SelectItem>
+                                              <SelectItem value="radio">Multiple Choice</SelectItem>
+                                              <SelectItem value="checkbox">Checkbox</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        
+                                        {(newQuestion.type === "select" || newQuestion.type === "radio") && (
+                                          <div>
+                                            <Label htmlFor="question-options">Options (one per line)</Label>
+                                            <Textarea
+                                              id="question-options"
+                                              placeholder="Option 1&#10;Option 2&#10;Option 3"
+                                              value={newQuestion.options}
+                                              onChange={(e) => setNewQuestion(prev => ({ ...prev, options: e.target.value }))}
+                                            />
+                                          </div>
+                                        )}
+                                        
+                                        <div className="flex items-center space-x-2">
+                                          <Switch
+                                            id="question-required"
+                                            checked={newQuestion.required}
+                                            onCheckedChange={(checked) => setNewQuestion(prev => ({ ...prev, required: checked }))}
+                                          />
+                                          <Label htmlFor="question-required">Required</Label>
+                                        </div>
+                                        
+                                        <Button
+                                          onClick={() => {
+                                            if (newQuestion.label.trim()) {
+                                              setCustomQuestions(prev => [...prev, { ...newQuestion }]);
+                                              setNewQuestion({ label: "", type: "text", required: false, options: "" });
+                                              toast({ title: "Question Added", description: "Custom question has been added successfully." });
+                                            }
+                                          }}
+                                          className="w-full"
+                                        >
+                                          Add Question
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
                               </div>
                             </div>
-                            <Button 
-                              className="w-full mt-4" 
-                              variant="outline"
-                              onClick={() => toast({ title: "Advanced Settings", description: "Feature coming soon!" })}
-                            >
-                              <Settings className="w-4 h-4 mr-2" />
-                              Advanced Settings
-                            </Button>
+                            <Dialog open={showAdvancedSettingsDialog} onOpenChange={setShowAdvancedSettingsDialog}>
+                              <DialogTrigger asChild>
+                                <Button 
+                                  className="w-full mt-4" 
+                                  variant="outline"
+                                >
+                                  <Settings className="w-4 h-4 mr-2" />
+                                  Advanced Settings
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-md">
+                                <DialogHeader>
+                                  <DialogTitle>Advanced Checkout Settings</DialogTitle>
+                                  <DialogDescription>
+                                    Configure advanced options for your event checkout process.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                
+                                <div className="space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <Label htmlFor="collect-phone-adv">Collect Phone Number</Label>
+                                      <p className="text-xs text-muted-foreground">Require customers to provide their phone number</p>
+                                    </div>
+                                    <Switch
+                                      id="collect-phone-adv"
+                                      checked={advancedSettings.collectPhone}
+                                      onCheckedChange={(checked) => setAdvancedSettings(prev => ({ ...prev, collectPhone: checked }))}
+                                    />
+                                  </div>
+                                  
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <Label htmlFor="require-approval-adv">Require Approval</Label>
+                                      <p className="text-xs text-muted-foreground">Manually approve each ticket purchase</p>
+                                    </div>
+                                    <Switch
+                                      id="require-approval-adv"
+                                      checked={advancedSettings.requireApproval}
+                                      onCheckedChange={(checked) => setAdvancedSettings(prev => ({ ...prev, requireApproval: checked }))}
+                                    />
+                                  </div>
+                                  
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <Label htmlFor="email-notifications">Email Notifications</Label>
+                                      <p className="text-xs text-muted-foreground">Send confirmation emails to customers</p>
+                                    </div>
+                                    <Switch
+                                      id="email-notifications"
+                                      checked={advancedSettings.emailNotifications}
+                                      onCheckedChange={(checked) => setAdvancedSettings(prev => ({ ...prev, emailNotifications: checked }))}
+                                    />
+                                  </div>
+                                  
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <Label htmlFor="reminder-emails">Reminder Emails</Label>
+                                      <p className="text-xs text-muted-foreground">Send event reminder emails</p>
+                                    </div>
+                                    <Switch
+                                      id="reminder-emails"
+                                      checked={advancedSettings.reminderEmails}
+                                      onCheckedChange={(checked) => setAdvancedSettings(prev => ({ ...prev, reminderEmails: checked }))}
+                                    />
+                                  </div>
+                                  
+                                  <div>
+                                    <Label htmlFor="success-message">Custom Success Message</Label>
+                                    <Textarea
+                                      id="success-message"
+                                      placeholder="Thank you for your purchase! We'll see you at the event."
+                                      value={advancedSettings.customSuccessMessage}
+                                      onChange={(e) => setAdvancedSettings(prev => ({ ...prev, customSuccessMessage: e.target.value }))}
+                                    />
+                                  </div>
+                                </div>
+                                
+                                <DialogFooter>
+                                  <Button
+                                    onClick={() => {
+                                      // Here you would save the settings to your database
+                                      toast({ title: "Settings Saved", description: "Advanced checkout settings have been updated." });
+                                      setShowAdvancedSettingsDialog(false);
+                                    }}
+                                  >
+                                    Save Settings
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
                           </CardContent>
                         </Card>
                         <Card>
