@@ -283,6 +283,7 @@ export type Database = {
           event_date: string
           featured_image_url: string | null
           id: string
+          logo_url: string | null
           name: string
           organization_id: string
           requires_approval: boolean | null
@@ -297,6 +298,7 @@ export type Database = {
           event_date: string
           featured_image_url?: string | null
           id?: string
+          logo_url?: string | null
           name: string
           organization_id: string
           requires_approval?: boolean | null
@@ -311,6 +313,7 @@ export type Database = {
           event_date?: string
           featured_image_url?: string | null
           id?: string
+          logo_url?: string | null
           name?: string
           organization_id?: string
           requires_approval?: boolean | null

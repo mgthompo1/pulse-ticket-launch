@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import AIEventGenerator from "@/components/AIEventGenerator";
 import AIChatbot from "@/components/AIChatbot";
 import BillingDashboard from "@/components/BillingDashboard";
+import { EventLogoUploader } from "@/components/events/EventLogoUploader";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -918,7 +919,23 @@ const OrgDashboard = () => {
                       </Card>
                     </div>
 
-                    {/* Widget Integration */}
+                    {/* Event Logo Management */}
+                    <div className="space-y-4">
+                      <EventLogoUploader 
+                        eventId={selectedEvent.id}
+                        currentLogoUrl={selectedEvent.logo_url}
+                        onLogoChange={(logoUrl) => {
+                          setEvents(prevEvents => 
+                            prevEvents.map(event => 
+                              event.id === selectedEvent.id 
+                                ? { ...event, logo_url: logoUrl }
+                                : event
+                            )
+                          );
+                          setSelectedEvent(prev => prev ? { ...prev, logo_url: logoUrl } : null);
+                        }}
+                      />
+                    </div>
                     <div>
                       <h3 className="text-lg font-semibold mb-4">Ticketing Widget</h3>
                       <Card>

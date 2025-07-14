@@ -57,7 +57,9 @@ const TicketWidget = () => {
             windcave_username,
             windcave_api_key,
             windcave_endpoint,
-            apple_pay_merchant_id
+            apple_pay_merchant_id,
+            currency,
+            logo_url
           )
         `)
         .eq("id", eventId)
@@ -571,8 +573,24 @@ const TicketWidget = () => {
           <Card className="overflow-hidden">
             <div className="bg-gradient-to-r from-primary/10 to-accent/10 p-6">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div>
-                  <h1 className="text-3xl lg:text-4xl font-bold mb-2">{eventData.name}</h1>
+                <div className="flex-1">
+                  {/* Logo and Event Title */}
+                  <div className="flex items-center gap-4 mb-4">
+                    {eventData.logo_url && (
+                      <img 
+                        src={eventData.logo_url} 
+                        alt={`${eventData.name} logo`}
+                        className="w-16 h-16 object-contain rounded-lg bg-background/50 p-2"
+                      />
+                    )}
+                    <div>
+                      <h1 className="text-3xl lg:text-4xl font-bold">{eventData.name}</h1>
+                      <p className="text-muted-foreground text-sm">
+                        by {eventData.organizations?.name}
+                      </p>
+                    </div>
+                  </div>
+                  
                   <p className="text-muted-foreground text-lg mb-4">{eventData.description}</p>
                   <div className="flex flex-wrap gap-4 text-sm">
                     <div className="flex items-center gap-2">
