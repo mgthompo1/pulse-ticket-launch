@@ -67,11 +67,11 @@ const Ticket2LIVE = () => {
   const [paymentMethod, setPaymentMethod] = useState<"stripe_terminal" | "windcave_hit" | "cash">("stripe_terminal");
   const [hitTerminalState, setHitTerminalState] = useState<{
     processing: boolean;
-    transactionId: string | null;
+    txnRef: string | null;
     message: string;
   }>({
     processing: false,
-    transactionId: null,
+    txnRef: null,
     message: ""
   });
   
@@ -529,7 +529,7 @@ const Ticket2LIVE = () => {
       if (data.success) {
         setHitTerminalState(prev => ({ 
           ...prev, 
-          transactionId: data.transactionId,
+          txnRef: data.txnRef,
           message: data.terminalDisplay || "Present card to terminal"
         }));
 
@@ -545,6 +545,7 @@ const Ticket2LIVE = () => {
               body: {
                 eventId,
                 stationId: organizationConfig.windcave_station_id,
+                txnRef: data.txnRef,
                 action: "status"
               }
             });
@@ -597,20 +598,21 @@ const Ticket2LIVE = () => {
   };
 
   const cancelHITPayment = async () => {
-    if (!hitTerminalState.transactionId) return;
+    if (!hitTerminalState.txnRef) return;
 
     try {
       await supabase.functions.invoke("windcave-hit-terminal", {
         body: {
           eventId,
           stationId: organizationConfig.windcave_station_id,
+          txnRef: hitTerminalState.txnRef,
           action: "cancel"
         }
       });
 
       setHitTerminalState({
         processing: false,
-        transactionId: null,
+        txnRef: null,
         message: ""
       });
 

@@ -25,7 +25,7 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { eventId, items, customerInfo, stationId, action = "purchase" } = await req.json();
+    const { eventId, items, customerInfo, stationId, action = "purchase", txnRef } = await req.json();
     logStep("Processing HIT terminal request", { eventId, action, stationId, itemCount: items?.length });
 
     // Validate required parameters
@@ -73,47 +73,51 @@ serve(async (req) => {
 
     // Determine API endpoint based on environment
     const baseUrl = org.windcave_endpoint === "SEC" 
-      ? "https://sec.windcave.com/api/v1/hit"
-      : "https://uat.windcave.com/api/v1/hit";
+      ? "https://sec.windcave.com/hit/pos.aspx"
+      : "https://uat.windcave.com/hit/pos.aspx";
 
-    // Create HIT terminal transaction request
-    const hitRequest = {
-      username: org.windcave_hit_username,
-      password: org.windcave_hit_key,
-      deviceId: terminalStationId, // Windcave API uses 'deviceId' not 'stationId'
-      transactionType: "Purchase",
-      amount: totalAmount.toFixed(2),
-      currency: "NZD",
-      reference: `EVENT-${eventId}-${Date.now()}`,
-      receiptEmail: customerInfo.email,
-      merchantReference: `${event.name} - ${customerInfo.name}`,
-      enableTip: false,
-      timeout: 120 // 2 minutes timeout
-    };
+    // Create HIT terminal transaction request as XML
+    const txnRef = `TXN-${eventId}-${Date.now()}`;
+    const hitRequestXml = `<?xml version="1.0" encoding="utf-8"?>
+<Pxr user="${org.windcave_hit_username}" key="${org.windcave_hit_key}">
+  <Station>${terminalStationId}</Station>
+  <Amount>${totalAmount.toFixed(2)}</Amount>
+  <Cur>NZD</Cur>
+  <TxnType>Purchase</TxnType>
+  <TxnRef>${txnRef}</TxnRef>
+  <DeviceId>POS-${terminalStationId}</DeviceId>
+  <PosName>Ticket2LIVE</PosName>
+  <PosVersion>1.0.0</PosVersion>
+  <VendorId>Lovable</VendorId>
+  <MRef>${event.name} - ${customerInfo.name}</MRef>
+</Pxr>`;
 
     logStep("Sending HIT terminal request", { 
       baseUrl, 
       deviceId: terminalStationId, 
-      amount: hitRequest.amount,
-      reference: hitRequest.reference 
+      amount: totalAmount.toFixed(2),
+      txnRef: txnRef
     });
 
     // Make request to Windcave HIT API
-    const response = await fetch(`${baseUrl}/transactions`, {
+    const response = await fetch(baseUrl, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
+        "Content-Type": "text/xml; charset=utf-8",
+        "Accept": "text/xml"
       },
-      body: JSON.stringify(hitRequest)
+      body: hitRequestXml
     });
 
-    const responseData = await response.json();
-    logStep("Windcave HIT response", { status: response.status, data: responseData });
+    const responseText = await response.text();
+    logStep("Windcave HIT response", { status: response.status, responseText });
 
     if (!response.ok) {
-      throw new Error(`Windcave HIT API error: ${responseData.message || response.statusText}`);
+      throw new Error(`Windcave HIT API error: Status ${response.status} - ${responseText}`);
     }
+
+    // Parse XML response (basic parsing for demo)
+    const responseData = { raw: responseText };
 
     // Handle different response types based on action
     if (action === "purchase") {
@@ -161,26 +165,42 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({
         success: true,
-        transactionId: responseData.transactionId,
+        txnRef: txnRef,
         orderId: order.id,
         amount: totalAmount,
-        status: responseData.status || "pending",
+        status: "initiated",
         message: "HIT terminal transaction initiated successfully",
-        terminalDisplay: responseData.terminalDisplay || "Present card to terminal"
+        terminalDisplay: "Present card to terminal",
+        rawResponse: responseText
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     } else if (action === "status") {
+      // For status check, create XML request for status
+      const statusXml = `<?xml version="1.0" encoding="utf-8"?>
+<Pxr user="${org.windcave_hit_username}" key="${org.windcave_hit_key}">
+  <Station>${terminalStationId}</Station>
+  <TxnType>Status</TxnType>
+  <TxnRef>${txnRef || stationId}</TxnRef>
+</Pxr>`;
+
+      const statusResponse = await fetch(baseUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/xml; charset=utf-8",
+          "Accept": "text/xml"
+        },
+        body: statusXml
+      });
+
+      const statusText = await statusResponse.text();
+      
       // Status check request
       return new Response(JSON.stringify({
         success: true,
-        transactionId: responseData.transactionId,
-        status: responseData.status,
-        amount: responseData.amount,
-        approvalCode: responseData.approvalCode,
-        cardType: responseData.cardType,
-        message: responseData.message
+        rawResponse: statusText,
+        status: "processing"
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -198,7 +218,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      data: responseData
+      rawResponse: responseText
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
