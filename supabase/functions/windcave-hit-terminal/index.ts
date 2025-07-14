@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -25,8 +26,8 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { eventId, items, customerInfo, stationId, action = "purchase", txnRef } = await req.json();
-    logStep("Processing HIT terminal request", { eventId, action, stationId, itemCount: items?.length });
+    const { eventId, items, customerInfo, action = "purchase", txnRef } = await req.json();
+    logStep("Processing HIT terminal request", { eventId, action, itemCount: items?.length });
 
     // Validate required parameters
     if (!eventId || !items || !customerInfo) {
@@ -43,7 +44,8 @@ serve(async (req) => {
           windcave_hit_key,
           windcave_endpoint,
           windcave_enabled,
-          windcave_station_id
+          windcave_station_id,
+          currency
         )
       `)
       .eq("id", eventId)
@@ -58,18 +60,20 @@ serve(async (req) => {
       throw new Error("Windcave HIT terminal not configured for this organization");
     }
 
-    // Use organization's station ID if not provided in request
-    const terminalStationId = stationId || org.windcave_station_id;
+    const terminalStationId = org.windcave_station_id;
     if (!terminalStationId) {
       throw new Error("Terminal station ID not configured for this organization");
     }
+
+    // Use organization's configured currency
+    const currency = org.currency || 'NZD';
 
     // Calculate total amount
     const totalAmount = items.reduce((sum: number, item: any) => {
       return sum + (item.quantity * item.price);
     }, 0);
 
-    logStep("Calculated total amount", { totalAmount });
+    logStep("Calculated total amount", { totalAmount, currency });
 
     // Determine API endpoint based on environment
     const baseUrl = org.windcave_endpoint === "SEC" 
@@ -77,14 +81,14 @@ serve(async (req) => {
       : "https://uat.windcave.com/hit/pos.aspx";
 
     // Create HIT terminal transaction request as XML
-    const txnRef = `TXN-${eventId}-${Date.now()}`;
+    const transactionRef = txnRef || `TXN-${eventId}-${Date.now()}`;
     const hitRequestXml = `<?xml version="1.0" encoding="utf-8"?>
 <Pxr user="${org.windcave_hit_username}" key="${org.windcave_hit_key}">
   <Station>${terminalStationId}</Station>
   <Amount>${totalAmount.toFixed(2)}</Amount>
-  <Cur>NZD</Cur>
+  <Cur>${currency}</Cur>
   <TxnType>Purchase</TxnType>
-  <TxnRef>${txnRef}</TxnRef>
+  <TxnRef>${transactionRef}</TxnRef>
   <DeviceId>POS-${terminalStationId}</DeviceId>
   <PosName>Ticket2LIVE</PosName>
   <PosVersion>1.0.0</PosVersion>
@@ -96,7 +100,8 @@ serve(async (req) => {
       baseUrl, 
       deviceId: terminalStationId, 
       amount: totalAmount.toFixed(2),
-      txnRef: txnRef
+      currency: currency,
+      txnRef: transactionRef
     });
 
     // Make request to Windcave HIT API
@@ -165,9 +170,10 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({
         success: true,
-        txnRef: txnRef,
+        txnRef: transactionRef,
         orderId: order.id,
         amount: totalAmount,
+        currency: currency,
         status: "initiated",
         message: "HIT terminal transaction initiated successfully",
         terminalDisplay: "Present card to terminal",
@@ -182,7 +188,7 @@ serve(async (req) => {
 <Pxr user="${org.windcave_hit_username}" key="${org.windcave_hit_key}">
   <Station>${terminalStationId}</Station>
   <TxnType>Status</TxnType>
-  <TxnRef>${txnRef || stationId}</TxnRef>
+  <TxnRef>${txnRef || terminalStationId}</TxnRef>
 </Pxr>`;
 
       const statusResponse = await fetch(baseUrl, {
