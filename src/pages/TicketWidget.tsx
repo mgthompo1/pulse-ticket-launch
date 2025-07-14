@@ -265,6 +265,10 @@ const TicketWidget = () => {
             
             // Extract session ID from links for completion
             const sessionId = links[0]?.href?.split('/').pop();
+            console.log("=== DEBUG INFO ===");
+            console.log("Full link:", links[0]?.href);
+            console.log("Extracted sessionId:", sessionId);
+            console.log("Event ID:", eventData?.id);
             
             if (sessionId && eventData) {
               toast({
@@ -282,8 +286,15 @@ const TicketWidget = () => {
                 });
 
                 if (error) {
+                  console.error("=== WINDCAVE DROPIN SUCCESS ERROR ===");
+                  console.error("Full error object:", error);
+                  console.error("Error message:", error.message);
+                  console.error("Error details:", error.details);
                   throw error;
                 }
+
+                console.log("=== WINDCAVE DROPIN SUCCESS DATA ===");
+                console.log("Response data:", data);
 
                 toast({
                   title: "Order Complete!",
@@ -296,7 +307,11 @@ const TicketWidget = () => {
                 }, 1500);
                 
               } catch (error) {
+                console.error("=== COMPLETE ERROR DETAILS ===");
                 console.error("Error finalizing order:", error);
+                console.error("Error type:", typeof error);
+                console.error("Error constructor:", error?.constructor?.name);
+                console.error("Error stack:", error?.stack);
                 toast({
                   title: "Payment Processed",
                   description: "Payment successful but there was an issue finalizing your order. Please contact support.",

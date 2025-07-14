@@ -32,16 +32,42 @@ serve(async (req) => {
       throw new Error("Missing required parameters: sessionId and eventId are required");
     }
 
-    // Find the order by session ID (stored in stripe_session_id field for compatibility)
-    const { data: order, error: orderError } = await supabaseClient
+    // Try multiple approaches to find the order since sessionId format might vary
+    let order = null;
+    let orderError = null;
+
+    // First try: exact sessionId match
+    const { data: order1, error: error1 } = await supabaseClient
       .from("orders")
       .select("*")
       .eq("stripe_session_id", sessionId)
       .eq("event_id", eventId)
-      .single();
+      .maybeSingle();
 
-    if (orderError || !order) {
-      logStep("Order not found", { sessionId, eventId, orderError });
+    if (order1) {
+      order = order1;
+    } else {
+      // Second try: check if sessionId is a URL and extract the last part
+      const sessionIdPart = sessionId.includes('/') ? sessionId.split('/').pop() : sessionId;
+      const { data: order2, error: error2 } = await supabaseClient
+        .from("orders")
+        .select("*")
+        .eq("stripe_session_id", sessionIdPart)
+        .eq("event_id", eventId)
+        .maybeSingle();
+      
+      order = order2;
+      orderError = error2;
+    }
+
+    if (!order) {
+      logStep("Order not found with any sessionId variation", { 
+        originalSessionId: sessionId, 
+        sessionIdPart: sessionId.includes('/') ? sessionId.split('/').pop() : sessionId,
+        eventId, 
+        error1, 
+        orderError 
+      });
       throw new Error("Order not found for this session");
     }
 
