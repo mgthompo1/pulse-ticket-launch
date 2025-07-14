@@ -542,76 +542,85 @@ const OrgDashboard = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b bg-gradient-to-r from-primary/5 to-secondary/5">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
+        <div className="container mx-auto px-4 py-4 md:py-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                 Organization Dashboard
               </h1>
-              <p className="text-muted-foreground mt-2">Manage your events and ticketing platform</p>
+              <p className="text-muted-foreground mt-1 md:mt-2 text-sm md:text-base">Manage your events and ticketing platform</p>
             </div>
-            <div className="flex items-center gap-4">
-              <Button onClick={handleCreateEventClick} className="gradient-primary hover-scale">
+            <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+              <Button onClick={handleCreateEventClick} className="gradient-primary hover-scale flex-1 sm:flex-none" size="sm">
                 <Plus className="w-4 h-4 mr-2" />
-                Create Event
+                <span className="hidden sm:inline">Create Event</span>
+                <span className="sm:hidden">Create</span>
               </Button>
               <Button 
                 variant="outline" 
                 onClick={handleSignOut}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 flex-1 sm:flex-none"
+                size="sm"
               >
                 <LogOut className="w-4 h-4" />
-                Sign Out
+                <span className="hidden sm:inline">Sign Out</span>
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-10 lg:w-fit">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="events" className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Events
-            </TabsTrigger>
-            <TabsTrigger value="event-details" className="flex items-center gap-2" disabled={!selectedEvent}>
-              <Users className="w-4 h-4" />
-              Event Details
-            </TabsTrigger>
-            <TabsTrigger value="ai-tools" className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4" />
-              AI Tools
-            </TabsTrigger>
-            <TabsTrigger value="payments" className="flex items-center gap-2">
-              <CreditCard className="w-4 h-4" />
-              Payments
-            </TabsTrigger>
-            <TabsTrigger value="design" className="flex items-center gap-2">
-              <Palette className="w-4 h-4" />
-              Design
-            </TabsTrigger>
-            <TabsTrigger value="marketing" className="flex items-center gap-2">
-              <Mail className="w-4 h-4" />
-              Marketing
-            </TabsTrigger>
-            <TabsTrigger value="billing" className="flex items-center gap-2">
-              <CreditCard className="w-4 h-4" />
-              Billing
-            </TabsTrigger>
-            <TabsTrigger value="integrations" className="flex items-center gap-2">
-              <Link className="w-4 h-4" />
-              Integrations
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              Settings
-            </TabsTrigger>
-          </TabsList>
+      <div className="container mx-auto px-4 py-4 md:py-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8">
+          <div className="overflow-x-auto">
+            <TabsList className="inline-flex h-auto p-1 bg-muted rounded-lg min-w-full">
+              <TabsTrigger value="overview" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                <BarChart3 className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Overview</span>
+              </TabsTrigger>
+              <TabsTrigger value="events" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                <Calendar className="w-3 h-3 md:w-4 md:h-4" />
+                Events
+              </TabsTrigger>
+              <TabsTrigger value="event-details" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap" disabled={!selectedEvent}>
+                <Users className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Event Details</span>
+                <span className="sm:hidden">Details</span>
+              </TabsTrigger>
+              <TabsTrigger value="ai-tools" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                <Sparkles className="w-3 h-3 md:w-4 md:h-4" />
+                AI
+              </TabsTrigger>
+              <TabsTrigger value="payments" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                <CreditCard className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Payments</span>
+                <span className="sm:hidden">Pay</span>
+              </TabsTrigger>
+              <TabsTrigger value="design" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                <Palette className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Design</span>
+              </TabsTrigger>
+              <TabsTrigger value="marketing" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                <Mail className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Marketing</span>
+                <span className="sm:hidden">Market</span>
+              </TabsTrigger>
+              <TabsTrigger value="billing" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                <CreditCard className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Billing</span>
+                <span className="sm:hidden">Bill</span>
+              </TabsTrigger>
+              <TabsTrigger value="integrations" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                <Link className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Integrations</span>
+                <span className="sm:hidden">Apps</span>
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm whitespace-nowrap">
+                <Settings className="w-3 h-3 md:w-4 md:h-4" />
+                <span className="hidden sm:inline">Settings</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
@@ -669,40 +678,46 @@ const OrgDashboard = () => {
               <CardContent>
                 <div className="space-y-4">
                   {events.map((event) => (
-                     <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                       <div className="space-y-1">
+                     <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors gap-4">
+                       <div className="space-y-1 flex-1">
                          <h3 className="font-medium">{event.name}</h3>
                          <p className="text-sm text-muted-foreground">{event.date} • {event.venue}</p>
                        </div>
-                       <div className="flex items-center gap-4">
-                         <div className="text-right">
+                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
+                         <div className="text-left sm:text-right">
                            <p className="text-sm font-medium">{event.tickets.sold}/{event.tickets.total} tickets</p>
                            <p className="text-sm text-muted-foreground">{event.revenue}</p>
                          </div>
-                         <Badge variant={event.status === "published" ? "default" : "secondary"}>
+                         <Badge variant={event.status === "published" ? "default" : "secondary"} className="w-fit">
                            {event.status}
                          </Badge>
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           onClick={() => {
-                             setSelectedEvent(event);
-                             setActiveTab("event-details");
-                             // Load ticket types when selecting an event
-                             loadTicketTypes(event.id);
-                           }}
-                         >
-                           <Users className="h-4 w-4 mr-2" />
-                           Manage
-                         </Button>
-                         <Button
-                           variant="outline"
-                           size="sm"
-                           onClick={() => window.open(`/ticket2live/${event.id}`, '_blank')}
-                         >
-                           <Monitor className="h-4 w-4 mr-2" />
-                           Ticket2LIVE
-                         </Button>
+                         <div className="flex gap-2 w-full sm:w-auto">
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => {
+                               setSelectedEvent(event);
+                               setActiveTab("event-details");
+                               // Load ticket types when selecting an event
+                               loadTicketTypes(event.id);
+                             }}
+                             className="flex-1 sm:flex-none"
+                           >
+                             <Users className="h-4 w-4 mr-2" />
+                             <span className="hidden sm:inline">Manage</span>
+                             <span className="sm:hidden">Manage</span>
+                           </Button>
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => window.open(`/ticket2live/${event.id}`, '_blank')}
+                             className="flex-1 sm:flex-none"
+                           >
+                             <Monitor className="h-4 w-4 mr-2" />
+                             <span className="hidden sm:inline">Ticket2LIVE</span>
+                             <span className="sm:hidden">Live</span>
+                           </Button>
+                         </div>
                        </div>
                      </div>
                   ))}
@@ -715,13 +730,15 @@ const OrgDashboard = () => {
           <TabsContent value="event-details" className="space-y-6">
             {selectedEvent ? (
               <Tabs defaultValue="overview" className="space-y-4">
-                <TabsList className="grid w-full grid-cols-5">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="tickets">Tickets</TabsTrigger>
-                  <TabsTrigger value="customization">Customization</TabsTrigger>
-                  <TabsTrigger value="attendees">Attendees</TabsTrigger>
-                  <TabsTrigger value="analytics">Analytics</TabsTrigger>
-                </TabsList>
+                <div className="overflow-x-auto">
+                  <TabsList className="inline-flex h-auto p-1 bg-muted rounded-lg">
+                    <TabsTrigger value="overview" className="px-3 py-2 text-xs md:text-sm whitespace-nowrap">Overview</TabsTrigger>
+                    <TabsTrigger value="tickets" className="px-3 py-2 text-xs md:text-sm whitespace-nowrap">Tickets</TabsTrigger>
+                    <TabsTrigger value="customization" className="px-3 py-2 text-xs md:text-sm whitespace-nowrap">Customization</TabsTrigger>
+                    <TabsTrigger value="attendees" className="px-3 py-2 text-xs md:text-sm whitespace-nowrap">Attendees</TabsTrigger>
+                    <TabsTrigger value="analytics" className="px-3 py-2 text-xs md:text-sm whitespace-nowrap">Analytics</TabsTrigger>
+                  </TabsList>
+                </div>
 
                 <TabsContent value="overview" className="space-y-6">
                   <Card>
@@ -742,13 +759,13 @@ const OrgDashboard = () => {
                           <Globe className="w-5 h-5" />
                           Event Widget
                         </h3>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col sm:flex-row gap-2">
                           <Input 
                             value={`${window.location.origin}/widget/${selectedEvent.id}`} 
                             readOnly 
-                            className="font-mono text-sm"
+                            className="font-mono text-sm flex-1"
                           />
-                          <Button variant="outline" onClick={() => window.open(`/widget/${selectedEvent.id}`, '_blank')}>
+                          <Button variant="outline" onClick={() => window.open(`/widget/${selectedEvent.id}`, '_blank')} className="w-full sm:w-auto">
                             View Widget
                           </Button>
                         </div>
@@ -879,30 +896,32 @@ const OrgDashboard = () => {
                     <p className="text-muted-foreground text-center py-8">No events created yet. Create your first event above!</p>
                   ) : (
                     events.map((event) => (
-                      <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <div className="space-y-1">
-                          <h3 className="font-medium">{event.name}</h3>
-                          <p className="text-sm text-muted-foreground">{event.date} • {event.venue}</p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <Badge variant={event.status === "published" ? "default" : "secondary"}>
-                            {event.status}
-                          </Badge>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedEvent(event);
-                              setActiveTab("event-details");
-                              // Load ticket types when selecting an event
-                              loadTicketTypes(event.id);
-                            }}
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Manage Event
-                          </Button>
-                        </div>
-                      </div>
+                       <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors gap-4">
+                         <div className="space-y-1 flex-1">
+                           <h3 className="font-medium">{event.name}</h3>
+                           <p className="text-sm text-muted-foreground">{event.date} • {event.venue}</p>
+                         </div>
+                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+                           <Badge variant={event.status === "published" ? "default" : "secondary"} className="w-fit">
+                             {event.status}
+                           </Badge>
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => {
+                               setSelectedEvent(event);
+                               setActiveTab("event-details");
+                               // Load ticket types when selecting an event
+                               loadTicketTypes(event.id);
+                             }}
+                             className="w-full sm:w-auto"
+                           >
+                             <Edit className="h-4 w-4 mr-2" />
+                             <span className="hidden sm:inline">Manage Event</span>
+                             <span className="sm:hidden">Manage</span>
+                           </Button>
+                         </div>
+                       </div>
                     ))
                   )}
                 </div>
