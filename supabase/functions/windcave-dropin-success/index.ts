@@ -54,18 +54,14 @@ serve(async (req) => {
 
     console.log("Found order:", order.id, "with status:", order.status);
 
-    // Just try to update the status to completed - let's see what constraint is blocking this
-    console.log("Attempting to update order status to completed...");
+    // Try to update the status to completed first, fallback to paid if needed
+    console.log("Attempting to update order status...");
     const { error: updateError } = await supabaseClient
       .from("orders")
       .update({ status: "completed" })
       .eq("id", order.id);
 
     if (updateError) {
-      console.log("CONSTRAINT ERROR:", updateError.message);
-      console.log("Full error:", JSON.stringify(updateError, null, 2));
-      
-      // Let's try with 'paid' instead
       console.log("Trying with status 'paid'...");
       const { error: paidError } = await supabaseClient
         .from("orders")
@@ -73,21 +69,61 @@ serve(async (req) => {
         .eq("id", order.id);
         
       if (paidError) {
-        console.log("PAID ERROR:", paidError.message);
         throw new Error(`Status update failed: ${updateError.message} and ${paidError.message}`);
       }
-      
       console.log("Successfully updated to 'paid' status");
     } else {
       console.log("Successfully updated to 'completed' status");
     }
 
+    // Get order items and create tickets
+    console.log("Fetching order items...");
+    const { data: orderItems, error: orderItemsError } = await supabaseClient
+      .from("order_items")
+      .select("*")
+      .eq("order_id", order.id);
+
+    if (orderItemsError) {
+      throw new Error(`Order items lookup failed: ${orderItemsError.message}`);
+    }
+
+    if (!orderItems || orderItems.length === 0) {
+      throw new Error("No order items found");
+    }
+
+    console.log("Creating tickets for", orderItems.length, "order items");
+    
+    // Create tickets for each order item
+    const ticketsToCreate = [];
+    for (const item of orderItems) {
+      for (let i = 0; i < item.quantity; i++) {
+        ticketsToCreate.push({
+          order_item_id: item.id,
+          ticket_code: `T${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          status: 'valid'
+        });
+      }
+    }
+
+    console.log("Inserting", ticketsToCreate.length, "tickets");
+    const { data: createdTickets, error: ticketError } = await supabaseClient
+      .from("tickets")
+      .insert(ticketsToCreate)
+      .select();
+
+    if (ticketError) {
+      console.log("Ticket creation error:", ticketError.message);
+      throw new Error(`Ticket creation failed: ${ticketError.message}`);
+    }
+
+    console.log("Successfully created", createdTickets?.length || 0, "tickets");
+
     return new Response(JSON.stringify({
       success: true,
-      message: "Order status updated successfully",
+      message: "Payment completed and tickets created successfully",
       orderId: order.id,
-      originalStatus: "pending",
-      newStatus: updateError ? "paid" : "completed"
+      ticketsCreated: createdTickets?.length || 0,
+      finalStatus: updateError ? "paid" : "completed"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
