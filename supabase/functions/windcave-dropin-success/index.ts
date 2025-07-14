@@ -7,30 +7,26 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  console.log("=== WINDCAVE DROPIN SUCCESS - COMPLETE VERSION ===");
+  console.log("=== WINDCAVE SUCCESS - STEP BY STEP TESTING ===");
 
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log("Reading request body...");
+    console.log("Step 1: Reading request body...");
     const requestBody = await req.json();
     const { sessionId, eventId } = requestBody;
     console.log("SessionId:", sessionId, "EventId:", eventId);
 
-    if (!sessionId || !eventId) {
-      throw new Error("Missing required parameters");
-    }
-
-    console.log("Creating Supabase client...");
+    console.log("Step 2: Creating Supabase client...");
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
 
-    console.log("Looking for order with sessionId:", sessionId);
+    console.log("Step 3: Finding order...");
     let order = null;
 
     // Try exact match first
@@ -50,7 +46,7 @@ serve(async (req) => {
       console.log("Found exact order match:", exactOrder.id);
       order = exactOrder;
     } else {
-      console.log("No exact match, using fallback to most recent pending order...");
+      console.log("No exact match, using fallback...");
       const { data: fallbackOrder, error: fallbackError } = await supabaseClient
         .from("orders")
         .select("*")
@@ -61,21 +57,28 @@ serve(async (req) => {
         .maybeSingle();
         
       if (fallbackError) {
-        throw new Error(`Fallback order lookup failed: ${fallbackError.message}`);
+        throw new Error(`Fallback failed: ${fallbackError.message}`);
       }
       
       if (!fallbackOrder) {
-        throw new Error("No pending orders found for this event");
+        throw new Error("No pending orders found");
       }
       
       console.log("Using fallback order:", fallbackOrder.id);
       order = fallbackOrder;
 
-      // Update the fallback order with correct session ID for future reference
-      await supabaseClient
+      // Update session ID
+      console.log("Step 4: Updating session ID...");
+      const { error: updateSessionError } = await supabaseClient
         .from("orders")
         .update({ windcave_session_id: sessionId })
         .eq("id", order.id);
+
+      if (updateSessionError) {
+        console.log("Error updating session ID:", updateSessionError.message);
+        throw new Error(`Session ID update failed: ${updateSessionError.message}`);
+      }
+      console.log("Session ID updated successfully");
     }
 
     // Check if already completed
@@ -91,7 +94,7 @@ serve(async (req) => {
       });
     }
 
-    console.log("Updating order status to completed...");
+    console.log("Step 5: Testing order update...");
     const { error: updateError } = await supabaseClient
       .from("orders")
       .update({ 
@@ -101,11 +104,12 @@ serve(async (req) => {
       .eq("id", order.id);
 
     if (updateError) {
-      console.log("Error updating order:", updateError.message);
-      throw new Error(`Failed to update order: ${updateError.message}`);
+      console.log("Error updating order status:", updateError.message);
+      throw new Error(`Order update failed: ${updateError.message}`);
     }
+    console.log("Order status updated to completed successfully");
 
-    console.log("Order updated successfully. Fetching order items...");
+    console.log("Step 6: Testing order items lookup...");
     const { data: orderItems, error: orderItemsError } = await supabaseClient
       .from("order_items")
       .select("*")
@@ -113,7 +117,7 @@ serve(async (req) => {
 
     if (orderItemsError) {
       console.log("Error fetching order items:", orderItemsError.message);
-      throw new Error(`Failed to fetch order items: ${orderItemsError.message}`);
+      throw new Error(`Order items lookup failed: ${orderItemsError.message}`);
     }
 
     if (!orderItems || orderItems.length === 0) {
@@ -121,35 +125,17 @@ serve(async (req) => {
       throw new Error("No order items found");
     }
 
-    console.log("Creating tickets for", orderItems.length, "order items...");
-    const tickets = [];
-    for (const item of orderItems) {
-      for (let i = 0; i < item.quantity; i++) {
-        tickets.push({
-          order_item_id: item.id,
-          ticket_code: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          status: 'valid'
-        });
-      }
-    }
-    
-    console.log("Inserting", tickets.length, "tickets...");
-    const { error: ticketsError } = await supabaseClient
-      .from("tickets")
-      .insert(tickets);
-      
-    if (ticketsError) {
-      console.log("Error creating tickets:", ticketsError.message);
-      throw new Error(`Failed to create tickets: ${ticketsError.message}`);
-    }
+    console.log("Order items found:", orderItems.length);
 
-    console.log("SUCCESS: Order completed and tickets created");
+    // STOP HERE - Don't create tickets yet, just test up to this point
+    console.log("SUCCESS: All steps up to ticket creation are working");
 
     return new Response(JSON.stringify({
       success: true,
-      message: "Payment completed successfully",
+      message: "All steps successful up to ticket creation",
       orderId: order.id,
-      ticketCount: tickets.length
+      orderItemsCount: orderItems.length,
+      note: "Stopped before ticket creation to test each step"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
@@ -157,10 +143,12 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("Function error:", error.message);
+    console.error("Error stack:", error.stack);
     
     return new Response(JSON.stringify({ 
       success: false,
-      error: error.message
+      error: error.message,
+      stack: error.stack
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
