@@ -215,6 +215,16 @@ const TicketWidget = () => {
     }
   };
 
+  // Helper function to extract session ID from various sources
+  const extractSessionId = (source?: any) => {
+    if (source?.sessionId || source?.session_id || source?.id) {
+      return source.sessionId || source.session_id || source.id;
+    }
+    // Fallback to extracting from links
+    return windcaveLinks.find(link => link.sessionId)?.sessionId || 
+           windcaveLinks[0]?.href?.split('/').pop();
+  };
+
   const initializeWindcaveDropIn = (links: any[], totalAmount: number) => {
     // Check if WindcavePayments is available
     if (typeof window !== 'undefined' && window.WindcavePayments) {
@@ -225,12 +235,6 @@ const TicketWidget = () => {
       }
 
       try {
-        // Extract session ID from links for verification
-        const sessionId = windcaveLinks.find(link => link.sessionId)?.sessionId || 
-                         windcaveLinks[0]?.href?.split('/').pop();
-        
-        console.log("Session ID for verification:", sessionId);
-
         const dropInOptions = {
           container: "windcave-drop-in",
           links: links,
@@ -259,6 +263,27 @@ const TicketWidget = () => {
             console.log("=== WINDCAVE SUCCESS CALLBACK ===");
             console.log("Success result:", result);
             console.log("Result type:", typeof result);
+            
+            // Extract session ID from result or fallback to links
+            let sessionId = result?.sessionId || result?.session_id || result?.id;
+            
+            if (!sessionId) {
+              // Fallback to extracting from links
+              sessionId = windcaveLinks.find(link => link.sessionId)?.sessionId || 
+                         windcaveLinks[0]?.href?.split('/').pop();
+            }
+            
+            console.log("Using session ID for verification:", sessionId);
+            
+            if (!sessionId) {
+              console.error("No session ID found for verification");
+              toast({
+                title: "Payment Error",
+                description: "Unable to verify payment. Please contact support.",
+                variant: "destructive"
+              });
+              return;
+            }
             
             // Show immediate success feedback
             toast({
@@ -305,7 +330,17 @@ const TicketWidget = () => {
             console.log("Status update:", status);
             
             if (status?.state === 'completed' || status?.status === 'approved') {
-              verifyPaymentStatus(sessionId);
+              // Extract session ID from status or fallback to links
+              let sessionId = status?.sessionId || status?.session_id || status?.id;
+              
+              if (!sessionId) {
+                sessionId = windcaveLinks.find(link => link.sessionId)?.sessionId || 
+                           windcaveLinks[0]?.href?.split('/').pop();
+              }
+              
+              if (sessionId) {
+                verifyPaymentStatus(sessionId);
+              }
             }
           }
         };
@@ -328,6 +363,14 @@ const TicketWidget = () => {
               console.log(`=== STATUS POLL ${pollCount}/${maxPolls} ===`);
               
               try {
+                // Extract session ID for polling
+                const sessionId = extractSessionId();
+                
+                if (!sessionId) {
+                  console.warn("No session ID available for polling");
+                  return;
+                }
+                
                 // Check with our backend first
                 const statusCheck = await verifyPaymentStatus(sessionId, false); // Silent check
                 
@@ -362,7 +405,10 @@ const TicketWidget = () => {
                   });
                   
                   setTimeout(async () => {
-                    await verifyPaymentStatus(sessionId);
+                    const finalSessionId = extractSessionId();
+                    if (finalSessionId) {
+                      await verifyPaymentStatus(finalSessionId);
+                    }
                   }, 2000);
                 }
                 
