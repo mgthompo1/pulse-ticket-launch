@@ -40,6 +40,7 @@ const OrgDashboard = () => {
     totalRevenue: 0,
     estimatedPlatformFees: 0
   });
+  const [stripeSecretKey, setStripeSecretKey] = useState("");
   const [windcaveConfig, setWindcaveConfig] = useState({
     username: "",
     apiKey: "",
@@ -269,6 +270,45 @@ const OrgDashboard = () => {
       toast({
         title: "Error",
         description: "Failed to toggle test mode",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleSaveStripeKey = async () => {
+    if (!organizationId || !stripeSecretKey) return;
+
+    try {
+      const { error } = await supabase
+        .from("organizations")
+        .update({ 
+          stripe_account_id: stripeSecretKey,
+          stripe_onboarding_complete: true 
+        })
+        .eq("id", organizationId);
+
+      if (error) {
+        console.error("Error saving Stripe key:", error);
+        toast({
+          title: "Error",
+          description: "Failed to save Stripe key",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setStripeConnected(true);
+      setStripeOnboardingComplete(true);
+      
+      toast({
+        title: "Success",
+        description: "Stripe account connected successfully!",
+      });
+    } catch (error) {
+      console.error("Error saving Stripe key:", error);
+      toast({
+        title: "Error",
+        description: "Failed to connect Stripe account",
         variant: "destructive"
       });
     }
@@ -1365,10 +1405,10 @@ const OrgDashboard = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <CreditCard className="w-5 h-5" />
-                      Stripe Account Setup
+                      Connect Your Stripe Account
                     </CardTitle>
                     <CardDescription>
-                      Connect your existing Stripe account to start accepting payments
+                      Enter your Stripe API key to start accepting payments
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -1383,16 +1423,36 @@ const OrgDashboard = () => {
                     </div>
                     
                     <div className="space-y-4">
-                      <p className="text-sm text-muted-foreground">
-                        Enter your Stripe Secret Key to connect your account. You can find this in your Stripe Dashboard under API Keys.
-                      </p>
-                      
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <h4 className="font-medium text-green-900 mb-2">✓ Ready to Accept Payments</h4>
-                        <p className="text-sm text-green-800">
-                          Your Stripe account is connected and ready to process payments.
+                      <div className="space-y-2">
+                        <Label htmlFor="stripe-secret-key">Stripe Secret Key</Label>
+                        <Input
+                          id="stripe-secret-key"
+                          type="password"
+                          placeholder="sk_live_... or sk_test_..."
+                          value={stripeSecretKey}
+                          onChange={(e) => setStripeSecretKey(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Find this in your Stripe Dashboard under Developers → API Keys
                         </p>
                       </div>
+                      
+                      <Button 
+                        onClick={handleSaveStripeKey}
+                        disabled={!stripeSecretKey || stripeSecretKey.length < 10}
+                        className="w-full gradient-primary"
+                      >
+                        Connect Stripe Account
+                      </Button>
+                      
+                      {stripeConnected && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                          <h4 className="font-medium text-green-900 mb-2">✓ Stripe Account Connected</h4>
+                          <p className="text-sm text-green-800">
+                            Your Stripe account is connected and ready to process payments.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
