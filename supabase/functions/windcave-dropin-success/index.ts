@@ -7,14 +7,14 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  console.log("=== WINDCAVE DROPIN SUCCESS - GRADUAL VERSION ===");
+  console.log("=== WINDCAVE DROPIN SUCCESS - COMPLETE VERSION ===");
 
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log("Step 1: Reading request body...");
+    console.log("Reading request body...");
     const requestBody = await req.json();
     const { sessionId, eventId } = requestBody;
     console.log("SessionId:", sessionId, "EventId:", eventId);
@@ -23,45 +23,37 @@ serve(async (req) => {
       throw new Error("Missing required parameters");
     }
 
-    console.log("Step 2: Creating Supabase client...");
+    console.log("Creating Supabase client...");
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
-    console.log("Supabase client created successfully");
 
-    console.log("Step 3: Simple database test - checking if we can query orders table...");
-    const { data: testQuery, error: testError } = await supabaseClient
-      .from("orders")
-      .select("id")
-      .limit(1);
-    
-    if (testError) {
-      console.log("Database test failed:", testError.message);
-      throw new Error(`Database test failed: ${testError.message}`);
-    }
-    console.log("Database test passed, found", testQuery?.length || 0, "orders");
+    console.log("Looking for order with sessionId:", sessionId);
+    let order = null;
 
-    console.log("Step 4: Looking for specific order...");
-    const { data: order, error: orderError } = await supabaseClient
+    // Try exact match first
+    const { data: exactOrder, error: exactError } = await supabaseClient
       .from("orders")
-      .select("id, windcave_session_id, status")
+      .select("*")
       .eq("windcave_session_id", sessionId)
       .eq("event_id", eventId)
       .maybeSingle();
 
-    console.log("Order query result - Error:", orderError?.message, "Found order:", !!order);
-
-    if (orderError) {
-      throw new Error(`Order lookup failed: ${orderError.message}`);
+    if (exactError) {
+      console.log("Error in exact order lookup:", exactError.message);
+      throw new Error(`Order lookup failed: ${exactError.message}`);
     }
 
-    if (!order) {
-      console.log("No exact match, trying fallback to most recent pending order...");
+    if (exactOrder) {
+      console.log("Found exact order match:", exactOrder.id);
+      order = exactOrder;
+    } else {
+      console.log("No exact match, using fallback to most recent pending order...");
       const { data: fallbackOrder, error: fallbackError } = await supabaseClient
         .from("orders")
-        .select("id, windcave_session_id, status")
+        .select("*")
         .eq("event_id", eventId)
         .eq("status", "pending")
         .order("created_at", { ascending: false })
@@ -77,26 +69,87 @@ serve(async (req) => {
       }
       
       console.log("Using fallback order:", fallbackOrder.id);
-      
-      // For now, just return success to test if we can get this far
+      order = fallbackOrder;
+
+      // Update the fallback order with correct session ID for future reference
+      await supabaseClient
+        .from("orders")
+        .update({ windcave_session_id: sessionId })
+        .eq("id", order.id);
+    }
+
+    // Check if already completed
+    if (order.status === 'completed') {
+      console.log("Order already completed");
       return new Response(JSON.stringify({
         success: true,
-        message: "Found fallback order, database operations work",
-        orderId: fallbackOrder.id,
-        originalSessionId: sessionId,
-        foundSessionId: fallbackOrder.windcave_session_id
+        message: "Order already completed",
+        orderId: order.id
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
 
-    console.log("Found exact order match:", order.id);
+    console.log("Updating order status to completed...");
+    const { error: updateError } = await supabaseClient
+      .from("orders")
+      .update({ 
+        status: "completed",
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", order.id);
+
+    if (updateError) {
+      console.log("Error updating order:", updateError.message);
+      throw new Error(`Failed to update order: ${updateError.message}`);
+    }
+
+    console.log("Order updated successfully. Fetching order items...");
+    const { data: orderItems, error: orderItemsError } = await supabaseClient
+      .from("order_items")
+      .select("*")
+      .eq("order_id", order.id);
+
+    if (orderItemsError) {
+      console.log("Error fetching order items:", orderItemsError.message);
+      throw new Error(`Failed to fetch order items: ${orderItemsError.message}`);
+    }
+
+    if (!orderItems || orderItems.length === 0) {
+      console.log("No order items found");
+      throw new Error("No order items found");
+    }
+
+    console.log("Creating tickets for", orderItems.length, "order items...");
+    const tickets = [];
+    for (const item of orderItems) {
+      for (let i = 0; i < item.quantity; i++) {
+        tickets.push({
+          order_item_id: item.id,
+          ticket_code: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          status: 'valid'
+        });
+      }
+    }
+    
+    console.log("Inserting", tickets.length, "tickets...");
+    const { error: ticketsError } = await supabaseClient
+      .from("tickets")
+      .insert(tickets);
+      
+    if (ticketsError) {
+      console.log("Error creating tickets:", ticketsError.message);
+      throw new Error(`Failed to create tickets: ${ticketsError.message}`);
+    }
+
+    console.log("SUCCESS: Order completed and tickets created");
+
     return new Response(JSON.stringify({
       success: true,
-      message: "Found exact order match, database operations work",
+      message: "Payment completed successfully",
       orderId: order.id,
-      status: order.status
+      ticketCount: tickets.length
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
@@ -104,12 +157,10 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("Function error:", error.message);
-    console.error("Error stack:", error.stack);
     
     return new Response(JSON.stringify({ 
       success: false,
-      error: error.message,
-      stack: error.stack
+      error: error.message
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
