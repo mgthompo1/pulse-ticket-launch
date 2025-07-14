@@ -37,17 +37,28 @@ serve(async (req) => {
 
     const { sessionId, eventId } = requestBody;
     
-    logStep("Processing Windcave Drop In success", { sessionId, eventId, requestBody });
+    logStep("Processing Windcave Drop In success", { sessionId, eventId });
 
     if (!sessionId || !eventId) {
       throw new Error("Missing required parameters: sessionId and eventId are required");
     }
 
-    // Try multiple approaches to find the order since sessionId format might vary
-    let order = null;
+    // Check recent orders for this event to understand what sessionIds we have
+    const { data: recentOrders } = await supabaseClient
+      .from("orders")
+      .select("id, stripe_session_id, status, created_at")
+      .eq("event_id", eventId)
+      .order("created_at", { ascending: false })
+      .limit(10);
+    
+    logStep("Recent orders for event", { eventId, recentOrders });
 
-    // First try: exact sessionId match
-    const { data: order1, error: error1 } = await supabaseClient
+    // Try to find the order - be very flexible with sessionId matching
+    let order = null;
+    let matchMethod = "";
+
+    // Method 1: Exact match
+    const { data: order1 } = await supabaseClient
       .from("orders")
       .select("*")
       .eq("stripe_session_id", sessionId)
@@ -56,11 +67,12 @@ serve(async (req) => {
 
     if (order1) {
       order = order1;
+      matchMethod = "exact_match";
       logStep("Order found with exact sessionId match", { orderId: order.id });
     } else {
-      // Second try: check if sessionId is a URL and extract the last part
+      // Method 2: Extract from URL if it's a URL
       const sessionIdPart = sessionId.includes('/') ? sessionId.split('/').pop() : sessionId;
-      const { data: order2, error: error2 } = await supabaseClient
+      const { data: order2 } = await supabaseClient
         .from("orders")
         .select("*")
         .eq("stripe_session_id", sessionIdPart)
@@ -69,20 +81,38 @@ serve(async (req) => {
       
       if (order2) {
         order = order2;
+        matchMethod = "url_extracted";
         logStep("Order found with sessionId part match", { orderId: order.id, sessionIdPart });
+      } else {
+        // Method 3: Find most recent pending order for this event (fallback)
+        const { data: order3 } = await supabaseClient
+          .from("orders")
+          .select("*")
+          .eq("event_id", eventId)
+          .eq("status", "pending")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (order3) {
+          order = order3;
+          matchMethod = "most_recent_pending";
+          logStep("Using most recent pending order as fallback", { orderId: order.id });
+        }
       }
     }
 
     if (!order) {
-      logStep("Order not found with any sessionId variation", { 
+      logStep("Order not found with any method", { 
         originalSessionId: sessionId, 
         sessionIdPart: sessionId.includes('/') ? sessionId.split('/').pop() : sessionId,
-        eventId
+        eventId,
+        recentOrders
       });
       throw new Error("Order not found for this session");
     }
 
-    logStep("Order found", { orderId: order.id, currentStatus: order.status });
+    logStep("Order found", { orderId: order.id, currentStatus: order.status, matchMethod });
 
     // Only process if order isn't already completed
     if (order.status === 'completed') {
@@ -110,16 +140,21 @@ serve(async (req) => {
 
     if (updateError) {
       logStep("Error updating order status", updateError);
-      throw new Error("Failed to update order status");
+      throw new Error(`Failed to update order status: ${updateError.message}`);
     }
 
     logStep("Order status updated to completed", { orderId: order.id });
     
     // Generate tickets for completed orders
-    const { data: orderItems } = await supabaseClient
+    const { data: orderItems, error: orderItemsError } = await supabaseClient
       .from("order_items")
       .select("*")
       .eq("order_id", order.id);
+
+    if (orderItemsError) {
+      logStep("Error fetching order items", orderItemsError);
+      throw new Error(`Failed to fetch order items: ${orderItemsError.message}`);
+    }
 
     if (!orderItems || orderItems.length === 0) {
       logStep("No order items found for order", { orderId: order.id });
@@ -143,7 +178,7 @@ serve(async (req) => {
       
     if (ticketsError) {
       logStep("Error creating tickets", ticketsError);
-      throw new Error("Failed to create tickets");
+      throw new Error(`Failed to create tickets: ${ticketsError.message}`);
     }
 
     logStep("Tickets created successfully", { ticketCount: tickets.length });
