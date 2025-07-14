@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { CreditCard, Users, CheckCircle, Printer, Plus, Search, ShoppingCart } from "lucide-react";
+import { CreditCard, Users, CheckCircle, Printer, Plus, Search, ShoppingCart, BarChart3, TrendingUp, DollarSign, Package } from "lucide-react";
 
 interface GuestStatus {
   ticket_id: string;
@@ -66,12 +66,23 @@ const Ticket2LIVE = () => {
   // Payment state
   const [paymentMethod, setPaymentMethod] = useState<"stripe_terminal" | "cash">("stripe_terminal");
 
+  // Analytics state
+  const [analytics, setAnalytics] = useState({
+    totalRevenue: 0,
+    totalTransactions: 0,
+    popularItems: [],
+    dailySales: [],
+    categoryBreakdown: [],
+    recentTransactions: []
+  });
+
   // Load event data
   useEffect(() => {
     if (eventId) {
       loadGuests();
       loadConcessionItems();
       loadTicketTypes();
+      loadAnalytics();
     }
   }, [eventId]);
 
@@ -115,6 +126,82 @@ const Ticket2LIVE = () => {
       setTicketTypes(data || []);
     } catch (error) {
       console.error("Error loading ticket types:", error);
+    }
+  };
+
+  const loadAnalytics = async () => {
+    try {
+      const { data: transactions, error } = await supabase
+        .from("pos_transactions")
+        .select("*")
+        .eq("event_id", eventId)
+        .eq("status", "completed");
+
+      if (error) throw error;
+
+      const transactionsData = transactions || [];
+      
+      // Calculate total revenue
+      const totalRevenue = transactionsData.reduce((sum, t) => sum + (typeof t.total_amount === 'string' ? parseFloat(t.total_amount) : t.total_amount), 0);
+      
+      // Get popular items from transaction items
+      const itemCounts: { [key: string]: { name: string; count: number; revenue: number } } = {};
+      
+      transactionsData.forEach(transaction => {
+        const items = Array.isArray(transaction.items) ? transaction.items : [];
+        items.forEach((item: any) => {
+          const key = item.name;
+          if (!itemCounts[key]) {
+            itemCounts[key] = { name: item.name, count: 0, revenue: 0 };
+          }
+          itemCounts[key].count += item.quantity || 1;
+          itemCounts[key].revenue += (item.price || 0) * (item.quantity || 1);
+        });
+      });
+
+      const popularItems = Object.values(itemCounts)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      // Group transactions by date for daily sales chart
+      const dailySales: { [key: string]: number } = {};
+      transactionsData.forEach(transaction => {
+        const date = new Date(transaction.created_at).toLocaleDateString();
+        const amount = typeof transaction.total_amount === 'string' ? parseFloat(transaction.total_amount) : transaction.total_amount;
+        dailySales[date] = (dailySales[date] || 0) + amount;
+      });
+
+      const dailySalesArray = Object.entries(dailySales).map(([date, amount]) => ({
+        date,
+        amount
+      }));
+
+      // Category breakdown
+      const categoryBreakdown: { [key: string]: number } = {};
+      transactionsData.forEach(transaction => {
+        const items = Array.isArray(transaction.items) ? transaction.items : [];
+        items.forEach((item: any) => {
+          const category = item.category || item.type || 'other';
+          const revenue = (item.price || 0) * (item.quantity || 1);
+          categoryBreakdown[category] = (categoryBreakdown[category] || 0) + revenue;
+        });
+      });
+
+      const categoryBreakdownArray = Object.entries(categoryBreakdown).map(([category, revenue]) => ({
+        category: category.charAt(0).toUpperCase() + category.slice(1),
+        revenue
+      }));
+
+      setAnalytics({
+        totalRevenue,
+        totalTransactions: transactionsData.length,
+        popularItems,
+        dailySales: dailySalesArray,
+        categoryBreakdown: categoryBreakdownArray,
+        recentTransactions: transactionsData.slice(0, 5)
+      });
+    } catch (error) {
+      console.error("Error loading analytics:", error);
     }
   };
 
@@ -405,11 +492,12 @@ const Ticket2LIVE = () => {
       </div>
 
       <Tabs defaultValue="checkin" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="checkin">Check-In</TabsTrigger>
           <TabsTrigger value="pos">Point of Sale</TabsTrigger>
           <TabsTrigger value="guests">Guest Status</TabsTrigger>
           <TabsTrigger value="concessions">Manage Items</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
         {/* Check-In Tab */}
@@ -805,6 +893,216 @@ const Ticket2LIVE = () => {
                 )}
               </CardContent>
             </Card>
+          </div>
+        </TabsContent>
+
+        {/* Analytics Tab */}
+        <TabsContent value="analytics">
+          <div className="space-y-6">
+            {/* Revenue Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">${analytics.totalRevenue.toFixed(2)}</div>
+                  <p className="text-xs text-muted-foreground">From all POS sales</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
+                  <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{analytics.totalTransactions}</div>
+                  <p className="text-xs text-muted-foreground">Completed sales</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Avg. Transaction</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    ${analytics.totalTransactions > 0 ? (analytics.totalRevenue / analytics.totalTransactions).toFixed(2) : '0.00'}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Per transaction</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Items Sold</CardTitle>
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {analytics.popularItems.reduce((sum, item) => sum + item.count, 0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Total items</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Popular Items */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top Selling Items</CardTitle>
+                  <CardDescription>Most popular items by quantity sold</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {analytics.popularItems.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No sales data yet</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {analytics.popularItems.map((item, index) => (
+                        <div key={index} className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold">
+                              {index + 1}
+                            </div>
+                            <div>
+                              <p className="font-medium">{item.name}</p>
+                              <p className="text-sm text-muted-foreground">{item.count} sold</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold">${item.revenue.toFixed(2)}</p>
+                            <p className="text-sm text-muted-foreground">revenue</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Category Breakdown */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Revenue by Category</CardTitle>
+                  <CardDescription>Sales breakdown by item categories</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {analytics.categoryBreakdown.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No category data yet</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {analytics.categoryBreakdown.map((category, index) => (
+                        <div key={index} className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">{category.category}</span>
+                            <span className="font-bold">${category.revenue.toFixed(2)}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-primary h-2 rounded-full" 
+                              style={{ 
+                                width: `${analytics.totalRevenue > 0 ? (category.revenue / analytics.totalRevenue) * 100 : 0}%` 
+                              }}
+                            ></div>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {analytics.totalRevenue > 0 ? ((category.revenue / analytics.totalRevenue) * 100).toFixed(1) : 0}% of total revenue
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Daily Sales Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Daily Sales Trend</CardTitle>
+                <CardDescription>Revenue performance over time</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {analytics.dailySales.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No daily sales data yet</p>
+                ) : (
+                  <div className="space-y-4">
+                    {analytics.dailySales.map((day, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <span className="text-sm font-medium">{day.date}</span>
+                        <div className="flex items-center gap-3">
+                          <div className="w-32 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-green-500 h-2 rounded-full" 
+                              style={{ 
+                                width: `${Math.max(10, (day.amount / Math.max(...analytics.dailySales.map(d => d.amount))) * 100)}%` 
+                              }}
+                            ></div>
+                          </div>
+                          <span className="font-bold min-w-[80px] text-right">${day.amount.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent Transactions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Transactions</CardTitle>
+                <CardDescription>Latest POS sales activity</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {analytics.recentTransactions.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">No recent transactions</p>
+                ) : (
+                  <div className="space-y-4">
+                    {analytics.recentTransactions.map((transaction) => (
+                      <div key={transaction.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                              <ShoppingCart className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="font-medium">
+                                {transaction.customer_name || 'Anonymous Customer'}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(transaction.created_at).toLocaleString()}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {(transaction.items || []).length} items • {transaction.payment_method}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">${parseFloat(transaction.total_amount).toFixed(2)}</p>
+                          <Badge variant={transaction.status === 'completed' ? 'default' : 'secondary'}>
+                            {transaction.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Refresh Analytics */}
+            <div className="flex justify-center">
+              <Button onClick={loadAnalytics} variant="outline">
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Refresh Analytics
+              </Button>
+            </div>
           </div>
         </TabsContent>
       </Tabs>
