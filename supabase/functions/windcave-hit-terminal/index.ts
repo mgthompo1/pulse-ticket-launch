@@ -29,8 +29,8 @@ serve(async (req) => {
     logStep("Processing HIT terminal request", { eventId, action, stationId, itemCount: items?.length });
 
     // Validate required parameters
-    if (!eventId || !items || !customerInfo || !stationId) {
-      throw new Error("Missing required parameters: eventId, items, customerInfo, and stationId are required");
+    if (!eventId || !items || !customerInfo) {
+      throw new Error("Missing required parameters: eventId, items, and customerInfo are required");
     }
 
     // Get event and organization details
@@ -42,7 +42,8 @@ serve(async (req) => {
           windcave_hit_username,
           windcave_hit_key,
           windcave_endpoint,
-          windcave_enabled
+          windcave_enabled,
+          windcave_station_id
         )
       `)
       .eq("id", eventId)
@@ -55,6 +56,12 @@ serve(async (req) => {
     const org = event.organizations;
     if (!org.windcave_enabled || !org.windcave_hit_username || !org.windcave_hit_key) {
       throw new Error("Windcave HIT terminal not configured for this organization");
+    }
+
+    // Use organization's station ID if not provided in request
+    const terminalStationId = stationId || org.windcave_station_id;
+    if (!terminalStationId) {
+      throw new Error("Terminal station ID not configured for this organization");
     }
 
     // Calculate total amount
@@ -73,7 +80,7 @@ serve(async (req) => {
     const hitRequest = {
       username: org.windcave_hit_username,
       password: org.windcave_hit_key,
-      stationId: stationId,
+      deviceId: terminalStationId, // Windcave API uses 'deviceId' not 'stationId'
       transactionType: "Purchase",
       amount: totalAmount.toFixed(2),
       currency: "NZD",
@@ -86,7 +93,7 @@ serve(async (req) => {
 
     logStep("Sending HIT terminal request", { 
       baseUrl, 
-      stationId, 
+      deviceId: terminalStationId, 
       amount: hitRequest.amount,
       reference: hitRequest.reference 
     });

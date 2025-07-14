@@ -68,14 +68,15 @@ const Ticket2LIVE = () => {
   const [hitTerminalState, setHitTerminalState] = useState<{
     processing: boolean;
     transactionId: string | null;
-    stationId: string;
     message: string;
   }>({
     processing: false,
     transactionId: null,
-    stationId: "",
     message: ""
   });
+  
+  // Organization configuration
+  const [organizationConfig, setOrganizationConfig] = useState<any>(null);
 
   // Analytics state
   const [analytics, setAnalytics] = useState({
@@ -94,8 +95,32 @@ const Ticket2LIVE = () => {
       loadConcessionItems();
       loadTicketTypes();
       loadAnalytics();
+      loadOrganizationConfig();
     }
   }, [eventId]);
+
+  const loadOrganizationConfig = async () => {
+    try {
+      const { data: event, error } = await supabase
+        .from("events")
+        .select(`
+          *,
+          organizations!inner(
+            windcave_hit_username,
+            windcave_hit_key,
+            windcave_station_id,
+            windcave_enabled
+          )
+        `)
+        .eq("id", eventId)
+        .single();
+
+      if (error) throw error;
+      setOrganizationConfig(event?.organizations);
+    } catch (error) {
+      console.error("Error loading organization config:", error);
+    }
+  };
 
   const loadGuests = async () => {
     try {
@@ -461,10 +486,10 @@ const Ticket2LIVE = () => {
 
   const handleWindcaveHITPayment = async () => {
     if (cart.length === 0 && ticketCart.length === 0) return;
-    if (!hitTerminalState.stationId.trim()) {
+    if (!organizationConfig?.windcave_enabled || !organizationConfig?.windcave_station_id) {
       toast({ 
-        title: "Station ID Required", 
-        description: "Please enter the terminal station ID",
+        title: "Windcave Configuration Missing", 
+        description: "Please configure Windcave HIT terminal in organization settings",
         variant: "destructive" 
       });
       return;
@@ -488,7 +513,7 @@ const Ticket2LIVE = () => {
             price: item.price
           })),
           customerInfo,
-          stationId: hitTerminalState.stationId,
+          stationId: organizationConfig.windcave_station_id,
           action: "purchase"
         },
       });
@@ -513,7 +538,7 @@ const Ticket2LIVE = () => {
             const statusCheck = await supabase.functions.invoke("windcave-hit-terminal", {
               body: {
                 eventId,
-                stationId: hitTerminalState.stationId,
+                stationId: organizationConfig.windcave_station_id,
                 action: "status"
               }
             });
@@ -572,7 +597,7 @@ const Ticket2LIVE = () => {
       await supabase.functions.invoke("windcave-hit-terminal", {
         body: {
           eventId,
-          stationId: hitTerminalState.stationId,
+          stationId: organizationConfig.windcave_station_id,
           action: "cancel"
         }
       });
@@ -580,7 +605,6 @@ const Ticket2LIVE = () => {
       setHitTerminalState({
         processing: false,
         transactionId: null,
-        stationId: hitTerminalState.stationId,
         message: ""
       });
 
@@ -865,14 +889,20 @@ const Ticket2LIVE = () => {
                       </Button>
                     ) : paymentMethod === "windcave_hit" ? (
                       <div className="space-y-3">
-                        <div className="space-y-2">
-                          <Label>Terminal Station ID</Label>
-                          <Input
-                            placeholder="Enter terminal station ID (device serial)"
-                            value={hitTerminalState.stationId}
-                            onChange={(e) => setHitTerminalState(prev => ({ ...prev, stationId: e.target.value }))}
-                          />
-                        </div>
+                        {!organizationConfig?.windcave_enabled ? (
+                          <div className="bg-yellow-50 p-4 rounded-lg">
+                            <p className="text-sm text-yellow-800">
+                              Windcave HIT terminal is not configured for this organization. 
+                              Please configure it in the organization settings.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="bg-green-50 p-3 rounded-lg">
+                            <p className="text-sm text-green-800">
+                              Terminal Station ID: <strong>{organizationConfig.windcave_station_id}</strong>
+                            </p>
+                          </div>
+                        )}
                         
                         {hitTerminalState.processing ? (
                           <div className="bg-blue-50 p-4 rounded-lg space-y-2">
@@ -893,7 +923,7 @@ const Ticket2LIVE = () => {
                         ) : (
                           <Button 
                             onClick={handleWindcaveHITPayment} 
-                            disabled={loading || !hitTerminalState.stationId.trim()} 
+                            disabled={loading || !organizationConfig?.windcave_enabled} 
                             className="w-full"
                           >
                             <CreditCard className="mr-2 h-4 w-4" />
