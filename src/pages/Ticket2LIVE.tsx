@@ -64,7 +64,18 @@ const Ticket2LIVE = () => {
   const [ticketCart, setTicketCart] = useState<any[]>([]);
   
   // Payment state
-  const [paymentMethod, setPaymentMethod] = useState<"stripe_terminal" | "cash">("stripe_terminal");
+  const [paymentMethod, setPaymentMethod] = useState<"stripe_terminal" | "windcave_hit" | "cash">("stripe_terminal");
+  const [hitTerminalState, setHitTerminalState] = useState<{
+    processing: boolean;
+    transactionId: string | null;
+    stationId: string;
+    message: string;
+  }>({
+    processing: false,
+    transactionId: null,
+    stationId: "",
+    message: ""
+  });
 
   // Analytics state
   const [analytics, setAnalytics] = useState({
@@ -448,6 +459,137 @@ const Ticket2LIVE = () => {
     }
   };
 
+  const handleWindcaveHITPayment = async () => {
+    if (cart.length === 0 && ticketCart.length === 0) return;
+    if (!hitTerminalState.stationId.trim()) {
+      toast({ 
+        title: "Station ID Required", 
+        description: "Please enter the terminal station ID",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setLoading(true);
+    setHitTerminalState(prev => ({ ...prev, processing: true, message: "Initiating payment..." }));
+    
+    try {
+      const allItems = [
+        ...cart.map(item => ({ type: 'concession', ...item })),
+        ...ticketCart.map(ticket => ({ type: 'ticket', ...ticket }))
+      ];
+
+      const { data, error } = await supabase.functions.invoke("windcave-hit-terminal", {
+        body: {
+          eventId,
+          items: allItems.map(item => ({
+            ticketTypeId: item.id,
+            quantity: item.quantity,
+            price: item.price
+          })),
+          customerInfo,
+          stationId: hitTerminalState.stationId,
+          action: "purchase"
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setHitTerminalState(prev => ({ 
+          ...prev, 
+          transactionId: data.transactionId,
+          message: data.terminalDisplay || "Present card to terminal"
+        }));
+
+        toast({ 
+          title: "Payment Initiated", 
+          description: data.message || "Present card to the terminal to complete payment"
+        });
+
+        // Poll for payment status
+        const pollPaymentStatus = async () => {
+          try {
+            const statusCheck = await supabase.functions.invoke("windcave-hit-terminal", {
+              body: {
+                eventId,
+                stationId: hitTerminalState.stationId,
+                action: "status"
+              }
+            });
+
+            if (statusCheck.data?.success && statusCheck.data.status === 'approved') {
+              setHitTerminalState(prev => ({ 
+                ...prev, 
+                processing: false, 
+                message: "Payment completed successfully!" 
+              }));
+              
+              toast({ 
+                title: "Payment Successful!", 
+                description: `Transaction completed: ${statusCheck.data.approvalCode}` 
+              });
+              
+              // Clear carts
+              setCart([]);
+              setTicketCart([]);
+              setCustomerInfo({ name: "", email: "" });
+              loadAnalytics();
+              return;
+            }
+          } catch (pollError) {
+            console.error("Status polling error:", pollError);
+          }
+          
+          // Continue polling if payment not completed
+          setTimeout(pollPaymentStatus, 3000);
+        };
+
+        // Start polling after 2 seconds
+        setTimeout(pollPaymentStatus, 2000);
+      }
+    } catch (error) {
+      console.error("Windcave HIT payment error:", error);
+      setHitTerminalState(prev => ({ 
+        ...prev, 
+        processing: false, 
+        message: "Payment failed" 
+      }));
+      toast({ 
+        title: "Payment Failed", 
+        description: error.message || "Unable to process payment",
+        variant: "destructive" 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cancelHITPayment = async () => {
+    if (!hitTerminalState.transactionId) return;
+
+    try {
+      await supabase.functions.invoke("windcave-hit-terminal", {
+        body: {
+          eventId,
+          stationId: hitTerminalState.stationId,
+          action: "cancel"
+        }
+      });
+
+      setHitTerminalState({
+        processing: false,
+        transactionId: null,
+        stationId: hitTerminalState.stationId,
+        message: ""
+      });
+
+      toast({ title: "Payment Cancelled" });
+    } catch (error) {
+      console.error("Cancel payment error:", error);
+    }
+  };
+
   const stats = {
     totalGuests: guests.length,
     checkedIn: guests.filter(g => g.checked_in).length,
@@ -710,6 +852,7 @@ const Ticket2LIVE = () => {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="stripe_terminal">Stripe Terminal (Card)</SelectItem>
+                          <SelectItem value="windcave_hit">Windcave HIT Terminal</SelectItem>
                           <SelectItem value="cash">Cash</SelectItem>
                         </SelectContent>
                       </Select>
@@ -720,6 +863,44 @@ const Ticket2LIVE = () => {
                         <CreditCard className="mr-2 h-4 w-4" />
                         Process Card Payment
                       </Button>
+                    ) : paymentMethod === "windcave_hit" ? (
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Label>Terminal Station ID</Label>
+                          <Input
+                            placeholder="Enter terminal station ID (device serial)"
+                            value={hitTerminalState.stationId}
+                            onChange={(e) => setHitTerminalState(prev => ({ ...prev, stationId: e.target.value }))}
+                          />
+                        </div>
+                        
+                        {hitTerminalState.processing ? (
+                          <div className="bg-blue-50 p-4 rounded-lg space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                              <span className="font-medium">Processing Payment...</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{hitTerminalState.message}</p>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={cancelHITPayment}
+                              disabled={loading}
+                            >
+                              Cancel Payment
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button 
+                            onClick={handleWindcaveHITPayment} 
+                            disabled={loading || !hitTerminalState.stationId.trim()} 
+                            className="w-full"
+                          >
+                            <CreditCard className="mr-2 h-4 w-4" />
+                            Process HIT Terminal Payment
+                          </Button>
+                        )}
+                      </div>
                     ) : (
                       <Button onClick={handleCashPayment} disabled={loading} className="w-full" variant="outline">
                         💵 Record Cash Payment

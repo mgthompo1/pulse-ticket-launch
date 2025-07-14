@@ -445,6 +445,9 @@ export type Database = {
           windcave_api_key: string | null
           windcave_enabled: boolean | null
           windcave_endpoint: string | null
+          windcave_hit_key: string | null
+          windcave_hit_username: string | null
+          windcave_station_id: string | null
           windcave_username: string | null
         }
         Insert: {
@@ -467,6 +470,9 @@ export type Database = {
           windcave_api_key?: string | null
           windcave_enabled?: boolean | null
           windcave_endpoint?: string | null
+          windcave_hit_key?: string | null
+          windcave_hit_username?: string | null
+          windcave_station_id?: string | null
           windcave_username?: string | null
         }
         Update: {
@@ -489,6 +495,9 @@ export type Database = {
           windcave_api_key?: string | null
           windcave_enabled?: boolean | null
           windcave_endpoint?: string | null
+          windcave_hit_key?: string | null
+          windcave_hit_username?: string | null
+          windcave_station_id?: string | null
           windcave_username?: string | null
         }
         Relationships: []

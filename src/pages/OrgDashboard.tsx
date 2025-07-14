@@ -34,7 +34,10 @@ const OrgDashboard = () => {
     apiKey: "",
     endpoint: "UAT" as "SEC" | "UAT",
     enabled: false,
-    applePayMerchantId: ""
+    applePayMerchantId: "",
+    hitUsername: "",
+    hitKey: "",
+    stationId: ""
   });
   const { toast } = useToast();
   const { user } = useAuth();
@@ -123,7 +126,10 @@ const OrgDashboard = () => {
           apiKey: (orgs as any).windcave_api_key || "",
           endpoint: (orgs as any).windcave_endpoint || "UAT",
           enabled: !!(orgs as any).windcave_enabled,
-          applePayMerchantId: (orgs as any).apple_pay_merchant_id || ""
+          applePayMerchantId: (orgs as any).apple_pay_merchant_id || "",
+          hitUsername: (orgs as any).windcave_hit_username || "",
+          hitKey: (orgs as any).windcave_hit_key || "",
+          stationId: (orgs as any).windcave_station_id || ""
         });
         
         // Load events for this organization
@@ -277,7 +283,10 @@ const OrgDashboard = () => {
           windcave_endpoint: windcaveConfig.endpoint,
           windcave_enabled: true,
           payment_provider: "windcave",
-          apple_pay_merchant_id: windcaveConfig.applePayMerchantId
+          apple_pay_merchant_id: windcaveConfig.applePayMerchantId,
+          windcave_hit_username: windcaveConfig.hitUsername,
+          windcave_hit_key: windcaveConfig.hitKey,
+          windcave_station_id: windcaveConfig.stationId
         })
         .eq("id", organizationId);
 
@@ -1603,6 +1612,54 @@ const OrgDashboard = () => {
                           <p className="text-xs text-muted-foreground">
                             Required for Apple Pay support. Register your domain at Apple Developer.
                           </p>
+                        </div>
+
+                        <div className="border-t pt-4">
+                          <h4 className="font-medium mb-3 flex items-center gap-2">
+                            <Monitor className="w-4 h-4" />
+                            HIT Terminal Configuration (Optional)
+                          </h4>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Configure Windcave HIT terminal for in-person transactions
+                          </p>
+
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="windcave-hit-username">HIT Terminal Username</Label>
+                              <Input
+                                id="windcave-hit-username"
+                                type="text"
+                                placeholder="Enter your HIT terminal username"
+                                value={windcaveConfig.hitUsername}
+                                onChange={(e) => setWindcaveConfig(prev => ({ ...prev, hitUsername: e.target.value }))}
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="windcave-hit-key">HIT Terminal Key</Label>
+                              <Input
+                                id="windcave-hit-key"
+                                type="password"
+                                placeholder="Enter your HIT terminal key"
+                                value={windcaveConfig.hitKey}
+                                onChange={(e) => setWindcaveConfig(prev => ({ ...prev, hitKey: e.target.value }))}
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="windcave-station-id">Station ID (Device Serial Number)</Label>
+                              <Input
+                                id="windcave-station-id"
+                                type="text"
+                                placeholder="Enter the terminal device serial number"
+                                value={windcaveConfig.stationId}
+                                onChange={(e) => setWindcaveConfig(prev => ({ ...prev, stationId: e.target.value }))}
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                The serial number of your Windcave HIT terminal device
+                              </p>
+                            </div>
+                          </div>
                         </div>
 
                         <div className="flex items-center justify-between">
