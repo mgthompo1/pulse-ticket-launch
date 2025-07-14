@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { CurrencySelector } from './payment/CurrencySelector';
+import { PaymentProviderSelector } from './payment/PaymentProviderSelector';
+import { StripeConfiguration } from './payment/StripeConfiguration';
+import { WindcaveConfiguration } from './payment/WindcaveConfiguration';
+import { ApplePayConfiguration } from './payment/ApplePayConfiguration';
 
 interface PaymentConfigurationProps {
   organizationId: string;
@@ -104,121 +105,47 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="currency">Currency</Label>
-          <Select value={currency} onValueChange={setCurrency}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select currency" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="NZD">New Zealand Dollar (NZD)</SelectItem>
-              <SelectItem value="AUD">Australian Dollar (AUD)</SelectItem>
-              <SelectItem value="USD">US Dollar (USD)</SelectItem>
-              <SelectItem value="GBP">British Pound (GBP)</SelectItem>
-              <SelectItem value="EUR">Euro (EUR)</SelectItem>
-              <SelectItem value="CAD">Canadian Dollar (CAD)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <CurrencySelector 
+          currency={currency} 
+          onCurrencyChange={setCurrency} 
+        />
 
-        <div className="space-y-2">
-          <Label htmlFor="paymentProvider">Payment Provider</Label>
-          <Select value={paymentProvider} onValueChange={setPaymentProvider}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select payment provider" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="stripe">Stripe</SelectItem>
-              <SelectItem value="windcave">Windcave</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <PaymentProviderSelector 
+          paymentProvider={paymentProvider}
+          onProviderChange={setPaymentProvider}
+        />
 
         {paymentProvider === 'stripe' && (
-          <div className="space-y-2">
-            <Label htmlFor="stripeAccountId">Stripe Account ID</Label>
-            <Input
-              id="stripeAccountId"
-              value={stripeAccountId}
-              onChange={(e) => setStripeAccountId(e.target.value)}
-            />
-          </div>
+          <StripeConfiguration 
+            stripeAccountId={stripeAccountId}
+            onStripeAccountIdChange={setStripeAccountId}
+          />
         )}
 
         {paymentProvider === 'windcave' && (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="windcaveUsername">Windcave Username</Label>
-              <Input
-                id="windcaveUsername"
-                value={windcaveUsername}
-                onChange={(e) => setWindcaveUsername(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="windcaveApiKey">Windcave API Key</Label>
-              <Input
-                id="windcaveApiKey"
-                value={windcaveApiKey}
-                onChange={(e) => setWindcaveApiKey(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="windcaveEndpoint">Windcave Endpoint</Label>
-              <Select value={windcaveEndpoint} onValueChange={setWindcaveEndpoint}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select endpoint" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="UAT">UAT</SelectItem>
-                  <SelectItem value="SEC">SEC</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Label htmlFor="windcaveEnabled">Windcave Enabled</Label>
-              <Switch
-                id="windcaveEnabled"
-                checked={windcaveEnabled}
-                onCheckedChange={setWindcaveEnabled}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="windcaveHitUsername">Windcave HIT Username</Label>
-              <Input
-                id="windcaveHitUsername"
-                value={windcaveHitUsername}
-                onChange={(e) => setWindcaveHitUsername(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="windcaveHitKey">Windcave HIT Key</Label>
-              <Input
-                id="windcaveHitKey"
-                value={windcaveHitKey}
-                onChange={(e) => setWindcaveHitKey(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="windcaveStationId">Windcave Station ID</Label>
-              <Input
-                id="windcaveStationId"
-                value={windcaveStationId}
-                onChange={(e) => setWindcaveStationId(e.target.value)}
-              />
-            </div>
-          </>
+          <WindcaveConfiguration 
+            windcaveUsername={windcaveUsername}
+            windcaveApiKey={windcaveApiKey}
+            windcaveEndpoint={windcaveEndpoint}
+            windcaveEnabled={windcaveEnabled}
+            windcaveHitUsername={windcaveHitUsername}
+            windcaveHitKey={windcaveHitKey}
+            windcaveStationId={windcaveStationId}
+            onWindcaveUsernameChange={setWindcaveUsername}
+            onWindcaveApiKeyChange={setWindcaveApiKey}
+            onWindcaveEndpointChange={setWindcaveEndpoint}
+            onWindcaveEnabledChange={setWindcaveEnabled}
+            onWindcaveHitUsernameChange={setWindcaveHitUsername}
+            onWindcaveHitKeyChange={setWindcaveHitKey}
+            onWindcaveStationIdChange={setWindcaveStationId}
+          />
         )}
 
         {paymentProvider === 'applepay' && (
-          <div className="space-y-2">
-            <Label htmlFor="applePayMerchantId">Apple Pay Merchant ID</Label>
-            <Input
-              id="applePayMerchantId"
-              value={applePayMerchantId}
-              onChange={(e) => setApplePayMerchantId(e.target.value)}
-            />
-          </div>
+          <ApplePayConfiguration 
+            applePayMerchantId={applePayMerchantId}
+            onApplePayMerchantIdChange={setApplePayMerchantId}
+          />
         )}
 
         <div className="pt-4">
