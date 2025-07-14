@@ -1,5 +1,6 @@
 import { useState } from "react";
 import React from "react";
+import XeroIntegration from "@/components/XeroIntegration";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,7 +19,7 @@ import AIChatbot from "@/components/AIChatbot";
 import BillingDashboard from "@/components/BillingDashboard";
 import { EventLogoUploader } from "@/components/events/EventLogoUploader";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
-import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X } from "lucide-react";
+import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X, Link } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const OrgDashboard = () => {
@@ -567,7 +568,7 @@ const OrgDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-9 lg:w-fit">
+          <TabsList className="grid w-full grid-cols-10 lg:w-fit">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Overview
@@ -599,6 +600,10 @@ const OrgDashboard = () => {
             <TabsTrigger value="billing" className="flex items-center gap-2">
               <CreditCard className="w-4 h-4" />
               Billing
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="flex items-center gap-2">
+              <Link className="w-4 h-4" />
+              Integrations
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="w-4 h-4" />
@@ -1824,6 +1829,20 @@ const OrgDashboard = () => {
               organizationId={organizationId} 
               isLoading={!organizationId}
             />
+          </TabsContent>
+
+          {/* Integrations Tab */}
+          <TabsContent value="integrations" className="space-y-6">
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight">Integrations</h2>
+                <p className="text-muted-foreground">
+                  Connect your event management system with external services
+                </p>
+              </div>
+              
+              <XeroIntegration organizationId={organizationId} />
+            </div>
           </TabsContent>
 
           {/* Settings Tab */}

@@ -15,6 +15,7 @@ import Ticket2LIVE from "./pages/Ticket2LIVE";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
 import PaymentCancelled from "./pages/PaymentCancelled";
+import XeroCallback from "./pages/XeroCallback";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/payment-failed" element={<PaymentFailed />} />
             <Route path="/payment-cancelled" element={<PaymentCancelled />} />
+            <Route path="/xero-callback" element={<XeroCallback />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

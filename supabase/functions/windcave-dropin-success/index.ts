@@ -121,10 +121,10 @@ serve(async (req) => {
     // Send ticket email
     console.log("Sending ticket email...");
     try {
-      // Get event details for email
+      // Get event details for email and Xero integration
       const { data: event, error: eventError } = await supabaseClient
         .from("events")
-        .select("name, event_date")
+        .select("name, event_date, organization_id")
         .eq("id", eventId)
         .single();
 
@@ -140,10 +140,31 @@ serve(async (req) => {
           }
         });
         console.log("Ticket email sent successfully");
+        
+        // Try to create Xero invoice if auto-sync is enabled
+        console.log("Checking for Xero auto-invoice creation...");
+        const { data: xeroConnection } = await supabaseClient
+          .from("xero_connections")
+          .select("sync_settings")
+          .eq("organization_id", event.organization_id)
+          .eq("connection_status", "connected")
+          .single();
+
+        if (xeroConnection?.sync_settings?.auto_create_invoices) {
+          console.log("Creating Xero invoice automatically...");
+          await supabaseClient.functions.invoke('xero-sync', {
+            body: {
+              action: 'createInvoice',
+              organizationId: event.organization_id,
+              orderId: order.id
+            }
+          });
+          console.log("Xero invoice created successfully");
+        }
       }
     } catch (emailError) {
       console.log("Email sending failed:", emailError);
-      // Don't fail the whole process for email issues
+      // Don't fail the whole process for email or Xero issues
     }
 
     return new Response(JSON.stringify({

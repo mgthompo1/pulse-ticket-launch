@@ -62,3 +62,9 @@ verify_jwt = false
 
 [functions.windcave-hit-terminal]
 verify_jwt = false
+
+[functions.xero-auth]
+verify_jwt = false
+
+[functions.xero-sync]
+verify_jwt = false
