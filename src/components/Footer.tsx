@@ -1,5 +1,6 @@
 import { Ticket, Twitter, Facebook, Instagram, Linkedin, Mail, MapPin, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const footerLinks = {
   Product: [
@@ -139,6 +140,12 @@ export const Footer = () => {
           
           <div className="flex items-center space-x-6 text-sm text-muted-foreground">
             <span>Made with ❤️ for event organizers</span>
+            <Link 
+              to="/admin-auth" 
+              className="text-xs opacity-30 hover:opacity-70 transition-opacity"
+            >
+              •
+            </Link>
           </div>
         </div>
       </div>

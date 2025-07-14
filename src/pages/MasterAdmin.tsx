@@ -1,33 +1,76 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
+import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { 
-  BarChart3, 
   Users, 
+  Building2, 
+  Calendar, 
   DollarSign, 
-  Activity, 
-  TrendingUp, 
-  Building, 
-  AlertTriangle, 
+  Settings, 
+  BarChart3, 
+  Shield,
+  LogOut,
+  Loader2,
+  AlertTriangle,
+  TrendingUp,
+  Database,
+  Activity,
   CheckCircle,
   XCircle,
   Server,
-  Database,
   Globe,
-  Shield,
-  Settings,
   UserCheck,
   Ban
 } from "lucide-react";
 
 const MasterAdmin = () => {
+  const { isAdminAuthenticated, adminUser, loading: authLoading, logout } = useAdminAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAdminAuthenticated) {
+      navigate("/admin-auth");
+    }
+  }, [isAdminAuthenticated, authLoading, navigate]);
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-accent/20">
+        <div className="text-center animate-fade-in">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg font-medium">Authenticating...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render anything if not authenticated (will redirect)
+  if (!isAdminAuthenticated) {
+    return null;
+  }
+
+  const handleLogout = () => {
+    logout();
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out of the master admin panel",
+    });
+    navigate("/");
+  };
 
   const organizations = [
     {
@@ -52,162 +95,108 @@ const MasterAdmin = () => {
     },
     {
       id: 3,
-      name: "Sports Events Co",
-      email: "info@sportsevents.com",
-      events: 5,
-      revenue: "$12,500",
+      name: "Conference Solutions",
+      email: "info@confsolutions.com",
+      events: 15,
+      revenue: "$67,500",
       status: "suspended",
-      joinDate: "2024-01-28",
-      tier: "basic"
+      joinDate: "2024-01-08",
+      tier: "premium"
     }
   ];
 
-  const systemMetrics = {
-    uptime: 99.9,
-    apiRequests: 1250000,
-    activeUsers: 3450,
-    errorRate: 0.02,
-    avgResponseTime: 145
-  };
-
-  const revenueBreakdown = [
-    { month: "Jan", revenue: 12500, organizations: 15 },
-    { month: "Feb", revenue: 18200, organizations: 22 },
-    { month: "Mar", revenue: 25800, organizations: 28 },
-    { month: "Apr", revenue: 31200, organizations: 35 },
-    { month: "May", revenue: 38900, organizations: 42 }
+  const systemMetrics = [
+    { label: "Total Organizations", value: "156", change: "+12%", icon: Building2 },
+    { label: "Active Events", value: "342", change: "+8%", icon: Calendar },
+    { label: "Total Revenue", value: "$234,567", change: "+15%", icon: DollarSign },
+    { label: "Platform Users", value: "2,847", change: "+23%", icon: Users }
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-background via-accent/5 to-primary/5">
       {/* Header */}
-      <div className="border-b bg-gradient-to-r from-primary/5 to-secondary/5">
-        <div className="container mx-auto px-4 py-6">
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                Ticket2 Master Admin
-              </h1>
-              <p className="text-muted-foreground mt-2">Platform management and analytics</p>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center">
+                <Shield className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold gradient-text">Ticket2 Master Admin</h1>
+                <p className="text-sm text-muted-foreground">Welcome back, {adminUser}</p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-green-600 border-green-200">
-                <CheckCircle className="w-3 h-3 mr-1" />
-                System Healthy
-              </Badge>
-            </div>
+            <Button 
+              variant="outline" 
+              onClick={handleLogout}
+              className="flex items-center gap-2"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-5 lg:w-fit">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="organizations" className="flex items-center gap-2">
-              <Building className="w-4 h-4" />
-              Organizations
-            </TabsTrigger>
-            <TabsTrigger value="system" className="flex items-center gap-2">
-              <Server className="w-4 h-4" />
-              System Health
-            </TabsTrigger>
-            <TabsTrigger value="revenue" className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4" />
-              Revenue
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              Settings
-            </TabsTrigger>
+      <div className="container mx-auto p-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="organizations">Organizations</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="system">System</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="gradient-card hover-scale">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Organizations</CardTitle>
-                  <Building className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{organizations.length}</div>
-                  <p className="text-xs text-muted-foreground">+12% from last month</p>
-                </CardContent>
-              </Card>
-
-              <Card className="gradient-card hover-scale">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Platform Revenue</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">$81,500</div>
-                  <p className="text-xs text-muted-foreground">+25% from last month</p>
-                </CardContent>
-              </Card>
-
-              <Card className="gradient-card hover-scale">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">3,450</div>
-                  <p className="text-xs text-muted-foreground">+18% from last month</p>
-                </CardContent>
-              </Card>
-
-              <Card className="gradient-card hover-scale">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">System Uptime</CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">99.9%</div>
-                  <p className="text-xs text-muted-foreground">Last 30 days</p>
-                </CardContent>
-              </Card>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {systemMetrics.map((metric, index) => (
+                <Card key={index} className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      {metric.label}
+                    </CardTitle>
+                    <metric.icon className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{metric.value}</div>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <TrendingUp className="h-3 w-3 text-green-500" />
+                      {metric.change} from last month
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid gap-6 md:grid-cols-2">
               <Card>
                 <CardHeader>
                   <CardTitle>Recent Activity</CardTitle>
-                  <CardDescription>Latest platform events</CardDescription>
+                  <CardDescription>Latest platform activities</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">New organization registered</p>
-                        <p className="text-xs text-muted-foreground">TechCorp Events - 2 hours ago</p>
-                      </div>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">New organization registered</p>
+                      <p className="text-xs text-muted-foreground">2 minutes ago</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Large event created</p>
-                        <p className="text-xs text-muted-foreground">Music Festival 2024 - 4 hours ago</p>
-                      </div>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Event published</p>
+                      <p className="text-xs text-muted-foreground">15 minutes ago</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Payment issue resolved</p>
-                        <p className="text-xs text-muted-foreground">Sports Events Co - 6 hours ago</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">API limit increased</p>
-                        <p className="text-xs text-muted-foreground">Premium tier upgrade - 8 hours ago</p>
-                      </div>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Payment processed</p>
+                      <p className="text-xs text-muted-foreground">1 hour ago</p>
                     </div>
                   </div>
                 </CardContent>
@@ -215,25 +204,30 @@ const MasterAdmin = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Revenue Trends</CardTitle>
-                  <CardDescription>Monthly platform earnings</CardDescription>
+                  <CardTitle>System Health</CardTitle>
+                  <CardDescription>Platform status overview</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {revenueBreakdown.map((month) => (
-                      <div key={month.month} className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium w-8">{month.month}</span>
-                          <div className="flex-1">
-                            <Progress value={(month.revenue / 40000) * 100} className="h-2" />
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">${month.revenue.toLocaleString()}</p>
-                          <p className="text-xs text-muted-foreground">{month.organizations} orgs</p>
-                        </div>
-                      </div>
-                    ))}
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">API Response Time</span>
+                    <div className="flex items-center gap-2">
+                      <Progress value={85} className="w-20" />
+                      <span className="text-sm text-green-600">85ms</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Database Performance</span>
+                    <div className="flex items-center gap-2">
+                      <Progress value={92} className="w-20" />
+                      <span className="text-sm text-green-600">92%</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Server Uptime</span>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      <span className="text-sm text-green-600">99.9%</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -244,8 +238,8 @@ const MasterAdmin = () => {
           <TabsContent value="organizations" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>All Organizations</CardTitle>
-                <CardDescription>Manage organizations on the platform</CardDescription>
+                <CardTitle>Organization Management</CardTitle>
+                <CardDescription>Manage all organizations on the platform</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -254,8 +248,8 @@ const MasterAdmin = () => {
                       <TableHead>Organization</TableHead>
                       <TableHead>Events</TableHead>
                       <TableHead>Revenue</TableHead>
-                      <TableHead>Tier</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Tier</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -264,29 +258,29 @@ const MasterAdmin = () => {
                       <TableRow key={org.id}>
                         <TableCell>
                           <div>
-                            <p className="font-medium">{org.name}</p>
-                            <p className="text-sm text-muted-foreground">{org.email}</p>
+                            <div className="font-medium">{org.name}</div>
+                            <div className="text-sm text-muted-foreground">{org.email}</div>
                           </div>
                         </TableCell>
                         <TableCell>{org.events}</TableCell>
-                        <TableCell className="font-medium">{org.revenue}</TableCell>
-                        <TableCell>
-                          <Badge variant={org.tier === "premium" ? "default" : "secondary"}>
-                            {org.tier}
-                          </Badge>
-                        </TableCell>
+                        <TableCell>{org.revenue}</TableCell>
                         <TableCell>
                           <Badge variant={org.status === "active" ? "default" : "destructive"}>
                             {org.status}
                           </Badge>
                         </TableCell>
                         <TableCell>
+                          <Badge variant={org.tier === "premium" ? "secondary" : "outline"}>
+                            {org.tier}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
                           <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
-                              <UserCheck className="w-3 h-3" />
+                            <Button size="sm" variant="outline">
+                              <UserCheck className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm">
-                              <Ban className="w-3 h-3" />
+                            <Button size="sm" variant="outline">
+                              <Ban className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
@@ -298,218 +292,138 @@ const MasterAdmin = () => {
             </Card>
           </TabsContent>
 
-          {/* System Health Tab */}
-          <TabsContent value="system" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Card className="gradient-card">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">API Requests</CardTitle>
-                  <Globe className="h-4 w-4 text-muted-foreground" />
+          {/* Analytics Tab */}
+          <TabsContent value="analytics" className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Revenue Analytics</CardTitle>
+                  <CardDescription>Platform revenue breakdown</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{systemMetrics.apiRequests.toLocaleString()}</div>
-                  <p className="text-xs text-muted-foreground">Last 24 hours</p>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span>Transaction Fees</span>
+                      <span className="font-medium">$12,450</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Subscription Revenue</span>
+                      <span className="font-medium">$8,900</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Premium Features</span>
+                      <span className="font-medium">$3,200</span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card className="gradient-card">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Error Rate</CardTitle>
-                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+              <Card>
+                <CardHeader>
+                  <CardTitle>User Engagement</CardTitle>
+                  <CardDescription>Platform usage statistics</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{systemMetrics.errorRate}%</div>
-                  <p className="text-xs text-muted-foreground">Well within limits</p>
-                </CardContent>
-              </Card>
-
-              <Card className="gradient-card">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Response Time</CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{systemMetrics.avgResponseTime}ms</div>
-                  <p className="text-xs text-muted-foreground">Average response</p>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span>Daily Active Users</span>
+                      <span className="font-medium">1,234</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Events Created</span>
+                      <span className="font-medium">89</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Tickets Sold</span>
+                      <span className="font-medium">2,567</span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>System Status</CardTitle>
-                <CardDescription>Core services health check</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Database className="w-5 h-5 text-green-500" />
-                      <div>
-                        <p className="font-medium">Database</p>
-                        <p className="text-sm text-muted-foreground">Primary & replica healthy</p>
-                      </div>
-                    </div>
-                    <Badge variant="default" className="bg-green-100 text-green-800">
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      Operational
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Server className="w-5 h-5 text-green-500" />
-                      <div>
-                        <p className="font-medium">API Servers</p>
-                        <p className="text-sm text-muted-foreground">All instances running</p>
-                      </div>
-                    </div>
-                    <Badge variant="default" className="bg-green-100 text-green-800">
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      Operational
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Shield className="w-5 h-5 text-green-500" />
-                      <div>
-                        <p className="font-medium">Security</p>
-                        <p className="text-sm text-muted-foreground">No threats detected</p>
-                      </div>
-                    </div>
-                    <Badge variant="default" className="bg-green-100 text-green-800">
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      Secure
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Globe className="w-5 h-5 text-yellow-500" />
-                      <div>
-                        <p className="font-medium">CDN</p>
-                        <p className="text-sm text-muted-foreground">Some edge servers slow</p>
-                      </div>
-                    </div>
-                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                      <AlertTriangle className="w-3 h-3 mr-1" />
-                      Degraded
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
 
-          {/* Revenue Tab */}
-          <TabsContent value="revenue" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="gradient-card hover-scale">
+          {/* System Tab */}
+          <TabsContent value="system" className="space-y-6">
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                  <CardTitle>System Status</CardTitle>
+                  <CardDescription>Current system performance</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-primary">$81,500</div>
-                  <p className="text-sm text-muted-foreground">+25% from last month</p>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Server className="h-4 w-4" />
+                      <span>Application Server</span>
+                    </div>
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Database className="h-4 w-4" />
+                      <span>Database</span>
+                    </div>
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-4 w-4" />
+                      <span>CDN</span>
+                    </div>
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card className="gradient-card hover-scale">
+              <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm font-medium">Commission Rate</CardTitle>
+                  <CardTitle>Platform Configuration</CardTitle>
+                  <CardDescription>System settings and configuration</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-primary">5.5%</div>
-                  <p className="text-sm text-muted-foreground">Average across tiers</p>
-                </CardContent>
-              </Card>
-
-              <Card className="gradient-card hover-scale">
-                <CardHeader>
-                  <CardTitle className="text-sm font-medium">Monthly Growth</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-primary">+32%</div>
-                  <p className="text-sm text-muted-foreground">Revenue increase</p>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Platform Fee Percentage</Label>
+                    <Input type="number" placeholder="5" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Maximum File Upload Size (MB)</Label>
+                    <Input type="number" placeholder="10" />
+                  </div>
+                  <Button className="w-full">Update Configuration</Button>
                 </CardContent>
               </Card>
             </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Revenue Breakdown by Tier</CardTitle>
-                <CardDescription>Commission earnings by subscription tier</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 bg-primary rounded-full"></div>
-                      <div>
-                        <p className="font-medium">Premium Tier</p>
-                        <p className="text-sm text-muted-foreground">8% commission</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold">$48,900</p>
-                      <p className="text-sm text-muted-foreground">60% of total</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 bg-secondary rounded-full"></div>
-                      <div>
-                        <p className="font-medium">Standard Tier</p>
-                        <p className="text-sm text-muted-foreground">5% commission</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold">$24,450</p>
-                      <p className="text-sm text-muted-foreground">30% of total</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 bg-muted rounded-full"></div>
-                      <div>
-                        <p className="font-medium">Basic Tier</p>
-                        <p className="text-sm text-muted-foreground">3% commission</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold">$8,150</p>
-                      <p className="text-sm text-muted-foreground">10% of total</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Platform Settings</CardTitle>
-                <CardDescription>Configure global platform options</CardDescription>
+                <CardTitle>Master Admin Settings</CardTitle>
+                <CardDescription>Platform-wide configuration settings</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="platform-name">Platform Name</Label>
-                  <Input id="platform-name" value="Ticket2" />
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Platform Name</Label>
+                    <Input defaultValue="Ticket2" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Support Email</Label>
+                    <Input defaultValue="support@ticket2.com" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Maintenance Mode</Label>
+                    <div className="flex items-center space-x-2">
+                      <input type="checkbox" id="maintenance" />
+                      <label htmlFor="maintenance" className="text-sm">
+                        Enable maintenance mode
+                      </label>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="support-email">Support Email</Label>
-                  <Input id="support-email" value="support@ticket2.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="commission-rate">Default Commission Rate (%)</Label>
-                  <Input id="commission-rate" type="number" value="5.5" />
-                </div>
-                <Button className="gradient-primary">Save Settings</Button>
+                <Button>Save Settings</Button>
               </CardContent>
             </Card>
           </TabsContent>

@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import OrgDashboard from "./pages/OrgDashboard";
 import TicketWidget from "./pages/TicketWidget";
 import MasterAdmin from "./pages/MasterAdmin";
+import AdminAuth from "./pages/AdminAuth";
 import Ticket2LIVE from "./pages/Ticket2LIVE";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
@@ -30,7 +31,8 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<OrgDashboard />} />
             <Route path="/widget/:eventId" element={<TicketWidget />} />
-            <Route path="/admin" element={<MasterAdmin />} />
+            <Route path="/admin-auth" element={<AdminAuth />} />
+            <Route path="/master-admin" element={<MasterAdmin />} />
             <Route path="/ticket2live/:eventId" element={<Ticket2LIVE />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/payment-failed" element={<PaymentFailed />} />
