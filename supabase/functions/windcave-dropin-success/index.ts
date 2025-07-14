@@ -46,43 +46,43 @@ serve(async (req) => {
     // Check recent orders for this event to understand what sessionIds we have
     const { data: recentOrders } = await supabaseClient
       .from("orders")
-      .select("id, stripe_session_id, status, created_at")
+      .select("id, windcave_session_id, status, created_at")
       .eq("event_id", eventId)
       .order("created_at", { ascending: false })
       .limit(10);
     
     logStep("Recent orders for event", { eventId, recentOrders });
 
-    // Try to find the order - be very flexible with sessionId matching
+    // Try to find the order using windcave_session_id field
     let order = null;
     let matchMethod = "";
 
-    // Method 1: Exact match
+    // Method 1: Exact match with windcave_session_id
     const { data: order1 } = await supabaseClient
       .from("orders")
       .select("*")
-      .eq("stripe_session_id", sessionId)
+      .eq("windcave_session_id", sessionId)
       .eq("event_id", eventId)
       .maybeSingle();
 
     if (order1) {
       order = order1;
-      matchMethod = "exact_match";
-      logStep("Order found with exact sessionId match", { orderId: order.id });
+      matchMethod = "exact_windcave_session_match";
+      logStep("Order found with exact windcave sessionId match", { orderId: order.id });
     } else {
       // Method 2: Extract from URL if it's a URL
       const sessionIdPart = sessionId.includes('/') ? sessionId.split('/').pop() : sessionId;
       const { data: order2 } = await supabaseClient
         .from("orders")
         .select("*")
-        .eq("stripe_session_id", sessionIdPart)
+        .eq("windcave_session_id", sessionIdPart)
         .eq("event_id", eventId)
         .maybeSingle();
       
       if (order2) {
         order = order2;
-        matchMethod = "url_extracted";
-        logStep("Order found with sessionId part match", { orderId: order.id, sessionIdPart });
+        matchMethod = "windcave_url_extracted";
+        logStep("Order found with windcave sessionId part match", { orderId: order.id, sessionIdPart });
       } else {
         // Method 3: Find most recent pending order for this event (fallback)
         const { data: order3 } = await supabaseClient

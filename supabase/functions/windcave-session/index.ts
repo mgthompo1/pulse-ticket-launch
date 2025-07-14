@@ -133,7 +133,7 @@ serve(async (req) => {
         customer_phone: customerInfo?.phone || null,
         total_amount: totalAmount,
         status: "pending",
-        stripe_session_id: windcaveResult.id // Reusing this field for Windcave session ID
+        windcave_session_id: windcaveResult.id // Store Windcave session ID in the correct field
       })
       .select()
       .single();
