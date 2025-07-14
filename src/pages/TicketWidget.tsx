@@ -578,6 +578,7 @@ const TicketWidget = () => {
         </div>
       </div>
     </div>
+  );
 };
 
 export default TicketWidget;
