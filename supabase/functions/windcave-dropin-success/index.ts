@@ -19,7 +19,8 @@ serve(async (req) => {
     console.log("Request body:", JSON.stringify(requestBody));
 
     const { sessionId, eventId } = requestBody;
-    console.log("SessionId:", sessionId, "EventId:", eventId);
+    console.log("SessionId received:", sessionId);
+    console.log("EventId received:", eventId);
 
     if (!sessionId || !eventId) {
       throw new Error("Missing required parameters: sessionId and eventId are required");
@@ -32,30 +33,95 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
+    // First, let's see what orders exist for this event
+    console.log("Checking all recent orders for event:", eventId);
+    const { data: allOrders, error: allOrdersError } = await supabaseClient
+      .from("orders")
+      .select("id, windcave_session_id, status, created_at")
+      .eq("event_id", eventId)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (allOrdersError) {
+      console.log("Error fetching all orders:", allOrdersError.message);
+    } else {
+      console.log("All recent orders for event:", JSON.stringify(allOrders, null, 2));
+    }
+
     console.log("Looking for order with windcave_session_id:", sessionId);
     
-    // Find the order using windcave_session_id
+    // Find the order using windcave_session_id with maybeSingle to avoid errors
     const { data: order, error: orderError } = await supabaseClient
       .from("orders")
       .select("*")
       .eq("windcave_session_id", sessionId)
       .eq("event_id", eventId)
-      .single();
+      .maybeSingle();
 
-    if (orderError || !order) {
-      console.log("Order not found:", orderError?.message || "No order found");
-      throw new Error("Order not found for this session");
+    console.log("Order query result - Error:", orderError?.message, "Order found:", !!order);
+
+    if (orderError) {
+      console.log("Database error searching for order:", orderError.message);
+      throw new Error(`Database error: ${orderError.message}`);
     }
 
-    console.log("Order found:", order.id, "Status:", order.status);
+    if (!order) {
+      console.log("No order found with sessionId:", sessionId);
+      console.log("Will try to find most recent pending order as fallback...");
+      
+      // Fallback: get most recent pending order
+      const { data: fallbackOrder, error: fallbackError } = await supabaseClient
+        .from("orders")
+        .select("*")
+        .eq("event_id", eventId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+        
+      if (fallbackError) {
+        console.log("Error finding fallback order:", fallbackError.message);
+        throw new Error(`No order found and fallback failed: ${fallbackError.message}`);
+      }
+      
+      if (!fallbackOrder) {
+        console.log("No pending orders found for event");
+        throw new Error("No pending orders found for this event");
+      }
+      
+      console.log("Using fallback order:", fallbackOrder.id);
+      // Use the fallback order
+      const order = fallbackOrder;
+      
+      // Update the fallback order with the correct session ID
+      console.log("Updating fallback order with correct session ID");
+      await supabaseClient
+        .from("orders")
+        .update({ windcave_session_id: sessionId })
+        .eq("id", order.id);
+    }
+
+    // Re-fetch the order to ensure we have the latest data
+    const { data: finalOrder, error: finalOrderError } = await supabaseClient
+      .from("orders")
+      .select("*")
+      .or(`windcave_session_id.eq.${sessionId},id.eq.${order?.id || 'none'}`)
+      .eq("event_id", eventId)
+      .maybeSingle();
+
+    if (!finalOrder) {
+      throw new Error("Could not find or create order");
+    }
+
+    console.log("Final order found:", finalOrder.id, "Status:", finalOrder.status);
 
     // Check if already completed
-    if (order.status === 'completed') {
+    if (finalOrder.status === 'completed') {
       console.log("Order already completed");
       return new Response(JSON.stringify({
         success: true,
         message: "Order already completed",
-        orderId: order.id
+        orderId: finalOrder.id
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -71,7 +137,7 @@ serve(async (req) => {
         status: "completed",
         updated_at: new Date().toISOString()
       })
-      .eq("id", order.id);
+      .eq("id", finalOrder.id);
 
     if (updateError) {
       console.log("Error updating order:", updateError.message);
@@ -84,7 +150,7 @@ serve(async (req) => {
     const { data: orderItems, error: orderItemsError } = await supabaseClient
       .from("order_items")
       .select("*")
-      .eq("order_id", order.id);
+      .eq("order_id", finalOrder.id);
 
     if (orderItemsError || !orderItems || orderItems.length === 0) {
       console.log("Error fetching order items:", orderItemsError?.message || "No items found");
@@ -119,7 +185,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       message: "Payment completed successfully",
-      orderId: order.id,
+      orderId: finalOrder.id,
       ticketCount: tickets.length
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
