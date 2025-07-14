@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -143,13 +144,27 @@ serve(async (req) => {
       `
     };
 
-    // Here you would integrate with your email service (SendGrid, etc.)
-    // For now, just log the email content
-    logStep("Email content prepared", { 
+    // Send email using Resend
+    const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+    
+    logStep("Sending email", { 
       recipient: emailContent.to,
       subject: emailContent.subject,
       ticketCount: allTickets.length
     });
+
+    const emailResponse = await resend.emails.send({
+      from: "Ticket2 <onboarding@resend.dev>",
+      to: [emailContent.to],
+      subject: emailContent.subject,
+      html: emailContent.html,
+    });
+
+    if (emailResponse.error) {
+      throw new Error(`Email failed: ${emailResponse.error.message}`);
+    }
+
+    logStep("Email sent successfully", { emailId: emailResponse.data?.id });
 
     // Update order status
     await supabaseClient
