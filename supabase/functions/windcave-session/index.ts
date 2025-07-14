@@ -177,13 +177,17 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       sessionId: windcaveResult.id,
-      links: windcaveResult.links, // Return full links array for Drop-In
+      links: windcaveResult.links.map(link => ({
+        ...link,
+        sessionId: windcaveResult.id // Add session ID to each link for easy access
+      })),
       orderId: order.id,
       totalAmount: totalAmount,
-      windcaveResponse: windcaveResult, // Include full response for debugging
+      windcaveResponse: windcaveResult,
       debug: {
         state: windcaveResult.state,
-        linksCount: windcaveResult.links?.length || 0
+        linksCount: windcaveResult.links?.length || 0,
+        sessionId: windcaveResult.id
       }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

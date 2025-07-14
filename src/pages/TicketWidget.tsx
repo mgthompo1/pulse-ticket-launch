@@ -224,6 +224,12 @@ const TicketWidget = () => {
       }
 
       try {
+        // Extract session ID from links for verification
+        const sessionId = windcaveLinks.find(link => link.sessionId)?.sessionId || 
+                         windcaveLinks[0]?.href?.split('/').pop();
+        
+        console.log("Session ID for verification:", sessionId);
+
         const dropInOptions = {
           container: "windcave-drop-in",
           links: links,
@@ -239,52 +245,24 @@ const TicketWidget = () => {
             supportedCards: ["visa", "mastercard", "amex"],
             sideIcons: ["visa", "mastercard", "amex"]
           },
-          onSuccess: async (status: string, sessionId?: string) => {
-            console.log("Payment success callback:", { status, sessionId });
+          // Enhanced callback handling
+          onSuccess: async (result: any) => {
+            console.log("=== WINDCAVE SUCCESS CALLBACK ===");
+            console.log("Success result:", result);
+            console.log("Result type:", typeof result);
             
-            if (status === "Done" || status === "success") {
-              // Verify payment status with backend
-              try {
-                const { data, error } = await supabase.functions.invoke("verify-windcave-payment", {
-                  body: { 
-                    sessionId: sessionId || windcaveLinks[0]?.sessionId,
-                    eventId,
-                    customerInfo
-                  }
-                });
+            // Show immediate success feedback
+            toast({
+              title: "Payment Processing",
+              description: "Verifying your payment...",
+            });
 
-                if (error) {
-                  console.error("Payment verification error:", error);
-                  toast({
-                    title: "Payment Verification Failed",
-                    description: "Please contact support if payment was deducted.",
-                    variant: "destructive"
-                  });
-                  return;
-                }
-
-                toast({
-                  title: "Payment Successful",
-                  description: "Your tickets have been purchased successfully!"
-                });
-                
-                // Redirect to success page with order details
-                window.location.href = `/payment-success?orderId=${data.orderId}`;
-              } catch (verificationError) {
-                console.error("Payment verification error:", verificationError);
-                toast({
-                  title: "Payment Processing",
-                  description: "Payment completed. Verifying status...",
-                });
-                // Fallback redirect
-                setTimeout(() => {
-                  window.location.href = "/payment-success";
-                }, 2000);
-              }
-            }
+            // Start verification process
+            await verifyPaymentStatus(sessionId);
           },
-          onError: (stage: string, error: any) => {
-            console.error("Payment error:", { stage, error });
+          onError: (error: any) => {
+            console.error("=== WINDCAVE ERROR CALLBACK ===");
+            console.error("Error:", error);
             
             let errorMessage = "Payment failed. Please try again.";
             
@@ -302,25 +280,24 @@ const TicketWidget = () => {
               variant: "destructive"
             });
             
-            // Reset payment form
             setShowPaymentForm(false);
           },
           onCancel: () => {
-            console.log("Payment cancelled by user");
+            console.log("=== WINDCAVE CANCEL CALLBACK ===");
             toast({
               title: "Payment Cancelled",
               description: "You can try again when ready.",
             });
             setShowPaymentForm(false);
           },
-          onTimeout: () => {
-            console.log("Payment session timed out");
-            toast({
-              title: "Session Expired",
-              description: "Payment session has expired. Please try again.",
-              variant: "destructive"
-            });
-            setShowPaymentForm(false);
+          // Add polling callback for status updates
+          onStatusUpdate: (status: any) => {
+            console.log("=== WINDCAVE STATUS UPDATE ===");
+            console.log("Status update:", status);
+            
+            if (status?.state === 'completed' || status?.status === 'approved') {
+              verifyPaymentStatus(sessionId);
+            }
           }
         };
 
@@ -329,32 +306,68 @@ const TicketWidget = () => {
         const dropIn = window.WindcavePayments.DropIn.create(
           dropInOptions,
           (controller: any) => {
-            console.log("Drop-In successfully created:", controller);
+            console.log("=== DROP-IN CREATED ===");
+            console.log("Controller:", controller);
             setWindcaveDropIn(controller);
             
-            // Set up periodic status checking
+            // Set up aggressive polling for payment status
+            let pollCount = 0;
+            const maxPolls = 60; // Poll for 5 minutes (5 second intervals)
+            
             const statusInterval = setInterval(async () => {
+              pollCount++;
+              console.log(`=== STATUS POLL ${pollCount}/${maxPolls} ===`);
+              
               try {
-                if (controller && controller.getStatus) {
-                  const status = controller.getStatus();
-                  console.log("Drop-In status:", status);
+                // Check with our backend first
+                const statusCheck = await verifyPaymentStatus(sessionId, false); // Silent check
+                
+                if (statusCheck?.success) {
+                  console.log("Payment verified through polling!");
+                  clearInterval(statusInterval);
+                  return;
+                }
+                
+                // If controller has status method, use it
+                if (controller && typeof controller.getStatus === 'function') {
+                  const dropInStatus = controller.getStatus();
+                  console.log("Drop-In status:", dropInStatus);
                   
-                  if (status === 'completed' || status === 'success') {
+                  if (dropInStatus === 'completed' || dropInStatus === 'success' || dropInStatus === 'approved') {
+                    console.log("Drop-In reports success, verifying...");
+                    await verifyPaymentStatus(sessionId);
                     clearInterval(statusInterval);
+                    return;
                   }
                 }
-              } catch (statusError) {
-                console.log("Status check error:", statusError);
+                
+                // Stop polling after max attempts
+                if (pollCount >= maxPolls) {
+                  console.log("Max polling attempts reached");
+                  clearInterval(statusInterval);
+                  
+                  // Final verification attempt
+                  toast({
+                    title: "Checking Payment Status",
+                    description: "Performing final verification...",
+                  });
+                  
+                  setTimeout(async () => {
+                    await verifyPaymentStatus(sessionId);
+                  }, 2000);
+                }
+                
+              } catch (pollError) {
+                console.log("Polling error:", pollError);
               }
-            }, 5000); // Check every 5 seconds
+            }, 5000); // Poll every 5 seconds
             
-            // Clear interval after 10 minutes
-            setTimeout(() => {
-              clearInterval(statusInterval);
-            }, 600000);
+            // Store interval for cleanup
+            (window as any).windcaveStatusInterval = statusInterval;
           },
           (error: any) => {
-            console.error("Failed to create Drop-In:", error);
+            console.error("=== DROP-IN CREATION FAILED ===");
+            console.error("Error:", error);
             toast({
               title: "Payment System Error",
               description: "Unable to load payment form. Please refresh and try again.",
@@ -364,7 +377,8 @@ const TicketWidget = () => {
           }
         );
       } catch (error) {
-        console.error("Error initializing Windcave Drop-In:", error);
+        console.error("=== DROP-IN INITIALIZATION ERROR ===");
+        console.error("Error:", error);
         toast({
           title: "Payment System Error",
           description: "Failed to initialize payment form. Please refresh and try again.",
@@ -374,7 +388,6 @@ const TicketWidget = () => {
       }
     } else {
       console.log("WindcavePayments not available yet, retrying...");
-      // Retry after a short delay, with max retries
       const retryCount = (window as any).windcaveRetryCount || 0;
       if (retryCount < 10) {
         (window as any).windcaveRetryCount = retryCount + 1;
@@ -388,6 +401,79 @@ const TicketWidget = () => {
         });
         setShowPaymentForm(false);
       }
+    }
+  };
+
+  // Separate verification function for reusability
+  const verifyPaymentStatus = async (sessionId: string, showToasts: boolean = true) => {
+    try {
+      console.log("=== VERIFYING PAYMENT STATUS ===");
+      console.log("Session ID:", sessionId);
+      
+      const { data, error } = await supabase.functions.invoke("verify-windcave-payment", {
+        body: { 
+          sessionId: sessionId,
+          eventId,
+          customerInfo
+        }
+      });
+
+      console.log("Verification response:", { data, error });
+
+      if (error) {
+        console.error("Payment verification error:", error);
+        if (showToasts) {
+          toast({
+            title: "Payment Verification Failed",
+            description: "Please contact support if payment was deducted.",
+            variant: "destructive"
+          });
+        }
+        return { success: false, error };
+      }
+
+      if (data?.success) {
+        console.log("=== PAYMENT VERIFIED SUCCESSFULLY ===");
+        
+        // Clear any existing polling
+        if ((window as any).windcaveStatusInterval) {
+          clearInterval((window as any).windcaveStatusInterval);
+        }
+        
+        if (showToasts) {
+          toast({
+            title: "Payment Successful!",
+            description: `Your ${data.ticketCount} ticket(s) have been purchased successfully!`
+          });
+        }
+        
+        // Redirect to success page with order details
+        setTimeout(() => {
+          window.location.href = `/payment-success?orderId=${data.orderId}`;
+        }, 1500);
+        
+        return { success: true, data };
+      } else {
+        console.log("Payment not yet successful:", data);
+        if (showToasts && data?.status) {
+          toast({
+            title: "Payment Status",
+            description: `Payment status: ${data.status}`,
+            variant: data.status === 'failed' ? 'destructive' : 'default'
+          });
+        }
+        return { success: false, data };
+      }
+    } catch (verificationError) {
+      console.error("Payment verification error:", verificationError);
+      if (showToasts) {
+        toast({
+          title: "Verification Error",
+          description: "Unable to verify payment status. Please contact support.",
+          variant: "destructive"
+        });
+      }
+      return { success: false, error: verificationError };
     }
   };
 
@@ -681,6 +767,31 @@ const TicketWidget = () => {
                     <p className="text-xs text-muted-foreground mt-1">
                       Your payment information is encrypted and secure. Do not refresh this page during payment.
                     </p>
+                    
+                    {/* Manual verification button for testing */}
+                    <div className="mt-3 pt-3 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          const sessionId = windcaveLinks.find(link => link.sessionId)?.sessionId || 
+                                          windcaveLinks[0]?.href?.split('/').pop();
+                          if (sessionId) {
+                            toast({
+                              title: "Manual Verification",
+                              description: "Checking payment status...",
+                            });
+                            await verifyPaymentStatus(sessionId);
+                          }
+                        }}
+                        className="w-full"
+                      >
+                        Check Payment Status
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-1 text-center">
+                        Click if payment was completed but not detected
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
