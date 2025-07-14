@@ -44,6 +44,103 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_customers: {
+        Row: {
+          billing_email: string
+          billing_status: string
+          created_at: string
+          id: string
+          organization_id: string
+          payment_method_id: string | null
+          stripe_customer_id: string
+          subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          billing_email: string
+          billing_status?: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          payment_method_id?: string | null
+          stripe_customer_id: string
+          subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          billing_email?: string
+          billing_status?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          payment_method_id?: string | null
+          stripe_customer_id?: string
+          subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_customers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_invoices: {
+        Row: {
+          billing_period_end: string
+          billing_period_start: string
+          created_at: string
+          due_date: string | null
+          id: string
+          organization_id: string
+          paid_at: string | null
+          status: string
+          stripe_invoice_id: string | null
+          total_platform_fees: number
+          total_transaction_volume: number
+          total_transactions: number
+        }
+        Insert: {
+          billing_period_end: string
+          billing_period_start: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          organization_id: string
+          paid_at?: string | null
+          status?: string
+          stripe_invoice_id?: string | null
+          total_platform_fees?: number
+          total_transaction_volume?: number
+          total_transactions?: number
+        }
+        Update: {
+          billing_period_end?: string
+          billing_period_start?: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          organization_id?: string
+          paid_at?: string | null
+          status?: string
+          stripe_invoice_id?: string | null
+          total_platform_fees?: number
+          total_transaction_volume?: number
+          total_transactions?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_invoices_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_sessions: {
         Row: {
           context: Json | null
@@ -329,6 +426,8 @@ export type Database = {
       }
       organizations: {
         Row: {
+          billing_setup_completed: boolean
+          billing_setup_required: boolean
           brand_colors: Json | null
           created_at: string
           custom_css: string | null
@@ -348,6 +447,8 @@ export type Database = {
           windcave_username: string | null
         }
         Insert: {
+          billing_setup_completed?: boolean
+          billing_setup_required?: boolean
           brand_colors?: Json | null
           created_at?: string
           custom_css?: string | null
@@ -367,6 +468,8 @@ export type Database = {
           windcave_username?: string | null
         }
         Update: {
+          billing_setup_completed?: boolean
+          billing_setup_required?: boolean
           brand_colors?: Json | null
           created_at?: string
           custom_css?: string | null
@@ -619,6 +722,66 @@ export type Database = {
           },
         ]
       }
+      usage_records: {
+        Row: {
+          billed: boolean
+          billing_period_end: string
+          billing_period_start: string
+          created_at: string
+          id: string
+          invoice_id: string | null
+          order_id: string | null
+          organization_id: string
+          platform_fee_fixed: number
+          platform_fee_percentage: number
+          total_platform_fee: number
+          transaction_amount: number
+        }
+        Insert: {
+          billed?: boolean
+          billing_period_end: string
+          billing_period_start: string
+          created_at?: string
+          id?: string
+          invoice_id?: string | null
+          order_id?: string | null
+          organization_id: string
+          platform_fee_fixed?: number
+          platform_fee_percentage?: number
+          total_platform_fee: number
+          transaction_amount: number
+        }
+        Update: {
+          billed?: boolean
+          billing_period_end?: string
+          billing_period_start?: string
+          created_at?: string
+          id?: string
+          invoice_id?: string | null
+          order_id?: string | null
+          organization_id?: string
+          platform_fee_fixed?: number
+          platform_fee_percentage?: number
+          total_platform_fee?: number
+          transaction_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_records_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "usage_records_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       guest_status_view: {
@@ -645,6 +808,10 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_platform_fee: {
+        Args: { transaction_amount: number }
+        Returns: number
+      }
       generate_ticket_code: {
         Args: Record<PropertyKey, never>
         Returns: string

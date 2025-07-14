@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import AIEventGenerator from "@/components/AIEventGenerator";
 import AIChatbot from "@/components/AIChatbot";
+import BillingDashboard from "@/components/BillingDashboard";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -531,7 +532,7 @@ const OrgDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-8 lg:w-fit">
+          <TabsList className="grid w-full grid-cols-9 lg:w-fit">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Overview
@@ -559,6 +560,10 @@ const OrgDashboard = () => {
             <TabsTrigger value="marketing" className="flex items-center gap-2">
               <Mail className="w-4 h-4" />
               Marketing
+            </TabsTrigger>
+            <TabsTrigger value="billing" className="flex items-center gap-2">
+              <CreditCard className="w-4 h-4" />
+              Billing
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="w-4 h-4" />
@@ -1511,6 +1516,14 @@ const OrgDashboard = () => {
                 <Button className="gradient-primary">Send Campaign</Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Billing Tab */}
+          <TabsContent value="billing" className="space-y-6">
+            <BillingDashboard 
+              organizationId={organizationId} 
+              isLoading={!organizationId}
+            />
           </TabsContent>
 
           {/* Settings Tab */}

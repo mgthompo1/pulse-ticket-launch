@@ -160,6 +160,21 @@ serve(async (req) => {
       throw new Error("Failed to create order items");
     }
 
+    // Track usage for billing (platform fees)
+    try {
+      await supabaseClient.functions.invoke('track-usage', {
+        body: {
+          order_id: order.id,
+          organization_id: event.organization_id,
+          transaction_amount: totalAmount
+        }
+      });
+      console.log('Usage tracked for billing');
+    } catch (usageError) {
+      console.error('Error tracking usage:', usageError);
+      // Don't fail the order creation if usage tracking fails
+    }
+
     return new Response(JSON.stringify({
       sessionId: windcaveResult.id,
       links: windcaveResult.links, // Return full links array for Drop-In
