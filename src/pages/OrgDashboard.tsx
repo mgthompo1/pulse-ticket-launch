@@ -89,6 +89,13 @@ const OrgDashboard = () => {
     reminderEmails: true
   });
 
+  // Load ticket types when selectedEvent changes
+  React.useEffect(() => {
+    if (selectedEvent?.id) {
+      loadTicketTypes(selectedEvent.id);
+    }
+  }, [selectedEvent]);
+
   // Load organization and events
   React.useEffect(() => {
     const loadOrganization = async () => {
@@ -783,15 +790,117 @@ const OrgDashboard = () => {
                 </TabsContent>
 
                 <TabsContent value="tickets">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Ticket Management</CardTitle>
-                      <CardDescription>Configure ticket types and pricing</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground">Ticket management interface will be here</p>
-                    </CardContent>
-                  </Card>
+                  <div className="space-y-6">
+                    {/* Create Ticket Type */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Create Ticket Type</CardTitle>
+                        <CardDescription>Add new ticket types for your event</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="ticket-name">Ticket Name</Label>
+                            <Input 
+                              id="ticket-name" 
+                              placeholder="e.g., General Admission" 
+                              value={ticketTypeForm.name}
+                              onChange={(e) => handleTicketTypeFormChange("name", e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="ticket-price">Price ($)</Label>
+                            <Input 
+                              id="ticket-price" 
+                              type="number" 
+                              step="0.01"
+                              placeholder="0.00" 
+                              value={ticketTypeForm.price}
+                              onChange={(e) => handleTicketTypeFormChange("price", e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="ticket-quantity">Available Quantity</Label>
+                            <Input 
+                              id="ticket-quantity" 
+                              type="number" 
+                              placeholder="100" 
+                              value={ticketTypeForm.quantity}
+                              onChange={(e) => handleTicketTypeFormChange("quantity", e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="sale-start">Sale Start Date</Label>
+                            <Input 
+                              id="sale-start" 
+                              type="datetime-local" 
+                              value={ticketTypeForm.saleStartDate}
+                              onChange={(e) => handleTicketTypeFormChange("saleStartDate", e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="ticket-description">Description (Optional)</Label>
+                            <Textarea 
+                              id="ticket-description" 
+                              placeholder="Description of this ticket type..." 
+                              value={ticketTypeForm.description}
+                              onChange={(e) => handleTicketTypeFormChange("description", e.target.value)}
+                              rows={3}
+                            />
+                          </div>
+                        </div>
+                        <Button 
+                          onClick={handleCreateTicketType} 
+                          disabled={isCreatingTicketType || !ticketTypeForm.name || !ticketTypeForm.price || !ticketTypeForm.quantity}
+                          className="w-full gradient-primary"
+                        >
+                          {isCreatingTicketType ? "Creating..." : "Create Ticket Type"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* Existing Ticket Types */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Existing Ticket Types</CardTitle>
+                        <CardDescription>Manage your current ticket types</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {ticketTypes.length > 0 ? (
+                          <div className="space-y-4">
+                            {ticketTypes.map((ticketType: any) => (
+                              <div key={ticketType.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg">
+                                <div className="space-y-1 flex-1">
+                                  <h3 className="font-medium">{ticketType.name}</h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    ${ticketType.price} • {ticketType.quantity_sold}/{ticketType.quantity_available} sold
+                                  </p>
+                                  {ticketType.description && (
+                                    <p className="text-sm text-muted-foreground">{ticketType.description}</p>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                                  <Badge variant={ticketType.quantity_sold < ticketType.quantity_available ? "default" : "secondary"}>
+                                    {ticketType.quantity_sold < ticketType.quantity_available ? "Available" : "Sold Out"}
+                                  </Badge>
+                                  <Button variant="outline" size="sm">
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Edit
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8">
+                            <Ticket className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                            <p className="text-muted-foreground">No ticket types created yet</p>
+                            <p className="text-sm text-muted-foreground">Create your first ticket type above</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="analytics">
