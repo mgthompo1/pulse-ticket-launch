@@ -3,8 +3,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { CurrencySelector } from './CurrencySelector';
-
 interface WindcaveConfigurationProps {
   windcaveUsername: string;
   windcaveApiKey: string;
@@ -44,10 +42,6 @@ export const WindcaveConfiguration = ({
 }: WindcaveConfigurationProps) => {
   return (
     <>
-      <CurrencySelector 
-        currency={currency} 
-        onCurrencyChange={onCurrencyChange} 
-      />
       <div className="space-y-2">
         <Label htmlFor="windcaveUsername">Windcave Username</Label>
         <Input
@@ -107,6 +101,22 @@ export const WindcaveConfiguration = ({
           value={windcaveStationId}
           onChange={(e) => onWindcaveStationIdChange(e.target.value)}
         />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="windcaveHitCurrency">Windcave HIT Currency</Label>
+        <Select value={currency} onValueChange={onCurrencyChange}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select currency" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="NZD">New Zealand Dollar (NZD)</SelectItem>
+            <SelectItem value="AUD">Australian Dollar (AUD)</SelectItem>
+            <SelectItem value="USD">US Dollar (USD)</SelectItem>
+            <SelectItem value="GBP">British Pound (GBP)</SelectItem>
+            <SelectItem value="EUR">Euro (EUR)</SelectItem>
+            <SelectItem value="CAD">Canadian Dollar (CAD)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
     </>
   );

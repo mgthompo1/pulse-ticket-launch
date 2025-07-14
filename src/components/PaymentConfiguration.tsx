@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { CurrencySelector } from './payment/CurrencySelector';
 import { PaymentProviderSelector } from './payment/PaymentProviderSelector';
 import { StripeConfiguration } from './payment/StripeConfiguration';
 import { WindcaveConfiguration } from './payment/WindcaveConfiguration';
@@ -105,12 +104,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <CurrencySelector 
-          currency={currency} 
-          onCurrencyChange={setCurrency} 
-        />
-
-        <PaymentProviderSelector 
+        <PaymentProviderSelector
           paymentProvider={paymentProvider}
           onProviderChange={setPaymentProvider}
         />
