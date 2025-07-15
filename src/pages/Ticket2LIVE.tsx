@@ -529,7 +529,7 @@ const Ticket2LIVE = () => {
       if (data.success) {
         setHitTerminalState(prev => ({ 
           ...prev, 
-          txnRef: data.txnRef,
+          txnRef: data.sessionId,
           message: data.terminalDisplay || "Present card to terminal"
         }));
 
@@ -544,30 +544,50 @@ const Ticket2LIVE = () => {
             const statusCheck = await supabase.functions.invoke("windcave-hit-terminal", {
               body: {
                 eventId,
-                stationId: organizationConfig.windcave_station_id,
-                txnRef: data.txnRef,
+                sessionId: data.sessionId,
                 action: "status"
               }
             });
 
-            if (statusCheck.data?.success && statusCheck.data.status === 'approved') {
-              setHitTerminalState(prev => ({ 
-                ...prev, 
-                processing: false, 
-                message: "Payment completed successfully!" 
-              }));
-              
-              toast({ 
-                title: "Payment Successful!", 
-                description: `Transaction completed: ${statusCheck.data.approvalCode}` 
-              });
-              
-              // Clear carts
-              setCart([]);
-              setTicketCart([]);
-              setCustomerInfo({ name: "", email: "" });
-              loadAnalytics();
-              return;
+            if (statusCheck.data?.success) {
+              if (statusCheck.data.status === 'approved') {
+                setHitTerminalState(prev => ({ 
+                  ...prev, 
+                  processing: false, 
+                  message: "Payment completed successfully!" 
+                }));
+                
+                toast({ 
+                  title: "Payment Successful!", 
+                  description: `Transaction completed: ${statusCheck.data.approvalCode || 'Approved'}` 
+                });
+                
+                // Clear carts
+                setCart([]);
+                setTicketCart([]);
+                setCustomerInfo({ name: "", email: "" });
+                loadAnalytics();
+                return;
+              } else if (statusCheck.data.status === 'declined') {
+                setHitTerminalState(prev => ({ 
+                  ...prev, 
+                  processing: false, 
+                  message: "Payment declined" 
+                }));
+                
+                toast({ 
+                  title: "Payment Declined", 
+                  description: statusCheck.data.message || "Payment was declined",
+                  variant: "destructive"
+                });
+                return;
+              } else {
+                // Update terminal display message
+                setHitTerminalState(prev => ({ 
+                  ...prev, 
+                  message: statusCheck.data.message || "Processing payment..."
+                }));
+              }
             }
           } catch (pollError) {
             console.error("Status polling error:", pollError);
@@ -604,8 +624,7 @@ const Ticket2LIVE = () => {
       await supabase.functions.invoke("windcave-hit-terminal", {
         body: {
           eventId,
-          stationId: organizationConfig.windcave_station_id,
-          txnRef: hitTerminalState.txnRef,
+          sessionId: hitTerminalState.txnRef,
           action: "cancel"
         }
       });

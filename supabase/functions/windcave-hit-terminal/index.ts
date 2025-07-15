@@ -26,11 +26,11 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { eventId, items, customerInfo, action = "purchase", txnRef } = await req.json();
-    logStep("Processing HIT terminal request", { eventId, action, itemCount: items?.length });
+    const { eventId, items, customerInfo, action = "purchase", sessionId } = await req.json();
+    logStep("Processing HIT terminal request", { eventId, action, itemCount: items?.length, sessionId });
 
-    // Validate required parameters
-    if (!eventId || !items || !customerInfo) {
+    // Validate required parameters for purchase
+    if (action === "purchase" && (!eventId || !items || !customerInfo)) {
       throw new Error("Missing required parameters: eventId, items, and customerInfo are required");
     }
 
@@ -68,64 +68,75 @@ serve(async (req) => {
     // Use organization's configured currency
     const currency = org.currency || 'NZD';
 
-    // Calculate total amount
-    const totalAmount = items.reduce((sum: number, item: any) => {
-      return sum + (item.quantity * item.price);
-    }, 0);
-
-    logStep("Calculated total amount", { totalAmount, currency });
-
     // Determine API endpoint based on environment
     const baseUrl = org.windcave_endpoint === "SEC" 
-      ? "https://sec.windcave.com/hit/pos.aspx"
-      : "https://uat.windcave.com/hit/pos.aspx";
+      ? "https://sec.windcave.com/api/v1/sessions"
+      : "https://uat.windcave.com/api/v1/sessions";
 
-    // Create HIT terminal transaction request as XML
-    const transactionRef = txnRef || `TXN-${eventId}-${Date.now()}`;
-    const hitRequestXml = `<?xml version="1.0" encoding="utf-8"?>
-<Pxr user="${org.windcave_hit_username}" key="${org.windcave_hit_key}">
-  <Station>${terminalStationId}</Station>
-  <Amount>${totalAmount.toFixed(2)}</Amount>
-  <Cur>${currency}</Cur>
-  <TxnType>Purchase</TxnType>
-  <TxnRef>${transactionRef}</TxnRef>
-  <DeviceId>POS-${terminalStationId}</DeviceId>
-  <PosName>Ticket2LIVE</PosName>
-  <PosVersion>1.0.0</PosVersion>
-  <VendorId>Lovable</VendorId>
-  <MRef>${event.name} - ${customerInfo.name}</MRef>
-</Pxr>`;
+    // Create Basic Auth header
+    const authHeader = `Basic ${btoa(`${org.windcave_hit_username}:${org.windcave_hit_key}`)}`;
 
-    logStep("Sending HIT terminal request", { 
-      baseUrl, 
-      deviceId: terminalStationId, 
-      amount: totalAmount.toFixed(2),
-      currency: currency,
-      txnRef: transactionRef
-    });
-
-    // Make request to Windcave HIT API
-    const response = await fetch(baseUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/xml; charset=utf-8",
-        "Accept": "text/xml"
-      },
-      body: hitRequestXml
-    });
-
-    const responseText = await response.text();
-    logStep("Windcave HIT response", { status: response.status, responseText });
-
-    if (!response.ok) {
-      throw new Error(`Windcave HIT API error: Status ${response.status} - ${responseText}`);
-    }
-
-    // Parse XML response (basic parsing for demo)
-    const responseData = { raw: responseText };
-
-    // Handle different response types based on action
     if (action === "purchase") {
+      // Calculate total amount
+      const totalAmount = items.reduce((sum: number, item: any) => {
+        return sum + (item.quantity * item.price);
+      }, 0);
+
+      logStep("Calculated total amount", { totalAmount, currency });
+
+      // Create session with terminal node for direct terminal processing
+      const sessionData = {
+        type: "purchase",
+        amount: totalAmount.toFixed(2),
+        currency: currency,
+        callbackUrls: {
+          approved: `${Deno.env.get("SUPABASE_URL")}/functions/v1/windcave-hit-terminal`,
+          declined: `${Deno.env.get("SUPABASE_URL")}/functions/v1/windcave-hit-terminal`,
+          cancelled: `${Deno.env.get("SUPABASE_URL")}/functions/v1/windcave-hit-terminal`
+        },
+        terminal: {
+          station: terminalStationId,
+          slotId: 1,
+          enableTip: 0,
+          skipSurcharge: 0,
+          payAtTable: 0,
+          oneSwipe: 0,
+          cardholderPresent: 1,
+          authType: "Purchase",
+          completeType: "Final",
+          billingId: `${event.name}-${Date.now()}`,
+          txnData1: event.name,
+          txnData2: customerInfo.name,
+          txnData3: customerInfo.email,
+          receiptEmail: customerInfo.email || ""
+        }
+      };
+
+      logStep("Creating session with terminal node", { 
+        baseUrl, 
+        station: terminalStationId, 
+        amount: totalAmount.toFixed(2),
+        currency: currency
+      });
+
+      // Make request to Windcave REST API
+      const response = await fetch(baseUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": authHeader,
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(sessionData)
+      });
+
+      const responseData = await response.json();
+      logStep("Windcave session creation response", { status: response.status, data: responseData });
+
+      if (!response.ok) {
+        throw new Error(`Windcave API error: Status ${response.status} - ${JSON.stringify(responseData)}`);
+      }
+
       // Create order record for purchase
       const orderData = {
         event_id: eventId,
@@ -133,7 +144,8 @@ serve(async (req) => {
         customer_email: customerInfo.email,
         customer_phone: customerInfo.phone || null,
         total_amount: totalAmount,
-        status: "pending"
+        status: "pending",
+        windcave_session_id: responseData.id
       };
 
       const { data: order, error: orderError } = await supabaseClient
@@ -152,9 +164,10 @@ serve(async (req) => {
       // Create order items
       const orderItems = items.map((item: any) => ({
         order_id: order.id,
-        ticket_type_id: item.ticketTypeId,
+        ticket_type_id: item.id || item.ticketTypeId,
         quantity: item.quantity,
-        unit_price: item.price
+        unit_price: item.price,
+        item_type: item.type || 'ticket'
       }));
 
       const { error: orderItemsError } = await supabaseClient
@@ -170,65 +183,140 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({
         success: true,
-        txnRef: transactionRef,
+        sessionId: responseData.id,
         orderId: order.id,
         amount: totalAmount,
         currency: currency,
         status: "initiated",
         message: "HIT terminal transaction initiated successfully",
         terminalDisplay: "Present card to terminal",
-        rawResponse: responseText
+        terminal: responseData.terminal,
+        links: responseData.links
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
-    } else if (action === "status") {
-      // For status check, create XML request for status
-      const statusXml = `<?xml version="1.0" encoding="utf-8"?>
-<Pxr user="${org.windcave_hit_username}" key="${org.windcave_hit_key}">
-  <Station>${terminalStationId}</Station>
-  <TxnType>Status</TxnType>
-  <TxnRef>${txnRef || terminalStationId}</TxnRef>
-</Pxr>`;
 
-      const statusResponse = await fetch(baseUrl, {
+    } else if (action === "status") {
+      // Get session status
+      if (!sessionId) {
+        throw new Error("Session ID required for status check");
+      }
+
+      const statusUrl = `${baseUrl}/${sessionId}`;
+      logStep("Checking session status", { statusUrl });
+
+      const statusResponse = await fetch(statusUrl, {
+        method: "GET",
+        headers: {
+          "Authorization": authHeader,
+          "Accept": "application/json"
+        }
+      });
+
+      const statusData = await statusResponse.json();
+      logStep("Session status response", { status: statusResponse.status, data: statusData });
+
+      if (!statusResponse.ok) {
+        throw new Error(`Status check failed: ${statusResponse.status} - ${JSON.stringify(statusData)}`);
+      }
+
+      // Check if payment is completed
+      let paymentStatus = "processing";
+      let displayMessage = "Processing...";
+      
+      if (statusData.state === "completed") {
+        paymentStatus = "approved";
+        displayMessage = "Payment completed successfully";
+        
+        // Update order status
+        const { error: updateError } = await supabaseClient
+          .from("orders")
+          .update({ status: "completed" })
+          .eq("windcave_session_id", sessionId);
+
+        if (updateError) {
+          logStep("Error updating order status", updateError);
+        }
+      } else if (statusData.state === "failed" || statusData.state === "declined") {
+        paymentStatus = "declined";
+        displayMessage = "Payment declined";
+        
+        // Update order status
+        const { error: updateError } = await supabaseClient
+          .from("orders")
+          .update({ status: "failed" })
+          .eq("windcave_session_id", sessionId);
+
+        if (updateError) {
+          logStep("Error updating order status", updateError);
+        }
+      } else if (statusData.terminal?.pinpad) {
+        // Terminal has pinpad display information
+        displayMessage = `${statusData.terminal.pinpad.displayLine1} ${statusData.terminal.pinpad.displayLine2}`.trim();
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        sessionId: sessionId,
+        status: paymentStatus,
+        state: statusData.state,
+        message: displayMessage,
+        terminal: statusData.terminal,
+        pinpad: statusData.terminal?.pinpad,
+        buttons: statusData.terminal?.pinpad?.buttons || [],
+        approvalCode: statusData.approvalCode,
+        rawResponse: statusData
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+
+    } else if (action === "cancel") {
+      // Cancel terminal transaction
+      if (!sessionId) {
+        throw new Error("Session ID required for cancellation");
+      }
+
+      const cancelUrl = `${baseUrl}/${sessionId}/terminal_action`;
+      logStep("Cancelling terminal transaction", { cancelUrl });
+
+      const cancelResponse = await fetch(cancelUrl, {
         method: "POST",
         headers: {
-          "Content-Type": "text/xml; charset=utf-8",
-          "Accept": "text/xml"
+          "Content-Type": "application/json",
+          "Authorization": authHeader,
+          "Accept": "application/json"
         },
-        body: statusXml
+        body: JSON.stringify({
+          action: "cancel"
+        })
       });
 
-      const statusText = await statusResponse.text();
-      
-      // Status check request
+      const cancelData = await cancelResponse.json();
+      logStep("Cancel response", { status: cancelResponse.status, data: cancelData });
+
+      // Update order status
+      const { error: updateError } = await supabaseClient
+        .from("orders")
+        .update({ status: "cancelled" })
+        .eq("windcave_session_id", sessionId);
+
+      if (updateError) {
+        logStep("Error updating order status", updateError);
+      }
+
       return new Response(JSON.stringify({
         success: true,
-        rawResponse: statusText,
-        status: "processing"
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    } else if (action === "cancel") {
-      // Cancel transaction request
-      return new Response(JSON.stringify({
-        success: true,
-        message: "Transaction cancelled successfully"
+        message: "Transaction cancelled successfully",
+        sessionId: sessionId
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      rawResponse: responseText
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    throw new Error("Invalid action specified");
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
