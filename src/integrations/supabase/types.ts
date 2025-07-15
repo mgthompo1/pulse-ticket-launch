@@ -1076,7 +1076,10 @@ export type Database = {
     }
     Functions: {
       calculate_platform_fee: {
-        Args: { order_id: number } | { transaction_amount: number }
+        Args:
+          | Record<PropertyKey, never>
+          | { order_id: number }
+          | { transaction_amount: number }
         Returns: number
       }
       generate_ticket_code: {

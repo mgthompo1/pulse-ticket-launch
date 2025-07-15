@@ -569,6 +569,71 @@ const OrgDashboard = () => {
     }
   };
 
+  const handlePublishEvent = async (eventId: string) => {
+    try {
+      const { error } = await supabase
+        .from("events")
+        .update({ status: "published" })
+        .eq("id", eventId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Event published successfully! Others can now access the widget."
+      });
+
+      // Reload events to update the UI
+      if (organizationId) {
+        loadEvents(organizationId);
+      }
+    } catch (error) {
+      console.error("Error publishing event:", error);
+      toast({
+        title: "Error",
+        description: "Failed to publish event",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleUnpublishEvent = async (eventId: string) => {
+    try {
+      const { error } = await supabase
+        .from("events")
+        .update({ status: "draft" })
+        .eq("id", eventId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Event unpublished successfully! Widget is now private."
+      });
+
+      // Reload events to update the UI
+      if (organizationId) {
+        loadEvents(organizationId);
+      }
+    } catch (error) {
+      console.error("Error unpublishing event:", error);
+      toast({
+        title: "Error",
+        description: "Failed to unpublish event",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const copyWidgetUrl = (eventId: string) => {
+    const widgetUrl = `${window.location.origin}/widget/${eventId}`;
+    navigator.clipboard.writeText(widgetUrl);
+    toast({
+      title: "Success",
+      description: "Widget URL copied to clipboard!"
+    });
+  };
+
   const handleCreateEventClick = () => {
     setActiveTab("events");
   };
@@ -1306,21 +1371,54 @@ const OrgDashboard = () => {
                            <Badge variant={event.status === "published" ? "default" : "secondary"} className="w-fit">
                              {event.status}
                            </Badge>
-                           <Button
-                             variant="outline"
-                             size="sm"
-                             onClick={() => {
-                               setSelectedEvent(event);
-                               setActiveTab("event-details");
-                               // Load ticket types when selecting an event
-                               loadTicketTypes(event.id);
-                             }}
-                             className="w-full sm:w-auto"
-                           >
-                             <Edit className="h-4 w-4 mr-2" />
-                             <span className="hidden sm:inline">Manage Event</span>
-                             <span className="sm:hidden">Manage</span>
-                           </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedEvent(event);
+                                setActiveTab("event-details");
+                                // Load ticket types when selecting an event
+                                loadTicketTypes(event.id);
+                              }}
+                              className="w-full sm:w-auto"
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              <span className="hidden sm:inline">Manage Event</span>
+                              <span className="sm:hidden">Manage</span>
+                            </Button>
+                            {event.status === "draft" ? (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handlePublishEvent(event.id)}
+                                className="bg-green-600 hover:bg-green-700 w-full sm:w-auto"
+                              >
+                                <Globe className="w-4 h-4 mr-2" />
+                                <span className="hidden sm:inline">Publish</span>
+                                <span className="sm:hidden">Publish</span>
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleUnpublishEvent(event.id)}
+                                className="w-full sm:w-auto"
+                              >
+                                <Globe className="w-4 h-4 mr-2" />
+                                <span className="hidden sm:inline">Unpublish</span>
+                                <span className="sm:hidden">Unpublish</span>
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => copyWidgetUrl(event.id)}
+                              className="w-full sm:w-auto"
+                            >
+                              <Link className="w-4 h-4 mr-2" />
+                              <span className="hidden sm:inline">Share</span>
+                              <span className="sm:hidden">Share</span>
+                            </Button>
                          </div>
                        </div>
                     ))
