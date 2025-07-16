@@ -579,18 +579,21 @@ const TicketWidget = () => {
             }
           },
           // Mobile Payments configuration for Apple Pay and Google Pay
+          // Critical: Only enable if Apple Pay is properly configured
           mobilePayments: eventData?.organizations?.apple_pay_merchant_id ? {
             merchantName: eventData.organizations.name || "Event Tickets",
             countryCode: "NZ", // Merchant's two-letter ISO 3166 country code
-            currencyCode: eventData.organizations.currency?.toUpperCase() || "NZD", // Three-letter ISO 4217 currency code
+            currencyCode: (eventData.organizations.currency || "NZD").toUpperCase(), // Must be uppercase ISO 4217
             buttonStyle: "black", // Options: black, white, white-outline
             buttonType: "buy", // Options: book, buy, checkout, donate, order, pay, plain, subscribe
             buttonLocale: "en-US", // ISO-639-1 language code + ISO-3166-1 region code
-            supportedNetworks: ["visa", "masterCard", "amex"], // Note: masterCard not mastercard
+            supportedNetworks: ["visa", "masterCard", "amex"], // Note: masterCard with capital C
             requiredContactDetails: ["billing"], // Options: billing, shipping
             isTest: eventData.organizations.windcave_endpoint !== "SEC", // true for UAT, false for SEC/production
             // Apple Pay specific configuration
             applePay: {
+              // CRITICAL: This should be Windcave-assigned Apple Pay merchant identifier, 
+              // NOT your Apple Developer merchant ID (that goes in domain verification)
               merchantId: eventData.organizations.apple_pay_merchant_id,
               requiredContactDetails: ["billing"], // Override mobilePayments setting if needed
               // Apple Pay specific onSuccess callback
@@ -705,9 +708,13 @@ const TicketWidget = () => {
             },
             // Google Pay configuration
             googlePay: {
+              // CRITICAL: Missing proper Google Pay setup
+              merchantId: "WINDCAVE_ASSIGNED_GOOGLE_PAY_ID", // This should come from Windcave, not organization
+              googleMerchantId: eventData.organizations.windcave_endpoint === "SEC" ? "YOUR_GOOGLE_MERCHANT_ID" : "00000000", // 00000000 for test
               environment: eventData.organizations.windcave_endpoint === "SEC" ? "PRODUCTION" : "TEST",
-              merchantId: eventData.organizations.name || "Event Tickets",
-              merchantName: eventData.organizations.name || "Event Tickets"
+              supportPANOnly: true,
+              supportTokens: true,
+              requiredContactDetails: ["billing"]
             }
           } : undefined,
           // Optional callback triggered when payment starts
