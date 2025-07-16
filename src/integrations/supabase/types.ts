@@ -559,10 +559,13 @@ export type Database = {
       }
       organizations: {
         Row: {
+          address: string | null
           apple_pay_merchant_id: string | null
           billing_setup_completed: boolean
           billing_setup_required: boolean
           brand_colors: Json | null
+          city: string | null
+          country: string | null
           created_at: string
           currency: string | null
           custom_css: string | null
@@ -571,6 +574,8 @@ export type Database = {
           logo_url: string | null
           name: string
           payment_provider: string | null
+          phone: string | null
+          postal_code: string | null
           stripe_account_id: string | null
           stripe_onboarding_complete: boolean | null
           test_mode: boolean
@@ -586,10 +591,13 @@ export type Database = {
           windcave_username: string | null
         }
         Insert: {
+          address?: string | null
           apple_pay_merchant_id?: string | null
           billing_setup_completed?: boolean
           billing_setup_required?: boolean
           brand_colors?: Json | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           currency?: string | null
           custom_css?: string | null
@@ -598,6 +606,8 @@ export type Database = {
           logo_url?: string | null
           name: string
           payment_provider?: string | null
+          phone?: string | null
+          postal_code?: string | null
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean | null
           test_mode?: boolean
@@ -613,10 +623,13 @@ export type Database = {
           windcave_username?: string | null
         }
         Update: {
+          address?: string | null
           apple_pay_merchant_id?: string | null
           billing_setup_completed?: boolean
           billing_setup_required?: boolean
           brand_colors?: Json | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           currency?: string | null
           custom_css?: string | null
@@ -625,6 +638,8 @@ export type Database = {
           logo_url?: string | null
           name?: string
           payment_provider?: string | null
+          phone?: string | null
+          postal_code?: string | null
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean | null
           test_mode?: boolean

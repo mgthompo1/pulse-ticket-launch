@@ -10,6 +10,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, CreditCard, Sparkles, Link, FileText } from "lucide-react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AppSidebarProps {
   activeTab: string;
@@ -34,6 +37,37 @@ const sidebarItems = [
 export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSidebarProps) {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const { user } = useAuth();
+  const [organizationLogo, setOrganizationLogo] = useState<string | null>(null);
+  const [organizationName, setOrganizationName] = useState<string>("");
+
+  useEffect(() => {
+    const loadOrganization = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("organizations")
+          .select("logo_url, name")
+          .eq("user_id", user.id)
+          .single();
+
+        if (error) {
+          console.error("Error loading organization:", error);
+          return;
+        }
+
+        if (data) {
+          setOrganizationLogo(data.logo_url);
+          setOrganizationName(data.name || "");
+        }
+      } catch (error) {
+        console.error("Error loading organization:", error);
+      }
+    };
+
+    loadOrganization();
+  }, [user]);
 
   return (
     <Sidebar 
@@ -41,6 +75,36 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
       className="border-r"
     >
       <SidebarContent>
+        {/* Organization Logo Section */}
+        {organizationLogo && !isCollapsed && (
+          <div className="p-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
+                <img
+                  src={organizationLogo}
+                  alt="Organization logo"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm truncate">{organizationName}</p>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Mini logo for collapsed state */}
+        {organizationLogo && isCollapsed && (
+          <div className="p-2 border-b flex justify-center">
+            <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+              <img
+                src={organizationLogo}
+                alt="Organization logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
+          </div>
+        )}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>

@@ -26,6 +26,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X, Link, Package } from "lucide-react";
 import MerchandiseManager from "@/components/MerchandiseManager";
+import OrganizationSettings from "@/components/OrganizationSettings";
 import { useNavigate } from "react-router-dom";
 
 const OrgDashboard = () => {
@@ -361,41 +362,28 @@ const OrgDashboard = () => {
 
   return (
     <div className="h-screen bg-background flex flex-col">
-      {/* Header at the very top */}
-      <header className="border-b bg-gradient-to-r from-primary/5 to-secondary/5 flex-shrink-0">
-        <div className="container mx-auto px-4 py-4 md:py-6">
-          <div className="flex items-center justify-between">
-            {/* Left-aligned main heading */}
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                {organizationData?.name || "Organization Dashboard"}
-              </h1>
-              <p className="text-muted-foreground">
-                Manage your events and organization settings
-              </p>
+      {/* Header with minimal controls */}
+      <header className="border-b flex-shrink-0">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-end gap-4">
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="test-mode" className="text-sm">
+                {testMode ? "Test Mode" : "Live Mode"}
+              </Label>
+              <Switch
+                id="test-mode"
+                checked={testMode}
+                onCheckedChange={handleToggleTestMode}
+              />
             </div>
-            
-            {/* Controls positioned to the right */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center space-x-2">
-                <Label htmlFor="test-mode" className="text-sm">
-                  {testMode ? "Test Mode" : "Live Mode"}
-                </Label>
-                <Switch
-                  id="test-mode"
-                  checked={testMode}
-                  onCheckedChange={handleToggleTestMode}
-                />
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => navigate("/")}
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Exit Dashboard
-              </Button>
-            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => navigate("/")}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Exit Dashboard
+            </Button>
           </div>
         </div>
       </header>
@@ -672,39 +660,7 @@ const OrgDashboard = () => {
             </TabsContent>
 
             <TabsContent value="settings" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Organization Settings</CardTitle>
-                  <CardDescription>Manage your organization details</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="org-name">Organization Name</Label>
-                      <Input
-                        id="org-name"
-                        value={organizationData?.name || ""}
-                        onChange={(e) => setOrganizationData(prev => prev ? {...prev, name: e.target.value} : null)}
-                        placeholder="Enter organization name"
-                      />
-                    </div>
-                    <Button onClick={async () => {
-                      if (organizationData && organizationId) {
-                        const { error } = await supabase
-                          .from("organizations")
-                          .update({ name: organizationData.name })
-                          .eq("id", organizationId);
-                        
-                        if (!error) {
-                          toast({ title: "Success", description: "Organization name updated" });
-                        }
-                      }
-                    }}>
-                      Save Changes
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <OrganizationSettings />
             </TabsContent>
           </Tabs>
           
