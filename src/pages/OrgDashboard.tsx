@@ -40,6 +40,11 @@ const OrgDashboard = () => {
     totalRevenue: 0,
     estimatedPlatformFees: 0
   });
+
+  // Design state
+  const [selectedColor, setSelectedColor] = useState("#000000");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [customCss, setCustomCss] = useState("");
   const [stripeSecretKey, setStripeSecretKey] = useState("");
   const [windcaveConfig, setWindcaveConfig] = useState({
     username: "",
@@ -830,6 +835,103 @@ const OrgDashboard = () => {
         description: "Failed to sign out. Please try again.",
         variant: "destructive"
       });
+    }
+  };
+
+  // Load design settings
+  React.useEffect(() => {
+    const loadDesignSettings = async () => {
+      if (!organizationId) return;
+
+      const { data, error } = await supabase
+        .from("organizations")
+        .select("brand_colors, custom_css, logo_url")
+        .eq("id", organizationId)
+        .single();
+
+      if (error) {
+        console.error("Error loading design settings:", error);
+        return;
+      }
+
+      if (data) {
+        if (data.brand_colors && typeof data.brand_colors === 'object' && 'primary' in data.brand_colors) {
+          setSelectedColor(data.brand_colors.primary as string);
+        }
+        if (data.custom_css) {
+          setCustomCss(data.custom_css);
+        }
+      }
+    };
+
+    loadDesignSettings();
+  }, [organizationId]);
+
+  const handleSaveDesign = async () => {
+    if (!organizationId) {
+      toast({
+        title: "Error",
+        description: "No organization found",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const updates: any = {
+        brand_colors: { primary: selectedColor },
+        custom_css: customCss
+      };
+
+      // Handle logo upload if file is selected
+      if (logoFile) {
+        const fileExt = logoFile.name.split('.').pop();
+        const fileName = `${organizationId}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('event-logos')
+          .upload(fileName, logoFile, { upsert: true });
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('event-logos')
+          .getPublicUrl(fileName);
+
+        updates.logo_url = urlData.publicUrl;
+      }
+
+      const { error } = await supabase
+        .from("organizations")
+        .update(updates)
+        .eq("id", organizationId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Design settings saved successfully!"
+      });
+    } catch (error) {
+      console.error("Error saving design:", error);
+      toast({
+        title: "Error",
+        description: `Failed to save design: ${error.message}`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleColorSelect = (color: string) => {
+    setSelectedColor(color);
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setLogoFile(file);
     }
   };
 
@@ -1785,19 +1887,53 @@ const OrgDashboard = () => {
                     <div className="space-y-2">
                       <Label>Primary Color</Label>
                       <div className="flex gap-2">
-                        <div className="w-8 h-8 rounded-full bg-primary border cursor-pointer"></div>
-                        <div className="w-8 h-8 rounded-full bg-blue-500 border cursor-pointer"></div>
-                        <div className="w-8 h-8 rounded-full bg-green-500 border cursor-pointer"></div>
-                        <div className="w-8 h-8 rounded-full bg-purple-500 border cursor-pointer"></div>
+                        <div 
+                          className={`w-8 h-8 rounded-full bg-primary border-2 cursor-pointer ${selectedColor === '#000000' ? 'border-ring' : 'border-border'}`}
+                          onClick={() => handleColorSelect('#000000')}
+                        ></div>
+                        <div 
+                          className={`w-8 h-8 rounded-full bg-blue-500 border-2 cursor-pointer ${selectedColor === '#3B82F6' ? 'border-ring' : 'border-border'}`}
+                          onClick={() => handleColorSelect('#3B82F6')}
+                        ></div>
+                        <div 
+                          className={`w-8 h-8 rounded-full bg-green-500 border-2 cursor-pointer ${selectedColor === '#10B981' ? 'border-ring' : 'border-border'}`}
+                          onClick={() => handleColorSelect('#10B981')}
+                        ></div>
+                        <div 
+                          className={`w-8 h-8 rounded-full bg-purple-500 border-2 cursor-pointer ${selectedColor === '#8B5CF6' ? 'border-ring' : 'border-border'}`}
+                          onClick={() => handleColorSelect('#8B5CF6')}
+                        ></div>
                       </div>
+                      <Input 
+                        type="color" 
+                        value={selectedColor} 
+                        onChange={(e) => handleColorSelect(e.target.value)}
+                        className="w-full h-10"
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="logo">Logo Upload</Label>
-                      <Input id="logo" type="file" accept="image/*" />
+                      <Input 
+                        id="logo" 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleLogoUpload}
+                      />
+                      {logoFile && (
+                        <p className="text-sm text-muted-foreground">
+                          Selected: {logoFile.name}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="custom-css">Custom CSS</Label>
-                      <Textarea id="custom-css" placeholder="Add custom styles" rows={4} />
+                      <Textarea 
+                        id="custom-css" 
+                        placeholder="Add custom styles" 
+                        rows={4}
+                        value={customCss}
+                        onChange={(e) => setCustomCss(e.target.value)}
+                      />
                     </div>
                   </div>
                   <div className="space-y-4">
@@ -1817,7 +1953,7 @@ const OrgDashboard = () => {
                     </div>
                   </div>
                 </div>
-                <Button className="gradient-primary">Save Design</Button>
+                <Button className="gradient-primary" onClick={handleSaveDesign}>Save Design</Button>
               </CardContent>
             </Card>
           </TabsContent>
