@@ -122,19 +122,15 @@ serve(async (req) => {
         throw new Error(`Windcave HIT API error: ${response.status} - ${responseText}`);
       }
 
-      // Parse XML response for initial validation
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(responseText, "text/xml");
-      const errorElement = xmlDoc.querySelector("parsererror");
-      
-      if (errorElement) {
-        throw new Error(`Invalid XML response from Windcave: ${errorElement.textContent}`);
+      // Parse XML response for initial validation using string parsing
+      if (!responseText.includes("<Scr>") || !responseText.includes("</Scr>")) {
+        throw new Error(`Invalid XML response from Windcave: ${responseText.substring(0, 200)}`);
       }
 
       // Check for error response
-      const errorMsg = xmlDoc.querySelector("ErrorMsg");
-      if (errorMsg) {
-        throw new Error(`Windcave HIT error: ${errorMsg.textContent}`);
+      const errorMsgMatch = responseText.match(/<ErrorMsg>(.*?)<\/ErrorMsg>/);
+      if (errorMsgMatch) {
+        throw new Error(`Windcave HIT error: ${errorMsgMatch[1]}`);
       }
 
       console.log("[WINDCAVE-HIT-TERMINAL] Transaction sent to terminal successfully", { txnRef });
@@ -259,16 +255,13 @@ serve(async (req) => {
         throw new Error(`Status check failed: ${statusResponse.status} - ${statusText}`);
       }
 
-      // Parse status response
-      const statusParser = new DOMParser();
-      const statusDoc = statusParser.parseFromString(statusText, "text/xml");
-      
-      const complete = statusDoc.querySelector("Complete")?.textContent;
-      const success = statusDoc.querySelector("Success")?.textContent;
-      const dl1 = statusDoc.querySelector("DL1")?.textContent || "";
-      const dl2 = statusDoc.querySelector("DL2")?.textContent || "";
-      const responseText = statusDoc.querySelector("ResponseText")?.textContent || "";
-      const reCo = statusDoc.querySelector("ReCo")?.textContent || "";
+      // Parse status response using string parsing
+      const complete = statusText.match(/<Complete>(.*?)<\/Complete>/)?.[1] || "";
+      const success = statusText.match(/<Success>(.*?)<\/Success>/)?.[1] || "";
+      const dl1 = statusText.match(/<DL1>(.*?)<\/DL1>/)?.[1] || "";
+      const dl2 = statusText.match(/<DL2>(.*?)<\/DL2>/)?.[1] || "";
+      const responseTextMatch = statusText.match(/<ResponseText>(.*?)<\/ResponseText>/)?.[1] || "";
+      const reCo = statusText.match(/<ReCo>(.*?)<\/ReCo>/)?.[1] || "";
 
       const isComplete = complete === "1";
       const isSuccess = success === "1";
