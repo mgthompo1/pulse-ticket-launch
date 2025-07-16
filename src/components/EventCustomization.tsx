@@ -820,14 +820,14 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     <Label>Public Event URL</Label>
                     <div className="flex gap-2">
                       <Input
-                        value={`${window.location.origin}/ticket2live/${eventId}`}
+                        value={`${window.location.origin}/widget/${eventId}`}
                         readOnly
                         className="flex-1"
                       />
                       <Button
                         variant="outline"
                         onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/ticket2live/${eventId}`);
+                          navigator.clipboard.writeText(`${window.location.origin}/widget/${eventId}`);
                           toast({
                             title: "Copied!",
                             description: "Event URL copied to clipboard"
