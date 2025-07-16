@@ -322,30 +322,150 @@ const TicketWidget = () => {
           },
           // Mobile Payments configuration for Apple Pay and Google Pay
           mobilePayments: eventData?.organizations?.apple_pay_merchant_id ? {
+            merchantName: eventData.organizations.name || "Event Tickets",
+            countryCode: "NZ", // Merchant's two-letter ISO 3166 country code
+            currencyCode: eventData.organizations.currency?.toUpperCase() || "NZD", // Three-letter ISO 4217 currency code
+            buttonStyle: "black", // Options: black, white, white-outline
+            buttonType: "buy", // Options: book, buy, checkout, donate, order, pay, plain, subscribe
+            buttonLocale: "en-US", // ISO-639-1 language code + ISO-3166-1 region code
+            supportedNetworks: ["visa", "masterCard", "amex"], // Note: masterCard not mastercard
+            requiredContactDetails: ["billing"], // Options: billing, shipping
+            isTest: eventData.organizations.windcave_endpoint !== "SEC", // true for UAT, false for SEC/production
+            // Apple Pay specific configuration
             applePay: {
               merchantId: eventData.organizations.apple_pay_merchant_id,
-              merchantName: eventData.organizations.name || "Event Tickets",
-              countryCode: "NZ", // You might want to make this configurable
-              currencyCode: eventData.organizations.currency?.toUpperCase() || "NZD",
-              supportedNetworks: ["visa", "mastercard", "amex"],
-              merchantCapabilities: ["supports3DS"]
+              requiredContactDetails: ["billing"], // Override mobilePayments setting if needed
+              // Apple Pay specific onSuccess callback
+              onSuccess: async (state: string, finalURL?: string, outcomeNotificationFunction?: (success: boolean) => void) => {
+                console.log("=== APPLE PAY SUCCESS CALLBACK ===");
+                console.log("Apple Pay state:", state);
+                console.log("Final URL:", finalURL);
+                console.log("Has outcome notification function:", !!outcomeNotificationFunction);
+                
+                // Handle 3DSecure stage for Apple Pay
+                if (state === "3DSecure") {
+                  console.log("Apple Pay 3DSecure authentication in progress...");
+                  return;
+                }
+                
+                // Handle completion stage
+                if (state === "done") {
+                  console.log("Apple Pay transaction completed");
+                  
+                  try {
+                    // Extract session ID from links for completion
+                    const sessionId = links[0]?.href?.split('/').pop();
+                    
+                    if (sessionId && eventData) {
+                      toast({
+                        title: "Apple Pay Successful!",
+                        description: "Finalizing your order...",
+                      });
+                      
+                      // Call the Drop In success function to finalize the order
+                      const { data, error } = await supabase.functions.invoke('windcave-dropin-success', {
+                        body: { 
+                          sessionId: sessionId,
+                          eventId: eventData.id
+                        }
+                      });
+
+                      if (error) {
+                        console.error("Apple Pay finalization error:", error);
+                        // Notify Apple Pay of failure
+                        if (outcomeNotificationFunction) {
+                          outcomeNotificationFunction(false);
+                        }
+                        toast({
+                          title: "Order Processing Failed",
+                          description: "Apple Pay successful but order processing failed. Please contact support.",
+                          variant: "destructive"
+                        });
+                        return false;
+                      }
+
+                      // Notify Apple Pay of success
+                      if (outcomeNotificationFunction) {
+                        outcomeNotificationFunction(true);
+                      }
+
+                      toast({
+                        title: "Order Complete!",
+                        description: "Your tickets have been confirmed via Apple Pay.",
+                      });
+                      
+                      // Delay redirect to allow Apple Pay to show success
+                      setTimeout(() => {
+                        window.location.href = '/payment-success';
+                      }, 2000);
+                      
+                      return true;
+                    } else {
+                      // Notify Apple Pay of failure
+                      if (outcomeNotificationFunction) {
+                        outcomeNotificationFunction(false);
+                      }
+                      return false;
+                    }
+                  } catch (error) {
+                    console.error("Apple Pay order finalization error:", error);
+                    // Notify Apple Pay of failure
+                    if (outcomeNotificationFunction) {
+                      outcomeNotificationFunction(false);
+                    }
+                    toast({
+                      title: "Order Processing Failed",
+                      description: "Apple Pay successful but order processing failed. Please contact support.",
+                      variant: "destructive"
+                    });
+                    return false;
+                  }
+                }
+                
+                return true;
+              },
+              // Apple Pay specific onError callback
+              onError: (error: any) => {
+                console.error("=== APPLE PAY ERROR CALLBACK ===");
+                console.error("Apple Pay transaction failed:", error);
+                
+                let errorMessage = "Apple Pay payment failed. Please try again.";
+                if (typeof error === 'string') {
+                  errorMessage = error;
+                } else if (error?.message) {
+                  errorMessage = error.message;
+                }
+                
+                toast({
+                  title: "Apple Pay Failed",
+                  description: errorMessage,
+                  variant: "destructive"
+                });
+                
+                setShowPaymentForm(false);
+              }
             },
+            // Google Pay configuration
             googlePay: {
-              environment: "TEST", // Change to "PRODUCTION" for live
+              environment: eventData.organizations.windcave_endpoint === "SEC" ? "PRODUCTION" : "TEST",
               merchantId: eventData.organizations.name || "Event Tickets",
               merchantName: eventData.organizations.name || "Event Tickets"
             }
           } : undefined,
+          // Optional callback triggered when payment starts
+          onPaymentStart: (paymentMethod: string, next: () => void, cancel: () => void) => {
+            console.log("=== PAYMENT START CALLBACK ===");
+            console.log("Payment method selected:", paymentMethod);
+            
+            // Perform any pre-payment validation or preparation here
+            // For now, just proceed with the payment
+            next();
+          },
+          // General onSuccess callback (for non-Apple Pay payments)
           onSuccess: async (status: any, data?: any) => {
             console.log("=== WINDCAVE SUCCESS CALLBACK ===");
             console.log("Success status:", status);
             console.log("Success data:", data);
-            
-            // Handle Apple Pay specific success data
-            if (data && data.applePay) {
-              console.log("Apple Pay success data:", data.applePay);
-              // Apple Pay specific handling if needed
-            }
             
             // Critical: Handle 3DSecure authentication flow
             if (status == "3DSecure") {
@@ -438,6 +558,7 @@ const TicketWidget = () => {
               }, 1500);
             }
           },
+          // General onError callback (for non-Apple Pay payments)
           onError: (error: any) => {
             console.error("=== WINDCAVE ERROR CALLBACK ===");
             console.error("Transaction failed:", error);
