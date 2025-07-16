@@ -44,6 +44,9 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       customCss: "",
       customHeaderText: "",
       customFooterText: ""
+    },
+    seatMaps: {
+      enabled: false
     }
   });
 
@@ -392,27 +395,62 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 Seat Map Management
               </CardTitle>
               <CardDescription>
-                Design and manage seating layouts for your event
+                Configure seating options for your event
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Create custom seating layouts to allow guests to select their preferred seats during ticket purchase.
-              </p>
-              <Button 
-                onClick={() => {
-                  console.log("=== SEAT MAP BUTTON CLICKED ===");
-                  console.log("Event ID:", eventId);
-                  console.log("Event Data:", eventData);
-                  console.log("Current showSeatMapDesigner state:", showSeatMapDesigner);
-                  setShowSeatMapDesigner(true);
-                  console.log("Set showSeatMapDesigner to true");
-                }}
-                className="w-full"
-              >
-                <MapPin className="mr-2 h-4 w-4" />
-                Open Seat Map Designer
-              </Button>
+            <CardContent className="space-y-6">
+              {/* Enable/Disable Seat Maps */}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="space-y-1">
+                  <Label htmlFor="enableSeatMaps" className="text-base font-medium">
+                    Enable Seat Maps
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Allow guests to select specific seats when purchasing tickets
+                  </p>
+                </div>
+                <Switch
+                  id="enableSeatMaps"
+                  checked={widgetCustomization.seatMaps?.enabled || false}
+                  onCheckedChange={(checked) => updateWidgetCustomization(['seatMaps', 'enabled'], checked)}
+                />
+              </div>
+
+              {/* Seat Map Designer - Only show when enabled */}
+              {widgetCustomization.seatMaps?.enabled && (
+                <div className="space-y-4">
+                  <div className="border-t pt-4">
+                    <h4 className="font-medium mb-2">Seating Layout Design</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Create custom seating layouts to allow guests to select their preferred seats during ticket purchase.
+                    </p>
+                    <Button 
+                      onClick={() => {
+                        console.log("=== SEAT MAP BUTTON CLICKED ===");
+                        console.log("Event ID:", eventId);
+                        console.log("Event Data:", eventData);
+                        console.log("Current showSeatMapDesigner state:", showSeatMapDesigner);
+                        setShowSeatMapDesigner(true);
+                        console.log("Set showSeatMapDesigner to true");
+                      }}
+                      className="w-full"
+                    >
+                      <MapPin className="mr-2 h-4 w-4" />
+                      Open Seat Map Designer
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Information when disabled */}
+              {!widgetCustomization.seatMaps?.enabled && (
+                <div className="text-center p-6 border rounded-lg bg-muted/30">
+                  <MapPin className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Enable seat maps above to create custom seating layouts for your event
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
