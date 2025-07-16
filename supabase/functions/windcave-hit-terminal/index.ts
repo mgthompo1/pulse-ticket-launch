@@ -70,32 +70,30 @@ serve(async (req) => {
 
     console.log("[WINDCAVE-HIT-TERMINAL] Calculated total amount", { totalAmount, currency });
 
-    // Determine API endpoint based on environment
+    // Determine HIT API endpoint based on environment
     const baseUrl = org.windcave_endpoint === "SEC" 
-      ? "https://sec.windcave.com/pxaccess/pxpay.aspx"
-      : "https://uat.windcave.com/pxaccess/pxpay.aspx";
+      ? "https://sec.windcave.com/pxhit/pxhit.aspx"
+      : "https://uat.windcave.com/pxhit/pxhit.aspx";
 
-    // Create HIT XML request
+    // Create HIT XML transaction request
     const xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
-<GenerateRequest>
-  <PxPayUserId>${org.windcave_hit_username}</PxPayUserId>
-  <PxPayKey>${org.windcave_hit_key}</PxPayKey>
-  <AmountInput>${totalAmount.toFixed(2)}</AmountInput>
-  <CurrencyInput>${currency}</CurrencyInput>
+<Txn>
+  <PostUsername>${org.windcave_hit_username}</PostUsername>
+  <PostPassword>${org.windcave_hit_key}</PostPassword>
+  <Amount>${totalAmount.toFixed(2)}</Amount>
+  <Currency>${currency}</Currency>
+  <TxnType>Purchase</TxnType>
   <MerchantReference>${event.name}-${Date.now()}</MerchantReference>
-  <EmailAddress>${customerInfo.email || ''}</EmailAddress>
   <TxnData1>${event.name}</TxnData1>
   <TxnData2>${customerInfo.name}</TxnData2>
   <TxnData3>${customerInfo.email}</TxnData3>
-  <TxnType>Purchase</TxnType>
-  <UrlSuccess>${Deno.env.get("SUPABASE_URL")}/functions/v1/windcave-dropin-success</UrlSuccess>
-  <UrlFail>${Deno.env.get("SUPABASE_URL")}/functions/v1/windcave-payment-status</UrlFail>
-  <BillingId>${terminalStationId}</BillingId>
-  <EnableAddBillCard>0</EnableAddBillCard>
-  <Opt>TO</Opt>
-</GenerateRequest>`;
+  <Station>${terminalStationId}</Station>
+  <EnableTip>0</EnableTip>
+  <CardholderPresent>1</CardholderPresent>
+  <EnableDukpt>0</EnableDukpt>
+</Txn>`;
 
-    console.log("[WINDCAVE-HIT-TERMINAL] Sending HIT request", { baseUrl });
+    console.log("[WINDCAVE-HIT-TERMINAL] Sending HIT transaction request", { baseUrl, station: terminalStationId });
 
     // Make request to Windcave HIT API
     const response = await fetch(baseUrl, {
@@ -108,21 +106,27 @@ serve(async (req) => {
     });
 
     const responseText = await response.text();
-    console.log("[WINDCAVE-HIT-TERMINAL] Windcave response", { status: response.status, response: responseText });
+    console.log("[WINDCAVE-HIT-TERMINAL] Windcave HIT response", { status: response.status, response: responseText });
 
     if (!response.ok) {
-      throw new Error(`Windcave API error: ${response.status} - ${responseText}`);
+      throw new Error(`Windcave HIT API error: ${response.status} - ${responseText}`);
     }
 
     // Parse XML response
-    const urlMatch = responseText.match(/<URI>(.*?)<\/URI>/);
     const validMatch = responseText.match(/<valid>(\d+)<\/valid>/);
+    const txnRefMatch = responseText.match(/<TxnRef>(.*?)<\/TxnRef>/);
+    const sessionIdMatch = responseText.match(/<SessionId>(.*?)<\/SessionId>/);
 
-    if (!urlMatch || !validMatch || validMatch[1] !== "1") {
-      throw new Error("Invalid response from Windcave HIT API");
+    if (!validMatch || validMatch[1] !== "1") {
+      const errorMatch = responseText.match(/<ResponseText>(.*?)<\/ResponseText>/);
+      const errorMessage = errorMatch ? errorMatch[1] : "Unknown error from Windcave HIT API";
+      throw new Error(`Windcave HIT API validation failed: ${errorMessage}`);
     }
 
-    const redirectUrl = urlMatch[1];
+    const txnRef = txnRefMatch ? txnRefMatch[1] : null;
+    const sessionId = sessionIdMatch ? sessionIdMatch[1] : null;
+
+    console.log("[WINDCAVE-HIT-TERMINAL] Transaction initiated successfully", { txnRef, sessionId });
 
     // Create order record
     const orderData = {
@@ -131,7 +135,8 @@ serve(async (req) => {
       customer_email: customerInfo.email,
       customer_phone: customerInfo.phone || null,
       total_amount: totalAmount,
-      status: "pending"
+      status: "pending",
+      windcave_session_id: sessionId || txnRef
     };
 
     const { data: order, error: orderError } = await supabaseClient
@@ -167,17 +172,93 @@ serve(async (req) => {
 
     console.log("[WINDCAVE-HIT-TERMINAL] Order items created", { count: orderItems.length });
 
-    return new Response(JSON.stringify({
-      success: true,
-      redirectUrl: redirectUrl,
-      orderId: order.id,
-      amount: totalAmount,
-      currency: currency,
-      message: "HIT terminal transaction initiated successfully"
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    // Start polling for transaction status
+    const pollStatus = async (sessionId: string, attempts = 0): Promise<any> => {
+      if (attempts >= 60) { // 5 minutes max polling
+        throw new Error("Transaction timeout - please check terminal");
+      }
+
+      // Create status request XML
+      const statusXml = `<?xml version="1.0" encoding="utf-8"?>
+<Status>
+  <PostUsername>${org.windcave_hit_username}</PostUsername>
+  <PostPassword>${org.windcave_hit_key}</PostPassword>
+  <SessionId>${sessionId}</SessionId>
+</Status>`;
+
+      const statusResponse = await fetch(baseUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/xml; charset=utf-8",
+          "User-Agent": "Ticket2LIVE-HIT-Terminal/1.0"
+        },
+        body: statusXml
+      });
+
+      const statusText = await statusResponse.text();
+      console.log("[WINDCAVE-HIT-TERMINAL] Status check", { attempt: attempts + 1, response: statusText });
+
+      // Parse status response
+      const completeMatch = statusText.match(/<Complete>(\d+)<\/Complete>/);
+      const successMatch = statusText.match(/<Success>(\d+)<\/Success>/);
+      const dl1Match = statusText.match(/<DL1>(.*?)<\/DL1>/);
+      const dl2Match = statusText.match(/<DL2>(.*?)<\/DL2>/);
+
+      const isComplete = completeMatch && completeMatch[1] === "1";
+      const isSuccess = successMatch && successMatch[1] === "1";
+      const displayLine1 = dl1Match ? dl1Match[1] : "";
+      const displayLine2 = dl2Match ? dl2Match[1] : "";
+
+      if (isComplete) {
+        // Transaction completed
+        const finalStatus = isSuccess ? "completed" : "failed";
+        
+        // Update order status
+        await supabaseClient
+          .from("orders")
+          .update({ status: finalStatus })
+          .eq("id", order.id);
+
+        return {
+          success: isSuccess,
+          status: finalStatus,
+          message: isSuccess ? "Payment completed successfully" : "Payment failed",
+          sessionId: sessionId,
+          orderId: order.id,
+          amount: totalAmount,
+          currency: currency,
+          displayLine1,
+          displayLine2
+        };
+      } else {
+        // Transaction still in progress, continue polling
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+        return pollStatus(sessionId, attempts + 1);
+      }
+    };
+
+    // Start status polling
+    if (sessionId) {
+      const finalResult = await pollStatus(sessionId);
+      return new Response(JSON.stringify(finalResult), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    } else {
+      // No session ID, return immediate response
+      return new Response(JSON.stringify({
+        success: true,
+        status: "initiated",
+        message: "HIT terminal transaction initiated successfully",
+        txnRef: txnRef,
+        orderId: order.id,
+        amount: totalAmount,
+        currency: currency
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
