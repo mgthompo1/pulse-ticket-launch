@@ -951,15 +951,15 @@ const OrgDashboard = () => {
   };
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab} 
-          selectedEvent={selectedEvent} 
-        />
-        
-        <div className="flex-1 flex flex-col">
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="border-b bg-gradient-to-r from-primary/5 to-secondary/5">
+        <div className="container mx-auto px-4 py-4 md:py-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                {organizationData?.name || "Organization Dashboard"}  
+              </h1>
           {/* Header */}
           <div className="border-b bg-gradient-to-r from-primary/5 to-secondary/5">
             <div className="container mx-auto px-4 py-4 md:py-6">
@@ -995,11 +995,11 @@ const OrgDashboard = () => {
 
           {/* Main Content */}
           <div className="flex-1 container mx-auto px-4 py-4 md:py-8">
-        {/* Remove old Tabs wrapper - content now rendered conditionally */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8">
           <div className="overflow-x-auto">
             {/* Content Rendering */}
             <div className="space-y-6">
-            <div className="space-y-6">
+          <TabsContent value="overview" className="space-y-6">
               <Card className="gradient-card hover-scale">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Events</CardTitle>
@@ -1099,11 +1099,12 @@ const OrgDashboard = () => {
                 </div>
               </CardContent>
             </Card>
-            )}
+          </TabsContent>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-            {/* Event Details Tab */}
-            {activeTab === "event-details" && (
-              <div className="space-y-6">
+          <TabsContent value="event-details" className="space-y-6">
             {selectedEvent ? (
               <Tabs defaultValue="overview" className="space-y-4">
                 <div className="overflow-x-auto">
@@ -1411,10 +1412,9 @@ const OrgDashboard = () => {
                 </CardContent>
               </Card>
             )}
-            </div>
+          </TabsContent>
 
-            {activeTab === "events" && (
-              <div className="space-y-6">
+          <TabsContent value="events" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Create New Event</CardTitle>
@@ -2170,7 +2170,7 @@ const OrgDashboard = () => {
               </div>
             )}
           </TabsContent>
-          </div>
+        </Tabs>
         
         {/* AI Chatbot */}
         <AIChatbot context={{ organizationId }} />
