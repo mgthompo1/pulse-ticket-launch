@@ -21,6 +21,19 @@ import { EventLogoUploader } from "@/components/events/EventLogoUploader";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import EventCustomization from "@/components/EventCustomization";
 import AttendeeManagement from "@/components/AttendeeManagement";
+import { AppSidebar } from "@/components/AppSidebar";
+import { 
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X, Link } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -32,6 +45,7 @@ const OrgDashboard = () => {
   const [stripeConnected, setStripeConnected] = useState(false);
   const [stripeOnboardingComplete, setStripeOnboardingComplete] = useState(false);
   const [organizationId, setOrganizationId] = useState<string>("");
+  const [organizationData, setOrganizationData] = useState<any>(null);
   const [paymentProvider, setPaymentProvider] = useState<"stripe" | "windcave">("stripe");
   const [testMode, setTestMode] = useState<boolean>(true);
   const [testModeAnalytics, setTestModeAnalytics] = useState({
@@ -155,6 +169,7 @@ const OrgDashboard = () => {
       if (orgs) {
         console.log("Organization loaded:", orgs);
         setOrganizationId(orgs.id);
+        setOrganizationData(orgs);
         setTestMode(orgs.test_mode ?? true);
         setStripeConnected(!!(orgs as any).stripe_account_id);
         setStripeOnboardingComplete(!!(orgs as any).stripe_onboarding_complete);
@@ -936,87 +951,55 @@ const OrgDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-gradient-to-r from-primary/5 to-secondary/5">
-        <div className="container mx-auto px-4 py-4 md:py-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                Organization Dashboard
-              </h1>
-              <p className="text-muted-foreground mt-1 md:mt-2 text-sm md:text-base">Manage your events and ticketing platform</p>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
-              <Button onClick={handleCreateEventClick} className="gradient-primary hover-scale flex-1 sm:flex-none" size="sm">
-                <Plus className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Create Event</span>
-                <span className="sm:hidden">Create</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={handleSignOut}
-                className="flex items-center gap-2 flex-1 sm:flex-none"
-                size="sm"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Sign Out</span>
-              </Button>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <AppSidebar 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+          selectedEvent={selectedEvent} 
+        />
+        
+        <div className="flex-1 flex flex-col">
+          {/* Header */}
+          <div className="border-b bg-gradient-to-r from-primary/5 to-secondary/5">
+            <div className="container mx-auto px-4 py-4 md:py-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <SidebarTrigger className="md:hidden" />
+                  <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                      {organizationData?.name || "Organization Dashboard"}
+                    </h1>
+                    <p className="text-muted-foreground mt-1 md:mt-2 text-sm md:text-base">Manage your events and ticketing platform</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
+                  <Button onClick={handleCreateEventClick} className="gradient-primary hover-scale flex-1 sm:flex-none" size="sm">
+                    <Plus className="w-4 h-4 mr-2" />
+                    <span className="hidden sm:inline">Create Event</span>
+                    <span className="sm:hidden">Create</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleSignOut}
+                    className="flex items-center gap-2 flex-1 sm:flex-none"
+                    size="sm"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sign Out</span>
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="container mx-auto px-4 py-4 md:py-8">
+          {/* Main Content */}
+          <div className="flex-1 container mx-auto px-4 py-4 md:py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8">
           <div className="overflow-x-auto">
-            <TabsList className="grid w-full grid-cols-4 md:grid-cols-9 h-auto p-1 bg-muted rounded-lg">
-              <TabsTrigger value="overview" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
-                <BarChart3 className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden md:inline">Overview</span>
-              </TabsTrigger>
-              <TabsTrigger value="events" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
-                <Calendar className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline md:inline">Events</span>
-              </TabsTrigger>
-              <TabsTrigger value="event-details" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm" disabled={!selectedEvent}>
-                <Users className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden md:inline">Details</span>
-              </TabsTrigger>
-              <TabsTrigger value="ai-tools" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
-                <Sparkles className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden sm:inline md:inline">AI</span>
-              </TabsTrigger>
-              <TabsTrigger value="payments" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
-                <CreditCard className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden md:inline">Payments</span>
-              </TabsTrigger>
-              <TabsTrigger value="design" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
-                <Palette className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden md:inline">Design</span>
-              </TabsTrigger>
-              <TabsTrigger value="marketing" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
-                <Mail className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden md:inline">Marketing</span>
-              </TabsTrigger>
-              <TabsTrigger value="billing" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
-                <CreditCard className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden md:inline">Billing</span>
-              </TabsTrigger>
-              <TabsTrigger value="integrations" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
-                <Link className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden md:inline">Apps</span>
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-2 text-xs md:text-sm">
-                <Settings className="w-3 h-3 md:w-4 md:h-4" />
-                <span className="hidden md:inline">Settings</span>
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Content Rendering */}
+            <div className="space-y-6">
+            <div className="space-y-6">
               <Card className="gradient-card hover-scale">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Events</CardTitle>
@@ -1427,10 +1410,10 @@ const OrgDashboard = () => {
                 </CardContent>
               </Card>
             )}
-          </TabsContent>
+            </div>
 
-          {/* Events Tab */}
-          <TabsContent value="events" className="space-y-6">
+            {activeTab === "events" && (
+              <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Create New Event</CardTitle>
@@ -2098,6 +2081,7 @@ const OrgDashboard = () => {
                         if (error) throw error;
                         
                         setOrganizationId(data.id);
+                        setOrganizationData(data);
                         toast({
                           title: "Success",
                           description: "Organization created successfully!"
@@ -2198,8 +2182,10 @@ const OrgDashboard = () => {
             onClose={() => setShowSeatMapDesigner(false)}
           />
         )}
+          </div>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 
