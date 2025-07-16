@@ -98,6 +98,11 @@ const TicketWidget = () => {
 
       setTicketTypes(types || []);
       
+      // Load appropriate Windcave scripts based on organization endpoint
+      if (event.organizations?.payment_provider === "windcave") {
+        loadWindcaveScripts(event.organizations.windcave_endpoint || "UAT");
+      }
+      
     } catch (error) {
       console.error("Error loading event data:", error);
       toast({
@@ -108,6 +113,30 @@ const TicketWidget = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Function to dynamically load Windcave scripts based on endpoint
+  const loadWindcaveScripts = (endpoint: string) => {
+    const baseUrl = endpoint === "SEC" ? "https://sec.windcave.com" : "https://uat.windcave.com";
+    const scripts = [
+      "/js/lib/drop-in-v1.js",
+      "/js/windcavepayments-dropin-v1.js", 
+      "/js/lib/hosted-fields-v1.js",
+      "/js/windcavepayments-hostedfields-v1.js",
+      "/js/windcavepayments-applepay-v1.js",
+      "/js/windcavepayments-googlepay-v1.js"
+    ];
+
+    console.log(`Loading Windcave scripts for ${endpoint} endpoint from:`, baseUrl);
+    
+    scripts.forEach((scriptPath, index) => {
+      const script = document.createElement('script');
+      script.src = baseUrl + scriptPath;
+      script.async = true;
+      script.onload = () => console.log(`Windcave script loaded: ${scriptPath}`);
+      script.onerror = (error) => console.error(`Failed to load Windcave script: ${scriptPath}`, error);
+      document.head.appendChild(script);
+    });
   };
 
   const addToCart = async (ticketType: any) => {
@@ -762,24 +791,36 @@ const TicketWidget = () => {
       } catch (error) {
         console.error("=== DROP-IN INITIALIZATION ERROR ===");
         console.error("Error:", error);
+        console.error("Error type:", typeof error);
+        console.error("Error message:", error?.message);
+        console.error("Error stack:", error?.stack);
+        console.error("Links provided:", links);
+        console.error("Total amount:", totalAmount);
+        console.error("Event data:", eventData);
+        console.error("WindcavePayments available:", !!window.WindcavePayments);
+        
         toast({
           title: "Payment System Error",
-          description: "Failed to initialize payment form. Please refresh and try again.",
+          description: `Failed to initialize payment form: ${error?.message || 'Unknown error'}. Please refresh and try again.`,
           variant: "destructive"
         });
         setShowPaymentForm(false);
       }
     } else {
       console.log("WindcavePayments not available yet, retrying...");
+      console.log("Available properties on window:", Object.keys(window).filter(k => k.toLowerCase().includes('wind')));
       const retryCount = (window as any).windcaveRetryCount || 0;
       if (retryCount < 10) {
         (window as any).windcaveRetryCount = retryCount + 1;
+        console.log(`Retry attempt ${retryCount + 1}/10 in 1 second...`);
         setTimeout(() => initializeWindcaveDropIn(links, totalAmount), 1000);
       } else {
         console.error("WindcavePayments failed to load after multiple retries");
+        console.error("Final check - window.WindcavePayments:", window.WindcavePayments);
+        console.error("Scripts in head:", Array.from(document.head.querySelectorAll('script')).map(s => s.src));
         toast({
           title: "Payment System Unavailable",
-          description: "Unable to load payment system. Please refresh the page.",
+          description: "Unable to load payment system. Please refresh the page and try again.",
           variant: "destructive"
         });
         setShowPaymentForm(false);
