@@ -35,8 +35,10 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
   const isCollapsed = state === "collapsed";
 
   return (
-    <Sidebar collapsible="icon"
-      className="border-r"
+    <Sidebar 
+      collapsible="icon"
+      className="border-r relative top-0"
+      style={{ height: 'calc(100vh - 120px)' }} // Adjust based on header height
     >
       <SidebarContent>
         <SidebarGroup>

@@ -359,9 +359,9 @@ const OrgDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background">
       {/* Header at the very top - completely separate */}
-      <header className="w-full border-b bg-gradient-to-r from-primary/5 to-secondary/5 sticky top-0 z-50">
+      <header className="w-full border-b bg-gradient-to-r from-primary/5 to-secondary/5 z-50">
         <div className="container mx-auto px-4 py-4 md:py-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
@@ -396,15 +396,17 @@ const OrgDashboard = () => {
         </div>
       </header>
 
-      {/* Content area below header - this is where sidebar and main content go */}
-      <div className="flex-1 flex">
+      {/* Content area below header with explicit margin-top to push sidebar down */}
+      <div className="w-full" style={{ marginTop: '0px' }}>
         <SidebarProvider>
-          <div className="flex w-full">
-            <AppSidebar 
-              activeTab={activeTab} 
-              setActiveTab={setActiveTab} 
-              selectedEvent={selectedEvent} 
-            />
+          <div className="flex w-full min-h-[calc(100vh-120px)]">
+            <div className="relative">
+              <AppSidebar 
+                activeTab={activeTab} 
+                setActiveTab={setActiveTab} 
+                selectedEvent={selectedEvent} 
+              />
+            </div>
             
             <main className="flex-1">
               <div className="container mx-auto px-4 py-4 md:py-8">
