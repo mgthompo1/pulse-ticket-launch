@@ -400,7 +400,14 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 Create custom seating layouts to allow guests to select their preferred seats during ticket purchase.
               </p>
               <Button 
-                onClick={() => setShowSeatMapDesigner(true)}
+                onClick={() => {
+                  console.log("=== SEAT MAP BUTTON CLICKED ===");
+                  console.log("Event ID:", eventId);
+                  console.log("Event Data:", eventData);
+                  console.log("Current showSeatMapDesigner state:", showSeatMapDesigner);
+                  setShowSeatMapDesigner(true);
+                  console.log("Set showSeatMapDesigner to true");
+                }}
                 className="w-full"
               >
                 <MapPin className="mr-2 h-4 w-4" />
@@ -627,11 +634,22 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       </Tabs>
       
       {/* Seat Map Designer Modal */}
+      {(() => {
+        console.log("=== SEAT MAP DESIGNER RENDER CHECK ===");
+        console.log("showSeatMapDesigner:", showSeatMapDesigner);
+        console.log("eventData:", eventData);
+        console.log("eventData.name:", eventData?.name);
+        console.log("Should render SeatMapDesigner:", showSeatMapDesigner && eventData);
+        return null;
+      })()}
       {showSeatMapDesigner && eventData && (
         <SeatMapDesigner
           eventId={eventId}
           eventName={eventData.name}
-          onClose={() => setShowSeatMapDesigner(false)}
+          onClose={() => {
+            console.log("=== CLOSING SEAT MAP DESIGNER ===");
+            setShowSeatMapDesigner(false);
+          }}
         />
       )}
     </div>
