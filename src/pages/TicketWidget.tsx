@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Minus, Plus, ShoppingCart, ArrowLeft, Calendar, Globe, Ticket, CreditCard } from "lucide-react";
+import { Minus, Plus, ShoppingCart, ArrowLeft, Calendar, Globe, Ticket, CreditCard, MapPin } from "lucide-react";
+import { GuestSeatSelector } from "@/components/GuestSeatSelector";
 import MerchandiseSelector from "@/components/MerchandiseSelector";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -38,6 +39,9 @@ const TicketWidget = () => {
   const [windcaveDropIn, setWindcaveDropIn] = useState<any>(null);
   const [windcaveLinks, setWindcaveLinks] = useState<any[]>([]);
   const dropInRef = useRef<HTMLDivElement>(null);
+  const [showSeatSelection, setShowSeatSelection] = useState(false);
+  const [pendingSeatSelection, setPendingSeatSelection] = useState<any>(null);
+  const [selectedSeats, setSelectedSeats] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     if (eventId) {
@@ -106,7 +110,25 @@ const TicketWidget = () => {
     }
   };
 
-  const addToCart = (ticketType: any) => {
+  const addToCart = async (ticketType: any) => {
+    // Check if event has seat maps
+    const { data: seatMaps } = await supabase
+      .from('seat_maps')
+      .select('id')
+      .eq('event_id', eventId)
+      .limit(1);
+
+    if (seatMaps && seatMaps.length > 0) {
+      // Event has seating - show seat selector
+      setPendingSeatSelection({
+        ticketType,
+        quantity: 1
+      });
+      setShowSeatSelection(true);
+      return;
+    }
+
+    // No seating - add directly to cart
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.id === ticketType.id);
       if (existingItem) {
@@ -135,6 +157,38 @@ const TicketWidget = () => {
         )
       );
     }
+  };
+
+  const handleSeatsSelected = (seats: string[]) => {
+    if (pendingSeatSelection) {
+      const newCartItem = {
+        ...pendingSeatSelection.ticketType,
+        quantity: pendingSeatSelection.quantity,
+        selectedSeats: seats
+      };
+
+      setCart(prevCart => [...prevCart, newCartItem]);
+      setSelectedSeats(prev => ({
+        ...prev,
+        [pendingSeatSelection.ticketType.id]: seats
+      }));
+    }
+    
+    setShowSeatSelection(false);
+    setPendingSeatSelection(null);
+  };
+
+  const handleSkipSeatSelection = () => {
+    if (pendingSeatSelection) {
+      const newCartItem = {
+        ...pendingSeatSelection.ticketType,
+        quantity: pendingSeatSelection.quantity
+      };
+      setCart(prevCart => [...prevCart, newCartItem]);
+    }
+    
+    setShowSeatSelection(false);
+    setPendingSeatSelection(null);
   };
 
   const getMerchandiseTotal = () => {
@@ -717,6 +771,12 @@ const TicketWidget = () => {
                         <div className="flex-1">
                           <p className="font-medium">{item.name}</p>
                           <p className="text-sm text-muted-foreground">${item.price} each</p>
+                          {item.selectedSeats && item.selectedSeats.length > 0 && (
+                            <p className="text-xs text-primary flex items-center gap-1 mt-1">
+                              <MapPin className="h-3 w-3" />
+                              Seats selected: {item.selectedSeats.length} seat(s)
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <Button
@@ -877,6 +937,21 @@ const TicketWidget = () => {
             )}
           </div>
         </div>
+        
+        {/* Seat Selection Modal */}
+        {showSeatSelection && pendingSeatSelection && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="w-full max-w-6xl max-h-[90vh] overflow-hidden">
+              <GuestSeatSelector
+                eventId={eventId!}
+                ticketTypeId={pendingSeatSelection.ticketType.id}
+                requestedQuantity={pendingSeatSelection.quantity}
+                onSeatsSelected={handleSeatsSelected}
+                onSkip={handleSkipSeatSelection}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

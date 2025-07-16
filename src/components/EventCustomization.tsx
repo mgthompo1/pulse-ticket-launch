@@ -9,7 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Palette, Layout, Mail, Ticket, Monitor, Save } from "lucide-react";
+import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin } from "lucide-react";
+import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 
 interface EventCustomizationProps {
   eventId: string;
@@ -19,6 +20,8 @@ interface EventCustomizationProps {
 const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave }) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [showSeatMapDesigner, setShowSeatMapDesigner] = useState(false);
+  const [eventData, setEventData] = useState<any>(null);
   
   // Widget customization state
   const [widgetCustomization, setWidgetCustomization] = useState({
@@ -90,11 +93,12 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     try {
       const { data, error } = await supabase
         .from("events")
-        .select("widget_customization, ticket_customization, email_customization")
+        .select("widget_customization, ticket_customization, email_customization, name")
         .eq("id", eventId)
         .single();
 
       if (error) throw error;
+      setEventData(data);
 
       if (data?.widget_customization) {
         setWidgetCustomization(data.widget_customization as typeof widgetCustomization);
@@ -196,6 +200,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           <TabsTrigger value="widget" className="flex items-center gap-2">
             <Monitor className="h-4 w-4" />
             Widget
+          </TabsTrigger>
+          <TabsTrigger value="seats" className="flex items-center gap-2">
+            <MapPin className="h-4 w-4" />
+            Seat Maps
           </TabsTrigger>
           <TabsTrigger value="tickets" className="flex items-center gap-2">
             <Ticket className="h-4 w-4" />
@@ -372,6 +380,32 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   rows={4}
                 />
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="seats" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Seat Map Management
+              </CardTitle>
+              <CardDescription>
+                Design and manage seating layouts for your event
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Create custom seating layouts to allow guests to select their preferred seats during ticket purchase.
+              </p>
+              <Button 
+                onClick={() => setShowSeatMapDesigner(true)}
+                className="w-full"
+              >
+                <MapPin className="mr-2 h-4 w-4" />
+                Open Seat Map Designer
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -591,6 +625,15 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           </div>
         </TabsContent>
       </Tabs>
+      
+      {/* Seat Map Designer Modal */}
+      {showSeatMapDesigner && eventData && (
+        <SeatMapDesigner
+          eventId={eventId}
+          eventName={eventData.name}
+          onClose={() => setShowSeatMapDesigner(false)}
+        />
+      )}
     </div>
   );
 };
