@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package } from "lucide-react";
+import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings } from "lucide-react";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import MerchandiseManager from "@/components/MerchandiseManager";
@@ -98,7 +98,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     try {
       const { data, error } = await supabase
         .from("events")
-        .select("widget_customization, ticket_customization, email_customization, name")
+        .select("widget_customization, ticket_customization, email_customization, name, status, test_mode")
         .eq("id", eventId)
         .single();
 
@@ -225,6 +225,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           <TabsTrigger value="attendees" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Attendees
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Settings
           </TabsTrigger>
         </TabsList>
 
@@ -686,6 +690,133 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
         <TabsContent value="attendees" className="space-y-6">
           <AttendeeManagement eventId={eventId} />
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Event Settings</CardTitle>
+              <CardDescription>Configure event publication and general settings</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Event Status */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="space-y-1">
+                    <Label className="text-base font-medium">Event Status</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {eventData?.status === 'published' 
+                        ? 'Your event is live and accepting ticket sales' 
+                        : 'Your event is in draft mode and not visible to the public'
+                      }
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">
+                      {eventData?.status === 'published' ? 'Live' : 'Draft'}
+                    </span>
+                    <Switch
+                      checked={eventData?.status === 'published'}
+                      onCheckedChange={async (checked) => {
+                        try {
+                          const { error } = await supabase
+                            .from("events")
+                            .update({ status: checked ? 'published' : 'draft' })
+                            .eq("id", eventId);
+
+                          if (error) throw error;
+
+                          setEventData(prev => ({ ...prev, status: checked ? 'published' : 'draft' }));
+                          
+                          toast({
+                            title: "Success",
+                            description: checked 
+                              ? "Event published successfully! It's now live and accepting ticket sales." 
+                              : "Event unpublished. It's now in draft mode and not visible to the public."
+                          });
+                        } catch (error) {
+                          console.error("Error updating event status:", error);
+                          toast({
+                            title: "Error",
+                            description: "Failed to update event status",
+                            variant: "destructive"
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Event URL */}
+              {eventData?.status === 'published' && (
+                <div className="space-y-2">
+                  <Label>Public Event URL</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={`${window.location.origin}/ticket2live/${eventId}`}
+                      readOnly
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/ticket2live/${eventId}`);
+                        toast({
+                          title: "Copied!",
+                          description: "Event URL copied to clipboard"
+                        });
+                      }}
+                    >
+                      Copy URL
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Test Mode */}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="space-y-1">
+                  <Label className="text-base font-medium">Test Mode</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {eventData?.test_mode 
+                      ? 'Event is in test mode - no real payments will be processed' 
+                      : 'Event is in live mode - real payments will be processed'
+                    }
+                  </p>
+                </div>
+                <Switch
+                  checked={eventData?.test_mode || false}
+                  onCheckedChange={async (checked) => {
+                    try {
+                      const { error } = await supabase
+                        .from("events")
+                        .update({ test_mode: checked })
+                        .eq("id", eventId);
+
+                      if (error) throw error;
+
+                      setEventData(prev => ({ ...prev, test_mode: checked }));
+                      
+                      toast({
+                        title: "Success",
+                        description: checked 
+                          ? "Event switched to test mode" 
+                          : "Event switched to live mode"
+                      });
+                    } catch (error) {
+                      console.error("Error updating test mode:", error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to update test mode",
+                        variant: "destructive"
+                      });
+                    }
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
       
