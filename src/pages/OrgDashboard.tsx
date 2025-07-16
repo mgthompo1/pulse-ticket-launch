@@ -359,9 +359,9 @@ const OrgDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header at the very top spanning full width */}
-      <header className="w-full border-b bg-gradient-to-r from-primary/5 to-secondary/5">
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header at the very top - completely separate */}
+      <header className="w-full border-b bg-gradient-to-r from-primary/5 to-secondary/5 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 md:py-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
@@ -396,8 +396,8 @@ const OrgDashboard = () => {
         </div>
       </header>
 
-      {/* Sidebar and Content Area - positioned below header */}
-      <div className="w-full">
+      {/* Content area below header - this is where sidebar and main content go */}
+      <div className="flex-1 flex">
         <SidebarProvider>
           <div className="flex w-full">
             <AppSidebar 
@@ -406,7 +406,7 @@ const OrgDashboard = () => {
               selectedEvent={selectedEvent} 
             />
             
-            <main className="flex-1 w-full">
+            <main className="flex-1">
               <div className="container mx-auto px-4 py-4 md:py-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8">
             <TabsContent value="overview" className="space-y-6">
