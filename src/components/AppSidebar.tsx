@@ -37,8 +37,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
   return (
     <Sidebar 
       collapsible="icon"
-      className="border-r relative top-0"
-      style={{ height: 'calc(100vh - 120px)' }} // Adjust based on header height
+      className="border-r"
     >
       <SidebarContent>
         <SidebarGroup>

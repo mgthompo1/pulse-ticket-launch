@@ -359,9 +359,9 @@ const OrgDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header at the very top - completely separate */}
-      <header className="w-full border-b bg-gradient-to-r from-primary/5 to-secondary/5 z-50">
+    <div className="h-screen bg-background flex flex-col">
+      {/* Header at the very top */}
+      <header className="border-b bg-gradient-to-r from-primary/5 to-secondary/5 flex-shrink-0">
         <div className="container mx-auto px-4 py-4 md:py-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
@@ -396,20 +396,17 @@ const OrgDashboard = () => {
         </div>
       </header>
 
-      {/* Content area below header with explicit margin-top to push sidebar down */}
-      <div className="w-full" style={{ marginTop: '0px' }}>
-        <SidebarProvider>
-          <div className="flex w-full min-h-[calc(100vh-120px)]">
-            <div className="relative">
-              <AppSidebar 
-                activeTab={activeTab} 
-                setActiveTab={setActiveTab} 
-                selectedEvent={selectedEvent} 
-              />
-            </div>
-            
-            <main className="flex-1">
-              <div className="container mx-auto px-4 py-4 md:py-8">
+      {/* Sidebar and content below header - takes remaining space */}
+      <SidebarProvider>
+        <div className="flex flex-1 overflow-hidden">
+          <AppSidebar 
+            activeTab={activeTab} 
+            setActiveTab={setActiveTab} 
+            selectedEvent={selectedEvent} 
+          />
+          
+          <main className="flex-1 overflow-auto">
+            <div className="container mx-auto px-4 py-4 md:py-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8">
             <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -719,10 +716,9 @@ const OrgDashboard = () => {
             />
           )}
             </div>
-            </main>
-          </div>
-        </SidebarProvider>
-      </div>
+          </main>
+        </div>
+      </SidebarProvider>
     </div>
   );
 };
