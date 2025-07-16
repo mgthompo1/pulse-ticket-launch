@@ -563,6 +563,7 @@ const OrgDashboard = () => {
           </Tabs>
         </div>
       </div>
+    </div>
     </SidebarProvider>
   );
 };
