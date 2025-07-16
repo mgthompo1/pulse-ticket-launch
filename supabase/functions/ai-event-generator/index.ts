@@ -31,13 +31,17 @@ serve(async (req) => {
     const user = data.user;
     if (!user) throw new Error("User not authenticated");
 
-    const { eventType, industry, audience, duration } = await req.json();
-    logStep("Request data", { eventType, industry, audience, duration });
+    const { eventType, industry, audience, duration, description } = await req.json();
+    logStep("Request data", { eventType, industry, audience, duration, description });
 
     // Mock AI response for now - replace with actual OpenAI call
+    const baseDescription = description || `Join us for an exciting ${eventType.toLowerCase()} focused on ${industry.toLowerCase()} industry trends. Perfect for ${audience.toLowerCase()} looking to network and learn about the latest innovations. This ${duration}-long event will feature expert speakers, interactive sessions, and valuable networking opportunities.`;
+    
     const aiResponse = {
       name: `${eventType} for ${industry} Professionals`,
-      description: `Join us for an exciting ${eventType.toLowerCase()} focused on ${industry.toLowerCase()} industry trends. Perfect for ${audience.toLowerCase()} looking to network and learn about the latest innovations. This ${duration}-long event will feature expert speakers, interactive sessions, and valuable networking opportunities.`,
+      description: description ? 
+        `${description} This ${duration} ${eventType.toLowerCase()} will cater to ${audience.toLowerCase()} in the ${industry.toLowerCase()} industry, featuring tailored content and networking opportunities.` :
+        baseDescription,
       suggestedTicketTypes: [
         {
           name: "Early Bird",

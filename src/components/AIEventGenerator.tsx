@@ -18,7 +18,8 @@ const AIEventGenerator = ({ onEventGenerated }: AIEventGeneratorProps) => {
     eventType: "",
     industry: "",
     audience: "",
-    duration: ""
+    duration: "",
+    description: ""
   });
   const [generatedContent, setGeneratedContent] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +30,7 @@ const AIEventGenerator = ({ onEventGenerated }: AIEventGeneratorProps) => {
     if (!formData.eventType || !formData.industry || !formData.audience || !formData.duration) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all fields to generate AI suggestions.",
+        description: "Please fill in all required fields to generate AI suggestions.",
         variant: "destructive"
       });
       return;
@@ -158,7 +159,20 @@ const AIEventGenerator = ({ onEventGenerated }: AIEventGeneratorProps) => {
           </div>
         </div>
 
-        <Button 
+        <div className="space-y-2">
+          <Label>Event Description (Optional)</Label>
+          <Textarea 
+            placeholder="Describe your event in detail to help the AI generate more relevant suggestions..."
+            value={formData.description}
+            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            rows={3}
+          />
+          <p className="text-xs text-muted-foreground">
+            Provide specific details about your event goals, activities, speakers, or themes to get more tailored AI suggestions.
+          </p>
+        </div>
+
+        <Button
           onClick={handleGenerate} 
           disabled={isLoading}
           className="w-full gradient-primary"
