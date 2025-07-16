@@ -70,30 +70,35 @@ serve(async (req) => {
 
     console.log("[WINDCAVE-HIT-TERMINAL] Calculated total amount", { totalAmount, currency });
 
-    // Determine HIT API endpoint based on environment
+    // Correct HIT API endpoint
     const baseUrl = org.windcave_endpoint === "SEC" 
-      ? "https://sec.windcave.com/pxhit/pxhit.aspx"
-      : "https://uat.windcave.com/pxhit/pxhit.aspx";
+      ? "https://sec.windcave.com/hit/pos.aspx"
+      : "https://uat.windcave.com/hit/pos.aspx";
 
-    // Create HIT XML transaction request
-    const xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
-<Txn>
-  <PostUsername>${org.windcave_hit_username}</PostUsername>
-  <PostPassword>${org.windcave_hit_key}</PostPassword>
-  <Amount>${totalAmount.toFixed(2)}</Amount>
-  <Currency>${currency}</Currency>
-  <TxnType>Purchase</TxnType>
-  <MerchantReference>${event.name}-${Date.now()}</MerchantReference>
-  <TxnData1>${event.name}</TxnData1>
-  <TxnData2>${customerInfo.name}</TxnData2>
-  <TxnData3>${customerInfo.email}</TxnData3>
-  <Station>${terminalStationId}</Station>
-  <EnableTip>0</EnableTip>
-  <CardholderPresent>1</CardholderPresent>
-  <EnableDukpt>0</EnableDukpt>
-</Txn>`;
+    // Generate unique transaction reference
+    const txnRef = `${event.name.replace(/\s+/g, '')}-${Date.now()}`;
 
-    console.log("[WINDCAVE-HIT-TERMINAL] Sending HIT transaction request", { baseUrl, station: terminalStationId });
+    // Create proper HIT XML request using Scr format
+    const xmlRequest = `<Scr action="doScrHIT" user="${org.windcave_hit_username}" key="${org.windcave_hit_key}">
+    <Amount>${totalAmount.toFixed(2)}</Amount>
+    <Cur>${currency}</Cur>
+    <TxnType>Purchase</TxnType>
+    <Station>${terminalStationId}</Station>
+    <TxnRef>${txnRef}</TxnRef>
+    <DeviceId>Ticket2LIVE Terminal</DeviceId>
+    <PosName>Ticket2LIVE POS</PosName>
+    <PosVersion>1.0</PosVersion>
+    <VendorId>Ticket2LIVE</VendorId>
+    <MRef>${event.name}-${customerInfo.name}</MRef>
+</Scr>`;
+
+    console.log("[WINDCAVE-HIT-TERMINAL] Sending HIT transaction to terminal", { 
+      baseUrl, 
+      station: terminalStationId, 
+      txnRef,
+      amount: totalAmount.toFixed(2),
+      currency 
+    });
 
     // Make request to Windcave HIT API
     const response = await fetch(baseUrl, {
@@ -106,27 +111,31 @@ serve(async (req) => {
     });
 
     const responseText = await response.text();
-    console.log("[WINDCAVE-HIT-TERMINAL] Windcave HIT response", { status: response.status, response: responseText });
+    console.log("[WINDCAVE-HIT-TERMINAL] Windcave HIT response", { 
+      status: response.status, 
+      response: responseText.substring(0, 500) // Log first 500 chars to avoid huge logs
+    });
 
     if (!response.ok) {
       throw new Error(`Windcave HIT API error: ${response.status} - ${responseText}`);
     }
 
-    // Parse XML response
-    const validMatch = responseText.match(/<valid>(\d+)<\/valid>/);
-    const txnRefMatch = responseText.match(/<TxnRef>(.*?)<\/TxnRef>/);
-    const sessionIdMatch = responseText.match(/<SessionId>(.*?)<\/SessionId>/);
-
-    if (!validMatch || validMatch[1] !== "1") {
-      const errorMatch = responseText.match(/<ResponseText>(.*?)<\/ResponseText>/);
-      const errorMessage = errorMatch ? errorMatch[1] : "Unknown error from Windcave HIT API";
-      throw new Error(`Windcave HIT API validation failed: ${errorMessage}`);
+    // Parse XML response for initial validation
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(responseText, "text/xml");
+    const errorElement = xmlDoc.querySelector("parsererror");
+    
+    if (errorElement) {
+      throw new Error(`Invalid XML response from Windcave: ${errorElement.textContent}`);
     }
 
-    const txnRef = txnRefMatch ? txnRefMatch[1] : null;
-    const sessionId = sessionIdMatch ? sessionIdMatch[1] : null;
+    // Check for error response
+    const errorMsg = xmlDoc.querySelector("ErrorMsg");
+    if (errorMsg) {
+      throw new Error(`Windcave HIT error: ${errorMsg.textContent}`);
+    }
 
-    console.log("[WINDCAVE-HIT-TERMINAL] Transaction initiated successfully", { txnRef, sessionId });
+    console.log("[WINDCAVE-HIT-TERMINAL] Transaction sent to terminal successfully", { txnRef });
 
     // Create order record
     const orderData = {
@@ -136,7 +145,7 @@ serve(async (req) => {
       customer_phone: customerInfo.phone || null,
       total_amount: totalAmount,
       status: "pending",
-      windcave_session_id: sessionId || txnRef
+      windcave_session_id: txnRef
     };
 
     const { data: order, error: orderError } = await supabaseClient
@@ -173,18 +182,15 @@ serve(async (req) => {
     console.log("[WINDCAVE-HIT-TERMINAL] Order items created", { count: orderItems.length });
 
     // Start polling for transaction status
-    const pollStatus = async (sessionId: string, attempts = 0): Promise<any> => {
+    const pollStatus = async (txnRef: string, attempts = 0): Promise<any> => {
       if (attempts >= 60) { // 5 minutes max polling
         throw new Error("Transaction timeout - please check terminal");
       }
 
-      // Create status request XML
-      const statusXml = `<?xml version="1.0" encoding="utf-8"?>
-<Status>
-  <PostUsername>${org.windcave_hit_username}</PostUsername>
-  <PostPassword>${org.windcave_hit_key}</PostPassword>
-  <SessionId>${sessionId}</SessionId>
-</Status>`;
+      // Create status request XML using Scr format
+      const statusXml = `<Scr action="getStatus" user="${org.windcave_hit_username}" key="${org.windcave_hit_key}">
+    <TxnRef>${txnRef}</TxnRef>
+</Scr>`;
 
       const statusResponse = await fetch(baseUrl, {
         method: "POST",
@@ -196,18 +202,23 @@ serve(async (req) => {
       });
 
       const statusText = await statusResponse.text();
-      console.log("[WINDCAVE-HIT-TERMINAL] Status check", { attempt: attempts + 1, response: statusText });
+      console.log("[WINDCAVE-HIT-TERMINAL] Status check", { 
+        attempt: attempts + 1, 
+        response: statusText.substring(0, 300) 
+      });
 
       // Parse status response
-      const completeMatch = statusText.match(/<Complete>(\d+)<\/Complete>/);
-      const successMatch = statusText.match(/<Success>(\d+)<\/Success>/);
-      const dl1Match = statusText.match(/<DL1>(.*?)<\/DL1>/);
-      const dl2Match = statusText.match(/<DL2>(.*?)<\/DL2>/);
+      const statusParser = new DOMParser();
+      const statusDoc = statusParser.parseFromString(statusText, "text/xml");
+      
+      const complete = statusDoc.querySelector("Complete")?.textContent;
+      const success = statusDoc.querySelector("Success")?.textContent;
+      const dl1 = statusDoc.querySelector("DL1")?.textContent || "";
+      const dl2 = statusDoc.querySelector("DL2")?.textContent || "";
+      const responseText = statusDoc.querySelector("ResponseText")?.textContent || "";
 
-      const isComplete = completeMatch && completeMatch[1] === "1";
-      const isSuccess = successMatch && successMatch[1] === "1";
-      const displayLine1 = dl1Match ? dl1Match[1] : "";
-      const displayLine2 = dl2Match ? dl2Match[1] : "";
+      const isComplete = complete === "1";
+      const isSuccess = success === "1";
 
       if (isComplete) {
         // Transaction completed
@@ -219,46 +230,45 @@ serve(async (req) => {
           .update({ status: finalStatus })
           .eq("id", order.id);
 
+        console.log("[WINDCAVE-HIT-TERMINAL] Transaction completed", { 
+          txnRef, 
+          success: isSuccess, 
+          responseText 
+        });
+
         return {
           success: isSuccess,
           status: finalStatus,
-          message: isSuccess ? "Payment completed successfully" : "Payment failed",
-          sessionId: sessionId,
+          message: isSuccess ? "Payment completed successfully" : `Payment failed: ${responseText}`,
+          txnRef: txnRef,
           orderId: order.id,
           amount: totalAmount,
           currency: currency,
-          displayLine1,
-          displayLine2
+          displayLine1: dl1,
+          displayLine2: dl2,
+          responseText: responseText
         };
       } else {
         // Transaction still in progress, continue polling
+        console.log("[WINDCAVE-HIT-TERMINAL] Transaction in progress", { 
+          txnRef, 
+          dl1, 
+          dl2, 
+          attempt: attempts + 1 
+        });
+        
         await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
-        return pollStatus(sessionId, attempts + 1);
+        return pollStatus(txnRef, attempts + 1);
       }
     };
 
-    // Start status polling
-    if (sessionId) {
-      const finalResult = await pollStatus(sessionId);
-      return new Response(JSON.stringify(finalResult), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    } else {
-      // No session ID, return immediate response
-      return new Response(JSON.stringify({
-        success: true,
-        status: "initiated",
-        message: "HIT terminal transaction initiated successfully",
-        txnRef: txnRef,
-        orderId: order.id,
-        amount: totalAmount,
-        currency: currency
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    }
+    // Start status polling for the transaction
+    const finalResult = await pollStatus(txnRef);
+    
+    return new Response(JSON.stringify(finalResult), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -273,3 +283,4 @@ serve(async (req) => {
     });
   }
 });
+
