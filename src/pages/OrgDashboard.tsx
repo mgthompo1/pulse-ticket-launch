@@ -620,58 +620,7 @@ const OrgDashboard = () => {
             <TabsContent value="event-details" className="space-y-6">
               {selectedEvent ? (
                 <div className="space-y-6">
-                  <Tabs defaultValue="attendees" className="space-y-4">
-                    <TabsList className="grid w-full grid-cols-4">
-                      <TabsTrigger value="attendees" className="flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        Attendees
-                      </TabsTrigger>
-                      <TabsTrigger value="tickets" className="flex items-center gap-2">
-                        <Ticket className="h-4 w-4" />
-                        Ticket Types
-                      </TabsTrigger>
-                      <TabsTrigger value="merchandise" className="flex items-center gap-2">
-                        <Package className="h-4 w-4" />
-                        Merchandise
-                      </TabsTrigger>
-                      <TabsTrigger value="settings" className="flex items-center gap-2">
-                        <Settings className="h-4 w-4" />
-                        Settings
-                      </TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="attendees" className="space-y-6">
-                      <AttendeeManagement eventId={selectedEvent.id} />
-                    </TabsContent>
-
-                    <TabsContent value="tickets" className="space-y-6">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Ticket Types</CardTitle>
-                          <CardDescription>Manage ticket types for this event</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-muted-foreground">Ticket type management coming soon...</p>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-
-                    <TabsContent value="merchandise" className="space-y-6">
-                      <MerchandiseManager eventId={selectedEvent.id} />
-                    </TabsContent>
-
-                    <TabsContent value="settings" className="space-y-6">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Event Settings</CardTitle>
-                          <CardDescription>Configure event settings and options</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-muted-foreground">Event settings coming soon...</p>
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-                  </Tabs>
+                  <EventCustomization eventId={selectedEvent.id} />
                 </div>
               ) : (
                 <Card>

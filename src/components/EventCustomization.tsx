@@ -9,8 +9,10 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin } from "lucide-react";
+import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package } from "lucide-react";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
+import AttendeeManagement from "@/components/AttendeeManagement";
+import MerchandiseManager from "@/components/MerchandiseManager";
 
 interface EventCustomizationProps {
   eventId: string;
@@ -215,6 +217,14 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           <TabsTrigger value="emails" className="flex items-center gap-2">
             <Mail className="h-4 w-4" />
             Emails
+          </TabsTrigger>
+          <TabsTrigger value="merchandise" className="flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Merchandise
+          </TabsTrigger>
+          <TabsTrigger value="attendees" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Attendees
           </TabsTrigger>
         </TabsList>
 
@@ -668,6 +678,14 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="merchandise" className="space-y-6">
+          <MerchandiseManager eventId={eventId} />
+        </TabsContent>
+
+        <TabsContent value="attendees" className="space-y-6">
+          <AttendeeManagement eventId={eventId} />
         </TabsContent>
       </Tabs>
       
