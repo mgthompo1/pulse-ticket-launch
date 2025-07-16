@@ -748,28 +748,78 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 </div>
               </div>
 
-              {/* Event URL */}
+              {/* Event URL and Widget Embedding */}
               {eventData?.status === 'published' && (
-                <div className="space-y-2">
-                  <Label>Public Event URL</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={`${window.location.origin}/ticket2live/${eventId}`}
-                      readOnly
-                      className="flex-1"
-                    />
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/ticket2live/${eventId}`);
-                        toast({
-                          title: "Copied!",
-                          description: "Event URL copied to clipboard"
-                        });
-                      }}
-                    >
-                      Copy URL
-                    </Button>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Public Event URL</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={`${window.location.origin}/ticket2live/${eventId}`}
+                        readOnly
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/ticket2live/${eventId}`);
+                          toast({
+                            title: "Copied!",
+                            description: "Event URL copied to clipboard"
+                          });
+                        }}
+                      >
+                        Copy URL
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Widget Embed Code</Label>
+                    <div className="space-y-2">
+                      <Textarea
+                        value={`<iframe src="${window.location.origin}/widget/${eventId}" width="100%" height="600" frameborder="0"></iframe>`}
+                        readOnly
+                        rows={3}
+                        className="text-xs font-mono"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`<iframe src="${window.location.origin}/widget/${eventId}" width="100%" height="600" frameborder="0"></iframe>`);
+                          toast({
+                            title: "Copied!",
+                            description: "Widget embed code copied to clipboard"
+                          });
+                        }}
+                      >
+                        Copy Embed Code
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Direct Widget URL</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={`${window.location.origin}/widget/${eventId}`}
+                        readOnly
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/widget/${eventId}`);
+                          toast({
+                            title: "Copied!",
+                            description: "Widget URL copied to clipboard"
+                          });
+                        }}
+                      >
+                        Copy URL
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
