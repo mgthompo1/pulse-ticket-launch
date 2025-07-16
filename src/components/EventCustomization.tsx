@@ -13,6 +13,7 @@ import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, S
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import MerchandiseManager from "@/components/MerchandiseManager";
+import TicketTypesManager from "@/components/TicketTypesManager";
 
 interface EventCustomizationProps {
   eventId: string;
@@ -535,111 +536,123 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         </TabsContent>
 
         <TabsContent value="tickets" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Ticket Design</CardTitle>
-                <CardDescription>Customize ticket appearance</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="ticketTemplate">Template</Label>
-                  <Select
-                    value={ticketCustomization.design.template}
-                    onValueChange={(value) => updateTicketCustomization(['design', 'template'], value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="modern">Modern</SelectItem>
-                      <SelectItem value="classic">Classic</SelectItem>
-                      <SelectItem value="minimal">Minimal</SelectItem>
-                      <SelectItem value="elegant">Elegant</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ticketBgColor">Background Color</Label>
-                  <Input
-                    id="ticketBgColor"
-                    type="color"
-                    value={ticketCustomization.design.backgroundColor}
-                    onChange={(e) => updateTicketCustomization(['design', 'backgroundColor'], e.target.value)}
-                    className="w-full h-10"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ticketTextColor">Text Color</Label>
-                  <Input
-                    id="ticketTextColor"
-                    type="color"
-                    value={ticketCustomization.design.textColor}
-                    onChange={(e) => updateTicketCustomization(['design', 'textColor'], e.target.value)}
-                    className="w-full h-10"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="qrCodePosition">QR Code Position</Label>
-                  <Select
-                    value={ticketCustomization.design.qrCodePosition}
-                    onValueChange={(value) => updateTicketCustomization(['design', 'qrCodePosition'], value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="top-left">Top Left</SelectItem>
-                      <SelectItem value="top-right">Top Right</SelectItem>
-                      <SelectItem value="bottom-left">Bottom Left</SelectItem>
-                      <SelectItem value="bottom-right">Bottom Right</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Ticket Types & Pricing Management */}
+          <TicketTypesManager eventId={eventId} />
+          
+          {/* Ticket Design Customization */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Ticket Design & Appearance</CardTitle>
+              <CardDescription>Customize how your tickets look when sent to customers</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-6 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Ticket Design</CardTitle>
+                    <CardDescription>Customize ticket appearance</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="ticketTemplate">Template</Label>
+                      <Select
+                        value={ticketCustomization.design.template}
+                        onValueChange={(value) => updateTicketCustomization(['design', 'template'], value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="modern">Modern</SelectItem>
+                          <SelectItem value="classic">Classic</SelectItem>
+                          <SelectItem value="minimal">Minimal</SelectItem>
+                          <SelectItem value="elegant">Elegant</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ticketBgColor">Background Color</Label>
+                      <Input
+                        id="ticketBgColor"
+                        type="color"
+                        value={ticketCustomization.design.backgroundColor}
+                        onChange={(e) => updateTicketCustomization(['design', 'backgroundColor'], e.target.value)}
+                        className="w-full h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ticketTextColor">Text Color</Label>
+                      <Input
+                        id="ticketTextColor"
+                        type="color"
+                        value={ticketCustomization.design.textColor}
+                        onChange={(e) => updateTicketCustomization(['design', 'textColor'], e.target.value)}
+                        className="w-full h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="qrCodePosition">QR Code Position</Label>
+                      <Select
+                        value={ticketCustomization.design.qrCodePosition}
+                        onValueChange={(value) => updateTicketCustomization(['design', 'qrCodePosition'], value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="top-left">Top Left</SelectItem>
+                          <SelectItem value="top-right">Top Right</SelectItem>
+                          <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                          <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Ticket Content</CardTitle>
-                <CardDescription>Choose what information to include</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="showTicketLogo">Show Logo</Label>
-                  <Switch
-                    id="showTicketLogo"
-                    checked={ticketCustomization.content.showLogo}
-                    onCheckedChange={(checked) => updateTicketCustomization(['content', 'showLogo'], checked)}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="showTicketQrCode">Show QR Code</Label>
-                  <Switch
-                    id="showTicketQrCode"
-                    checked={ticketCustomization.content.showQrCode}
-                    onCheckedChange={(checked) => updateTicketCustomization(['content', 'showQrCode'], checked)}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="showTicketEventDetails">Show Event Details</Label>
-                  <Switch
-                    id="showTicketEventDetails"
-                    checked={ticketCustomization.content.showEventDetails}
-                    onCheckedChange={(checked) => updateTicketCustomization(['content', 'showEventDetails'], checked)}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="showTicketVenueInfo">Show Venue Info</Label>
-                  <Switch
-                    id="showTicketVenueInfo"
-                    checked={ticketCustomization.content.showVenueInfo}
-                    onCheckedChange={(checked) => updateTicketCustomization(['content', 'showVenueInfo'], checked)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Ticket Content</CardTitle>
+                    <CardDescription>Choose what information to include</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="showTicketLogo">Show Logo</Label>
+                      <Switch
+                        id="showTicketLogo"
+                        checked={ticketCustomization.content.showLogo}
+                        onCheckedChange={(checked) => updateTicketCustomization(['content', 'showLogo'], checked)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="showTicketQrCode">Show QR Code</Label>
+                      <Switch
+                        id="showTicketQrCode"
+                        checked={ticketCustomization.content.showQrCode}
+                        onCheckedChange={(checked) => updateTicketCustomization(['content', 'showQrCode'], checked)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="showTicketEventDetails">Show Event Details</Label>
+                      <Switch
+                        id="showTicketEventDetails"
+                        checked={ticketCustomization.content.showEventDetails}
+                        onCheckedChange={(checked) => updateTicketCustomization(['content', 'showEventDetails'], checked)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="showTicketVenueInfo">Show Venue Info</Label>
+                      <Switch
+                        id="showTicketVenueInfo"
+                        checked={ticketCustomization.content.showVenueInfo}
+                        onCheckedChange={(checked) => updateTicketCustomization(['content', 'showVenueInfo'], checked)}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="emails" className="space-y-6">
