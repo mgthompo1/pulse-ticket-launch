@@ -1366,15 +1366,56 @@ const OrgDashboard = () => {
                 </TabsContent>
 
                 <TabsContent value="analytics">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Event Analytics</CardTitle>
-                      <CardDescription>View detailed event performance metrics</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground">Analytics dashboard will be here</p>
-                    </CardContent>
-                  </Card>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Events</CardTitle>
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{testModeAnalytics.totalEvents}</div>
+                        <p className="text-xs text-muted-foreground">
+                          {testMode ? 'Test Mode' : 'Live Mode'}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+                        <Ticket className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{testModeAnalytics.totalOrders}</div>
+                        <p className="text-xs text-muted-foreground">
+                          All time
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">${testModeAnalytics.totalRevenue.toFixed(2)}</div>
+                        <p className="text-xs text-muted-foreground">
+                          Gross revenue
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Platform Fees</CardTitle>
+                        <CreditCard className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">${testModeAnalytics.estimatedPlatformFees.toFixed(2)}</div>
+                        <p className="text-xs text-muted-foreground">
+                          Estimated fees
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </TabsContent>
               </Tabs>
             ) : (
