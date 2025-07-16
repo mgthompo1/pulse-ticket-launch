@@ -360,8 +360,8 @@ const OrgDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header at the very top - outside SidebarProvider */}
-      <div className="border-b bg-gradient-to-r from-primary/5 to-secondary/5">
+      {/* Header at the very top spanning full width */}
+      <header className="w-full border-b bg-gradient-to-r from-primary/5 to-secondary/5">
         <div className="container mx-auto px-4 py-4 md:py-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
@@ -394,19 +394,20 @@ const OrgDashboard = () => {
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Sidebar and Main Content below header */}
-      <SidebarProvider>
-        <div className="flex">
-          <AppSidebar 
-            activeTab={activeTab} 
-            setActiveTab={setActiveTab} 
-            selectedEvent={selectedEvent} 
-          />
-          
-          <main className="flex-1">
-            <div className="container mx-auto px-4 py-4 md:py-8">
+      {/* Sidebar and Content Area - positioned below header */}
+      <div className="w-full">
+        <SidebarProvider>
+          <div className="flex w-full">
+            <AppSidebar 
+              activeTab={activeTab} 
+              setActiveTab={setActiveTab} 
+              selectedEvent={selectedEvent} 
+            />
+            
+            <main className="flex-1 w-full">
+              <div className="container mx-auto px-4 py-4 md:py-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8">
             <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -716,9 +717,10 @@ const OrgDashboard = () => {
             />
           )}
             </div>
-          </main>
-        </div>
-      </SidebarProvider>
+            </main>
+          </div>
+        </SidebarProvider>
+      </div>
     </div>
   );
 };
