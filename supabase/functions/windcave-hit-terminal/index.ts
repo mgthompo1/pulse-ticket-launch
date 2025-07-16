@@ -278,7 +278,7 @@ serve(async (req) => {
         console.log("[WINDCAVE-HIT-TERMINAL] Transaction completed", { 
           txnRef: statusTxnRef, 
           success: isSuccess, 
-          responseText 
+          responseText: responseTextMatch 
         });
       }
 
@@ -290,11 +290,11 @@ serve(async (req) => {
         transactionSuccess: isSuccess,
         status: isComplete ? (isSuccess ? "completed" : "failed") : "processing",
         message: isComplete ? 
-          (isSuccess ? "Payment completed successfully" : `Payment failed: ${responseText}`) :
+          (isSuccess ? "Payment completed successfully" : `Payment failed: ${responseTextMatch}`) :
           "Transaction in progress",
         displayLine1: dl1,
         displayLine2: dl2,
-        responseText: responseText,
+        responseText: responseTextMatch,
         resultCode: reCo
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
