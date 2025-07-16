@@ -320,6 +320,174 @@ const TicketWidget = () => {
             supportedCards: ["visa", "mastercard", "amex"],
             sideIcons: ["visa", "mastercard", "amex"]
           },
+          // Modern, responsive styling for the Drop-in container
+          styles: {
+            // Main container styling
+            container: {
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+              fontSize: "14px",
+              lineHeight: "1.5",
+              color: "#1f2937",
+              backgroundColor: "#ffffff",
+              borderRadius: "12px",
+              border: "1px solid #e5e7eb",
+              padding: "24px",
+              boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+              maxWidth: "100%",
+              margin: "0 auto"
+            },
+            // Payment method groups
+            itemGroup: {
+              backgroundColor: "#f9fafb",
+              border: "1px solid #e5e7eb",
+              borderRadius: "8px",
+              margin: "8px 0",
+              padding: "16px",
+              transition: "all 0.2s ease-in-out",
+              cursor: "pointer"
+            },
+            itemGroupHover: {
+              backgroundColor: "#f3f4f6",
+              borderColor: "#d1d5db",
+              transform: "translateY(-1px)",
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
+            },
+            // Checkbox styling
+            itemToggleCheckbox: {
+              accentColor: "#3b82f6",
+              width: "16px",
+              height: "16px",
+              borderRadius: "4px"
+            },
+            itemToggleCheckboxActive: {
+              backgroundColor: "#3b82f6",
+              borderColor: "#3b82f6"
+            },
+            // Payment method selector
+            itemToggle: {
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              fontWeight: "500",
+              color: "#374151"
+            },
+            // Payment method content
+            itemContainer: {
+              padding: "16px 0 0 0",
+              borderTop: "1px solid #e5e7eb",
+              marginTop: "16px"
+            },
+            // Redirect buttons (Apple Pay, Google Pay)
+            redirectButton: {
+              width: "100%",
+              padding: "12px 24px",
+              borderRadius: "8px",
+              border: "none",
+              fontSize: "16px",
+              fontWeight: "600",
+              cursor: "pointer",
+              transition: "all 0.2s ease-in-out",
+              backgroundColor: "#000000",
+              color: "#ffffff",
+              marginBottom: "8px"
+            },
+            redirectButtonHover: {
+              backgroundColor: "#1f2937",
+              transform: "translateY(-1px)",
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+            },
+            // Card form buttons
+            cardBackButton: {
+              padding: "10px 20px",
+              borderRadius: "6px",
+              border: "1px solid #d1d5db",
+              backgroundColor: "#ffffff",
+              color: "#374151",
+              fontSize: "14px",
+              fontWeight: "500",
+              cursor: "pointer",
+              transition: "all 0.2s ease-in-out"
+            },
+            cardBackButtonHover: {
+              backgroundColor: "#f9fafb",
+              borderColor: "#9ca3af"
+            },
+            cardSubmitButton: {
+              padding: "10px 24px",
+              borderRadius: "6px",
+              border: "none",
+              backgroundColor: "#3b82f6",
+              color: "#ffffff",
+              fontSize: "14px",
+              fontWeight: "600",
+              cursor: "pointer",
+              transition: "all 0.2s ease-in-out"
+            },
+            cardSubmitButtonHover: {
+              backgroundColor: "#2563eb",
+              transform: "translateY(-1px)",
+              boxShadow: "0 4px 6px -1px rgba(59, 130, 246, 0.3)"
+            },
+            cardFormButtons: {
+              display: "flex",
+              gap: "12px",
+              justifyContent: "flex-end",
+              marginTop: "20px",
+              flexWrap: "wrap"
+            },
+            // Header text styling
+            selectPaymentText: {
+              fontSize: "18px",
+              fontWeight: "600",
+              color: "#111827",
+              marginBottom: "20px",
+              textAlign: "center"
+            },
+            // Alternative payment methods text
+            alternativePaymentMethodsText: {
+              textAlign: "center",
+              margin: "20px 0",
+              position: "relative"
+            },
+            alternativePaymentMethodsTextSpan: {
+              fontSize: "14px",
+              color: "#6b7280",
+              backgroundColor: "#ffffff",
+              padding: "0 16px",
+              position: "relative",
+              zIndex: "1"
+            },
+            // Card input styling (Hosted Fields)
+            cardInput: {
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              padding: "12px 16px",
+              fontSize: "14px",
+              lineHeight: "1.5",
+              transition: "all 0.2s ease-in-out",
+              backgroundColor: "#ffffff"
+            },
+            cardInputContainer: {
+              marginBottom: "16px"
+            },
+            cardInputContainerFocused: {
+              borderColor: "#3b82f6",
+              boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.1)",
+              outline: "none"
+            },
+            cardInputValid: {
+              borderColor: "#10b981",
+              backgroundColor: "#f0fdf4"
+            },
+            cardInputInvalid: {
+              borderColor: "#ef4444",
+              backgroundColor: "#fef2f2",
+              boxShadow: "0 0 0 3px rgba(239, 68, 68, 0.1)"
+            },
+            cardInputGroup: {
+              marginBottom: "16px"
+            }
+          },
           // Mobile Payments configuration for Apple Pay and Google Pay
           mobilePayments: eventData?.organizations?.apple_pay_merchant_id ? {
             merchantName: eventData.organizations.name || "Event Tickets",
