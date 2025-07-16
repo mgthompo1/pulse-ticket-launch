@@ -181,7 +181,27 @@ const TicketWidget = () => {
   };
 
   const addToCart = async (ticketType: any) => {
-    // Check if event has seat maps
+    // First check if seat maps are enabled in widget customization
+    const seatMapsEnabled = eventData?.widget_customization?.seatMaps?.enabled || false;
+    
+    if (!seatMapsEnabled) {
+      // Seat maps are disabled - add directly to cart
+      setCart(prevCart => {
+        const existingItem = prevCart.find(item => item.id === ticketType.id);
+        if (existingItem) {
+          return prevCart.map(item =>
+            item.id === ticketType.id
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          );
+        } else {
+          return [...prevCart, { ...ticketType, quantity: 1 }];
+        }
+      });
+      return;
+    }
+
+    // Check if event has seat maps (only if enabled in widget customization)
     const { data: seatMaps } = await supabase
       .from('seat_maps')
       .select('id')

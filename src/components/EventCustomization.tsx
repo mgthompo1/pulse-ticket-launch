@@ -936,23 +936,33 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       </Tabs>
       
       {/* Seat Map Designer Modal */}
-      {(() => {
-        console.log("=== SEAT MAP DESIGNER RENDER CHECK ===");
-        console.log("showSeatMapDesigner:", showSeatMapDesigner);
-        console.log("eventData:", eventData);
-        console.log("eventData.name:", eventData?.name);
-        console.log("Should render SeatMapDesigner:", showSeatMapDesigner && eventData);
-        return null;
-      })()}
       {showSeatMapDesigner && eventData && (
-        <SeatMapDesigner
-          eventId={eventId}
-          eventName={eventData.name}
-          onClose={() => {
-            console.log("=== CLOSING SEAT MAP DESIGNER ===");
-            setShowSeatMapDesigner(false);
-          }}
-        />
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-lg max-w-6xl w-full h-[90vh] flex flex-col">
+            <div className="p-4 border-b flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Seat Map Designer - {eventData.name}</h2>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  console.log("=== CLOSING SEAT MAP DESIGNER ===");
+                  setShowSeatMapDesigner(false);
+                }}
+              >
+                Close
+              </Button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <SeatMapDesigner
+                eventId={eventId}
+                eventName={eventData.name}
+                onClose={() => {
+                  console.log("=== CLOSING SEAT MAP DESIGNER ===");
+                  setShowSeatMapDesigner(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
