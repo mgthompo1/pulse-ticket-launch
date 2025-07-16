@@ -399,6 +399,71 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               </div>
             </CardContent>
           </Card>
+
+          {/* Widget URL Section - Only show when event is published */}
+          {eventData?.status === 'published' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Widget Sharing</CardTitle>
+                <CardDescription>Share your customized ticket widget</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Widget URL</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={`${window.location.origin}/widget/${eventId}`}
+                      readOnly
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/widget/${eventId}`);
+                        toast({
+                          title: "Copied!",
+                          description: "Widget URL copied to clipboard"
+                        });
+                      }}
+                    >
+                      Copy URL
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open(`${window.location.origin}/widget/${eventId}`, '_blank')}
+                    >
+                      Preview
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Embed Code</Label>
+                  <div className="space-y-2">
+                    <Textarea
+                      value={`<iframe src="${window.location.origin}/widget/${eventId}" width="100%" height="600" frameborder="0"></iframe>`}
+                      readOnly
+                      rows={3}
+                      className="text-xs font-mono"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`<iframe src="${window.location.origin}/widget/${eventId}" width="100%" height="600" frameborder="0"></iframe>`);
+                        toast({
+                          title: "Copied!",
+                          description: "Embed code copied to clipboard"
+                        });
+                      }}
+                    >
+                      Copy Embed Code
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="seats" className="space-y-6">
