@@ -513,14 +513,15 @@ const Ticket2LIVE = () => {
       const { data, error } = await supabase.functions.invoke("windcave-hit-terminal", {
         body: {
           eventId,
+          action: "purchase",
           items: allItems.map(item => ({
+            id: item.id,
             ticketTypeId: item.id,
             quantity: item.quantity,
-            price: item.price
+            price: item.price,
+            type: item.type
           })),
-          customerInfo,
-          stationId: organizationConfig.windcave_station_id,
-          action: "purchase"
+          customerInfo
         },
       });
 
@@ -529,8 +530,8 @@ const Ticket2LIVE = () => {
       if (data.success) {
         setHitTerminalState(prev => ({ 
           ...prev, 
-          txnRef: data.sessionId,
-          message: data.terminalDisplay || "Present card to terminal"
+          txnRef: data.txnRef,
+          message: "Transaction initiated - Present card to terminal"
         }));
 
         toast({ 
@@ -543,44 +544,54 @@ const Ticket2LIVE = () => {
           try {
             const statusCheck = await supabase.functions.invoke("windcave-hit-terminal", {
               body: {
-                eventId,
-                sessionId: data.sessionId,
-                action: "status"
+                action: "status",
+                txnRef: data.txnRef
               }
             });
 
             if (statusCheck.data?.success) {
-              if (statusCheck.data.status === 'approved') {
+              // Update display with terminal messages
+              if (statusCheck.data.displayLine1 || statusCheck.data.displayLine2) {
+                const displayMessage = `${statusCheck.data.displayLine1} ${statusCheck.data.displayLine2}`.trim();
                 setHitTerminalState(prev => ({ 
                   ...prev, 
-                  processing: false, 
-                  message: "Payment completed successfully!" 
+                  message: displayMessage || "Processing..."
                 }));
-                
-                toast({ 
-                  title: "Payment Successful!", 
-                  description: `Transaction completed: ${statusCheck.data.approvalCode || 'Approved'}` 
-                });
-                
-                // Clear carts
-                setCart([]);
-                setTicketCart([]);
-                setCustomerInfo({ name: "", email: "" });
-                loadAnalytics();
-                return;
-              } else if (statusCheck.data.status === 'declined') {
-                setHitTerminalState(prev => ({ 
-                  ...prev, 
-                  processing: false, 
-                  message: "Payment declined" 
-                }));
-                
-                toast({ 
-                  title: "Payment Declined", 
-                  description: statusCheck.data.message || "Payment was declined",
-                  variant: "destructive"
-                });
-                return;
+              }
+
+              if (statusCheck.data.complete) {
+                if (statusCheck.data.transactionSuccess) {
+                  setHitTerminalState(prev => ({ 
+                    ...prev, 
+                    processing: false, 
+                    message: "Payment completed successfully!" 
+                  }));
+                  
+                  toast({ 
+                    title: "Payment Successful!", 
+                    description: statusCheck.data.message || 'Transaction completed successfully'
+                  });
+                  
+                  // Clear carts
+                  setCart([]);
+                  setTicketCart([]);
+                  setCustomerInfo({ name: "", email: "" });
+                  loadAnalytics();
+                  return;
+                } else {
+                  setHitTerminalState(prev => ({ 
+                    ...prev, 
+                    processing: false, 
+                    message: "Payment failed" 
+                  }));
+                  
+                  toast({ 
+                    title: "Payment Failed", 
+                    description: statusCheck.data.message || "Payment was declined",
+                    variant: "destructive"
+                  });
+                  return;
+                }
               } else {
                 // Update terminal display message
                 setHitTerminalState(prev => ({ 
