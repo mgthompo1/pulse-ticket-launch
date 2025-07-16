@@ -364,9 +364,9 @@ const OrgDashboard = () => {
       {/* Header at the very top */}
       <header className="border-b bg-gradient-to-r from-primary/5 to-secondary/5 flex-shrink-0">
         <div className="container mx-auto px-4 py-4 md:py-6">
-          <div className="relative flex items-center justify-center">
-            {/* Centered main heading */}
-            <div className="text-center">
+          <div className="flex items-center justify-between">
+            {/* Left-aligned main heading */}
+            <div>
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                 {organizationData?.name || "Organization Dashboard"}
               </h1>
@@ -376,7 +376,7 @@ const OrgDashboard = () => {
             </div>
             
             {/* Controls positioned to the right */}
-            <div className="absolute right-0 flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="flex items-center space-x-2">
                 <Label htmlFor="test-mode" className="text-sm">
                   {testMode ? "Test Mode" : "Live Mode"}
