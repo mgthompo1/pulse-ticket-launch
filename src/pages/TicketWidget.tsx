@@ -315,20 +315,37 @@ const TicketWidget = () => {
         const data = {
           container: "windcave-drop-in",
           links: links,
+          totalValue: totalAmount, // Required for Apple Pay and Google Pay
           card: {
             supportedCards: ["visa", "mastercard", "amex"],
             sideIcons: ["visa", "mastercard", "amex"]
           },
-          // Apple Pay configuration
-          applePay: eventData?.organizations?.apple_pay_merchant_id ? {
-            merchantId: eventData.organizations.apple_pay_merchant_id,
-            merchantName: eventData.organizations.name || "Event Tickets",
-            countryCode: "NZ", // You might want to make this configurable
-            currencyCode: eventData.organizations.currency?.toUpperCase() || "NZD"
+          // Mobile Payments configuration for Apple Pay and Google Pay
+          mobilePayments: eventData?.organizations?.apple_pay_merchant_id ? {
+            applePay: {
+              merchantId: eventData.organizations.apple_pay_merchant_id,
+              merchantName: eventData.organizations.name || "Event Tickets",
+              countryCode: "NZ", // You might want to make this configurable
+              currencyCode: eventData.organizations.currency?.toUpperCase() || "NZD",
+              supportedNetworks: ["visa", "mastercard", "amex"],
+              merchantCapabilities: ["supports3DS"]
+            },
+            googlePay: {
+              environment: "TEST", // Change to "PRODUCTION" for live
+              merchantId: eventData.organizations.name || "Event Tickets",
+              merchantName: eventData.organizations.name || "Event Tickets"
+            }
           } : undefined,
-          onSuccess: async (status: any) => {
+          onSuccess: async (status: any, data?: any) => {
             console.log("=== WINDCAVE SUCCESS CALLBACK ===");
             console.log("Success status:", status);
+            console.log("Success data:", data);
+            
+            // Handle Apple Pay specific success data
+            if (data && data.applePay) {
+              console.log("Apple Pay success data:", data.applePay);
+              // Apple Pay specific handling if needed
+            }
             
             // Critical: Handle 3DSecure authentication flow
             if (status == "3DSecure") {
