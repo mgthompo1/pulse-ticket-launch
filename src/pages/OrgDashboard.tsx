@@ -20,6 +20,7 @@ import BillingDashboard from "@/components/BillingDashboard";
 import { EventLogoUploader } from "@/components/events/EventLogoUploader";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import EventCustomization from "@/components/EventCustomization";
+import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -301,6 +302,62 @@ const OrgDashboard = () => {
     }
   };
 
+  const handleCreateEvent = async () => {
+    if (!organizationId || !eventForm.name || !eventForm.date || !eventForm.venue || !eventForm.capacity) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsCreatingEvent(true);
+    try {
+      const { data: newEvent, error } = await supabase
+        .from("events")
+        .insert({
+          name: eventForm.name,
+          event_date: eventForm.date,
+          venue: eventForm.venue,
+          capacity: parseInt(eventForm.capacity),
+          description: eventForm.description,
+          organization_id: organizationId,
+          test_mode: testMode
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Event created successfully!"
+      });
+
+      // Reset form
+      setEventForm({
+        name: "",
+        date: "",
+        venue: "",
+        capacity: "",
+        description: ""
+      });
+
+      // Reload events
+      loadEvents(organizationId);
+    } catch (error) {
+      console.error("Error creating event:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create event",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCreatingEvent(false);
+    }
+  };
+
   return (
     <SidebarProvider>
       <div className="min-h-screen bg-background flex">
@@ -457,8 +514,100 @@ const OrgDashboard = () => {
                   <CardTitle>Create New Event</CardTitle>
                   <CardDescription>Start selling tickets for your next event</CardDescription>
                 </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="event-name">Event Name *</Label>
+                      <Input
+                        id="event-name"
+                        value={eventForm.name}
+                        onChange={(e) => setEventForm(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="Enter event name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="event-date">Event Date *</Label>
+                      <Input
+                        id="event-date"
+                        type="datetime-local"
+                        value={eventForm.date}
+                        onChange={(e) => setEventForm(prev => ({ ...prev, date: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="event-venue">Venue *</Label>
+                      <Input
+                        id="event-venue"
+                        value={eventForm.venue}
+                        onChange={(e) => setEventForm(prev => ({ ...prev, venue: e.target.value }))}
+                        placeholder="Enter venue name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="event-capacity">Capacity *</Label>
+                      <Input
+                        id="event-capacity"
+                        type="number"
+                        value={eventForm.capacity}
+                        onChange={(e) => setEventForm(prev => ({ ...prev, capacity: e.target.value }))}
+                        placeholder="Maximum attendees"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="event-description">Description</Label>
+                    <Textarea
+                      id="event-description"
+                      value={eventForm.description}
+                      onChange={(e) => setEventForm(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Event description"
+                      rows={4}
+                    />
+                  </div>
+                  <Button 
+                    onClick={handleCreateEvent} 
+                    disabled={isCreatingEvent}
+                    className="w-full md:w-auto"
+                  >
+                    {isCreatingEvent ? "Creating..." : "Create Event"}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Events List */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Your Events</CardTitle>
+                  <CardDescription>Manage your existing events</CardDescription>
+                </CardHeader>
                 <CardContent>
-                  <p>Event creation form would go here...</p>
+                  {events.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No events created yet. Create your first event above!</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {events.map((event) => (
+                        <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors gap-4">
+                          <div className="space-y-1 flex-1">
+                            <h3 className="font-medium">{event.name}</h3>
+                            <p className="text-sm text-muted-foreground">{new Date(event.date).toLocaleDateString()} • {event.venue}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedEvent(event);
+                                setActiveTab("event-details");
+                              }}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Manage
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -482,15 +631,7 @@ const OrgDashboard = () => {
             </TabsContent>
 
             <TabsContent value="payments" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Payment Configuration</CardTitle>
-                  <CardDescription>Configure your payment providers</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p>Payment configuration would go here...</p>
-                </CardContent>
-              </Card>
+              <PaymentConfiguration organizationId={organizationId} />
             </TabsContent>
 
             <TabsContent value="design" className="space-y-6">
@@ -561,6 +702,18 @@ const OrgDashboard = () => {
               </Card>
             </TabsContent>
           </Tabs>
+          
+          {/* AI Chatbot */}
+          <AIChatbot context={{ organizationId }} />
+
+          {/* Seat Map Designer Modal */}
+          {showSeatMapDesigner && selectedEvent && (
+            <SeatMapDesigner
+              eventId={selectedEvent.id}
+              eventName={selectedEvent.name}
+              onClose={() => setShowSeatMapDesigner(false)}
+            />
+          )}
         </div>
       </div>
     </div>
