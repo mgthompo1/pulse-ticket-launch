@@ -22,6 +22,7 @@ import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import EventCustomization from "@/components/EventCustomization";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import { AppSidebar } from "@/components/AppSidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X, Link } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -301,7 +302,8 @@ const OrgDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <SidebarProvider>
+      <div className="min-h-screen bg-background flex">
       <AppSidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
@@ -561,7 +563,7 @@ const OrgDashboard = () => {
           </Tabs>
         </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 
