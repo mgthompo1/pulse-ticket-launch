@@ -9,7 +9,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, CreditCard, Sparkles, Link } from "lucide-react";
+import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, CreditCard, Sparkles, Link, FileText } from "lucide-react";
 
 interface AppSidebarProps {
   activeTab: string;
@@ -21,6 +21,7 @@ const sidebarItems = [
   { id: "overview", title: "Overview", icon: BarChart3 },
   { id: "events", title: "Events", icon: Calendar },
   { id: "event-details", title: "Event Details", icon: Users, requiresEvent: true },
+  { id: "invoicing", title: "Invoicing", icon: FileText, isExternalLink: true, href: "/invoicing" },
   { id: "ai-tools", title: "AI Tools", icon: Sparkles },
   { id: "payments", title: "Payments", icon: CreditCard },
   { id: "design", title: "Design", icon: Palette },
@@ -50,7 +51,13 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
                 return (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
-                      onClick={() => !isDisabled && setActiveTab(item.id)}
+                      onClick={() => {
+                        if (item.isExternalLink && item.href) {
+                          window.location.href = item.href;
+                        } else if (!isDisabled) {
+                          setActiveTab(item.id);
+                        }
+                      }}
                       className={`w-full justify-start ${
                         isActive 
                           ? "bg-primary text-primary-foreground" 

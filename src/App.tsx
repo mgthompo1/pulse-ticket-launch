@@ -12,6 +12,7 @@ import TicketWidget from "./pages/TicketWidget";
 import MasterAdmin from "./pages/MasterAdmin";
 import AdminAuth from "./pages/AdminAuth";
 import Ticket2LIVE from "./pages/Ticket2LIVE";
+import Invoicing from "./pages/Invoicing";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
 import PaymentCancelled from "./pages/PaymentCancelled";
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<OrgDashboard />} />
+            <Route path="/invoicing" element={<Invoicing />} />
             <Route path="/widget/:eventId" element={<TicketWidget />} />
             <Route path="/admin-auth" element={<AdminAuth />} />
             <Route path="/master-admin" element={<MasterAdmin />} />
