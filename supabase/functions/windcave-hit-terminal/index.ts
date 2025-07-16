@@ -7,18 +7,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const logStep = (step: string, details?: any) => {
-  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[WINDCAVE-HIT-TERMINAL] ${step}${detailsStr}`);
-};
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    logStep("Function started");
+    console.log("[WINDCAVE-HIT-TERMINAL] Function started");
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -26,11 +21,11 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { eventId, items, customerInfo, action = "purchase", sessionId } = await req.json();
-    logStep("Processing HIT terminal request", { eventId, action, itemCount: items?.length, sessionId });
+    const { eventId, items, customerInfo } = await req.json();
+    console.log("[WINDCAVE-HIT-TERMINAL] Processing request", { eventId, itemCount: items?.length });
 
-    // Validate required parameters for purchase
-    if (action === "purchase" && (!eventId || !items || !customerInfo)) {
+    // Validate required parameters
+    if (!eventId || !items || !customerInfo) {
       throw new Error("Missing required parameters: eventId, items, and customerInfo are required");
     }
 
@@ -65,262 +60,128 @@ serve(async (req) => {
       throw new Error("Terminal station ID not configured for this organization");
     }
 
+    // Calculate total amount
+    const totalAmount = items.reduce((sum: number, item: any) => {
+      return sum + (item.quantity * item.price);
+    }, 0);
+
     // Use organization's configured currency
     const currency = org.currency || 'NZD';
 
+    console.log("[WINDCAVE-HIT-TERMINAL] Calculated total amount", { totalAmount, currency });
+
     // Determine API endpoint based on environment
     const baseUrl = org.windcave_endpoint === "SEC" 
-      ? "https://sec.windcave.com/api/v1/sessions"
-      : "https://uat.windcave.com/api/v1/sessions";
+      ? "https://sec.windcave.com/pxaccess/pxpay.aspx"
+      : "https://uat.windcave.com/pxaccess/pxpay.aspx";
 
-    // Create Basic Auth header
-    const authHeader = `Basic ${btoa(`${org.windcave_hit_username}:${org.windcave_hit_key}`)}`;
+    // Create HIT XML request
+    const xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
+<GenerateRequest>
+  <PxPayUserId>${org.windcave_hit_username}</PxPayUserId>
+  <PxPayKey>${org.windcave_hit_key}</PxPayKey>
+  <AmountInput>${totalAmount.toFixed(2)}</AmountInput>
+  <CurrencyInput>${currency}</CurrencyInput>
+  <MerchantReference>${event.name}-${Date.now()}</MerchantReference>
+  <EmailAddress>${customerInfo.email || ''}</EmailAddress>
+  <TxnData1>${event.name}</TxnData1>
+  <TxnData2>${customerInfo.name}</TxnData2>
+  <TxnData3>${customerInfo.email}</TxnData3>
+  <TxnType>Purchase</TxnType>
+  <UrlSuccess>${Deno.env.get("SUPABASE_URL")}/functions/v1/windcave-dropin-success</UrlSuccess>
+  <UrlFail>${Deno.env.get("SUPABASE_URL")}/functions/v1/windcave-payment-status</UrlFail>
+  <BillingId>${terminalStationId}</BillingId>
+  <EnableAddBillCard>0</EnableAddBillCard>
+  <Opt>TO</Opt>
+</GenerateRequest>`;
 
-    if (action === "purchase") {
-      // Calculate total amount
-      const totalAmount = items.reduce((sum: number, item: any) => {
-        return sum + (item.quantity * item.price);
-      }, 0);
+    console.log("[WINDCAVE-HIT-TERMINAL] Sending HIT request", { baseUrl });
 
-      logStep("Calculated total amount", { totalAmount, currency });
+    // Make request to Windcave HIT API
+    const response = await fetch(baseUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/xml; charset=utf-8",
+        "User-Agent": "Ticket2LIVE-HIT-Terminal/1.0"
+      },
+      body: xmlRequest
+    });
 
-      // Create session with terminal node for direct terminal processing
-      const sessionData = {
-        type: "purchase",
-        amount: totalAmount.toFixed(2),
-        currency: currency,
-        callbackUrls: {
-          approved: `${Deno.env.get("SUPABASE_URL")}/functions/v1/windcave-hit-terminal`,
-          declined: `${Deno.env.get("SUPABASE_URL")}/functions/v1/windcave-hit-terminal`,
-          cancelled: `${Deno.env.get("SUPABASE_URL")}/functions/v1/windcave-hit-terminal`
-        },
-        terminal: {
-          station: terminalStationId,
-          slotId: 1,
-          enableTip: 0,
-          skipSurcharge: 0,
-          payAtTable: 0,
-          oneSwipe: 0,
-          cardholderPresent: 1,
-          authType: "Purchase",
-          completeType: "Final",
-          billingId: `${event.name}-${Date.now()}`,
-          txnData1: event.name,
-          txnData2: customerInfo.name,
-          txnData3: customerInfo.email,
-          receiptEmail: customerInfo.email || ""
-        }
-      };
+    const responseText = await response.text();
+    console.log("[WINDCAVE-HIT-TERMINAL] Windcave response", { status: response.status, response: responseText });
 
-      logStep("Creating session with terminal node", { 
-        baseUrl, 
-        station: terminalStationId, 
-        amount: totalAmount.toFixed(2),
-        currency: currency
-      });
-
-      // Make request to Windcave REST API
-      const response = await fetch(baseUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": authHeader,
-          "Accept": "application/json"
-        },
-        body: JSON.stringify(sessionData)
-      });
-
-      const responseData = await response.json();
-      logStep("Windcave session creation response", { status: response.status, data: responseData });
-
-      if (!response.ok) {
-        throw new Error(`Windcave API error: Status ${response.status} - ${JSON.stringify(responseData)}`);
-      }
-
-      // Create order record for purchase
-      const orderData = {
-        event_id: eventId,
-        customer_name: customerInfo.name,
-        customer_email: customerInfo.email,
-        customer_phone: customerInfo.phone || null,
-        total_amount: totalAmount,
-        status: "pending",
-        windcave_session_id: responseData.id
-      };
-
-      const { data: order, error: orderError } = await supabaseClient
-        .from("orders")
-        .insert(orderData)
-        .select()
-        .single();
-
-      if (orderError) {
-        logStep("Error creating order", orderError);
-        throw new Error("Failed to create order record");
-      }
-
-      logStep("Order created", { orderId: order.id });
-
-      // Create order items
-      const orderItems = items.map((item: any) => ({
-        order_id: order.id,
-        ticket_type_id: item.id || item.ticketTypeId,
-        quantity: item.quantity,
-        unit_price: item.price,
-        item_type: item.type || 'ticket'
-      }));
-
-      const { error: orderItemsError } = await supabaseClient
-        .from("order_items")
-        .insert(orderItems);
-
-      if (orderItemsError) {
-        logStep("Error creating order items", orderItemsError);
-        throw new Error("Failed to create order items");
-      }
-
-      logStep("Order items created", { count: orderItems.length });
-
-      return new Response(JSON.stringify({
-        success: true,
-        sessionId: responseData.id,
-        orderId: order.id,
-        amount: totalAmount,
-        currency: currency,
-        status: "initiated",
-        message: "HIT terminal transaction initiated successfully",
-        terminalDisplay: "Present card to terminal",
-        terminal: responseData.terminal,
-        links: responseData.links
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-
-    } else if (action === "status") {
-      // Get session status
-      if (!sessionId) {
-        throw new Error("Session ID required for status check");
-      }
-
-      const statusUrl = `${baseUrl}/${sessionId}`;
-      logStep("Checking session status", { statusUrl });
-
-      const statusResponse = await fetch(statusUrl, {
-        method: "GET",
-        headers: {
-          "Authorization": authHeader,
-          "Accept": "application/json"
-        }
-      });
-
-      const statusData = await statusResponse.json();
-      logStep("Session status response", { status: statusResponse.status, data: statusData });
-
-      if (!statusResponse.ok) {
-        throw new Error(`Status check failed: ${statusResponse.status} - ${JSON.stringify(statusData)}`);
-      }
-
-      // Check if payment is completed
-      let paymentStatus = "processing";
-      let displayMessage = "Processing...";
-      
-      if (statusData.state === "completed") {
-        paymentStatus = "approved";
-        displayMessage = "Payment completed successfully";
-        
-        // Update order status
-        const { error: updateError } = await supabaseClient
-          .from("orders")
-          .update({ status: "completed" })
-          .eq("windcave_session_id", sessionId);
-
-        if (updateError) {
-          logStep("Error updating order status", updateError);
-        }
-      } else if (statusData.state === "failed" || statusData.state === "declined") {
-        paymentStatus = "declined";
-        displayMessage = "Payment declined";
-        
-        // Update order status
-        const { error: updateError } = await supabaseClient
-          .from("orders")
-          .update({ status: "failed" })
-          .eq("windcave_session_id", sessionId);
-
-        if (updateError) {
-          logStep("Error updating order status", updateError);
-        }
-      } else if (statusData.terminal?.pinpad) {
-        // Terminal has pinpad display information
-        displayMessage = `${statusData.terminal.pinpad.displayLine1} ${statusData.terminal.pinpad.displayLine2}`.trim();
-      }
-
-      return new Response(JSON.stringify({
-        success: true,
-        sessionId: sessionId,
-        status: paymentStatus,
-        state: statusData.state,
-        message: displayMessage,
-        terminal: statusData.terminal,
-        pinpad: statusData.terminal?.pinpad,
-        buttons: statusData.terminal?.pinpad?.buttons || [],
-        approvalCode: statusData.approvalCode,
-        rawResponse: statusData
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-
-    } else if (action === "cancel") {
-      // Cancel terminal transaction
-      if (!sessionId) {
-        throw new Error("Session ID required for cancellation");
-      }
-
-      const cancelUrl = `${baseUrl}/${sessionId}/terminal_action`;
-      logStep("Cancelling terminal transaction", { cancelUrl });
-
-      const cancelResponse = await fetch(cancelUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": authHeader,
-          "Accept": "application/json"
-        },
-        body: JSON.stringify({
-          action: "cancel"
-        })
-      });
-
-      const cancelData = await cancelResponse.json();
-      logStep("Cancel response", { status: cancelResponse.status, data: cancelData });
-
-      // Update order status
-      const { error: updateError } = await supabaseClient
-        .from("orders")
-        .update({ status: "cancelled" })
-        .eq("windcave_session_id", sessionId);
-
-      if (updateError) {
-        logStep("Error updating order status", updateError);
-      }
-
-      return new Response(JSON.stringify({
-        success: true,
-        message: "Transaction cancelled successfully",
-        sessionId: sessionId
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
+    if (!response.ok) {
+      throw new Error(`Windcave API error: ${response.status} - ${responseText}`);
     }
 
-    throw new Error("Invalid action specified");
+    // Parse XML response
+    const urlMatch = responseText.match(/<URI>(.*?)<\/URI>/);
+    const validMatch = responseText.match(/<valid>(\d+)<\/valid>/);
+
+    if (!urlMatch || !validMatch || validMatch[1] !== "1") {
+      throw new Error("Invalid response from Windcave HIT API");
+    }
+
+    const redirectUrl = urlMatch[1];
+
+    // Create order record
+    const orderData = {
+      event_id: eventId,
+      customer_name: customerInfo.name,
+      customer_email: customerInfo.email,
+      customer_phone: customerInfo.phone || null,
+      total_amount: totalAmount,
+      status: "pending"
+    };
+
+    const { data: order, error: orderError } = await supabaseClient
+      .from("orders")
+      .insert(orderData)
+      .select()
+      .single();
+
+    if (orderError) {
+      console.error("[WINDCAVE-HIT-TERMINAL] Error creating order", orderError);
+      throw new Error("Failed to create order record");
+    }
+
+    console.log("[WINDCAVE-HIT-TERMINAL] Order created", { orderId: order.id });
+
+    // Create order items
+    const orderItems = items.map((item: any) => ({
+      order_id: order.id,
+      ticket_type_id: item.id || item.ticketTypeId,
+      quantity: item.quantity,
+      unit_price: item.price,
+      item_type: item.type || 'ticket'
+    }));
+
+    const { error: orderItemsError } = await supabaseClient
+      .from("order_items")
+      .insert(orderItems);
+
+    if (orderItemsError) {
+      console.error("[WINDCAVE-HIT-TERMINAL] Error creating order items", orderItemsError);
+      throw new Error("Failed to create order items");
+    }
+
+    console.log("[WINDCAVE-HIT-TERMINAL] Order items created", { count: orderItems.length });
+
+    return new Response(JSON.stringify({
+      success: true,
+      redirectUrl: redirectUrl,
+      orderId: order.id,
+      amount: totalAmount,
+      currency: currency,
+      message: "HIT terminal transaction initiated successfully"
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR", { message: errorMessage });
+    console.error("[WINDCAVE-HIT-TERMINAL] ERROR:", errorMessage);
     
     return new Response(JSON.stringify({ 
       success: false,

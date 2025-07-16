@@ -49,7 +49,8 @@ const OrgDashboard = () => {
     applePayMerchantId: "",
     hitUsername: "",
     hitKey: "",
-    stationId: ""
+    stationId: "",
+    currency: "NZD"
   });
   const { toast } = useToast();
   const { user } = useAuth();
@@ -161,7 +162,8 @@ const OrgDashboard = () => {
           applePayMerchantId: (orgs as any).apple_pay_merchant_id || "",
           hitUsername: (orgs as any).windcave_hit_username || "",
           hitKey: (orgs as any).windcave_hit_key || "",
-          stationId: (orgs as any).windcave_station_id || ""
+          stationId: (orgs as any).windcave_station_id || "",
+          currency: (orgs as any).currency || "NZD"
         });
         
         // Load events for this organization
@@ -432,7 +434,8 @@ const OrgDashboard = () => {
           apple_pay_merchant_id: windcaveConfig.applePayMerchantId,
           windcave_hit_username: windcaveConfig.hitUsername,
           windcave_hit_key: windcaveConfig.hitKey,
-          windcave_station_id: windcaveConfig.stationId
+          windcave_station_id: windcaveConfig.stationId,
+          currency: windcaveConfig.currency
         })
         .eq("id", organizationId);
 
@@ -1676,6 +1679,31 @@ const OrgDashboard = () => {
                               />
                               <p className="text-xs text-muted-foreground">
                                 The serial number of your Windcave HIT terminal device
+                              </p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="windcave-currency">Terminal Currency</Label>
+                              <Select
+                                value={windcaveConfig.currency}
+                                onValueChange={(value) => 
+                                  setWindcaveConfig(prev => ({ ...prev, currency: value }))
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select currency" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="NZD">New Zealand Dollar (NZD)</SelectItem>
+                                  <SelectItem value="AUD">Australian Dollar (AUD)</SelectItem>
+                                  <SelectItem value="USD">US Dollar (USD)</SelectItem>
+                                  <SelectItem value="GBP">British Pound (GBP)</SelectItem>
+                                  <SelectItem value="EUR">Euro (EUR)</SelectItem>
+                                  <SelectItem value="CAD">Canadian Dollar (CAD)</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <p className="text-xs text-muted-foreground">
+                                Currency that the terminal will process transactions in
                               </p>
                             </div>
                           </div>
