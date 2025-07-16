@@ -129,14 +129,55 @@ const TicketWidget = () => {
 
     console.log(`Loading Windcave scripts for ${endpoint} endpoint from:`, baseUrl);
     
+    // Check if scripts are already loaded
+    const existingScripts = Array.from(document.head.querySelectorAll('script'))
+      .filter(script => script.src.includes('windcave'));
+    
+    if (existingScripts.length > 0) {
+      console.log("Windcave scripts already loaded:", existingScripts.map(s => s.src));
+      return;
+    }
+    
     scripts.forEach((scriptPath, index) => {
       const script = document.createElement('script');
       script.src = baseUrl + scriptPath;
       script.async = true;
-      script.onload = () => console.log(`Windcave script loaded: ${scriptPath}`);
-      script.onerror = (error) => console.error(`Failed to load Windcave script: ${scriptPath}`, error);
+      script.onload = () => {
+        console.log(`✅ Windcave script loaded successfully: ${scriptPath}`);
+        if (scriptPath === "/js/windcavepayments-dropin-v1.js") {
+          // Main drop-in script loaded, check if WindcavePayments is available
+          setTimeout(() => {
+            console.log("Drop-in script loaded, WindcavePayments available:", !!window.WindcavePayments);
+            if (window.WindcavePayments) {
+              console.log("WindcavePayments object:", window.WindcavePayments);
+              console.log("DropIn available:", !!window.WindcavePayments.DropIn);
+              console.log("DropIn.create available:", !!window.WindcavePayments.DropIn?.create);
+            }
+          }, 500);
+        }
+      };
+      script.onerror = (error) => {
+        console.error(`❌ Failed to load Windcave script: ${scriptPath}`, error);
+        toast({
+          title: "Script Loading Error", 
+          description: `Failed to load ${scriptPath}. Please check your internet connection.`,
+          variant: "destructive"
+        });
+      };
       document.head.appendChild(script);
     });
+  };
+
+  // Function to check if all required Windcave components are loaded
+  const checkWindcaveReadiness = () => {
+    const checks = {
+      "window.WindcavePayments": !!window.WindcavePayments,
+      "WindcavePayments.DropIn": !!(window.WindcavePayments?.DropIn),
+      "WindcavePayments.DropIn.create": !!(window.WindcavePayments?.DropIn?.create),
+    };
+    
+    console.log("Windcave readiness check:", checks);
+    return Object.values(checks).every(Boolean);
   };
 
   const addToCart = async (ticketType: any) => {
@@ -332,15 +373,35 @@ const TicketWidget = () => {
   };
 
   const initializeWindcaveDropIn = (links: any[], totalAmount: number) => {
+    console.log("=== INITIALIZING WINDCAVE DROP-IN ===");
+    console.log("Links received:", links);
+    console.log("Total amount:", totalAmount);
+    console.log("Event data:", eventData);
+    console.log("Window WindcavePayments available:", !!window.WindcavePayments);
+    
     // Check if WindcavePayments is available
-    if (typeof window !== 'undefined' && window.WindcavePayments) {
+    if (typeof window !== 'undefined' && checkWindcaveReadiness()) {
+      console.log("✅ All Windcave components are ready");
+      console.log("WindcavePayments object:", window.WindcavePayments);
+      
       const dropInContainer = dropInRef.current;
       if (!dropInContainer) {
-        console.error("Drop-in container not found");
+        console.error("Drop-in container not found - dropInRef.current is null");
+        toast({
+          title: "Payment System Error",
+          description: "Payment container not found. Please refresh the page.",
+          variant: "destructive"
+        });
         return;
       }
+      
+      console.log("Drop-in container found:", dropInContainer);
+      console.log("Container ID:", dropInContainer.id);
 
       try {
+        console.log("=== CREATING DROP-IN CONFIGURATION ===");
+        console.log("Organization config:", eventData?.organizations);
+        console.log("Apple Pay Merchant ID:", eventData?.organizations?.apple_pay_merchant_id);
         const data = {
           container: "windcave-drop-in",
           links: links,
@@ -1254,8 +1315,60 @@ const TicketWidget = () => {
                       Your payment information is encrypted and secure. Do not refresh this page during payment.
                     </p>
                     
-                    {/* Manual verification button for testing */}
-                    <div className="mt-3 pt-3 border-t">
+                    {/* Debug Controls */}
+                    <div className="mt-3 pt-3 border-t space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            console.log("=== MANUAL DEBUG CHECK ===");
+                            console.log("WindcavePayments available:", !!window.WindcavePayments);
+                            console.log("DropIn available:", !!window.WindcavePayments?.DropIn);
+                            console.log("Links:", windcaveLinks);
+                            console.log("Event data:", eventData);
+                            console.log("Scripts loaded:", Array.from(document.head.querySelectorAll('script')).filter(s => s.src.includes('windcave')).map(s => s.src));
+                            
+                            if (checkWindcaveReadiness()) {
+                              toast({
+                                title: "Windcave Ready ✅",
+                                description: "All components loaded successfully",
+                              });
+                            } else {
+                              toast({
+                                title: "Windcave Not Ready ❌",
+                                description: "Check console for details",
+                                variant: "destructive"
+                              });
+                            }
+                          }}
+                        >
+                          Debug Status
+                        </Button>
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (windcaveLinks.length > 0) {
+                              const totalAmount = getTotalAmount();
+                              console.log("=== MANUAL DROP-IN RETRY ===");
+                              console.log("Retrying with links:", windcaveLinks);
+                              console.log("Total amount:", totalAmount);
+                              initializeWindcaveDropIn(windcaveLinks, totalAmount);
+                            } else {
+                              toast({
+                                title: "No Session Data",
+                                description: "Please restart checkout process",
+                                variant: "destructive"
+                              });
+                            }
+                          }}
+                        >
+                          Retry Drop-in
+                        </Button>
+                      </div>
+                      
                       <Button
                         variant="outline"
                         size="sm"
@@ -1268,14 +1381,20 @@ const TicketWidget = () => {
                               description: "Checking payment status...",
                             });
                             await verifyPaymentStatus(sessionId);
+                          } else {
+                            toast({
+                              title: "No Session ID",
+                              description: "Cannot verify payment without session ID",
+                              variant: "destructive"
+                            });
                           }
                         }}
                         className="w-full"
                       >
                         Check Payment Status
                       </Button>
-                      <p className="text-xs text-muted-foreground mt-1 text-center">
-                        Click if payment was completed but not detected
+                      <p className="text-xs text-muted-foreground text-center">
+                        Use these controls if payment form doesn't load or payment completes but isn't detected
                       </p>
                     </div>
                   </div>
