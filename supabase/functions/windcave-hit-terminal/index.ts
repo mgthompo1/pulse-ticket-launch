@@ -162,7 +162,7 @@ serve(async (req) => {
       // Create order items
       const orderItems = items.map((item: any) => ({
         order_id: order.id,
-        ticket_type_id: item.id || item.ticketTypeId,
+        ticket_type_id: item.ticketTypeId || item.ticket_type_id, // Use the correct field name
         quantity: item.quantity,
         unit_price: item.price,
         item_type: item.type || 'ticket'
