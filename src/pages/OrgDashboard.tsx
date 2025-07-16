@@ -359,45 +359,45 @@ const OrgDashboard = () => {
   };
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen bg-background flex flex-col">
-        {/* Header spanning full width */}
-        <div className="border-b bg-gradient-to-r from-primary/5 to-secondary/5">
-          <div className="container mx-auto px-4 py-4 md:py-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                  {organizationData?.name || "Organization Dashboard"}
-                </h1>
-                <p className="text-muted-foreground">
-                  Manage your events and organization settings
-                </p>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header spanning full width at the top */}
+      <div className="border-b bg-gradient-to-r from-primary/5 to-secondary/5">
+        <div className="container mx-auto px-4 py-4 md:py-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                {organizationData?.name || "Organization Dashboard"}
+              </h1>
+              <p className="text-muted-foreground">
+                Manage your events and organization settings
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center space-x-2">
+                <Label htmlFor="test-mode" className="text-sm">
+                  {testMode ? "Test Mode" : "Live Mode"}
+                </Label>
+                <Switch
+                  id="test-mode"
+                  checked={testMode}
+                  onCheckedChange={handleToggleTestMode}
+                />
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor="test-mode" className="text-sm">
-                    {testMode ? "Test Mode" : "Live Mode"}
-                  </Label>
-                  <Switch
-                    id="test-mode"
-                    checked={testMode}
-                    onCheckedChange={handleToggleTestMode}
-                  />
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => navigate("/")}
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Exit Dashboard
-                </Button>
-              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate("/")}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Exit Dashboard
+              </Button>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Sidebar and Main Content Container */}
+      {/* Sidebar and Main Content Container below header */}
+      <SidebarProvider>
         <div className="flex flex-1">
           <AppSidebar 
             activeTab={activeTab} 
@@ -719,8 +719,8 @@ const OrgDashboard = () => {
             </div>
           </div>
         </div>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </div>
   );
 };
 
