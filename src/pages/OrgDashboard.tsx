@@ -995,7 +995,7 @@ const OrgDashboard = () => {
 
           {/* Main Content */}
           <div className="flex-1 container mx-auto px-4 py-4 md:py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8">
+        {/* Remove old Tabs wrapper - content now rendered conditionally */}
           <div className="overflow-x-auto">
             {/* Content Rendering */}
             <div className="space-y-6">
@@ -1099,10 +1099,11 @@ const OrgDashboard = () => {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+            )}
 
-          {/* Event Details Tab */}
-          <TabsContent value="event-details" className="space-y-6">
+            {/* Event Details Tab */}
+            {activeTab === "event-details" && (
+              <div className="space-y-6">
             {selectedEvent ? (
               <Tabs defaultValue="overview" className="space-y-4">
                 <div className="overflow-x-auto">
@@ -2169,7 +2170,7 @@ const OrgDashboard = () => {
               </div>
             )}
           </TabsContent>
-        </Tabs>
+          </div>
         
         {/* AI Chatbot */}
         <AIChatbot context={{ organizationId }} />
