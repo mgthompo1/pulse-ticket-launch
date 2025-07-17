@@ -27,6 +27,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X, Link, Package } from "lucide-react";
 import MerchandiseManager from "@/components/MerchandiseManager";
 import OrganizationSettings from "@/components/OrganizationSettings";
+import Invoicing from "./Invoicing";
 import { useNavigate } from "react-router-dom";
 
 const OrgDashboard = () => {
@@ -621,6 +622,10 @@ const OrgDashboard = () => {
 
             <TabsContent value="ai-tools" className="space-y-6">
               <AIEventGenerator />
+            </TabsContent>
+
+            <TabsContent value="invoicing" className="space-y-6">
+              <Invoicing />
             </TabsContent>
 
             <TabsContent value="payments" className="space-y-6">

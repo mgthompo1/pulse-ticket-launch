@@ -24,7 +24,7 @@ const sidebarItems = [
   { id: "overview", title: "Overview", icon: BarChart3 },
   { id: "events", title: "Events", icon: Calendar },
   { id: "event-details", title: "Event Details", icon: Users, requiresEvent: true },
-  { id: "invoicing", title: "Invoicing", icon: FileText, isExternalLink: true, href: "/invoicing" },
+  { id: "invoicing", title: "Invoicing", icon: FileText },
   { id: "ai-tools", title: "AI Tools", icon: Sparkles },
   { id: "payments", title: "Payments", icon: CreditCard },
   { id: "design", title: "Design", icon: Palette },
@@ -116,9 +116,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
                       onClick={() => {
-                        if (item.isExternalLink && item.href) {
-                          window.location.href = item.href;
-                        } else if (!isDisabled) {
+                        if (!isDisabled) {
                           setActiveTab(item.id);
                         }
                       }}
