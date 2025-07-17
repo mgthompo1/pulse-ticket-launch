@@ -305,16 +305,39 @@ const Invoicing = () => {
       return;
     }
 
+    // Check if we have a selected event, otherwise use a default one
+    let eventId = null;
+    if (events.length > 0) {
+      // Use the first event if available, or create a minimal event representation
+      eventId = events[0].id;
+    } else {
+      toast({
+        title: "Error",
+        description: "No events available for payment processing",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     try {
+      // Create invoice items in the format expected by windcave-session
+      const items = invoiceData.items.map(item => ({
+        id: item.id,
+        type: 'service',
+        description: item.description,
+        quantity: item.quantity,
+        price: item.rate
+      }));
+
       const { data, error } = await supabase.functions.invoke("windcave-session", {
         body: {
-          amount: invoiceData.total,
-          currency: organizationData.currency || 'NZD',
-          description: `Invoice ${invoiceData.invoiceNumber} - ${invoiceData.eventName}`,
+          eventId: eventId,
+          items: items,
           customerInfo: {
             name: invoiceData.clientName,
-            email: invoiceData.clientEmail
+            email: invoiceData.clientEmail,
+            phone: invoiceData.clientPhone
           }
         }
       });
@@ -341,9 +364,80 @@ const Invoicing = () => {
   };
 
   const initializeWindcaveDropIn = (links: any[], amount: number) => {
-    // Windcave Drop-In initialization logic would go here
-    // This is a placeholder for the actual Windcave integration
-    console.log("Initializing Windcave Drop-In with links:", links, "amount:", amount);
+    if (!dropInRef.current) {
+      console.error("Drop-In container not found");
+      return;
+    }
+
+    // Find the dropin link
+    const dropInLink = links.find(link => link.method === "IFRAME" || link.rel === "dropin");
+    
+    if (!dropInLink) {
+      console.error("Drop-In link not found in response");
+      toast({
+        title: "Error",
+        description: "Payment interface not available",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Clear any existing content
+    dropInRef.current.innerHTML = '';
+
+    // Create iframe for Windcave Drop-In
+    const iframe = document.createElement('iframe');
+    iframe.src = dropInLink.href;
+    iframe.width = '100%';
+    iframe.height = '600px';
+    iframe.style.border = 'none';
+    iframe.style.borderRadius = '8px';
+    
+    // Add iframe to container
+    dropInRef.current.appendChild(iframe);
+
+    // Listen for payment completion messages
+    const messageHandler = (event: MessageEvent) => {
+      // Only accept messages from Windcave domain
+      if (!event.origin.includes('windcave.com')) {
+        return;
+      }
+
+      console.log("Received message from Windcave:", event.data);
+
+      if (event.data.type === 'payment.success') {
+        // Payment successful
+        setInvoiceData(prev => ({ ...prev, status: 'paid' }));
+        setShowPaymentForm(false);
+        toast({
+          title: "Payment Successful",
+          description: "Invoice has been paid successfully",
+        });
+      } else if (event.data.type === 'payment.failure') {
+        // Payment failed
+        toast({
+          title: "Payment Failed",
+          description: "Payment could not be processed",
+          variant: "destructive"
+        });
+      } else if (event.data.type === 'payment.cancelled') {
+        // Payment cancelled
+        setShowPaymentForm(false);
+        toast({
+          title: "Payment Cancelled",
+          description: "Payment was cancelled by user",
+          variant: "destructive"
+        });
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('message', messageHandler);
+
+    // Cleanup function
+    return () => {
+      window.removeEventListener('message', messageHandler);
+    };
   };
 
   const downloadPDF = async () => {
@@ -918,7 +1012,7 @@ const Invoicing = () => {
                   className="w-full"
                 >
                   <CreditCard className="h-4 w-4 mr-2" />
-                  Collect Payment
+                  Pay Now
                 </Button>
               </CardContent>
             </Card>
