@@ -13,16 +13,23 @@ serve(async (req) => {
   }
 
   try {
+    console.log("=== CREATE PAYMENT INTENT START ===");
+    
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
 
-    const { eventId, items, tickets, customerInfo } = await req.json();
+    const requestBody = await req.json();
+    console.log("Request body:", JSON.stringify(requestBody, null, 2));
+    
+    const { eventId, items, tickets, customerInfo } = requestBody;
     
     // Handle both new items format and legacy tickets format
     const ticketItems = items || tickets;
+    console.log("Ticket items:", JSON.stringify(ticketItems, null, 2));
+    console.log("Customer info:", JSON.stringify(customerInfo, null, 2));
 
     // Get event and organization details
     const { data: event, error: eventError } = await supabaseClient
@@ -110,6 +117,15 @@ serve(async (req) => {
     });
 
     // Create order record
+    console.log("Creating order with data:", {
+      event_id: eventId,
+      customer_name: customerInfo.name,
+      customer_email: customerInfo.email,
+      customer_phone: customerInfo.phone,
+      total_amount: total,
+      status: "pending",
+    });
+    
     const { data: order, error: orderError } = await supabaseClient
       .from("orders")
       .insert({
@@ -118,16 +134,21 @@ serve(async (req) => {
         customer_email: customerInfo.email,
         customer_phone: customerInfo.phone,
         total_amount: total,
-        platform_fee: platformFee,
-        stripe_payment_intent_id: paymentIntent.id,
         status: "pending",
       })
       .select()
       .single();
 
-    if (orderError || !order) {
-      throw new Error("Failed to create order");
+    if (orderError) {
+      console.error("Order creation error:", orderError);
+      throw new Error(`Failed to create order: ${orderError.message}`);
     }
+    
+    if (!order) {
+      throw new Error("Failed to create order: No order returned");
+    }
+    
+    console.log("Order created successfully:", order.id);
 
     // Create order items
     const orderItemsWithOrderId = orderItems.map(item => ({
