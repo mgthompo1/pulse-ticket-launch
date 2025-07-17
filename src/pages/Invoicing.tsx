@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { 
   FileText, 
   Mail, 
@@ -342,6 +344,164 @@ const Invoicing = () => {
     // Windcave Drop-In initialization logic would go here
     // This is a placeholder for the actual Windcave integration
     console.log("Initializing Windcave Drop-In with links:", links, "amount:", amount);
+  };
+
+  const downloadPDF = async () => {
+    try {
+      setLoading(true);
+      
+      // Create a temporary container for the invoice content
+      const invoiceContainer = document.createElement('div');
+      invoiceContainer.style.width = '800px';
+      invoiceContainer.style.padding = '40px';
+      invoiceContainer.style.backgroundColor = 'white';
+      invoiceContainer.style.fontFamily = 'Arial, sans-serif';
+      invoiceContainer.style.position = 'absolute';
+      invoiceContainer.style.left = '-9999px';
+      invoiceContainer.style.top = '0';
+      
+      // Generate invoice HTML
+      invoiceContainer.innerHTML = `
+        <div style="margin-bottom: 40px;">
+          <h1 style="color: #333; margin-bottom: 10px; font-size: 32px;">INVOICE</h1>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
+            <div>
+              <p style="margin: 0; font-weight: bold;">${invoiceData.invoiceNumber}</p>
+              <p style="margin: 5px 0 0 0; color: #666;">Date: ${new Date(invoiceData.invoiceDate).toLocaleDateString()}</p>
+              <p style="margin: 5px 0 0 0; color: #666;">Due: ${new Date(invoiceData.dueDate).toLocaleDateString()}</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 40px;">
+          <div style="width: 45%;">
+            <h3 style="color: #333; margin-bottom: 10px;">From:</h3>
+            <div style="color: #666; line-height: 1.5;">
+              <p style="margin: 0; font-weight: bold;">${invoiceData.companyName}</p>
+              <p style="margin: 5px 0 0 0;">${invoiceData.companyAddress}</p>
+              <p style="margin: 5px 0 0 0;">${invoiceData.companyCity}, ${invoiceData.companyPostalCode}</p>
+              <p style="margin: 5px 0 0 0;">${invoiceData.companyPhone}</p>
+              <p style="margin: 5px 0 0 0;">${invoiceData.companyEmail}</p>
+            </div>
+          </div>
+          <div style="width: 45%;">
+            <h3 style="color: #333; margin-bottom: 10px;">To:</h3>
+            <div style="color: #666; line-height: 1.5;">
+              <p style="margin: 0; font-weight: bold;">${invoiceData.clientName}</p>
+              <p style="margin: 5px 0 0 0;">${invoiceData.clientAddress}</p>
+              <p style="margin: 5px 0 0 0;">${invoiceData.clientCity}, ${invoiceData.clientPostalCode}</p>
+              <p style="margin: 5px 0 0 0;">${invoiceData.clientPhone}</p>
+              <p style="margin: 5px 0 0 0;">${invoiceData.clientEmail}</p>
+            </div>
+          </div>
+        </div>
+
+        ${invoiceData.eventName ? `
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+          <h3 style="color: #333; margin: 0 0 10px 0;">Event Details</h3>
+          <p style="margin: 0; color: #666;"><strong>Event:</strong> ${invoiceData.eventName}</p>
+          <p style="margin: 5px 0 0 0; color: #666;"><strong>Date:</strong> ${invoiceData.eventDate ? new Date(invoiceData.eventDate).toLocaleDateString() : 'N/A'}</p>
+          <p style="margin: 5px 0 0 0; color: #666;"><strong>Venue:</strong> ${invoiceData.eventVenue}</p>
+        </div>
+        ` : ''}
+
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+          <thead>
+            <tr style="background: #f8f9fa;">
+              <th style="padding: 15px; text-align: left; border-bottom: 2px solid #dee2e6;">Description</th>
+              <th style="padding: 15px; text-align: center; border-bottom: 2px solid #dee2e6; width: 80px;">Qty</th>
+              <th style="padding: 15px; text-align: right; border-bottom: 2px solid #dee2e6; width: 100px;">Rate</th>
+              <th style="padding: 15px; text-align: right; border-bottom: 2px solid #dee2e6; width: 100px;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${invoiceData.items.map(item => `
+              <tr>
+                <td style="padding: 15px; border-bottom: 1px solid #dee2e6;">${item.description}</td>
+                <td style="padding: 15px; text-align: center; border-bottom: 1px solid #dee2e6;">${item.quantity}</td>
+                <td style="padding: 15px; text-align: right; border-bottom: 1px solid #dee2e6;">$${item.rate.toFixed(2)}</td>
+                <td style="padding: 15px; text-align: right; border-bottom: 1px solid #dee2e6;">$${item.amount.toFixed(2)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 30px;">
+          <div style="width: 300px;">
+            <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #dee2e6;">
+              <span>Subtotal:</span>
+              <span>$${invoiceData.subtotal.toFixed(2)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #dee2e6;">
+              <span>Tax (${invoiceData.taxRate}%):</span>
+              <span>$${invoiceData.taxAmount.toFixed(2)}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 15px 0; font-weight: bold; font-size: 18px; border-bottom: 3px solid #333;">
+              <span>Total:</span>
+              <span>$${invoiceData.total.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+
+        ${invoiceData.paymentTerms ? `
+        <div style="margin-bottom: 20px;">
+          <h4 style="color: #333; margin-bottom: 10px;">Payment Terms</h4>
+          <p style="color: #666; line-height: 1.5; margin: 0;">${invoiceData.paymentTerms}</p>
+        </div>
+        ` : ''}
+
+        ${invoiceData.notes ? `
+        <div>
+          <h4 style="color: #333; margin-bottom: 10px;">Notes</h4>
+          <p style="color: #666; line-height: 1.5; margin: 0;">${invoiceData.notes}</p>
+        </div>
+        ` : ''}
+      `;
+
+      // Add to document temporarily
+      document.body.appendChild(invoiceContainer);
+
+      // Generate canvas from HTML
+      const canvas = await html2canvas(invoiceContainer, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff'
+      });
+
+      // Remove temporary container
+      document.body.removeChild(invoiceContainer);
+
+      // Create PDF
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL('image/png');
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 0;
+
+      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      
+      // Download the PDF
+      pdf.save(`invoice-${invoiceData.invoiceNumber}.pdf`);
+
+      toast({
+        title: "PDF Downloaded",
+        description: "Invoice PDF has been generated and downloaded successfully"
+      });
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -742,9 +902,14 @@ const Invoicing = () => {
                   {loading ? "Sending..." : "Send Invoice"}
                 </Button>
                 
-                <Button variant="outline" className="w-full">
+                <Button 
+                  onClick={downloadPDF}
+                  disabled={loading}
+                  variant="outline" 
+                  className="w-full"
+                >
                   <Download className="h-4 w-4 mr-2" />
-                  Download PDF
+                  {loading ? "Generating PDF..." : "Download PDF"}
                 </Button>
                 
                 <Button 
