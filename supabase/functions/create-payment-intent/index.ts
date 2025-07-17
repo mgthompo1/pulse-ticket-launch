@@ -19,7 +19,10 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { eventId, tickets, customerInfo } = await req.json();
+    const { eventId, items, tickets, customerInfo } = await req.json();
+    
+    // Handle both new items format and legacy tickets format
+    const ticketItems = items || tickets;
 
     // Get event and organization details
     const { data: event, error: eventError } = await supabaseClient
@@ -44,8 +47,16 @@ serve(async (req) => {
       throw new Error("Organization Stripe account not set up");
     }
 
-    // Get ticket types
-    const ticketIds = tickets.map((t: any) => t.ticketTypeId);
+    // Get ticket types - filter only ticket items
+    const ticketOnlyItems = ticketItems.filter((item: any) => 
+      item.type === 'ticket' || item.ticketTypeId
+    );
+    
+    if (ticketOnlyItems.length === 0) {
+      throw new Error("No ticket items found in order");
+    }
+    
+    const ticketIds = ticketOnlyItems.map((t: any) => t.ticketTypeId);
     const { data: ticketTypes, error: ticketError } = await supabaseClient
       .from("ticket_types")
       .select("*")
@@ -57,7 +68,7 @@ serve(async (req) => {
 
     // Calculate totals
     let subtotal = 0;
-    const orderItems = tickets.map((ticket: any) => {
+    const orderItems = ticketOnlyItems.map((ticket: any) => {
       const ticketType = ticketTypes.find(t => t.id === ticket.ticketTypeId);
       if (!ticketType) throw new Error(`Ticket type ${ticket.ticketTypeId} not found`);
       
@@ -72,7 +83,7 @@ serve(async (req) => {
     });
 
     // Calculate platform fee (1% + $0.50 per ticket)
-    const totalTickets = tickets.reduce((sum: number, ticket: any) => sum + ticket.quantity, 0);
+    const totalTickets = ticketOnlyItems.reduce((sum: number, ticket: any) => sum + ticket.quantity, 0);
     const platformFeePercent = Math.round(subtotal * 0.01); // 1%
     const platformFeeFixed = totalTickets * 50; // $0.50 per ticket in cents
     const platformFee = platformFeePercent + platformFeeFixed;
