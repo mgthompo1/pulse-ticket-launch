@@ -343,6 +343,122 @@ export type Database = {
           },
         ]
       }
+      invoices: {
+        Row: {
+          client_address: string | null
+          client_city: string | null
+          client_email: string
+          client_name: string
+          client_phone: string | null
+          client_postal_code: string | null
+          company_address: string | null
+          company_city: string | null
+          company_email: string | null
+          company_name: string
+          company_phone: string | null
+          company_postal_code: string | null
+          created_at: string
+          due_date: string
+          event_date: string | null
+          event_name: string | null
+          event_venue: string | null
+          id: string
+          invoice_date: string
+          invoice_number: string
+          items: Json
+          notes: string | null
+          organization_id: string
+          paid_at: string | null
+          payment_terms: string | null
+          payment_url: string | null
+          status: string
+          subtotal: number
+          tax_amount: number
+          tax_rate: number
+          total: number
+          updated_at: string
+          windcave_session_id: string | null
+        }
+        Insert: {
+          client_address?: string | null
+          client_city?: string | null
+          client_email: string
+          client_name: string
+          client_phone?: string | null
+          client_postal_code?: string | null
+          company_address?: string | null
+          company_city?: string | null
+          company_email?: string | null
+          company_name: string
+          company_phone?: string | null
+          company_postal_code?: string | null
+          created_at?: string
+          due_date: string
+          event_date?: string | null
+          event_name?: string | null
+          event_venue?: string | null
+          id?: string
+          invoice_date: string
+          invoice_number: string
+          items?: Json
+          notes?: string | null
+          organization_id: string
+          paid_at?: string | null
+          payment_terms?: string | null
+          payment_url?: string | null
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          total?: number
+          updated_at?: string
+          windcave_session_id?: string | null
+        }
+        Update: {
+          client_address?: string | null
+          client_city?: string | null
+          client_email?: string
+          client_name?: string
+          client_phone?: string | null
+          client_postal_code?: string | null
+          company_address?: string | null
+          company_city?: string | null
+          company_email?: string | null
+          company_name?: string
+          company_phone?: string | null
+          company_postal_code?: string | null
+          created_at?: string
+          due_date?: string
+          event_date?: string | null
+          event_name?: string | null
+          event_venue?: string | null
+          id?: string
+          invoice_date?: string
+          invoice_number?: string
+          items?: Json
+          notes?: string | null
+          organization_id?: string
+          paid_at?: string | null
+          payment_terms?: string | null
+          payment_url?: string | null
+          status?: string
+          subtotal?: number
+          tax_amount?: number
+          tax_rate?: number
+          total?: number
+          updated_at?: string
+          windcave_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       landing_page_content: {
         Row: {
           content_type: string | null

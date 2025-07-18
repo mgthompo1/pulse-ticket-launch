@@ -79,6 +79,9 @@ const Invoicing = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string>('');
+  const [savedInvoices, setSavedInvoices] = useState<any[]>([]);
+  const [currentInvoiceId, setCurrentInvoiceId] = useState<string | null>(null);
+  const [showInvoiceList, setShowInvoiceList] = useState(false);
   const dropInRef = useRef<HTMLDivElement>(null);
   
   const [invoiceData, setInvoiceData] = useState<InvoiceData>({
@@ -121,6 +124,7 @@ const Invoicing = () => {
   useEffect(() => {
     loadOrganizationData();
     loadEvents();
+    loadSavedInvoices();
   }, [user]);
 
   useEffect(() => {
@@ -175,6 +179,189 @@ const Invoicing = () => {
     } catch (error) {
       console.error("Error loading events:", error);
     }
+  };
+
+  const loadSavedInvoices = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: orgData } = await supabase
+        .from("organizations")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+      if (orgData) {
+        const { data: invoicesData, error } = await supabase
+          .from("invoices")
+          .select("*")
+          .eq("organization_id", orgData.id)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setSavedInvoices(invoicesData || []);
+      }
+    } catch (error) {
+      console.error("Error loading saved invoices:", error);
+    }
+  };
+
+  const saveInvoice = async () => {
+    if (!user || !organizationData) return;
+    
+    setLoading(true);
+    try {
+      // Generate payment URL if possible
+      let generatedPaymentUrl = paymentUrl;
+      if (!generatedPaymentUrl && organizationData.windcave_enabled && invoiceData.total > 0) {
+        generatedPaymentUrl = await generatePaymentUrl() || '';
+      }
+
+      const invoicePayload = {
+        organization_id: organizationData.id,
+        invoice_number: invoiceData.invoiceNumber,
+        invoice_date: invoiceData.invoiceDate,
+        due_date: invoiceData.dueDate,
+        company_name: invoiceData.companyName,
+        company_address: invoiceData.companyAddress,
+        company_city: invoiceData.companyCity,
+        company_postal_code: invoiceData.companyPostalCode,
+        company_phone: invoiceData.companyPhone,
+        company_email: invoiceData.companyEmail,
+        client_name: invoiceData.clientName,
+        client_email: invoiceData.clientEmail,
+        client_address: invoiceData.clientAddress,
+        client_city: invoiceData.clientCity,
+        client_postal_code: invoiceData.clientPostalCode,
+        client_phone: invoiceData.clientPhone,
+        event_name: invoiceData.eventName,
+        event_date: invoiceData.eventDate,
+        event_venue: invoiceData.eventVenue,
+        items: invoiceData.items as any,
+        subtotal: invoiceData.subtotal,
+        tax_rate: invoiceData.taxRate,
+        tax_amount: invoiceData.taxAmount,
+        total: invoiceData.total,
+        payment_terms: invoiceData.paymentTerms,
+        notes: invoiceData.notes,
+        status: invoiceData.status,
+        payment_url: generatedPaymentUrl
+      };
+
+      let result;
+      if (currentInvoiceId) {
+        // Update existing invoice
+        result = await supabase
+          .from("invoices")
+          .update(invoicePayload)
+          .eq("id", currentInvoiceId)
+          .select()
+          .single();
+      } else {
+        // Create new invoice
+        result = await supabase
+          .from("invoices")
+          .insert(invoicePayload)
+          .select()
+          .single();
+      }
+
+      if (result.error) throw result.error;
+
+      if (result.data) {
+        setCurrentInvoiceId(result.data.id);
+        toast({
+          title: "Invoice Saved",
+          description: `Invoice ${invoiceData.invoiceNumber} has been saved successfully`
+        });
+        loadSavedInvoices(); // Refresh the saved invoices list
+      }
+    } catch (error) {
+      console.error("Error saving invoice:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save invoice",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadInvoice = (savedInvoice: any) => {
+    setInvoiceData({
+      invoiceNumber: savedInvoice.invoice_number,
+      invoiceDate: savedInvoice.invoice_date,
+      dueDate: savedInvoice.due_date,
+      companyName: savedInvoice.company_name,
+      companyAddress: savedInvoice.company_address || '',
+      companyCity: savedInvoice.company_city || '',
+      companyPostalCode: savedInvoice.company_postal_code || '',
+      companyPhone: savedInvoice.company_phone || '',
+      companyEmail: savedInvoice.company_email || '',
+      clientName: savedInvoice.client_name,
+      clientEmail: savedInvoice.client_email,
+      clientAddress: savedInvoice.client_address || '',
+      clientCity: savedInvoice.client_city || '',
+      clientPostalCode: savedInvoice.client_postal_code || '',
+      clientPhone: savedInvoice.client_phone || '',
+      eventName: savedInvoice.event_name || '',
+      eventDate: savedInvoice.event_date || '',
+      eventVenue: savedInvoice.event_venue || '',
+      items: savedInvoice.items || [],
+      subtotal: savedInvoice.subtotal,
+      taxRate: savedInvoice.tax_rate,
+      taxAmount: savedInvoice.tax_amount,
+      total: savedInvoice.total,
+      paymentTerms: savedInvoice.payment_terms || '',
+      notes: savedInvoice.notes || '',
+      status: savedInvoice.status as 'draft' | 'sent' | 'paid' | 'overdue'
+    });
+    setCurrentInvoiceId(savedInvoice.id);
+    setPaymentUrl(savedInvoice.payment_url || '');
+    setShowInvoiceList(false);
+  };
+
+  const createNewInvoice = () => {
+    setInvoiceData({
+      invoiceNumber: `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
+      invoiceDate: new Date().toISOString().split('T')[0],
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      companyName: organizationData?.name || '',
+      companyAddress: '',
+      companyCity: '',
+      companyPostalCode: '',
+      companyPhone: '',
+      companyEmail: organizationData?.email || '',
+      clientName: '',
+      clientEmail: '',
+      clientAddress: '',
+      clientCity: '',
+      clientPostalCode: '',
+      clientPhone: '',
+      eventName: '',
+      eventDate: '',
+      eventVenue: '',
+      items: [
+        {
+          id: '1',
+          description: 'Event Services',
+          quantity: 1,
+          rate: 0,
+          amount: 0
+        }
+      ],
+      subtotal: 0,
+      taxRate: 15,
+      taxAmount: 0,
+      total: 0,
+      paymentTerms: 'Payment due within 30 days. Late payments may incur additional fees.',
+      notes: '',
+      status: 'draft'
+    });
+    setCurrentInvoiceId(null);
+    setPaymentUrl('');
+    setShowInvoiceList(false);
   };
 
   const calculateTotals = () => {
@@ -261,6 +448,15 @@ const Invoicing = () => {
 
     setLoading(true);
     try {
+      // Generate payment URL if possible
+      if (!paymentUrl && organizationData?.windcave_enabled && invoiceData.total > 0) {
+        const generatedUrl = await generatePaymentUrl();
+        if (generatedUrl) {
+          // Save the invoice with the payment URL
+          await saveInvoice();
+        }
+      }
+
       const { error } = await supabase.functions.invoke('send-invoice-email', {
         body: { 
           invoiceData,
@@ -323,9 +519,13 @@ const Invoicing = () => {
       if (error) throw error;
 
       if (data.links && Array.isArray(data.links)) {
-        // Find the payment URL
-        const paymentLink = data.links.find(link => link.method === "GET" || link.rel === "payment");
-        return paymentLink?.href || null;
+        // Find the payment URL (use the dropin link for direct payment)
+        const paymentLink = data.links.find(link => link.method === "IFRAME" || link.rel === "dropin");
+        if (paymentLink) {
+          const generatedUrl = paymentLink.href;
+          setPaymentUrl(generatedUrl);
+          return generatedUrl;
+        }
       }
     } catch (error) {
       console.error("Error generating payment URL:", error);
@@ -621,9 +821,15 @@ const Invoicing = () => {
           <div style="display: inline-block; background: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
             <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">Total Amount Due</p>
             <p style="margin: 0 0 15px 0; font-size: 24px; font-weight: bold; color: #333;">$${invoiceData.total.toFixed(2)}</p>
-            <a href="#" onclick="alert('Payment processing will be available when invoice is sent or accessed via email')" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px; transition: background 0.3s;">
-              🔒 Click Here to Pay Now
-            </a>
+            ${paymentUrl ? `
+              <a href="${paymentUrl}" target="_blank" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px; transition: background 0.3s;">
+                🔒 Click Here to Pay Now
+              </a>
+            ` : `
+              <div style="display: inline-block; background: #6c757d; color: white; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 16px;">
+                Payment link will be generated when invoice is saved
+              </div>
+            `}
           </div>
           <p style="color: white; margin: 15px 0 0 0; font-size: 12px; opacity: 0.8;">Secure payment powered by Windcave</p>
         </div>
@@ -1059,6 +1265,90 @@ const Invoicing = () => {
 
           {/* Actions & Payment */}
           <div className="space-y-6">
+            {/* Invoice Management */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Invoice Management</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button 
+                  onClick={saveInvoice} 
+                  disabled={loading}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  {loading ? "Saving..." : currentInvoiceId ? "Update Invoice" : "Save Invoice"}
+                </Button>
+
+                <Button 
+                  onClick={() => setShowInvoiceList(!showInvoiceList)}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  {showInvoiceList ? "Hide" : "View"} Saved Invoices ({savedInvoices.length})
+                </Button>
+
+                {currentInvoiceId && (
+                  <Button 
+                    onClick={createNewInvoice}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create New Invoice
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Saved Invoices List */}
+            {showInvoiceList && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Saved Invoices</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {savedInvoices.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">No saved invoices yet</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {savedInvoices.map((invoice) => (
+                        <div key={invoice.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex-1">
+                            <div className="font-medium">{invoice.invoice_number}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {invoice.client_name} • ${invoice.total.toFixed(2)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(invoice.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={
+                              invoice.status === 'paid' ? 'default' : 
+                              invoice.status === 'sent' ? 'secondary' : 
+                              invoice.status === 'overdue' ? 'destructive' : 'outline'
+                            }>
+                              {invoice.status}
+                            </Badge>
+                            <Button 
+                              onClick={() => loadInvoice(invoice)}
+                              size="sm"
+                              variant="ghost"
+                            >
+                              Load
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Actions */}
             <Card>
               <CardHeader>
