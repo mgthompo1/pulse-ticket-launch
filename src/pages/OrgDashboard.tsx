@@ -29,6 +29,8 @@ import MerchandiseManager from "@/components/MerchandiseManager";
 import OrganizationSettings from "@/components/OrganizationSettings";
 import Invoicing from "./Invoicing";
 import { SecurityDashboard } from "@/components/SecurityDashboard";
+import { MarketingTools } from "@/components/MarketingTools";
+import { AnalyticsCharts } from "@/components/AnalyticsCharts";
 import { useNavigate } from "react-router-dom";
 
 const OrgDashboard = () => {
@@ -421,8 +423,8 @@ const OrgDashboard = () => {
                     <Ticket className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">1,445</div>
-                    <p className="text-xs text-muted-foreground">+12% from last month</p>
+                    <div className="text-2xl font-bold">{testModeAnalytics.totalOrders}</div>
+                    <p className="text-xs text-muted-foreground">Total orders placed</p>
                   </CardContent>
                 </Card>
 
@@ -432,22 +434,25 @@ const OrgDashboard = () => {
                     <BarChart3 className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">$72,250</div>
-                    <p className="text-xs text-muted-foreground">+8% from last month</p>
+                    <div className="text-2xl font-bold">${testModeAnalytics.totalRevenue.toFixed(2)}</div>
+                    <p className="text-xs text-muted-foreground">Total revenue generated</p>
                   </CardContent>
                 </Card>
 
                 <Card className="gradient-card hover-scale">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
+                    <CardTitle className="text-sm font-medium">Platform Fees</CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">68%</div>
-                    <p className="text-xs text-muted-foreground">+5% from last month</p>
+                    <div className="text-2xl font-bold">${testModeAnalytics.estimatedPlatformFees.toFixed(2)}</div>
+                    <p className="text-xs text-muted-foreground">Estimated fees</p>
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Add Analytics Charts */}
+              <AnalyticsCharts />
 
               <Card>
                 <CardHeader>
@@ -646,15 +651,7 @@ const OrgDashboard = () => {
             </TabsContent>
 
             <TabsContent value="marketing" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Marketing Tools</CardTitle>
-                  <CardDescription>Promote your events</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p>Marketing tools would go here...</p>
-                </CardContent>
-              </Card>
+              <MarketingTools selectedEvent={selectedEvent} />
             </TabsContent>
 
             <TabsContent value="billing" className="space-y-6">
