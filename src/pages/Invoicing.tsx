@@ -564,8 +564,8 @@ const Invoicing = () => {
 
       if (data.links && Array.isArray(data.links)) {
         console.log("Available payment links:", data.links);
-        // Find the payment URL (use the dropin link for direct payment)
-        const paymentLink = data.links.find(link => link.method === "IFRAME" || link.rel === "dropin");
+        // Find the payment URL (use the hpp link for hosted payment page)
+        const paymentLink = data.links.find(link => link.rel === "hpp");
         if (paymentLink) {
           const generatedUrl = paymentLink.href;
           console.log("Generated payment URL:", generatedUrl);
