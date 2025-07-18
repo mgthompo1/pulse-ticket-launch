@@ -308,180 +308,178 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-6xl max-h-[90vh] overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Seat Map Designer - {eventName}</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              Design your venue's seating layout
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant={isPreviewMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => setIsPreviewMode(!isPreviewMode)}
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              {isPreviewMode ? "Edit Mode" : "Preview"}
-            </Button>
-            <Button variant="outline" onClick={onClose}>
-              Close
-            </Button>
-          </div>
-        </CardHeader>
-        
-        <CardContent className="p-0">
-          <div className="flex h-[600px]">
-            {/* Toolbar */}
-            {!isPreviewMode && (
-              <div className="w-80 border-r bg-muted/30 p-4 overflow-y-auto">
-                <Tabs defaultValue="tools" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="tools">Tools</TabsTrigger>
-                    <TabsTrigger value="settings">Settings</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="tools" className="space-y-4">
-                    <div>
-                      <Label className="text-sm font-medium">Drawing Tools</Label>
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        <Button
-                          variant={selectedTool === 'pointer' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setSelectedTool('pointer')}
-                        >
-                          <MousePointer className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant={selectedTool === 'seat' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setSelectedTool('seat')}
-                        >
-                          <Circle className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant={selectedTool === 'row' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setSelectedTool('row')}
-                        >
-                          <Grid3x3 className="w-4 h-4" />
-                        </Button>
-                      </div>
+    <div className="h-full flex flex-col">
+      <div className="flex flex-row items-center justify-between p-4 border-b">
+        <div>
+          <h3 className="text-lg font-semibold">Seat Map Designer - {eventName}</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Design your venue's seating layout
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={isPreviewMode ? "default" : "outline"}
+            size="sm"
+            onClick={() => setIsPreviewMode(!isPreviewMode)}
+          >
+            <Eye className="w-4 h-4 mr-2" />
+            {isPreviewMode ? "Edit Mode" : "Preview"}
+          </Button>
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
+      
+      <div className="flex-1 flex overflow-hidden">
+        <div className="flex h-full w-full">
+          {/* Toolbar */}
+          {!isPreviewMode && (
+            <div className="w-80 border-r bg-muted/30 p-4 overflow-y-auto">
+              <Tabs defaultValue="tools" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="tools">Tools</TabsTrigger>
+                  <TabsTrigger value="settings">Settings</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="tools" className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Drawing Tools</Label>
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      <Button
+                        variant={selectedTool === 'pointer' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSelectedTool('pointer')}
+                      >
+                        <MousePointer className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant={selectedTool === 'seat' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSelectedTool('seat')}
+                      >
+                        <Circle className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant={selectedTool === 'row' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSelectedTool('row')}
+                      >
+                        <Grid3x3 className="w-4 h-4" />
+                      </Button>
                     </div>
+                  </div>
 
-                    <div>
-                      <Label className="text-sm font-medium">Seat Type</Label>
-                      <div className="grid grid-cols-2 gap-2 mt-2">
-                        {Object.entries(seatColors).map(([type, color]) => (
-                          <Button
-                            key={type}
-                            variant={selectedSeatType === type ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setSelectedSeatType(type as Seat['type'])}
-                            className="capitalize"
-                          >
+                  <div>
+                    <Label className="text-sm font-medium">Seat Type</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {Object.entries(seatColors).map(([type, color]) => (
+                        <Button
+                          key={type}
+                          variant={selectedSeatType === type ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setSelectedSeatType(type as Seat['type'])}
+                          className="capitalize"
+                        >
+                          <div 
+                            className="w-3 h-3 rounded-full mr-2" 
+                            style={{ backgroundColor: color }}
+                          />
+                          {type}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-medium">Current Row</Label>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Input 
+                        value={currentRow} 
+                        onChange={(e) => setCurrentRow(e.target.value.toUpperCase())}
+                        className="w-16 text-center"
+                        maxLength={2}
+                      />
+                      <Button size="sm" onClick={nextRow}>
+                        Next Row
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Button onClick={addRowOfSeats} className="w-full" size="sm">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Row of 10 Seats
+                    </Button>
+                    <Button onClick={clearSeats} variant="outline" className="w-full" size="sm">
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Clear All Seats
+                    </Button>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="settings" className="space-y-4">
+                  <div>
+                    <Label htmlFor="map-name">Layout Name</Label>
+                    <Input
+                      id="map-name"
+                      value={seatMapName}
+                      onChange={(e) => setSeatMapName(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Statistics</Label>
+                    <div className="space-y-1">
+                      <div className="text-sm">Total Seats: {seats.length}</div>
+                      {Object.entries(seatColors).map(([type, color]) => {
+                        const count = seats.filter(s => s.type === type).length;
+                        return count > 0 ? (
+                          <div key={type} className="flex items-center gap-2 text-sm">
                             <div 
-                              className="w-3 h-3 rounded-full mr-2" 
+                              className="w-3 h-3 rounded-full" 
                               style={{ backgroundColor: color }}
                             />
-                            {type}
-                          </Button>
-                        ))}
-                      </div>
+                            <span className="capitalize">{type}: {count}</span>
+                          </div>
+                        ) : null;
+                      })}
                     </div>
+                  </div>
 
-                    <div>
-                      <Label className="text-sm font-medium">Current Row</Label>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Input 
-                          value={currentRow} 
-                          onChange={(e) => setCurrentRow(e.target.value.toUpperCase())}
-                          className="w-16 text-center"
-                          maxLength={2}
-                        />
-                        <Button size="sm" onClick={nextRow}>
-                          Next Row
-                        </Button>
-                      </div>
-                    </div>
+                  <Button onClick={saveSeatMap} className="w-full">
+                    <Save className="w-4 h-4 mr-2" />
+                    Save Seat Map
+                  </Button>
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
 
-                    <div className="space-y-2">
-                      <Button onClick={addRowOfSeats} className="w-full" size="sm">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Row of 10 Seats
-                      </Button>
-                      <Button onClick={clearSeats} variant="outline" className="w-full" size="sm">
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Clear All Seats
-                      </Button>
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="settings" className="space-y-4">
-                    <div>
-                      <Label htmlFor="map-name">Layout Name</Label>
-                      <Input
-                        id="map-name"
-                        value={seatMapName}
-                        onChange={(e) => setSeatMapName(e.target.value)}
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">Statistics</Label>
-                      <div className="space-y-1">
-                        <div className="text-sm">Total Seats: {seats.length}</div>
-                        {Object.entries(seatColors).map(([type, color]) => {
-                          const count = seats.filter(s => s.type === type).length;
-                          return count > 0 ? (
-                            <div key={type} className="flex items-center gap-2 text-sm">
-                              <div 
-                                className="w-3 h-3 rounded-full" 
-                                style={{ backgroundColor: color }}
-                              />
-                              <span className="capitalize">{type}: {count}</span>
-                            </div>
-                          ) : null;
-                        })}
-                      </div>
-                    </div>
-
-                    <Button onClick={saveSeatMap} className="w-full">
-                      <Save className="w-4 h-4 mr-2" />
-                      Save Seat Map
-                    </Button>
-                  </TabsContent>
-                </Tabs>
+          {/* Canvas */}
+          <div className="flex-1 p-4 bg-white">
+            <canvas
+              ref={canvasRef}
+              width={canvasSize.width}
+              height={canvasSize.height}
+              className="border border-gray-300 cursor-crosshair bg-gray-50"
+              onClick={handleCanvasClick}
+              onMouseDown={handleCanvasMouseDown}
+              onMouseMove={handleCanvasMouseMove}
+              onMouseUp={handleCanvasMouseUp}
+              onMouseLeave={handleCanvasMouseUp}
+            />
+            
+            {isPreviewMode && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Badge variant="outline">Preview Mode - Click Edit Mode to make changes</Badge>
+                <Badge>Total Seats: {seats.length}</Badge>
               </div>
             )}
-
-            {/* Canvas */}
-            <div className="flex-1 p-4 bg-white">
-              <canvas
-                ref={canvasRef}
-                width={canvasSize.width}
-                height={canvasSize.height}
-                className="border border-gray-300 cursor-crosshair bg-gray-50"
-                onClick={handleCanvasClick}
-                onMouseDown={handleCanvasMouseDown}
-                onMouseMove={handleCanvasMouseMove}
-                onMouseUp={handleCanvasMouseUp}
-                onMouseLeave={handleCanvasMouseUp}
-              />
-              
-              {isPreviewMode && (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Badge variant="outline">Preview Mode - Click Edit Mode to make changes</Badge>
-                  <Badge>Total Seats: {seats.length}</Badge>
-                </div>
-              )}
-            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };
