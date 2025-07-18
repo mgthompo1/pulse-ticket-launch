@@ -879,6 +879,9 @@ const Invoicing = () => {
               <a href="${paymentUrl}" target="_blank" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px; transition: background 0.3s;">
                 🔒 Click Here to Pay Now
               </a>
+              <div style="margin-top: 10px; font-size: 12px; color: #666; word-break: break-all;">
+                Payment URL: ${paymentUrl}
+              </div>
             ` : `
               <div style="display: inline-block; background: #6c757d; color: white; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 16px;">
                 Payment link will be generated when invoice is saved
@@ -895,17 +898,19 @@ const Invoicing = () => {
 
       // Generate canvas from HTML
       const canvas = await html2canvas(invoiceContainer, {
-        scale: 2,
+        scale: 1, // Reduced from 2 to 1 to decrease file size
         useCORS: true,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        allowTaint: false,
+        logging: false // Disable logging to improve performance
       });
 
       // Remove temporary container
       document.body.removeChild(invoiceContainer);
 
-      // Create PDF
+      // Create PDF with compression
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgData = canvas.toDataURL('image/png');
+      const imgData = canvas.toDataURL('image/jpeg', 0.7); // Use JPEG with 70% quality instead of PNG
       
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
@@ -915,7 +920,8 @@ const Invoicing = () => {
       const imgX = (pdfWidth - imgWidth * ratio) / 2;
       const imgY = 0;
 
-      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      // Add image to PDF with compression
+      pdf.addImage(imgData, 'JPEG', imgX, imgY, imgWidth * ratio, imgHeight * ratio, undefined, 'MEDIUM');
       
       // Download the PDF
       pdf.save(`invoice-${invoiceData.invoiceNumber}.pdf`);
@@ -1342,6 +1348,8 @@ const Invoicing = () => {
                       try {
                         const url = await generatePaymentUrl();
                         if (url) {
+                          setPaymentUrl(url); // Set the URL in state so it's displayed
+                          
                           // Update the invoice with the payment URL
                           const { error: updateError } = await supabase
                             .from("invoices")
@@ -1353,8 +1361,20 @@ const Invoicing = () => {
                           } else {
                             toast({
                               title: "Payment URL Generated",
-                              description: "Payment link has been generated successfully"
+                              description: `Payment link: ${url}`,
+                              duration: 10000 // Show for 10 seconds so user can copy it
                             });
+                            
+                            // Also copy to clipboard
+                            try {
+                              await navigator.clipboard.writeText(url);
+                              toast({
+                                title: "URL Copied",
+                                description: "Payment URL has been copied to clipboard"
+                              });
+                            } catch (clipboardError) {
+                              console.log("Could not copy to clipboard:", clipboardError);
+                            }
                           }
                         }
                       } catch (error) {
@@ -1370,6 +1390,74 @@ const Invoicing = () => {
                     <CreditCard className="h-4 w-4 mr-2" />
                     {loading ? "Generating..." : "Generate Payment Link"}
                   </Button>
+                )}
+
+                {/* Display Payment URL if available */}
+                {paymentUrl && (
+                  <Card className="mt-4">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Payment Link Generated</CardTitle>
+                      <CardDescription>Share this link with your client for payment</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="p-3 bg-muted rounded-lg">
+                          <Label className="text-sm font-medium">Payment URL:</Label>
+                          <div className="mt-1 p-2 bg-background border rounded flex items-center justify-between">
+                            <span className="text-sm font-mono break-all">{paymentUrl}</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                try {
+                                  await navigator.clipboard.writeText(paymentUrl);
+                                  toast({
+                                    title: "Copied!",
+                                    description: "Payment URL copied to clipboard"
+                                  });
+                                } catch (error) {
+                                  console.error("Failed to copy:", error);
+                                }
+                              }}
+                            >
+                              Copy
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => window.open(paymentUrl, '_blank')}
+                            className="flex-1"
+                          >
+                            Test Payment Link
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              const subject = `Invoice ${invoiceData.invoiceNumber} - Payment Required`;
+                              const body = `Dear ${invoiceData.clientName},
+
+Please find your invoice ${invoiceData.invoiceNumber} for $${invoiceData.total.toFixed(2)}.
+
+To make payment, please click the link below:
+${paymentUrl}
+
+Thank you for your business.
+
+Best regards,
+${invoiceData.companyName}`;
+                              window.open(`mailto:${invoiceData.clientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+                            }}
+                            className="flex-1"
+                          >
+                            <Mail className="w-4 h-4 mr-2" />
+                            Email Client
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
 
                 <Button 
