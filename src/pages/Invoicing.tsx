@@ -78,6 +78,7 @@ const Invoicing = () => {
   const [organizationData, setOrganizationData] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState<string>('');
   const dropInRef = useRef<HTMLDivElement>(null);
   
   const [invoiceData, setInvoiceData] = useState<InvoiceData>({
@@ -286,6 +287,53 @@ const Invoicing = () => {
     }
   };
 
+  const generatePaymentUrl = async () => {
+    if (invoiceData.total <= 0 || !organizationData?.windcave_enabled) {
+      return null;
+    }
+
+    try {
+      let eventId = null;
+      if (events.length > 0) {
+        eventId = events[0].id;
+      } else {
+        return null;
+      }
+
+      const items = invoiceData.items.map(item => ({
+        id: item.id,
+        type: 'service',
+        description: item.description,
+        quantity: item.quantity,
+        price: item.rate
+      }));
+
+      const { data, error } = await supabase.functions.invoke("windcave-session", {
+        body: {
+          eventId: eventId,
+          items: items,
+          customerInfo: {
+            name: invoiceData.clientName,
+            email: invoiceData.clientEmail,
+            phone: invoiceData.clientPhone
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.links && Array.isArray(data.links)) {
+        // Find the payment URL
+        const paymentLink = data.links.find(link => link.method === "GET" || link.rel === "payment");
+        return paymentLink?.href || null;
+      }
+    } catch (error) {
+      console.error("Error generating payment URL:", error);
+      return null;
+    }
+    return null;
+  };
+
   const initiatePayment = async () => {
     if (invoiceData.total <= 0) {
       toast({
@@ -345,6 +393,12 @@ const Invoicing = () => {
       if (error) throw error;
 
       if (data.links && Array.isArray(data.links)) {
+        // Store payment URL for invoice
+        const paymentLink = data.links.find(link => link.method === "GET" || link.rel === "payment");
+        if (paymentLink) {
+          setPaymentUrl(paymentLink.href);
+        }
+        
         setShowPaymentForm(true);
         // Initialize Windcave Drop-In here
         setTimeout(() => {
@@ -456,36 +510,44 @@ const Invoicing = () => {
       
       // Generate invoice HTML
       invoiceContainer.innerHTML = `
-        <div style="margin-bottom: 40px;">
-          <h1 style="color: #333; margin-bottom: 10px; font-size: 32px;">INVOICE</h1>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
-            <div>
-              <p style="margin: 0; font-weight: bold;">${invoiceData.invoiceNumber}</p>
-              <p style="margin: 5px 0 0 0; color: #666;">Date: ${new Date(invoiceData.invoiceDate).toLocaleDateString()}</p>
-              <p style="margin: 5px 0 0 0; color: #666;">Due: ${new Date(invoiceData.dueDate).toLocaleDateString()}</p>
+        <!-- Header with Logo and Invoice Title -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 3px solid #333;">
+          <div style="flex: 1;">
+            ${organizationData?.logo_url ? `
+              <img src="${organizationData.logo_url}" alt="${invoiceData.companyName}" style="max-height: 80px; max-width: 200px; margin-bottom: 10px;" />
+            ` : ''}
+            <h1 style="color: #333; margin: 0; font-size: 28px; font-weight: bold;">INVOICE</h1>
+          </div>
+          <div style="text-align: right; flex: 1;">
+            <p style="margin: 0; font-size: 18px; font-weight: bold; color: #333;">${invoiceData.invoiceNumber}</p>
+            <p style="margin: 8px 0 0 0; color: #666; font-size: 14px;">Issue Date: ${new Date(invoiceData.invoiceDate).toLocaleDateString()}</p>
+            <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Due Date: ${new Date(invoiceData.dueDate).toLocaleDateString()}</p>
+            <div style="margin-top: 15px; padding: 8px 15px; background: ${invoiceData.status === 'paid' ? '#d4edda' : '#fff3cd'}; border-radius: 4px; border: 1px solid ${invoiceData.status === 'paid' ? '#c3e6cb' : '#ffeaa7'};">
+              <span style="font-weight: bold; color: ${invoiceData.status === 'paid' ? '#155724' : '#856404'}; text-transform: uppercase; font-size: 12px;">${invoiceData.status}</span>
             </div>
           </div>
         </div>
 
+        <!-- Company and Client Information -->
         <div style="display: flex; justify-content: space-between; margin-bottom: 40px;">
-          <div style="width: 45%;">
-            <h3 style="color: #333; margin-bottom: 10px;">From:</h3>
-            <div style="color: #666; line-height: 1.5;">
-              <p style="margin: 0; font-weight: bold;">${invoiceData.companyName}</p>
-              <p style="margin: 5px 0 0 0;">${invoiceData.companyAddress}</p>
-              <p style="margin: 5px 0 0 0;">${invoiceData.companyCity}, ${invoiceData.companyPostalCode}</p>
-              <p style="margin: 5px 0 0 0;">${invoiceData.companyPhone}</p>
-              <p style="margin: 5px 0 0 0;">${invoiceData.companyEmail}</p>
+          <div style="width: 45%; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #007bff;">
+            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">From</h3>
+            <div style="color: #666; line-height: 1.6;">
+              <p style="margin: 0; font-weight: bold; font-size: 16px; color: #333;">${invoiceData.companyName}</p>
+              ${invoiceData.companyAddress ? `<p style="margin: 8px 0 0 0;">${invoiceData.companyAddress}</p>` : ''}
+              ${invoiceData.companyCity || invoiceData.companyPostalCode ? `<p style="margin: 5px 0 0 0;">${invoiceData.companyCity}${invoiceData.companyCity && invoiceData.companyPostalCode ? ', ' : ''}${invoiceData.companyPostalCode}</p>` : ''}
+              ${invoiceData.companyPhone ? `<p style="margin: 5px 0 0 0;"><strong>Phone:</strong> ${invoiceData.companyPhone}</p>` : ''}
+              ${invoiceData.companyEmail ? `<p style="margin: 5px 0 0 0;"><strong>Email:</strong> ${invoiceData.companyEmail}</p>` : ''}
             </div>
           </div>
-          <div style="width: 45%;">
-            <h3 style="color: #333; margin-bottom: 10px;">To:</h3>
-            <div style="color: #666; line-height: 1.5;">
-              <p style="margin: 0; font-weight: bold;">${invoiceData.clientName}</p>
-              <p style="margin: 5px 0 0 0;">${invoiceData.clientAddress}</p>
-              <p style="margin: 5px 0 0 0;">${invoiceData.clientCity}, ${invoiceData.clientPostalCode}</p>
-              <p style="margin: 5px 0 0 0;">${invoiceData.clientPhone}</p>
-              <p style="margin: 5px 0 0 0;">${invoiceData.clientEmail}</p>
+          <div style="width: 45%; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #28a745;">
+            <h3 style="color: #333; margin: 0 0 15px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">To</h3>
+            <div style="color: #666; line-height: 1.6;">
+              <p style="margin: 0; font-weight: bold; font-size: 16px; color: #333;">${invoiceData.clientName}</p>
+              ${invoiceData.clientAddress ? `<p style="margin: 8px 0 0 0;">${invoiceData.clientAddress}</p>` : ''}
+              ${invoiceData.clientCity || invoiceData.clientPostalCode ? `<p style="margin: 5px 0 0 0;">${invoiceData.clientCity}${invoiceData.clientCity && invoiceData.clientPostalCode ? ', ' : ''}${invoiceData.clientPostalCode}</p>` : ''}
+              ${invoiceData.clientPhone ? `<p style="margin: 5px 0 0 0;"><strong>Phone:</strong> ${invoiceData.clientPhone}</p>` : ''}
+              ${invoiceData.clientEmail ? `<p style="margin: 5px 0 0 0;"><strong>Email:</strong> ${invoiceData.clientEmail}</p>` : ''}
             </div>
           </div>
         </div>
@@ -545,9 +607,25 @@ const Invoicing = () => {
         ` : ''}
 
         ${invoiceData.notes ? `
-        <div>
+        <div style="margin-bottom: 30px;">
           <h4 style="color: #333; margin-bottom: 10px;">Notes</h4>
           <p style="color: #666; line-height: 1.5; margin: 0;">${invoiceData.notes}</p>
+        </div>
+        ` : ''}
+
+        ${invoiceData.status !== 'paid' && organizationData?.windcave_enabled && invoiceData.total > 0 ? `
+        <!-- Payment Section -->
+        <div style="margin-top: 40px; padding: 25px; background: linear-gradient(135deg, #28a745, #20c997); border-radius: 12px; border: 1px solid #20c997; text-align: center;">
+          <h3 style="color: white; margin: 0 0 15px 0; font-size: 20px; font-weight: bold;">Ready to Pay?</h3>
+          <p style="color: white; margin: 0 0 20px 0; font-size: 16px; opacity: 0.9;">Pay this invoice securely with your credit card</p>
+          <div style="display: inline-block; background: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">Total Amount Due</p>
+            <p style="margin: 0 0 15px 0; font-size: 24px; font-weight: bold; color: #333;">$${invoiceData.total.toFixed(2)}</p>
+            <a href="#" onclick="alert('Payment processing will be available when invoice is sent or accessed via email')" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px; transition: background 0.3s;">
+              🔒 Click Here to Pay Now
+            </a>
+          </div>
+          <p style="color: white; margin: 15px 0 0 0; font-size: 12px; opacity: 0.8;">Secure payment powered by Windcave</p>
         </div>
         ` : ''}
       `;
