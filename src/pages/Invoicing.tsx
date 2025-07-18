@@ -216,14 +216,6 @@ const Invoicing = () => {
       console.log("Windcave enabled:", organizationData.windcave_enabled);
       console.log("Invoice total:", invoiceData.total);
       
-      // Generate payment URL if possible
-      let generatedPaymentUrl = paymentUrl;
-      if (!generatedPaymentUrl && organizationData.windcave_enabled && invoiceData.total > 0) {
-        console.log("Generating payment URL...");
-        generatedPaymentUrl = await generatePaymentUrl() || '';
-        console.log("Generated payment URL:", generatedPaymentUrl);
-      }
-
       const invoicePayload = {
         organization_id: organizationData.id,
         invoice_number: invoiceData.invoiceNumber,
@@ -252,10 +244,10 @@ const Invoicing = () => {
         payment_terms: invoiceData.paymentTerms,
         notes: invoiceData.notes,
         status: invoiceData.status,
-        payment_url: generatedPaymentUrl
+        payment_url: paymentUrl // Use existing payment URL initially
       };
 
-      console.log("Saving with payment URL:", generatedPaymentUrl);
+      console.log("Saving invoice with current payment URL:", paymentUrl);
 
       let result;
       if (currentInvoiceId) {
@@ -278,16 +270,41 @@ const Invoicing = () => {
       if (result.error) throw result.error;
 
       if (result.data) {
-        setCurrentInvoiceId(result.data.id);
-        // Update the payment URL state with the saved value
-        if (generatedPaymentUrl) {
-          setPaymentUrl(generatedPaymentUrl);
+        const savedInvoiceId = result.data.id;
+        setCurrentInvoiceId(savedInvoiceId);
+        
+        // Generate payment URL AFTER saving (since we need the invoice ID)
+        let finalPaymentUrl = paymentUrl;
+        if (!finalPaymentUrl && organizationData.windcave_enabled && invoiceData.total > 0) {
+          console.log("Generating payment URL after saving...");
+          finalPaymentUrl = await generatePaymentUrl() || '';
+          console.log("Generated payment URL:", finalPaymentUrl);
+          
+          // Update the invoice with the payment URL
+          if (finalPaymentUrl) {
+            const { error: updateError } = await supabase
+              .from("invoices")
+              .update({ payment_url: finalPaymentUrl })
+              .eq("id", savedInvoiceId);
+            
+            if (updateError) {
+              console.error("Error updating invoice with payment URL:", updateError);
+            } else {
+              console.log("Invoice updated with payment URL");
+            }
+          }
         }
+        
+        // Update the payment URL state
+        if (finalPaymentUrl) {
+          setPaymentUrl(finalPaymentUrl);
+        }
+        
         toast({
           title: "Invoice Saved",
           description: `Invoice ${invoiceData.invoiceNumber} has been saved successfully`
         });
-        console.log("Invoice saved successfully with payment URL:", generatedPaymentUrl);
+        console.log("Invoice saved successfully with payment URL:", finalPaymentUrl);
         loadSavedInvoices(); // Refresh the saved invoices list
       }
     } catch (error) {
@@ -512,44 +529,38 @@ const Invoicing = () => {
       return null;
     }
 
+    if (!currentInvoiceId) {
+      console.log("No invoice ID available - invoice must be saved first");
+      toast({
+        title: "Save Invoice First",
+        description: "Please save the invoice before generating payment link",
+        variant: "destructive"
+      });
+      return null;
+    }
+
     try {
-      let eventId = null;
-      if (events.length > 0) {
-        eventId = events[0].id;
-        console.log("Using event ID:", eventId);
-      } else {
-        console.log("No events available for payment processing");
-        return null;
-      }
+      console.log("Calling windcave-invoice-payment with invoice ID:", currentInvoiceId);
 
-      const items = invoiceData.items.map(item => ({
-        id: item.id,
-        type: 'service',
-        description: item.description,
-        quantity: item.quantity,
-        price: item.rate
-      }));
-
-      console.log("Calling windcave-session with items:", items);
-
-      const { data, error } = await supabase.functions.invoke("windcave-session", {
+      const { data, error } = await supabase.functions.invoke("windcave-invoice-payment", {
         body: {
-          eventId: eventId,
-          items: items,
-          customerInfo: {
-            name: invoiceData.clientName,
-            email: invoiceData.clientEmail,
-            phone: invoiceData.clientPhone
+          invoiceId: currentInvoiceId,
+          invoiceData: {
+            total: invoiceData.total,
+            clientName: invoiceData.clientName,
+            clientEmail: invoiceData.clientEmail,
+            clientPhone: invoiceData.clientPhone,
+            invoiceNumber: invoiceData.invoiceNumber
           }
         }
       });
 
       if (error) {
-        console.error("Windcave session error:", error);
+        console.error("Windcave invoice payment error:", error);
         throw error;
       }
 
-      console.log("Windcave session response:", data);
+      console.log("Windcave invoice payment response:", data);
 
       if (data.links && Array.isArray(data.links)) {
         console.log("Available payment links:", data.links);
@@ -1323,6 +1334,43 @@ const Invoicing = () => {
                   <FileText className="h-4 w-4 mr-2" />
                   {loading ? "Saving..." : currentInvoiceId ? "Update Invoice" : "Save Invoice"}
                 </Button>
+
+                {currentInvoiceId && organizationData?.windcave_enabled && invoiceData.total > 0 && !paymentUrl && (
+                  <Button 
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        const url = await generatePaymentUrl();
+                        if (url) {
+                          // Update the invoice with the payment URL
+                          const { error: updateError } = await supabase
+                            .from("invoices")
+                            .update({ payment_url: url })
+                            .eq("id", currentInvoiceId);
+                          
+                          if (updateError) {
+                            console.error("Error updating invoice with payment URL:", updateError);
+                          } else {
+                            toast({
+                              title: "Payment URL Generated",
+                              description: "Payment link has been generated successfully"
+                            });
+                          }
+                        }
+                      } catch (error) {
+                        console.error("Error generating payment URL:", error);
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    {loading ? "Generating..." : "Generate Payment Link"}
+                  </Button>
+                )}
 
                 <Button 
                   onClick={() => setShowInvoiceList(!showInvoiceList)}
