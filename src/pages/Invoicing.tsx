@@ -211,10 +211,17 @@ const Invoicing = () => {
     
     setLoading(true);
     try {
+      console.log("=== SAVING INVOICE ===");
+      console.log("Current paymentUrl:", paymentUrl);
+      console.log("Windcave enabled:", organizationData.windcave_enabled);
+      console.log("Invoice total:", invoiceData.total);
+      
       // Generate payment URL if possible
       let generatedPaymentUrl = paymentUrl;
       if (!generatedPaymentUrl && organizationData.windcave_enabled && invoiceData.total > 0) {
+        console.log("Generating payment URL...");
         generatedPaymentUrl = await generatePaymentUrl() || '';
+        console.log("Generated payment URL:", generatedPaymentUrl);
       }
 
       const invoicePayload = {
@@ -248,6 +255,8 @@ const Invoicing = () => {
         payment_url: generatedPaymentUrl
       };
 
+      console.log("Saving with payment URL:", generatedPaymentUrl);
+
       let result;
       if (currentInvoiceId) {
         // Update existing invoice
@@ -270,10 +279,15 @@ const Invoicing = () => {
 
       if (result.data) {
         setCurrentInvoiceId(result.data.id);
+        // Update the payment URL state with the saved value
+        if (generatedPaymentUrl) {
+          setPaymentUrl(generatedPaymentUrl);
+        }
         toast({
           title: "Invoice Saved",
           description: `Invoice ${invoiceData.invoiceNumber} has been saved successfully`
         });
+        console.log("Invoice saved successfully with payment URL:", generatedPaymentUrl);
         loadSavedInvoices(); // Refresh the saved invoices list
       }
     } catch (error) {
@@ -289,6 +303,10 @@ const Invoicing = () => {
   };
 
   const loadInvoice = (savedInvoice: any) => {
+    console.log("=== LOADING INVOICE ===");
+    console.log("Saved invoice data:", savedInvoice);
+    console.log("Payment URL from saved invoice:", savedInvoice.payment_url);
+    
     setInvoiceData({
       invoiceNumber: savedInvoice.invoice_number,
       invoiceDate: savedInvoice.invoice_date,
@@ -320,18 +338,21 @@ const Invoicing = () => {
     setCurrentInvoiceId(savedInvoice.id);
     setPaymentUrl(savedInvoice.payment_url || '');
     setShowInvoiceList(false);
+    
+    console.log("Invoice loaded, payment URL set to:", savedInvoice.payment_url || '');
   };
 
   const createNewInvoice = () => {
+    console.log("=== CREATING NEW INVOICE ===");
     setInvoiceData({
       invoiceNumber: `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
       invoiceDate: new Date().toISOString().split('T')[0],
       dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       companyName: organizationData?.name || '',
-      companyAddress: '',
-      companyCity: '',
-      companyPostalCode: '',
-      companyPhone: '',
+      companyAddress: organizationData?.address || '',
+      companyCity: organizationData?.city || '',
+      companyPostalCode: organizationData?.postal_code || '',
+      companyPhone: organizationData?.phone || '',
       companyEmail: organizationData?.email || '',
       clientName: '',
       clientEmail: '',
@@ -362,6 +383,7 @@ const Invoicing = () => {
     setCurrentInvoiceId(null);
     setPaymentUrl('');
     setShowInvoiceList(false);
+    console.log("New invoice created, payment URL reset");
   };
 
   const calculateTotals = () => {
@@ -484,7 +506,9 @@ const Invoicing = () => {
   };
 
   const generatePaymentUrl = async () => {
+    console.log("=== GENERATING PAYMENT URL ===");
     if (invoiceData.total <= 0 || !organizationData?.windcave_enabled) {
+      console.log("Payment URL generation skipped - total:", invoiceData.total, "windcave enabled:", organizationData?.windcave_enabled);
       return null;
     }
 
@@ -492,7 +516,9 @@ const Invoicing = () => {
       let eventId = null;
       if (events.length > 0) {
         eventId = events[0].id;
+        console.log("Using event ID:", eventId);
       } else {
+        console.log("No events available for payment processing");
         return null;
       }
 
@@ -503,6 +529,8 @@ const Invoicing = () => {
         quantity: item.quantity,
         price: item.rate
       }));
+
+      console.log("Calling windcave-session with items:", items);
 
       const { data, error } = await supabase.functions.invoke("windcave-session", {
         body: {
@@ -516,19 +544,34 @@ const Invoicing = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Windcave session error:", error);
+        throw error;
+      }
+
+      console.log("Windcave session response:", data);
 
       if (data.links && Array.isArray(data.links)) {
+        console.log("Available payment links:", data.links);
         // Find the payment URL (use the dropin link for direct payment)
         const paymentLink = data.links.find(link => link.method === "IFRAME" || link.rel === "dropin");
         if (paymentLink) {
           const generatedUrl = paymentLink.href;
-          setPaymentUrl(generatedUrl);
+          console.log("Generated payment URL:", generatedUrl);
           return generatedUrl;
+        } else {
+          console.log("No suitable payment link found in response");
         }
+      } else {
+        console.log("No links found in windcave response");
       }
     } catch (error) {
       console.error("Error generating payment URL:", error);
+      toast({
+        title: "Payment URL Generation Failed",
+        description: "Could not generate payment link. Please try again.",
+        variant: "destructive"
+      });
       return null;
     }
     return null;
