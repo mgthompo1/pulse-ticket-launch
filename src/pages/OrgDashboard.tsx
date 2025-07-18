@@ -24,10 +24,11 @@ import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X, Link, Package } from "lucide-react";
+import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X, Link, Package, Shield } from "lucide-react";
 import MerchandiseManager from "@/components/MerchandiseManager";
 import OrganizationSettings from "@/components/OrganizationSettings";
 import Invoicing from "./Invoicing";
+import { SecurityDashboard } from "@/components/SecurityDashboard";
 import { useNavigate } from "react-router-dom";
 
 const OrgDashboard = () => {
@@ -662,6 +663,10 @@ const OrgDashboard = () => {
 
             <TabsContent value="integrations" className="space-y-6">
               <XeroIntegration organizationId={organizationId} />
+            </TabsContent>
+
+            <TabsContent value="security" className="space-y-6">
+              <SecurityDashboard />
             </TabsContent>
 
             <TabsContent value="settings" className="space-y-6">

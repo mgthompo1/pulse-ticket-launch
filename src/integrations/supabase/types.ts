@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          last_login_at: string | null
+          password_hash: string
+          totp_secret: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean
+          last_login_at?: string | null
+          password_hash: string
+          totp_secret?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          last_login_at?: string | null
+          password_hash?: string
+          totp_secret?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_generated_content: {
         Row: {
           content_type: string
@@ -909,6 +942,39 @@ export type Database = {
           },
         ]
       }
+      security_audit_log: {
+        Row: {
+          admin_user_id: string | null
+          created_at: string
+          event_data: Json | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          admin_user_id?: string | null
+          created_at?: string
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          admin_user_id?: string | null
+          created_at?: string
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ticket_types: {
         Row: {
           created_at: string
@@ -1216,6 +1282,17 @@ export type Database = {
       generate_ticket_code: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      log_security_event: {
+        Args: {
+          p_user_id: string
+          p_admin_user_id: string
+          p_event_type: string
+          p_event_data: Json
+          p_ip_address: unknown
+          p_user_agent: string
+        }
+        Returns: undefined
       }
     }
     Enums: {

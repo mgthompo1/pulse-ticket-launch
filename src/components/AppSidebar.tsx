@@ -9,7 +9,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, CreditCard, Sparkles, Link, FileText } from "lucide-react";
+import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, CreditCard, Sparkles, Link, FileText, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,6 +31,7 @@ const sidebarItems = [
   { id: "marketing", title: "Marketing", icon: Mail },
   { id: "billing", title: "Billing", icon: CreditCard },
   { id: "integrations", title: "Apps", icon: Link },
+  { id: "security", title: "Security", icon: Shield },
   { id: "settings", title: "Settings", icon: Settings },
 ];
 

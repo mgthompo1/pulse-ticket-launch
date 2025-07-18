@@ -48,8 +48,8 @@ export const TOTPSetup = ({ onSetupComplete }: TOTPSetupProps) => {
 
       if (error) throw error;
 
-      setTotpSecret(data.secret);
-      setQrCodeUrl(data.uri);
+      setTotpSecret(data.totp.secret);
+      setQrCodeUrl(data.totp.uri);
       
       toast({
         title: "TOTP Enrollment Started",
@@ -81,7 +81,7 @@ export const TOTPSetup = ({ onSetupComplete }: TOTPSetupProps) => {
     try {
       const { data, error } = await supabase.auth.mfa.verify({
         factorId: factors[0]?.id,
-        challengeId: totpSecret,
+        challengeId: factors[0]?.id,
         code: verificationCode,
       });
 
