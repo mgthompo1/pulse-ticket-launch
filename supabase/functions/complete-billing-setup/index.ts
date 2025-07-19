@@ -19,11 +19,22 @@ serve(async (req) => {
       throw new Error('Setup intent ID is required');
     }
 
-    // Initialize Supabase client with service role
+    // Initialize Supabase client with service role and proper auth bypass
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { auth: { persistSession: false } }
+      { 
+        auth: { 
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false
+        },
+        global: {
+          headers: {
+            'X-Client-Info': 'complete-billing-setup-function'
+          }
+        }
+      }
     );
 
     // Get user from auth header
@@ -59,19 +70,24 @@ serve(async (req) => {
     }
 
     // Update billing customer with payment method
-    const { error: updateError } = await supabaseClient
+    // Use explicit error handling and simpler query structure
+    const { data: billingData, error: updateError } = await supabaseClient
       .from('billing_customers')
       .update({
         payment_method_id: paymentMethodId,
         billing_status: 'active',
         updated_at: new Date().toISOString(),
       })
-      .eq('stripe_customer_id', customerId);
+      .eq('stripe_customer_id', customerId)
+      .select('id')
+      .single();
 
     if (updateError) {
       console.error('Error updating billing customer:', updateError);
       throw new Error('Failed to update billing information');
     }
+
+    console.log('Updated billing customer:', billingData?.id);
 
     // Update organization billing status
     const { error: orgUpdateError } = await supabaseClient
