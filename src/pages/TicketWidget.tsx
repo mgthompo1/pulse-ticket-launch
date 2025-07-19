@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { createClient } from '@supabase/supabase-js';
+import { StripePaymentForm } from "@/components/payment/StripePaymentForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,7 +48,6 @@ const TicketWidget = () => {
     phone: ""
   });
   const [loading, setLoading] = useState(true);
-  const [paymentProvider, setPaymentProvider] = useState<string>("stripe");
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [windcaveDropIn, setWindcaveDropIn] = useState<any>(null);
   const [windcaveLinks, setWindcaveLinks] = useState<any[]>([]);
@@ -56,6 +56,10 @@ const TicketWidget = () => {
   const [pendingSeatSelection, setPendingSeatSelection] = useState<any>(null);
   const [selectedSeats, setSelectedSeats] = useState<Record<string, string[]>>({});
   const [creditCardProcessingFee, setCreditCardProcessingFee] = useState(0);
+  const [paymentProvider, setPaymentProvider] = useState('stripe');
+  const [stripePublishableKey, setStripePublishableKey] = useState('');
+  const [showPayment, setShowPayment] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     if (eventId) {
@@ -70,19 +74,20 @@ const TicketWidget = () => {
         .from("events")
         .select(`
           *,
-          organizations (
-            name,
-            payment_provider,
-            stripe_account_id,
-            windcave_enabled,
-            windcave_username,
-            windcave_api_key,
-            windcave_endpoint,
-            apple_pay_merchant_id,
-            currency,
-            logo_url,
-            credit_card_processing_fee_percentage
-          )
+        organizations (
+          name,
+          payment_provider,
+          stripe_account_id,
+          stripe_publishable_key,
+          windcave_enabled,
+          windcave_username,
+          windcave_api_key,
+          windcave_endpoint,
+          apple_pay_merchant_id,
+          currency,
+          logo_url,
+          credit_card_processing_fee_percentage
+        )
         `)
         .eq("id", eventId)
         .single();
@@ -99,6 +104,7 @@ const TicketWidget = () => {
       setEventData(event);
       setPaymentProvider(event.organizations?.payment_provider || "stripe");
       setCreditCardProcessingFee(event.organizations?.credit_card_processing_fee_percentage || 0);
+      setStripePublishableKey(event.organizations?.stripe_publishable_key || '');
 
       // Load ticket types
       const { data: types, error: typesError } = await supabase
@@ -1131,8 +1137,8 @@ const TicketWidget = () => {
                       </div>
                     </div>
                     
-                    <Button 
-                      onClick={handleCheckout}
+                     <Button 
+                      onClick={() => setShowPayment(true)}
                       className="w-full mt-4"
                       size="lg"
                       disabled={!customerInfo.name || !customerInfo.email || (cart.length === 0 && merchandiseCart.length === 0)}
@@ -1211,6 +1217,103 @@ const TicketWidget = () => {
           </div>
         </div>
         
+        {/* Payment Modal */}
+        {showPayment && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="w-full max-w-md">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    Complete Payment
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Order Summary */}
+                  <div className="bg-muted/20 p-4 rounded-lg">
+                    <h3 className="font-medium mb-2">Order Summary</h3>
+                    <div className="space-y-1 text-sm">
+                      {cart.map(item => (
+                        <div key={item.id} className="flex justify-between">
+                          <span>{item.name} x{item.quantity}</span>
+                          <span>${(item.price * item.quantity).toFixed(2)}</span>
+                        </div>
+                      ))}
+                      {merchandiseCart.map((item, index) => (
+                        <div key={index} className="flex justify-between">
+                          <span>{item.merchandise.name} x{item.quantity}</span>
+                          <span>${(item.merchandise.price * item.quantity).toFixed(2)}</span>
+                        </div>
+                      ))}
+                      {creditCardProcessingFee > 0 && (
+                        <div className="flex justify-between text-muted-foreground border-t pt-2">
+                          <span>Processing Fee ({creditCardProcessingFee}%)</span>
+                          <span>${((cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()) * creditCardProcessingFee / 100).toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-bold text-lg border-t pt-2">
+                        <span>Total</span>
+                        <span>${getTotalAmount().toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {paymentProvider === 'stripe' && stripePublishableKey ? (
+                    <StripePaymentForm
+                      publishableKey={stripePublishableKey}
+                      eventId={eventId!}
+                      cart={cart}
+                      merchandiseCart={merchandiseCart}
+                      customerInfo={customerInfo}
+                      total={getTotalAmount()}
+                      onSuccess={() => {
+                        setCart([]);
+                        setMerchandiseCart([]);
+                        setShowPayment(false);
+                        setShowSuccess(true);
+                      }}
+                      onCancel={() => setShowPayment(false)}
+                    />
+                  ) : (
+                    <div className="flex gap-3">
+                      <Button type="button" variant="outline" onClick={() => setShowPayment(false)} className="flex-1">
+                        Back
+                      </Button>
+                      <Button onClick={handleCheckout} disabled={loading} className="flex-1">
+                        {loading ? "Processing..." : "Proceed to Payment"}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {/* Success Modal */}
+        {showSuccess && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="w-full max-w-md">
+              <Card>
+                <CardContent className="text-center p-8">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">Payment Successful!</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Your tickets have been purchased successfully. Check your email for confirmation details.
+                  </p>
+                  <Button onClick={() => setShowSuccess(false)} className="w-full">
+                    Continue
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+
         {/* Seat Selection Modal */}
         {showSeatSelection && pendingSeatSelection && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

@@ -728,6 +728,7 @@ export type Database = {
           postal_code: string | null
           stripe_account_id: string | null
           stripe_onboarding_complete: boolean | null
+          stripe_publishable_key: string | null
           test_mode: boolean
           updated_at: string
           user_id: string
@@ -761,6 +762,7 @@ export type Database = {
           postal_code?: string | null
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean | null
+          stripe_publishable_key?: string | null
           test_mode?: boolean
           updated_at?: string
           user_id: string
@@ -794,6 +796,7 @@ export type Database = {
           postal_code?: string | null
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean | null
+          stripe_publishable_key?: string | null
           test_mode?: boolean
           updated_at?: string
           user_id?: string
