@@ -1138,7 +1138,13 @@ const TicketWidget = () => {
                     </div>
                     
                      <Button 
-                      onClick={() => setShowPayment(true)}
+                      onClick={() => {
+                        if (paymentProvider === "windcave") {
+                          handleCheckout();
+                        } else {
+                          setShowPayment(true);
+                        }
+                      }}
                       className="w-full mt-4"
                       size="lg"
                       disabled={!customerInfo.name || !customerInfo.email || (cart.length === 0 && merchandiseCart.length === 0)}
@@ -1217,8 +1223,8 @@ const TicketWidget = () => {
           </div>
         </div>
         
-        {/* Payment Modal */}
-        {showPayment && (
+        {/* Payment Modal - Only for Stripe */}
+        {showPayment && paymentProvider === "stripe" && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="w-full max-w-md">
               <Card>
