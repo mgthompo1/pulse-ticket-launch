@@ -9,6 +9,8 @@ import { PaymentProviderSelector } from './payment/PaymentProviderSelector';
 import { StripeConfiguration } from './payment/StripeConfiguration';
 import { WindcaveConfiguration } from './payment/WindcaveConfiguration';
 import { ApplePayConfiguration } from './payment/ApplePayConfiguration';
+import { PaymentLog } from './PaymentLog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface PaymentConfigurationProps {
   organizationId: string;
@@ -104,79 +106,92 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Payment Configuration</CardTitle>
-        <CardDescription>
-          Configure your payment providers and settings
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <PaymentProviderSelector
-          paymentProvider={paymentProvider}
-          onProviderChange={setPaymentProvider}
-        />
+    <Tabs defaultValue="configuration" className="space-y-6">
+      <TabsList>
+        <TabsTrigger value="configuration">Configuration</TabsTrigger>
+        <TabsTrigger value="payment-log">Payment Log</TabsTrigger>
+      </TabsList>
 
-        {paymentProvider === 'stripe' && (
-          <StripeConfiguration 
-            stripeAccountId={stripeAccountId}
-            stripePublishableKey={stripePublishableKey}
-            onStripeAccountIdChange={setStripeAccountId}
-            onStripePublishableKeyChange={setStripePublishableKey}
-          />
-        )}
+      <TabsContent value="configuration">
+        <Card>
+          <CardHeader>
+            <CardTitle>Payment Configuration</CardTitle>
+            <CardDescription>
+              Configure your payment providers and settings
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <PaymentProviderSelector
+              paymentProvider={paymentProvider}
+              onProviderChange={setPaymentProvider}
+            />
 
-        {paymentProvider === 'windcave' && (
-          <WindcaveConfiguration 
-            windcaveUsername={windcaveUsername}
-            windcaveApiKey={windcaveApiKey}
-            windcaveEndpoint={windcaveEndpoint}
-            windcaveEnabled={windcaveEnabled}
-            windcaveHitUsername={windcaveHitUsername}
-            windcaveHitKey={windcaveHitKey}
-            windcaveStationId={windcaveStationId}
-            currency={currency}
-            onWindcaveUsernameChange={setWindcaveUsername}
-            onWindcaveApiKeyChange={setWindcaveApiKey}
-            onWindcaveEndpointChange={setWindcaveEndpoint}
-            onWindcaveEnabledChange={setWindcaveEnabled}
-            onWindcaveHitUsernameChange={setWindcaveHitUsername}
-            onWindcaveHitKeyChange={setWindcaveHitKey}
-            onWindcaveStationIdChange={setWindcaveStationId}
-            onCurrencyChange={setCurrency}
-          />
-        )}
+            {paymentProvider === 'stripe' && (
+              <StripeConfiguration 
+                stripeAccountId={stripeAccountId}
+                stripePublishableKey={stripePublishableKey}
+                onStripeAccountIdChange={setStripeAccountId}
+                onStripePublishableKeyChange={setStripePublishableKey}
+              />
+            )}
 
-        {paymentProvider === 'applepay' && (
-          <ApplePayConfiguration 
-            applePayMerchantId={applePayMerchantId}
-            onApplePayMerchantIdChange={setApplePayMerchantId}
-          />
-        )}
+            {paymentProvider === 'windcave' && (
+              <WindcaveConfiguration 
+                windcaveUsername={windcaveUsername}
+                windcaveApiKey={windcaveApiKey}
+                windcaveEndpoint={windcaveEndpoint}
+                windcaveEnabled={windcaveEnabled}
+                windcaveHitUsername={windcaveHitUsername}
+                windcaveHitKey={windcaveHitKey}
+                windcaveStationId={windcaveStationId}
+                currency={currency}
+                onWindcaveUsernameChange={setWindcaveUsername}
+                onWindcaveApiKeyChange={setWindcaveApiKey}
+                onWindcaveEndpointChange={setWindcaveEndpoint}
+                onWindcaveEnabledChange={setWindcaveEnabled}
+                onWindcaveHitUsernameChange={setWindcaveHitUsername}
+                onWindcaveHitKeyChange={setWindcaveHitKey}
+                onWindcaveStationIdChange={setWindcaveStationId}
+                onCurrencyChange={setCurrency}
+              />
+            )}
 
-        <div className="space-y-3">
-          <Label htmlFor="creditCardFee">Credit Card Processing Fee (%)</Label>
-          <Input
-            id="creditCardFee"
-            type="number"
-            step="0.01"
-            min="0"
-            max="100"
-            value={creditCardProcessingFee}
-            onChange={(e) => setCreditCardProcessingFee(parseFloat(e.target.value) || 0)}
-            placeholder="Enter percentage (e.g., 2.5 for 2.5%)"
-          />
-          <p className="text-sm text-muted-foreground">
-            Optional processing fee added to ticket cost (e.g., 2.5 for 2.5%). Leave at 0 to disable.
-          </p>
-        </div>
+            {paymentProvider === 'applepay' && (
+              <ApplePayConfiguration 
+                applePayMerchantId={applePayMerchantId}
+                onApplePayMerchantIdChange={setApplePayMerchantId}
+              />
+            )}
 
-        <div className="pt-4">
-          <Button onClick={handleSave} disabled={loading} className="w-full">
-            {loading ? "Saving..." : "Save Configuration"}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+            <div className="space-y-3">
+              <Label htmlFor="creditCardFee">Credit Card Processing Fee (%)</Label>
+              <Input
+                id="creditCardFee"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={creditCardProcessingFee}
+                onChange={(e) => setCreditCardProcessingFee(parseFloat(e.target.value) || 0)}
+                placeholder="Enter percentage (e.g., 2.5 for 2.5%)"
+              />
+              <p className="text-sm text-muted-foreground">
+                Optional processing fee added to ticket cost (e.g., 2.5 for 2.5%). Leave at 0 to disable.
+              </p>
+            </div>
+
+            <div className="pt-4">
+              <Button onClick={handleSave} disabled={loading} className="w-full">
+                {loading ? "Saving..." : "Save Configuration"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="payment-log">
+        <PaymentLog organizationId={organizationId} />
+      </TabsContent>
+    </Tabs>
   );
 };
