@@ -55,9 +55,11 @@ const Auth = () => {
             .eq("email", inviteEmail)
             .eq("status", "pending")
             .gte("expires_at", new Date().toISOString())
-            .single();
+            .maybeSingle();
 
-          if (error || !invitation) {
+          if (error) {
+            setError("Error validating invitation. Please try again.");
+          } else if (!invitation) {
             setError("Invalid or expired invitation link. Please contact support.");
           } else {
             setInvitationValid(true);

@@ -1149,6 +1149,14 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-6">
+          <EventLogoUploader
+            eventId={eventId}
+            currentLogoUrl={currentLogoUrl}
+            onLogoChange={url => {
+              setCurrentLogoUrl(url);
+              setEventData(prev => prev ? { ...prev, logo_url: url } : prev);
+            }}
+          />
           <Card>
             <CardHeader>
               <CardTitle>Event Settings</CardTitle>

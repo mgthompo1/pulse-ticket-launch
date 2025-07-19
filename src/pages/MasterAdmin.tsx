@@ -41,8 +41,10 @@ import {
   Copy,
   UserPlus
 } from "lucide-react";
+import { format } from "date-fns";
 
 const MasterAdmin = () => {
+  // All hooks must be at the top, before any return
   const { isAdminAuthenticated, adminUser, loading: authLoading, logout } = useAdminAuth();
   const { content, loading: contentLoading, updateContent, refreshContent } = useLandingPageContent();
   const navigate = useNavigate();
@@ -50,12 +52,33 @@ const MasterAdmin = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [editingContent, setEditingContent] = useState<{[key: string]: string}>({});
   const [savingContent, setSavingContent] = useState<{[key: string]: boolean}>({});
-  
   // Sign-up link state
   const [signUpEmail, setSignUpEmail] = useState("");
   const [signUpLink, setSignUpLink] = useState("");
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [showSignUpDialog, setShowSignUpDialog] = useState(false);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState({
+    organizations: 0,
+    events: 0,
+    tickets: 0,
+    platformRevenue: 0,
+    loading: true
+  });
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [systemHealth, setSystemHealth] = useState({
+    apiResponseTime: 0,
+    dbPerformance: 0,
+    serverUptime: 99.9
+  });
+  const [analytics, setAnalytics] = useState({
+    loading: true,
+    transactionFees: 0,
+    dailyActiveUsers: 0,
+    ticketsSold: 0,
+    platformRevenue: 0,
+    activeEvents: 0
+  });
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -63,6 +86,114 @@ const MasterAdmin = () => {
       navigate("/admin-auth");
     }
   }, [isAdminAuthenticated, authLoading, navigate]);
+
+  // Fetch organizations
+  useEffect(() => {
+    const fetchOrganizations = async () => {
+      const { data, error } = await supabase
+        .from("organizations")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) {
+        console.error("Error loading organizations:", error);
+      } else {
+        setOrganizations(data || []);
+      }
+    };
+    fetchOrganizations();
+  }, []);
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      setMetrics(m => ({ ...m, loading: true }));
+      // Fetch organizations count
+      const { count: orgCount } = await supabase.from("organizations").select("*", { count: "exact", head: true });
+      // Fetch events count (active events: status = 'active')
+      const { count: eventCount } = await supabase.from("events").select("*", { count: "exact", head: true }).eq("status", "active");
+      // Fetch total tickets sold
+      const { data: ticketTypes } = await supabase.from("ticket_types").select("quantity_sold");
+      const totalTickets = ticketTypes?.reduce((sum, t) => sum + (t.quantity_sold || 0), 0) || 0;
+      // Fetch platform fee revenue (sum of total_platform_fee from usage_records)
+      const { data: usageRecords } = await supabase.from("usage_records").select("total_platform_fee");
+      const platformRevenue = usageRecords?.reduce((sum, u) => sum + (u.total_platform_fee || 0), 0) || 0;
+      setMetrics({
+        organizations: orgCount || 0,
+        events: eventCount || 0,
+        tickets: totalTickets,
+        platformRevenue,
+        loading: false
+      });
+    };
+    fetchMetrics();
+  }, []);
+
+  useEffect(() => {
+    // Fetch recent activities (last 5 events, orders, or organizations)
+    const fetchRecentActivities = async () => {
+      // Example: last 5 organizations created
+      const { data: orgs } = await supabase.from("organizations").select("name, created_at").order("created_at", { ascending: false }).limit(5);
+      // Example: last 5 events created
+      const { data: events } = await supabase.from("events").select("name, created_at").order("created_at", { ascending: false }).limit(5);
+      // Example: last 5 orders
+      const { data: orders } = await supabase.from("orders").select("id, created_at").order("created_at", { ascending: false }).limit(5);
+      // Merge and sort by created_at
+      const all = [
+        ...(orgs?.map(o => ({ type: "Organization", name: o.name, created_at: o.created_at })) || []),
+        ...(events?.map(e => ({ type: "Event", name: e.name, created_at: e.created_at })) || []),
+        ...(orders?.map(o => ({ type: "Order", name: `Order #${o.id}` , created_at: o.created_at })) || [])
+      ];
+      all.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setRecentActivities(all.slice(0, 5));
+    };
+    fetchRecentActivities();
+  }, []);
+
+  useEffect(() => {
+    // Simulate system health (replace with real monitoring if available)
+    setSystemHealth({
+      apiResponseTime: 85, // ms
+      dbPerformance: 92, // %
+      serverUptime: 99.9 // %
+    });
+  }, []);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      setAnalytics(a => ({ ...a, loading: true }));
+      // Transaction Fees & Platform Revenue (sum of total_platform_fee from usage_records)
+      const { data: usageRecords } = await supabase.from("usage_records").select("total_platform_fee");
+      const transactionFees = usageRecords?.reduce((sum, u) => sum + (u.total_platform_fee || 0), 0) || 0;
+      // Tickets Sold (sum of quantity_sold from ticket_types)
+      const { data: ticketTypes } = await supabase.from("ticket_types").select("quantity_sold");
+      const ticketsSold = ticketTypes?.reduce((sum, t) => sum + (t.quantity_sold || 0), 0) || 0;
+      // Active Events (count of events with status = 'active')
+      const { count: activeEvents } = await supabase.from("events").select("*", { count: "exact", head: true }).eq("status", "active");
+      // Daily Active Users (count of unique users who performed an action today)
+      // If you have an 'activity_log' or similar table, use it. Otherwise, fallback to users table count.
+      let dailyActiveUsers = 0;
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const isoToday = today.toISOString();
+      const { data: activityLog, error: activityError } = await supabase.from("activity_log").select("user_id, timestamp").gte("timestamp", isoToday);
+      if (!activityError && activityLog) {
+        const uniqueUsers = new Set(activityLog.map(a => a.user_id));
+        dailyActiveUsers = uniqueUsers.size;
+      } else {
+        // fallback: count of users
+        const { count: userCount } = await supabase.from("users").select("*", { count: "exact", head: true });
+        dailyActiveUsers = userCount || 0;
+      }
+      setAnalytics({
+        loading: false,
+        transactionFees,
+        dailyActiveUsers,
+        ticketsSold,
+        platformRevenue: transactionFees, // If you have a different definition, change this
+        activeEvents: activeEvents || 0
+      });
+    };
+    fetchAnalytics();
+  }, []);
 
   // Show loading while checking auth
   if (authLoading) {
@@ -150,6 +281,7 @@ const MasterAdmin = () => {
     return grouped;
   };
 
+  // Only generate a new link if one does not already exist for the current email
   const generateSignUpLink = async () => {
     if (!signUpEmail || !signUpEmail.trim()) {
       toast({
@@ -159,13 +291,16 @@ const MasterAdmin = () => {
       });
       return;
     }
-
+    // If a link is already generated for this email, do not generate again
+    if (signUpLink && signUpLink.includes(encodeURIComponent(signUpEmail))) {
+      setShowSignUpDialog(true);
+      return;
+    }
     setIsGeneratingLink(true);
     try {
       // Generate a unique sign-up token
       const token = crypto.randomUUID();
       const signUpUrl = `${window.location.origin}/auth?invite=${token}&email=${encodeURIComponent(signUpEmail)}`;
-      
       // Store the invitation in the database
       const { error } = await supabase
         .from("admin_invitations" as any)
@@ -176,19 +311,15 @@ const MasterAdmin = () => {
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
           status: "pending"
         } as any);
-
       if (error) {
         throw error;
       }
-
       setSignUpLink(signUpUrl);
       setShowSignUpDialog(true);
-      
       toast({
         title: "Success",
         description: "Sign-up link generated successfully!",
       });
-
     } catch (error) {
       console.error("Error generating sign-up link:", error);
       toast({
@@ -218,7 +349,16 @@ const MasterAdmin = () => {
     }
   };
 
+  // Only send the email for the existing link, do not generate a new one
   const sendSignUpEmail = async () => {
+    if (!signUpLink) {
+      toast({
+        title: "Error",
+        description: "Please generate a sign-up link first.",
+        variant: "destructive"
+      });
+      return;
+    }
     try {
       // Call the send-invitation-email function
       const { error } = await supabase.functions.invoke('send-invitation-email', {
@@ -228,21 +368,17 @@ const MasterAdmin = () => {
           invitedBy: adminUser
         }
       });
-
       if (error) {
         throw error;
       }
-
       toast({
         title: "Email Sent!",
         description: `Sign-up invitation sent to ${signUpEmail}`,
       });
-
       // Reset form
       setSignUpEmail("");
       setSignUpLink("");
       setShowSignUpDialog(false);
-
     } catch (error) {
       console.error("Error sending invitation email:", error);
       toast({
@@ -252,46 +388,6 @@ const MasterAdmin = () => {
       });
     }
   };
-
-  const organizations = [
-    {
-      id: 1,
-      name: "TechCorp Events",
-      email: "admin@techcorp.com",
-      events: 12,
-      revenue: "$45,200",
-      status: "active",
-      joinDate: "2024-01-15",
-      tier: "premium"
-    },
-    {
-      id: 2,
-      name: "Music Venues Inc",
-      email: "contact@musicvenues.com",
-      events: 8,
-      revenue: "$23,800",
-      status: "active",
-      joinDate: "2024-02-03",
-      tier: "standard"
-    },
-    {
-      id: 3,
-      name: "Conference Solutions",
-      email: "info@confsolutions.com",
-      events: 15,
-      revenue: "$67,500",
-      status: "suspended",
-      joinDate: "2024-01-08",
-      tier: "premium"
-    }
-  ];
-
-  const systemMetrics = [
-    { label: "Total Organizations", value: "156", change: "+12%", icon: Building2 },
-    { label: "Active Events", value: "342", change: "+8%", icon: Calendar },
-    { label: "Total Revenue", value: "$234,567", change: "+15%", icon: DollarSign },
-    { label: "Platform Users", value: "2,847", change: "+23%", icon: Users }
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/5 to-primary/5">
@@ -333,26 +429,53 @@ const MasterAdmin = () => {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
+            {metrics.loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="ml-2">Loading metrics...</span>
+              </div>
+            ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {systemMetrics.map((metric, index) => (
-                <Card key={index} className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">
-                      {metric.label}
-                    </CardTitle>
-                    <metric.icon className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{metric.value}</div>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <TrendingUp className="h-3 w-3 text-green-500" />
-                      {metric.change} from last month
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
+              <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Organizations</CardTitle>
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{metrics.organizations}</div>
+                </CardContent>
+              </Card>
+              <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Active Events</CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{metrics.events}</div>
+                </CardContent>
+              </Card>
+              <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Platform Fee Revenue</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">${metrics.platformRevenue.toLocaleString()}</div>
+                </CardContent>
+              </Card>
+              <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Tickets Sold</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{metrics.tickets}</div>
+                </CardContent>
+              </Card>
             </div>
+            )}
 
+            {/* Recent Activity */}
             <div className="grid gap-6 md:grid-cols-2">
               <Card>
                 <CardHeader>
@@ -360,30 +483,23 @@ const MasterAdmin = () => {
                   <CardDescription>Latest platform activities</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">New organization registered</p>
-                      <p className="text-xs text-muted-foreground">2 minutes ago</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Event published</p>
-                      <p className="text-xs text-muted-foreground">15 minutes ago</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Payment processed</p>
-                      <p className="text-xs text-muted-foreground">1 hour ago</p>
-                    </div>
-                  </div>
+                  {recentActivities.length === 0 ? (
+                    <div className="text-muted-foreground">No recent activity found.</div>
+                  ) : (
+                    recentActivities.map((activity, idx) => (
+                      <div key={idx} className="flex items-center space-x-4">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{activity.type}: {activity.name}</p>
+                          <p className="text-xs text-muted-foreground">{format(new Date(activity.created_at), 'PPpp')}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </CardContent>
               </Card>
 
+              {/* System Health */}
               <Card>
                 <CardHeader>
                   <CardTitle>System Health</CardTitle>
@@ -393,22 +509,22 @@ const MasterAdmin = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-sm">API Response Time</span>
                     <div className="flex items-center gap-2">
-                      <Progress value={85} className="w-20" />
-                      <span className="text-sm text-green-600">85ms</span>
+                      <Progress value={systemHealth.apiResponseTime} className="w-20" />
+                      <span className="text-sm text-green-600">{systemHealth.apiResponseTime}ms</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Database Performance</span>
                     <div className="flex items-center gap-2">
-                      <Progress value={92} className="w-20" />
-                      <span className="text-sm text-green-600">92%</span>
+                      <Progress value={systemHealth.dbPerformance} className="w-20" />
+                      <span className="text-sm text-green-600">{systemHealth.dbPerformance}%</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Server Uptime</span>
                     <div className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span className="text-sm text-green-600">99.9%</span>
+                      <span className="text-sm text-green-600">{systemHealth.serverUptime}%</span>
                     </div>
                   </div>
                 </CardContent>
@@ -493,58 +609,38 @@ const MasterAdmin = () => {
               </CardContent>
             </Card>
 
+            {/* Organizations List */}
             <Card>
               <CardHeader>
-                <CardTitle>Organization Management</CardTitle>
-                <CardDescription>Manage all organizations on the platform</CardDescription>
+                <CardTitle>Organizations</CardTitle>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Organization</TableHead>
-                      <TableHead>Events</TableHead>
-                      <TableHead>Revenue</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Tier</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {organizations.map((org) => (
-                      <TableRow key={org.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{org.name}</div>
-                            <div className="text-sm text-muted-foreground">{org.email}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{org.events}</TableCell>
-                        <TableCell>{org.revenue}</TableCell>
-                        <TableCell>
-                          <Badge variant={org.status === "active" ? "default" : "destructive"}>
-                            {org.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={org.tier === "premium" ? "secondary" : "outline"}>
-                            {org.tier}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline">
-                              <UserCheck className="h-4 w-4" />
-                            </Button>
-                            <Button size="sm" variant="outline">
-                              <Ban className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                {organizations.length === 0 ? (
+                  <div className="text-muted-foreground">No organizations found.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm border">
+                      <thead>
+                        <tr className="bg-muted">
+                          <th className="px-4 py-2 text-left">Name</th>
+                          <th className="px-4 py-2 text-left">Email</th>
+                          <th className="px-4 py-2 text-left">Status</th>
+                          <th className="px-4 py-2 text-left">Created At</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {organizations.map(org => (
+                          <tr key={org.id} className="border-b">
+                            <td className="px-4 py-2">{org.name}</td>
+                            <td className="px-4 py-2">{org.email || "N/A"}</td>
+                            <td className="px-4 py-2">{org.status || "N/A"}</td>
+                            <td className="px-4 py-2">{org.created_at ? new Date(org.created_at).toLocaleDateString() : "N/A"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -687,6 +783,12 @@ const MasterAdmin = () => {
 
           {/* Analytics Tab */}
           <TabsContent value="analytics" className="space-y-6">
+            {analytics.loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="ml-2">Loading analytics...</span>
+              </div>
+            ) : (
             <div className="grid gap-6 md:grid-cols-2">
               <Card>
                 <CardHeader>
@@ -697,15 +799,11 @@ const MasterAdmin = () => {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <span>Transaction Fees</span>
-                      <span className="font-medium">$12,450</span>
+                      <span className="font-medium">${analytics.transactionFees.toLocaleString()}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>Subscription Revenue</span>
-                      <span className="font-medium">$8,900</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Premium Features</span>
-                      <span className="font-medium">$3,200</span>
+                      <span>Platform Revenue</span>
+                      <span className="font-medium">${analytics.platformRevenue.toLocaleString()}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -713,27 +811,28 @@ const MasterAdmin = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>User Engagement</CardTitle>
+                  <CardTitle>User & Event Analytics</CardTitle>
                   <CardDescription>Platform usage statistics</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <span>Daily Active Users</span>
-                      <span className="font-medium">1,234</span>
+                      <span className="font-medium">{analytics.dailyActiveUsers}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>Events Created</span>
-                      <span className="font-medium">89</span>
+                      <span>Active Events</span>
+                      <span className="font-medium">{analytics.activeEvents}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>Tickets Sold</span>
-                      <span className="font-medium">2,567</span>
+                      <span className="font-medium">{analytics.ticketsSold}</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
+            )}
           </TabsContent>
 
           {/* System Tab */}

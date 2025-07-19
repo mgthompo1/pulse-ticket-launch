@@ -60,6 +60,9 @@ const TicketWidget = () => {
   const [stripePublishableKey, setStripePublishableKey] = useState('');
   const [showPayment, setShowPayment] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  // State for custom question answers
+  const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
+  const [customErrors, setCustomErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (eventId) {
@@ -318,6 +321,23 @@ const TicketWidget = () => {
     return subtotal + processingFeeAmount;
   };
 
+  // Helper to get custom questions
+  const customQuestions = eventData?.widget_customization?.customQuestions?.enabled
+    ? eventData.widget_customization.customQuestions.questions || []
+    : [];
+
+  // Validate custom questions before checkout
+  const validateCustomQuestions = () => {
+    const errors: Record<string, string> = {};
+    customQuestions.forEach((q: any) => {
+      if (q.required && !customAnswers[q.id]?.toString().trim()) {
+        errors[q.id] = 'This field is required.';
+      }
+    });
+    setCustomErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleCheckout = async () => {
     if (cart.length === 0 && merchandiseCart.length === 0) {
       toast({
@@ -337,6 +357,16 @@ const TicketWidget = () => {
       return;
     }
 
+    // Validate custom questions
+    if (!validateCustomQuestions()) {
+      toast({
+        title: "Error",
+        description: "Please answer all required questions.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       // Prepare items for checkout (both tickets and merchandise)
       const allItems = [
@@ -350,13 +380,16 @@ const TicketWidget = () => {
         }))
       ];
 
+      // Include customAnswers in customerInfo
+      const fullCustomerInfo = { ...customerInfo, customAnswers };
+
       if (paymentProvider === "windcave") {
         // Create Windcave session and initialize Drop-In
         const { data, error } = await anonymousSupabase.functions.invoke("windcave-session", {
           body: { 
             eventId, 
             items: allItems,
-            customerInfo 
+            customerInfo: fullCustomerInfo
           }
         });
 
@@ -384,7 +417,7 @@ const TicketWidget = () => {
           body: { 
             eventId, 
             items: allItems,
-            customerInfo 
+            customerInfo: fullCustomerInfo
           }
         });
 
@@ -1071,6 +1104,88 @@ const TicketWidget = () => {
                   </div>
                 </CardContent>
               </Card>
+            )}
+            {customQuestions.length > 0 && (
+              <div className="space-y-4 mt-4">
+                <h3 className="font-medium">Additional Information</h3>
+                {customQuestions.map((q: any) => (
+                  <div key={q.id} className="space-y-1">
+                    <Label className="font-medium">
+                      {q.label} {q.required && <span className="text-destructive">*</span>}
+                    </Label>
+                    {q.type === 'text' && (
+                      <Input
+                        value={customAnswers[q.id] || ''}
+                        onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                        placeholder={q.label}
+                      />
+                    )}
+                    {q.type === 'textarea' && (
+                      <textarea
+                        className="w-full border rounded p-2"
+                        value={customAnswers[q.id] || ''}
+                        onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                        placeholder={q.label}
+                        rows={3}
+                      />
+                    )}
+                    {(q.type === 'select' || q.type === 'radio') && (
+                      <select
+                        className="w-full border rounded p-2"
+                        value={customAnswers[q.id] || ''}
+                        onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                      >
+                        <option value="">Select...</option>
+                        {(q.options || '').split('\n').map((opt: string, idx: number) => (
+                          <option key={idx} value={opt.trim()}>{opt.trim()}</option>
+                        ))}
+                      </select>
+                    )}
+                    {q.type === 'checkbox' && (
+                      <div className="flex flex-col gap-1">
+                        {(q.options || '').split('\n').map((opt: string, idx: number) => (
+                          <label key={idx} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={Array.isArray(customAnswers[q.id]) ? customAnswers[q.id].includes(opt.trim()) : false}
+                              onChange={e => {
+                                setCustomAnswers(a => {
+                                  const arr = Array.isArray(a[q.id]) ? a[q.id] : [];
+                                  if (e.target.checked) {
+                                    return { ...a, [q.id]: [...arr, opt.trim()] };
+                                  } else {
+                                    return { ...a, [q.id]: arr.filter((v: string) => v !== opt.trim()) };
+                                  }
+                                });
+                              }}
+                            />
+                            {opt.trim()}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    {q.type === 'email' && (
+                      <Input
+                        type="email"
+                        value={customAnswers[q.id] || ''}
+                        onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                        placeholder={q.label}
+                      />
+                    )}
+                    {q.type === 'phone' && (
+                      <Input
+                        type="tel"
+                        value={customAnswers[q.id] || ''}
+                        onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                        placeholder={q.label}
+                      />
+                    )}
+                    {customErrors[q.id] && (
+                      <p className="text-xs text-destructive">{customErrors[q.id]}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
