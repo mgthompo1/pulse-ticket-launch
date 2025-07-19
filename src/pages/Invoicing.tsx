@@ -1573,45 +1573,6 @@ ${invoiceData.companyName}`;
                 </CardContent>
               </Card>
             )}
-                <CardContent>
-                  {savedInvoices.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-4">No saved invoices yet</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {savedInvoices.map((invoice) => (
-                        <div key={invoice.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex-1">
-                            <div className="font-medium">{invoice.invoice_number}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {invoice.client_name} • ${invoice.total?.toFixed(2) || '0.00'}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(invoice.created_at).toLocaleDateString()}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant={
-                              invoice.status === 'paid' ? 'default' : 
-                              invoice.status === 'sent' ? 'secondary' : 
-                              invoice.status === 'overdue' ? 'destructive' : 'outline'
-                            }>
-                              {invoice.status}
-                            </Badge>
-                            <Button 
-                              onClick={() => loadInvoice(invoice)}
-                              size="sm"
-                              variant="ghost"
-                            >
-                              Load
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
 
             {/* Actions */}
             <Card>
