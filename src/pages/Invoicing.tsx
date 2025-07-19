@@ -275,7 +275,7 @@ const Invoicing = () => {
         
         // Generate payment URL AFTER saving (since we need the invoice ID)
         let finalPaymentUrl = paymentUrl;
-        if (!finalPaymentUrl && organizationData.windcave_enabled && invoiceData.total > 0) {
+        if (!finalPaymentUrl && organizationData && (organizationData.windcave_enabled || organizationData.payment_provider === "stripe") && invoiceData.total > 0) {
           console.log("Generating payment URL after saving...");
           finalPaymentUrl = await generatePaymentUrl() || '';
           console.log("Generated payment URL:", finalPaymentUrl);
@@ -488,7 +488,7 @@ const Invoicing = () => {
     setLoading(true);
     try {
       // Generate payment URL if possible
-      if (!paymentUrl && organizationData?.windcave_enabled && invoiceData.total > 0) {
+      if (!paymentUrl && organizationData && (organizationData.windcave_enabled || organizationData.payment_provider === "stripe") && invoiceData.total > 0) {
         const generatedUrl = await generatePaymentUrl();
         if (generatedUrl) {
           // Save the invoice with the payment URL
@@ -524,8 +524,13 @@ const Invoicing = () => {
 
   const generatePaymentUrl = async () => {
     console.log("=== GENERATING PAYMENT URL ===");
-    if (invoiceData.total <= 0 || !organizationData?.windcave_enabled) {
-      console.log("Payment URL generation skipped - total:", invoiceData.total, "windcave enabled:", organizationData?.windcave_enabled);
+    if (invoiceData.total <= 0) {
+      console.log("Payment URL generation skipped - total:", invoiceData.total);
+      return null;
+    }
+
+    if (!organizationData) {
+      console.log("No organization data available");
       return null;
     }
 
@@ -539,43 +544,83 @@ const Invoicing = () => {
       return null;
     }
 
+    const paymentProvider = organizationData.payment_provider;
+    console.log("Payment provider:", paymentProvider);
+
     try {
-      console.log("Calling windcave-invoice-payment with invoice ID:", currentInvoiceId);
+      if (paymentProvider === "stripe") {
+        // Use Stripe for payment processing
+        console.log("Calling stripe-invoice-payment with invoice ID:", currentInvoiceId);
 
-      const { data, error } = await supabase.functions.invoke("windcave-invoice-payment", {
-        body: {
-          invoiceId: currentInvoiceId,
-          invoiceData: {
-            total: invoiceData.total,
-            clientName: invoiceData.clientName,
-            clientEmail: invoiceData.clientEmail,
-            clientPhone: invoiceData.clientPhone,
-            invoiceNumber: invoiceData.invoiceNumber
+        const { data, error } = await supabase.functions.invoke("stripe-invoice-payment", {
+          body: {
+            invoiceId: currentInvoiceId
           }
+        });
+
+        if (error) {
+          console.error("Stripe invoice payment error:", error);
+          throw error;
         }
-      });
 
-      if (error) {
-        console.error("Windcave invoice payment error:", error);
-        throw error;
-      }
+        console.log("Stripe invoice payment response:", data);
 
-      console.log("Windcave invoice payment response:", data);
-
-      if (data.links && Array.isArray(data.links)) {
-        console.log("Available payment links:", data.links);
-        // Find the payment URL (use the hpp link for hosted payment page)
-        const paymentLink = data.links.find(link => link.rel === "hpp");
-        if (paymentLink) {
-          const generatedUrl = paymentLink.href;
-          console.log("Generated payment URL:", generatedUrl);
-          return generatedUrl;
+        if (data.paymentUrl) {
+          console.log("Generated Stripe payment URL:", data.paymentUrl);
+          return data.paymentUrl;
         } else {
-          console.log("No suitable payment link found in response");
+          console.log("No payment URL found in Stripe response");
         }
+
+      } else if (paymentProvider === "windcave" && organizationData.windcave_enabled) {
+        // Use Windcave for payment processing
+        console.log("Calling windcave-invoice-payment with invoice ID:", currentInvoiceId);
+
+        const { data, error } = await supabase.functions.invoke("windcave-invoice-payment", {
+          body: {
+            invoiceId: currentInvoiceId,
+            invoiceData: {
+              total: invoiceData.total,
+              clientName: invoiceData.clientName,
+              clientEmail: invoiceData.clientEmail,
+              clientPhone: invoiceData.clientPhone,
+              invoiceNumber: invoiceData.invoiceNumber
+            }
+          }
+        });
+
+        if (error) {
+          console.error("Windcave invoice payment error:", error);
+          throw error;
+        }
+
+        console.log("Windcave invoice payment response:", data);
+
+        if (data.links && Array.isArray(data.links)) {
+          console.log("Available payment links:", data.links);
+          // Find the payment URL (use the hpp link for hosted payment page)
+          const paymentLink = data.links.find(link => link.rel === "hpp");
+          if (paymentLink) {
+            const generatedUrl = paymentLink.href;
+            console.log("Generated Windcave payment URL:", generatedUrl);
+            return generatedUrl;
+          } else {
+            console.log("No suitable payment link found in response");
+          }
+        } else {
+          console.log("No links found in windcave response");
+        }
+
       } else {
-        console.log("No links found in windcave response");
+        console.log("No valid payment provider configured");
+        toast({
+          title: "Payment Provider Not Configured",
+          description: `Please configure ${paymentProvider || 'a payment provider'} in your organization settings`,
+          variant: "destructive"
+        });
+        return null;
       }
+
     } catch (error) {
       console.error("Error generating payment URL:", error);
       toast({
@@ -1341,7 +1386,7 @@ const Invoicing = () => {
                   {loading ? "Saving..." : currentInvoiceId ? "Update Invoice" : "Save Invoice"}
                 </Button>
 
-                {currentInvoiceId && organizationData?.windcave_enabled && invoiceData.total > 0 && !paymentUrl && (
+                {currentInvoiceId && organizationData && (organizationData.windcave_enabled || organizationData.payment_provider === "stripe") && invoiceData.total > 0 && !paymentUrl && (
                   <Button 
                     onClick={async () => {
                       setLoading(true);
