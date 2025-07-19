@@ -23,8 +23,8 @@ import EventCustomization from "@/components/EventCustomization";
 import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import { AppSidebar } from "@/components/AppSidebar";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X, Link, Package, Shield } from "lucide-react";
+import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
+import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X, Link, Package, Shield, Menu } from "lucide-react";
 import MerchandiseManager from "@/components/MerchandiseManager";
 import OrganizationSettings from "@/components/OrganizationSettings";
 import Invoicing from "./Invoicing";
@@ -32,6 +32,23 @@ import { SecurityDashboard } from "@/components/SecurityDashboard";
 import { MarketingTools } from "@/components/MarketingTools";
 import { AnalyticsCharts } from "@/components/AnalyticsCharts";
 import { useNavigate } from "react-router-dom";
+
+// Custom mobile sidebar trigger component
+const MobileSidebarTrigger = () => {
+  const { toggleSidebar } = useSidebar();
+  
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={toggleSidebar}
+      className="h-8 w-8 p-0"
+    >
+      <Menu className="h-4 w-4" />
+      <span className="sr-only">Toggle Sidebar</span>
+    </Button>
+  );
+};
 
 const OrgDashboard = () => {
   const [events, setEvents] = useState([]);
@@ -372,7 +389,7 @@ const OrgDashboard = () => {
           <div className="flex items-center justify-between gap-4">
             {/* Mobile sidebar trigger - only shows on mobile */}
             <div className="flex items-center gap-2 md:hidden">
-              <SidebarTrigger className="h-8 w-8" />
+              <MobileSidebarTrigger />
             </div>
             
             <div className="flex items-center gap-4 ml-auto">
