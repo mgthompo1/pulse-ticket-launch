@@ -60,7 +60,40 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, onS
       });
 
       if (paymentError) {
-        throw paymentError;
+        // Handle specific payment decline messages
+        let errorTitle = "Payment Failed";
+        let errorDescription = "Please try again or use a different payment method.";
+        
+        if (paymentError.type === 'card_error') {
+          switch (paymentError.code) {
+            case 'card_declined':
+              errorDescription = "Your card was declined. Please try again or use a different payment method.";
+              break;
+            case 'insufficient_funds':
+              errorDescription = "Insufficient funds. Please check your account balance or use a different card.";
+              break;
+            case 'expired_card':
+              errorDescription = "Your card has expired. Please use a different payment method.";
+              break;
+            case 'incorrect_cvc':
+              errorDescription = "Incorrect security code. Please check your CVC and try again.";
+              break;
+            case 'processing_error':
+              errorDescription = "Payment processing error. Please try again in a few moments.";
+              break;
+            default:
+              errorDescription = paymentError.message || "Payment failed. Please try again.";
+          }
+        } else if (paymentError.type === 'validation_error') {
+          errorDescription = "Please check your payment details and try again.";
+        }
+        
+        toast({
+          title: errorTitle,
+          description: errorDescription,
+          variant: "destructive",
+        });
+        return;
       }
 
       toast({
@@ -71,9 +104,20 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, onS
       onSuccess();
     } catch (error: any) {
       console.error('Payment failed:', error);
+      
+      // Handle non-Stripe errors (like network issues or server errors)
+      let errorTitle = "Payment Failed";
+      let errorDescription = "There was an error processing your payment. Please try again.";
+      
+      if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        errorDescription = "Network error. Please check your connection and try again.";
+      } else if (error.message) {
+        errorDescription = error.message;
+      }
+      
       toast({
-        title: "Payment Failed",
-        description: error.message || "There was an error processing your payment.",
+        title: errorTitle,
+        description: errorDescription,
         variant: "destructive",
       });
     } finally {
