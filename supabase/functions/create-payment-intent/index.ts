@@ -20,8 +20,10 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
+    console.log("Supabase client created");
 
     const requestBody = await req.json();
+    console.log("Request body parsed successfully");
     console.log("Request body:", JSON.stringify(requestBody, null, 2));
     
     const { eventId, items, tickets, customerInfo } = requestBody;
