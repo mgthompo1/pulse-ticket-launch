@@ -499,7 +499,8 @@ const Invoicing = () => {
       const { error } = await supabase.functions.invoke('send-invoice-email', {
         body: { 
           invoiceData,
-          organizationData
+          organizationData,
+          paymentUrl: paymentUrl || undefined
         }
       });
 

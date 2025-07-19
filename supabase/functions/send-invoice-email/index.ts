@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import puppeteer from "npm:puppeteer@22.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -275,6 +276,148 @@ const generateInvoiceHTML = (invoiceData: InvoiceData, organizationData: Organiz
   `;
 };
 
+const generatePDFFromHTML = async (html: string): Promise<Uint8Array> => {
+  const browser = await puppeteer.launch({
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+  
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    
+    const pdf = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' }
+    });
+    
+    return pdf;
+  } finally {
+    await browser.close();
+  }
+};
+
+const generateEmailHTML = (invoiceData: InvoiceData, organizationData: OrganizationData, paymentUrl?: string): string => {
+  const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
+  
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Invoice ${invoiceData.invoiceNumber}</title>
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          max-width: 600px;
+          margin: 0 auto;
+          padding: 20px;
+        }
+        .header {
+          text-align: center;
+          margin-bottom: 30px;
+          border-bottom: 2px solid #e5e7eb;
+          padding-bottom: 20px;
+        }
+        .header h1 {
+          color: #1f2937;
+          margin: 0;
+        }
+        .invoice-summary {
+          background: #f9fafb;
+          padding: 20px;
+          border-radius: 8px;
+          margin-bottom: 30px;
+        }
+        .payment-button {
+          text-align: center;
+          margin: 30px 0;
+        }
+        .payment-button a {
+          background: #3b82f6;
+          color: white;
+          padding: 15px 30px;
+          text-decoration: none;
+          border-radius: 8px;
+          font-weight: bold;
+          font-size: 16px;
+          display: inline-block;
+        }
+        .payment-button a:hover {
+          background: #2563eb;
+        }
+        .invoice-details {
+          margin-bottom: 20px;
+        }
+        .invoice-details p {
+          margin: 5px 0;
+        }
+        .footer {
+          text-align: center;
+          color: #6b7280;
+          font-size: 14px;
+          margin-top: 30px;
+          border-top: 1px solid #e5e7eb;
+          padding-top: 20px;
+        }
+        .attachment-note {
+          background: #fef3c7;
+          border-left: 4px solid #f59e0b;
+          padding: 15px;
+          margin: 20px 0;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>Invoice from ${organizationData.name}</h1>
+      </div>
+
+      <div class="invoice-summary">
+        <h2>Invoice Summary</h2>
+        <div class="invoice-details">
+          <p><strong>Invoice Number:</strong> ${invoiceData.invoiceNumber}</p>
+          <p><strong>Issue Date:</strong> ${new Date(invoiceData.invoiceDate).toLocaleDateString()}</p>
+          <p><strong>Due Date:</strong> ${new Date(invoiceData.dueDate).toLocaleDateString()}</p>
+          <p><strong>Amount Due:</strong> ${formatCurrency(invoiceData.total)}</p>
+          ${invoiceData.eventName ? `<p><strong>Event:</strong> ${invoiceData.eventName}</p>` : ''}
+        </div>
+      </div>
+
+      ${paymentUrl ? `
+      <div class="payment-button">
+        <a href="${paymentUrl}" target="_blank">Pay Now - ${formatCurrency(invoiceData.total)}</a>
+      </div>
+      ` : ''}
+
+      <div class="attachment-note">
+        <h4>📄 Invoice Attached</h4>
+        <p>Please find the detailed invoice attached to this email as a PDF document.</p>
+      </div>
+
+      <p>Dear ${invoiceData.clientName},</p>
+      
+      <p>Thank you for your business! Please find attached invoice ${invoiceData.invoiceNumber} in the amount of ${formatCurrency(invoiceData.total)}.</p>
+      
+      ${paymentUrl ? `
+      <p>You can make payment quickly and securely by clicking the "Pay Now" button above or by visiting the following link:</p>
+      <p><a href="${paymentUrl}" target="_blank">${paymentUrl}</a></p>
+      ` : ''}
+
+      <p>The invoice is due by ${new Date(invoiceData.dueDate).toLocaleDateString()}. If you have any questions about this invoice, please don't hesitate to contact us.</p>
+
+      <div class="footer">
+        <p>Best regards,<br>${organizationData.name}</p>
+        <p>Questions? Contact us at ${invoiceData.companyEmail}</p>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -282,20 +425,28 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { invoiceData, organizationData }: { 
+    const { invoiceData, organizationData, paymentUrl }: { 
       invoiceData: InvoiceData; 
-      organizationData: OrganizationData; 
+      organizationData: OrganizationData;
+      paymentUrl?: string;
     } = await req.json();
 
     console.log("Sending invoice email for:", invoiceData.invoiceNumber);
 
-    const htmlContent = generateInvoiceHTML(invoiceData, organizationData);
-
+    // Generate PDF attachment from the detailed invoice HTML
+    console.log("Generating PDF attachment...");
+    const invoiceHtmlContent = generateInvoiceHTML(invoiceData, organizationData);
+    const pdfBuffer = await generatePDFFromHTML(invoiceHtmlContent);
+    
+    // Generate email-friendly HTML content with payment link
+    const emailHtmlContent = generateEmailHTML(invoiceData, organizationData, paymentUrl);
+    
+    console.log("Sending email with PDF attachment...");
     const emailResponse = await resend.emails.send({
       from: `${organizationData.name} <invoices@resend.dev>`,
       to: [invoiceData.clientEmail],
       subject: `Invoice ${invoiceData.invoiceNumber} from ${organizationData.name}`,
-      html: htmlContent,
+      html: emailHtmlContent,
       text: `
 Invoice ${invoiceData.invoiceNumber}
 
@@ -308,10 +459,23 @@ ${invoiceData.eventName ? `Event: ${invoiceData.eventName}` : ''}
 
 Total Amount Due: $${invoiceData.total.toFixed(2)}
 
+${paymentUrl ? `
+
+Pay online: ${paymentUrl}` : ''}
+
+Please find the detailed invoice attached as a PDF.
+
 Please contact us at ${invoiceData.companyEmail} if you have any questions.
 
 Thank you for your business!
       `,
+      attachments: [
+        {
+          filename: `Invoice-${invoiceData.invoiceNumber}.pdf`,
+          content: Array.from(pdfBuffer),
+          content_type: 'application/pdf',
+        },
+      ],
     });
 
     console.log("Invoice email sent successfully:", emailResponse);
