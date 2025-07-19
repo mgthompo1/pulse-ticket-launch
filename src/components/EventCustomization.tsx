@@ -14,6 +14,7 @@ import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import MerchandiseManager from "@/components/MerchandiseManager";
 import TicketTypesManager from "@/components/TicketTypesManager";
+import { EventLogoUploader } from "@/components/events/EventLogoUploader";
 
 interface EventCustomizationProps {
   eventId: string;
@@ -25,6 +26,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
   const [loading, setLoading] = useState(false);
   const [showSeatMapDesigner, setShowSeatMapDesigner] = useState(false);
   const [eventData, setEventData] = useState<any>(null);
+  const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
   
   // Widget customization state
   const [widgetCustomization, setWidgetCustomization] = useState({
@@ -101,12 +103,13 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     try {
       const { data, error } = await supabase
         .from("events")
-        .select("widget_customization, ticket_customization, email_customization, name, status, test_mode")
+        .select("widget_customization, ticket_customization, email_customization, name, status, test_mode, logo_url")
         .eq("id", eventId)
         .single();
 
       if (error) throw error;
       setEventData(data);
+      setCurrentLogoUrl(data?.logo_url || null);
 
       if (data?.widget_customization) {
         setWidgetCustomization(data.widget_customization as typeof widgetCustomization);
@@ -645,6 +648,26 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                             </SelectContent>
                           </Select>
                         </div>
+                        
+                        {ticketCustomization.content.logoSource === 'event' && (
+                          <div className="space-y-3">
+                            <Label>Event Logo Upload</Label>
+                            <EventLogoUploader 
+                              eventId={eventId}
+                              currentLogoUrl={currentLogoUrl}
+                              onLogoChange={(logoUrl) => {
+                                setCurrentLogoUrl(logoUrl);
+                                // Refresh event data to get updated logo
+                                loadCustomizations();
+                              }}
+                            />
+                            {!currentLogoUrl && (
+                              <p className="text-sm text-muted-foreground">
+                                Upload an event logo to display on tickets when "Use Event Logo" is selected.
+                              </p>
+                            )}
+                          </div>
+                        )}
                         
                         {ticketCustomization.content.logoSource === 'custom' && (
                           <div className="space-y-2">
