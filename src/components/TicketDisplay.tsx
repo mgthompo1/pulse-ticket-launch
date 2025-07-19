@@ -19,9 +19,20 @@ interface TicketDisplayProps {
     logo_url?: string;
     description?: string;
   };
+  organizationDetails?: {
+    logo_url?: string;
+    name?: string;
+  };
+  ticketCustomization?: {
+    content: {
+      showLogo: boolean;
+      logoSource?: "event" | "organization" | "custom";
+      customLogoUrl?: string;
+    };
+  };
 }
 
-export const TicketDisplay = ({ ticket, eventDetails }: TicketDisplayProps) => {
+export const TicketDisplay = ({ ticket, eventDetails, organizationDetails, ticketCustomization }: TicketDisplayProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
@@ -70,15 +81,36 @@ export const TicketDisplay = ({ ticket, eventDetails }: TicketDisplayProps) => {
     }
   };
 
+  // Determine which logo to show based on ticket customization
+  const getLogoUrl = () => {
+    if (!ticketCustomization?.content.showLogo) {
+      return null;
+    }
+    
+    const logoSource = ticketCustomization.content.logoSource || 'event';
+    
+    switch (logoSource) {
+      case 'organization':
+        return organizationDetails?.logo_url;
+      case 'custom':
+        return ticketCustomization.content.customLogoUrl;
+      case 'event':
+      default:
+        return eventDetails?.logo_url;
+    }
+  };
+
+  const logoUrl = getLogoUrl();
+
   return (
     <Card className="max-w-md mx-auto bg-gradient-to-br from-background to-accent/5 border-2 border-primary/20 shadow-lg">
       <CardContent className="p-6 space-y-6">
         {/* Header with logo and event name */}
         <div className="text-center border-b border-border pb-4">
-          {eventDetails?.logo_url && (
+          {logoUrl && (
             <img 
-              src={eventDetails.logo_url} 
-              alt="Event Logo" 
+              src={logoUrl} 
+              alt="Logo" 
               className="h-16 w-auto mx-auto mb-3 object-contain"
             />
           )}

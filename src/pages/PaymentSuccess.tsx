@@ -82,7 +82,7 @@ const PaymentSuccess = () => {
           if (orderId) {
             const { data: orderById, error: orderError } = await supabase
               .from('orders')
-              .select('*, events(name, event_date, venue, logo_url, description)')
+              .select('*, events(name, event_date, venue, logo_url, description, organization_id, ticket_customization, organizations(logo_url, name))')
               .eq('id', orderId)
               .single();
 
@@ -96,7 +96,7 @@ const PaymentSuccess = () => {
           if (sessionId) {
             const { data: orderBySession, error: sessionError } = await supabase
               .from('orders')
-              .select('*, events(name, event_date, venue, logo_url, description)')
+              .select('*, events(name, event_date, venue, logo_url, description, organization_id, ticket_customization, organizations(logo_url, name))')
               .eq('windcave_session_id', sessionId)
               .single();
 
@@ -111,7 +111,7 @@ const PaymentSuccess = () => {
             console.log('Trying to find most recent completed order...');
             const { data: recentOrder, error: recentError } = await supabase
               .from('orders')
-              .select('*, events(name, event_date, venue, logo_url, description)')
+              .select('*, events(name, event_date, venue, logo_url, description, organization_id, ticket_customization, organizations(logo_url, name))')
               .in('status', ['completed', 'paid'])
               .order('created_at', { ascending: false })
               .limit(1)
@@ -134,7 +134,7 @@ const PaymentSuccess = () => {
           // If no URL params, show the most recent completed order
           const { data: recentOrder, error: recentError } = await supabase
             .from('orders')
-            .select('*, events(name, event_date, venue, logo_url, description)')
+            .select('*, events(name, event_date, venue, logo_url, description, organization_id, ticket_customization, organizations(logo_url, name))')
             .in('status', ['completed', 'paid'])
             .order('created_at', { ascending: false })
             .limit(1)
@@ -220,6 +220,17 @@ const PaymentSuccess = () => {
                           venue: orderDetails?.events?.venue,
                           logo_url: orderDetails?.events?.logo_url,
                           description: orderDetails?.events?.description
+                        }}
+                        organizationDetails={{
+                          logo_url: orderDetails?.events?.organizations?.logo_url,
+                          name: orderDetails?.events?.organizations?.name
+                        }}
+                        ticketCustomization={orderDetails?.events?.ticket_customization || {
+                          content: {
+                            showLogo: true,
+                            logoSource: "event",
+                            customLogoUrl: ""
+                          }
                         }}
                       />
                     </div>

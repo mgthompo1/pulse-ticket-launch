@@ -67,7 +67,9 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       showQrCode: true,
       showEventDetails: true,
       showVenueInfo: true,
-      customFields: []
+      customFields: [],
+      logoSource: "event" as "event" | "organization" | "custom",
+      customLogoUrl: ""
     }
   });
 
@@ -624,6 +626,40 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         onCheckedChange={(checked) => updateTicketCustomization(['content', 'showLogo'], checked)}
                       />
                     </div>
+                    
+                    {ticketCustomization.content.showLogo && (
+                      <div className="space-y-3 pl-4 border-l-2 border-border">
+                        <div className="space-y-2">
+                          <Label htmlFor="ticketLogoSource">Logo Source</Label>
+                          <Select
+                            value={ticketCustomization.content.logoSource || 'event'}
+                            onValueChange={(value) => updateTicketCustomization(['content', 'logoSource'], value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="event">Use Event Logo</SelectItem>
+                              <SelectItem value="organization">Use Organization Logo</SelectItem>
+                              <SelectItem value="custom">Custom Ticket Logo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {ticketCustomization.content.logoSource === 'custom' && (
+                          <div className="space-y-2">
+                            <Label htmlFor="customTicketLogo">Custom Ticket Logo URL</Label>
+                            <Input
+                              id="customTicketLogo"
+                              type="url"
+                              placeholder="https://example.com/logo.png"
+                              value={ticketCustomization.content.customLogoUrl || ''}
+                              onChange={(e) => updateTicketCustomization(['content', 'customLogoUrl'], e.target.value)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div className="flex items-center justify-between">
                       <Label htmlFor="showTicketQrCode">Show QR Code</Label>
                       <Switch
