@@ -419,15 +419,15 @@ const OrgDashboard = () => {
         </header>
 
         {/* Sidebar and content below header - takes remaining space */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 min-h-0 w-full">
           <AppSidebar 
             activeTab={activeTab} 
             setActiveTab={setActiveTab} 
             selectedEvent={selectedEvent} 
           />
           
-          <main className="flex-1 overflow-auto">
-            <div className="container mx-auto px-4 py-4 md:py-8">
+          <main className="flex-1 min-w-0 p-4 md:p-8 overflow-auto">
+            <div className="w-full max-w-none">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8">
             <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
