@@ -79,9 +79,9 @@ serve(async (req) => {
       merchantReference: `invoice-${invoice.invoice_number}-${Date.now()}`,
       language: "en",
       callbackUrls: {
-        approved: `${req.headers.get("origin")}/invoice-payment-success?invoice=${invoiceId}`,
-        declined: `${req.headers.get("origin")}/payment-failed?invoice=${invoiceId}`,
-        cancelled: `${req.headers.get("origin")}/payment-cancelled?invoice=${invoiceId}`
+        approved: `https://pulse-ticket-launch.lovable.app/invoice-payment-success?invoice=${invoiceId}`,
+        declined: `https://pulse-ticket-launch.lovable.app/payment-failed?invoice=${invoiceId}`,
+        cancelled: `https://pulse-ticket-launch.lovable.app/payment-cancelled?invoice=${invoiceId}`
       }
     };
 
