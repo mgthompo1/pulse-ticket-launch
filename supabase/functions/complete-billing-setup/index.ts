@@ -13,11 +13,19 @@ serve(async (req) => {
   }
 
   try {
-    const { setup_intent_id } = await req.json();
+    console.log('=== COMPLETE BILLING SETUP FUNCTION STARTED ===');
+    
+    const requestBody = await req.json();
+    console.log('Request body:', JSON.stringify(requestBody));
+    
+    const { setup_intent_id } = requestBody;
 
     if (!setup_intent_id) {
+      console.error('Setup intent ID is missing from request');
       throw new Error('Setup intent ID is required');
     }
+
+    console.log('Processing setup intent:', setup_intent_id);
 
     // Initialize Supabase client with service role and proper auth bypass
     const supabaseClient = createClient(
@@ -37,14 +45,29 @@ serve(async (req) => {
       }
     );
 
-    // Get user from auth header
-    const authHeader = req.headers.get('Authorization')!;
+    // Get user from auth header with better error handling
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('No authorization header provided');
+      throw new Error('Authorization header is required');
+    }
+
     const token = authHeader.replace('Bearer ', '');
+    console.log('Authenticating user with token...');
+    
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
     
-    if (userError || !user) {
+    if (userError) {
+      console.error('Authentication error:', userError);
+      throw new Error(`Authentication failed: ${userError.message}`);
+    }
+    
+    if (!user) {
+      console.error('No user found after authentication');
       throw new Error('User not authenticated');
     }
+
+    console.log('User authenticated successfully:', user.id);
 
     // Initialize Stripe
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
