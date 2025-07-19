@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { createClient } from '@supabase/supabase-js';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,18 @@ declare global {
 const TicketWidget = () => {
   const { eventId } = useParams();
   const { toast } = useToast();
+  
+  // Create an anonymous Supabase client for external users
+  const anonymousSupabase = createClient(
+    "https://yoxsewbpoqxscsutqlcb.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlveHNld2Jwb3F4c2NzdXRxbGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0MzU4NDgsImV4cCI6MjA2ODAxMTg0OH0.CrW53mnoXiatBWePensSroh0yfmVALpcWxX2dXYde5k",
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      }
+    }
+  );
   
   const [eventData, setEventData] = useState<any>(null);
   const [ticketTypes, setTicketTypes] = useState<any[]>([]);
@@ -325,7 +338,7 @@ const TicketWidget = () => {
 
       if (paymentProvider === "windcave") {
         // Create Windcave session and initialize Drop-In
-        const { data, error } = await supabase.functions.invoke("windcave-session", {
+        const { data, error } = await anonymousSupabase.functions.invoke("windcave-session", {
           body: { 
             eventId, 
             items: allItems,
@@ -473,8 +486,8 @@ const TicketWidget = () => {
                         description: "Finalizing your order...",
                       });
                       
-                      // Call the Drop In success function to finalize the order
-                      const { data, error } = await supabase.functions.invoke('windcave-dropin-success', {
+                // Call the Drop In success function to finalize the order
+                const { data, error } = await anonymousSupabase.functions.invoke('windcave-dropin-success', {
                         body: { 
                           sessionId: sessionId,
                           eventId: eventData.id
@@ -607,7 +620,7 @@ const TicketWidget = () => {
                 });
                 
                 // Call the Drop In success function to finalize the order
-                const { data, error } = await supabase.functions.invoke('windcave-dropin-success', {
+                const { data, error } = await anonymousSupabase.functions.invoke('windcave-dropin-success', {
                   body: { 
                     sessionId: sessionId,
                     eventId: eventData.id
@@ -743,7 +756,7 @@ const TicketWidget = () => {
       console.log("Session ID:", sessionId);
       
       // Try the payment status check function
-      const { data, error } = await supabase.functions.invoke("windcave-payment-status", {
+      const { data, error } = await anonymousSupabase.functions.invoke("windcave-payment-status", {
         body: { 
           eventId,
           txnRef: sessionId,
