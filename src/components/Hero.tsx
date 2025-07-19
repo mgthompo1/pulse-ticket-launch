@@ -21,11 +21,23 @@ export const Hero = () => {
   };
   return (
     <section className="relative pt-20 pb-16 overflow-hidden">
+      {/* Beta Banner */}
+      <div className="absolute top-0 left-0 w-full flex justify-center z-20">
+        <div className="bg-yellow-400 text-black font-semibold px-6 py-2 rounded-b-lg shadow-lg text-sm tracking-wide">
+          🚧 Ticket2 is currently in <span className="font-bold">Beta</span> — Features may change, and your feedback is welcome!
+        </div>
+      </div>
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-hero opacity-5" />
       
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
+          {/* Beta Badge */}
+          <div className="flex justify-center mb-4">
+            <Badge variant="destructive" className="px-4 py-2 text-sm font-bold uppercase tracking-wider bg-yellow-400 text-black border-yellow-500">
+              Beta
+            </Badge>
+          </div>
           {/* Badge */}
           <div className="flex justify-center mb-8">
             <Badge variant="secondary" className="px-4 py-2 text-sm font-medium bg-primary/10 text-primary border-primary/20">
@@ -35,15 +47,18 @@ export const Hero = () => {
 
           {/* Main headline */}
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 leading-tight">
-            {getContentByKey('hero', 'main_headline') || 'Beautiful Event Ticketing'}
+            Ticket2 is in <span className="text-yellow-500">Beta</span>
             <span className="block bg-gradient-primary bg-clip-text text-transparent">
-              {getContentByKey('hero', 'main_headline_accent') || 'Made Simple'}
+              Early Access Event Ticketing
             </span>
           </h1>
 
           {/* Subheadline */}
-          <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto leading-relaxed">
-            {getContentByKey('hero', 'subheadline') || 'Create stunning ticketing experiences, manage events effortlessly, and grow your audience with our all-in-one platform. No technical skills required.'}
+          <p className="text-xl md:text-2xl text-muted-foreground mb-4 max-w-3xl mx-auto leading-relaxed">
+            You’re using an early-access version of Ticket2. Features may change, bugs may exist, and your feedback will help shape the future of the platform.
+          </p>
+          <p className="text-base text-yellow-700 mb-8 max-w-2xl mx-auto">
+            <strong>What does Beta mean?</strong> Ticket2 is still under active development. We welcome your feedback and suggestions. Please report any issues or ideas to our team!
           </p>
 
           {/* CTA Buttons */}

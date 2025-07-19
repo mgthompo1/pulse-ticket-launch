@@ -298,6 +298,7 @@ const Invoicing = () => {
         // Update the payment URL state
         if (finalPaymentUrl) {
           setPaymentUrl(finalPaymentUrl);
+          setInvoiceData(prev => ({ ...prev, status: 'sent' })); // Set status to sent
         }
         
         toast({
@@ -511,11 +512,11 @@ const Invoicing = () => {
         title: "Invoice Sent",
         description: "Invoice has been sent to the client successfully"
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending invoice:", error);
       toast({
         title: "Error",
-        description: "Failed to send invoice email",
+        description: error?.message || error?.error_description || "Failed to send invoice email",
         variant: "destructive"
       });
     } finally {
@@ -913,7 +914,7 @@ const Invoicing = () => {
         </div>
         ` : ''}
 
-        ${invoiceData.status !== 'paid' && organizationData?.windcave_enabled && invoiceData.total > 0 ? `
+        ${invoiceData.status !== 'paid' && invoiceData.total > 0 && paymentUrl ? `
         <!-- Payment Section -->
         <div style="margin-top: 40px; padding: 25px; background: linear-gradient(135deg, #28a745, #20c997); border-radius: 12px; border: 1px solid #20c997; text-align: center;">
           <h3 style="color: white; margin: 0 0 15px 0; font-size: 20px; font-weight: bold;">Ready to Pay?</h3>
@@ -921,20 +922,16 @@ const Invoicing = () => {
           <div style="display: inline-block; background: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
             <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">Total Amount Due</p>
             <p style="margin: 0 0 15px 0; font-size: 24px; font-weight: bold; color: #333;">$${invoiceData.total.toFixed(2)}</p>
-            ${paymentUrl ? `
-              <a href="${paymentUrl}" target="_blank" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px; transition: background 0.3s;">
-                🔒 Click Here to Pay Now
-              </a>
-              <div style="margin-top: 10px; font-size: 12px; color: #666; word-break: break-all;">
-                Payment URL: ${paymentUrl}
-              </div>
-            ` : `
-              <div style="display: inline-block; background: #6c757d; color: white; padding: 12px 24px; border-radius: 6px; font-weight: bold; font-size: 16px;">
-                Payment link will be generated when invoice is saved
-              </div>
-            `}
+            <a href="${paymentUrl}" target="_blank" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px; transition: background 0.3s;">
+              🔒 Click Here to Pay Now
+            </a>
+            <div style="margin-top: 10px; font-size: 12px; color: #666; word-break: break-all;">
+              Payment URL: <a href="${paymentUrl}" target="_blank" style="color: #007bff; text-decoration: underline;">${paymentUrl}</a>
+            </div>
           </div>
-          <p style="color: white; margin: 15px 0 0 0; font-size: 12px; opacity: 0.8;">Secure payment powered by Windcave</p>
+          <p style="color: white; margin: 15px 0 0 0; font-size: 12px; opacity: 0.8;">
+            Secure payment powered by ${organizationData?.payment_provider === 'stripe' ? 'Stripe' : 'Windcave'}
+          </p>
         </div>
         ` : ''}
       `;
@@ -1008,6 +1005,26 @@ const Invoicing = () => {
             {invoiceData.status.toUpperCase()}
           </Badge>
         </div>
+
+        {/* 1. Add status badge and action buttons at the top of the page */}
+        <Card className="mb-6">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-4">
+              <CardTitle>Invoice {invoiceData.invoiceNumber}</CardTitle>
+              <Badge variant={invoiceData.status === 'paid' ? 'success' : invoiceData.status === 'sent' ? 'default' : 'outline'}>
+                {invoiceData.status.charAt(0).toUpperCase() + invoiceData.status.slice(1)}
+              </Badge>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={saveInvoice} disabled={loading} variant="default">
+                {loading ? 'Saving...' : 'Save Invoice'}
+              </Button>
+              <Button onClick={sendInvoiceEmail} disabled={loading || !invoiceData.clientEmail} variant="gradient">
+                {loading ? 'Sending...' : 'Send Invoice'}
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Invoice Form */}
@@ -1377,67 +1394,6 @@ const Invoicing = () => {
                 <CardTitle>Invoice Management</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button 
-                  onClick={saveInvoice} 
-                  disabled={loading}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  {loading ? "Saving..." : currentInvoiceId ? "Update Invoice" : "Save Invoice"}
-                </Button>
-
-                {currentInvoiceId && organizationData && (organizationData.windcave_enabled || organizationData.payment_provider === "stripe") && invoiceData.total > 0 && !paymentUrl && (
-                  <Button 
-                    onClick={async () => {
-                      setLoading(true);
-                      try {
-                        const url = await generatePaymentUrl();
-                        if (url) {
-                          setPaymentUrl(url); // Set the URL in state so it's displayed
-                          
-                          // Update the invoice with the payment URL
-                          const { error: updateError } = await supabase
-                            .from("invoices")
-                            .update({ payment_url: url })
-                            .eq("id", currentInvoiceId);
-                          
-                          if (updateError) {
-                            console.error("Error updating invoice with payment URL:", updateError);
-                          } else {
-                            toast({
-                              title: "Payment URL Generated",
-                              description: `Payment link: ${url}`,
-                              duration: 10000 // Show for 10 seconds so user can copy it
-                            });
-                            
-                            // Also copy to clipboard
-                            try {
-                              await navigator.clipboard.writeText(url);
-                              toast({
-                                title: "URL Copied",
-                                description: "Payment URL has been copied to clipboard"
-                              });
-                            } catch (clipboardError) {
-                              console.log("Could not copy to clipboard:", clipboardError);
-                            }
-                          }
-                        }
-                      } catch (error) {
-                        console.error("Error generating payment URL:", error);
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                    disabled={loading}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    {loading ? "Generating..." : "Generate Payment Link"}
-                  </Button>
-                )}
-
                 {/* Display Payment URL if available */}
                 {paymentUrl && (
                   <Card className="mt-4">
@@ -1580,14 +1536,6 @@ ${invoiceData.companyName}`;
                 <CardTitle>Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button 
-                  onClick={sendInvoiceEmail} 
-                  disabled={loading || !invoiceData.clientEmail}
-                  className="w-full"
-                >
-                  <Mail className="h-4 w-4 mr-2" />
-                  {loading ? "Sending..." : "Send Invoice"}
-                </Button>
                 
                 <Button 
                   onClick={downloadPDF}

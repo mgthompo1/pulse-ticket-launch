@@ -40,15 +40,17 @@ interface InvoiceData {
   total: number;
   paymentTerms: string;
   notes: string;
+  status: string; // Added for payment status
 }
 
 interface OrganizationData {
   name: string;
   email: string;
   logo_url?: string;
+  payment_provider?: string; // Added for payment provider
 }
 
-const generateInvoiceHTML = (invoiceData: InvoiceData, organizationData: OrganizationData): string => {
+const generateInvoiceHTML = (invoiceData: InvoiceData, organizationData: OrganizationData, paymentUrl?: string): string => {
   const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`;
   const formatDate = (date: string) => new Date(date).toLocaleDateString();
 
@@ -270,6 +272,25 @@ const generateInvoiceHTML = (invoiceData: InvoiceData, organizationData: Organiz
       <div class="footer">
         <p>Thank you for your business!</p>
         <p>Questions about this invoice? Contact us at ${invoiceData.companyEmail}</p>
+        ${invoiceData.status !== 'paid' && invoiceData.total > 0 && paymentUrl ? `
+        <div style="margin-top: 40px; padding: 25px; background: linear-gradient(135deg, #28a745, #20c997); border-radius: 12px; border: 1px solid #20c997; text-align: center;">
+          <h3 style="color: white; margin: 0 0 15px 0; font-size: 20px; font-weight: bold;">Ready to Pay?</h3>
+          <p style="color: white; margin: 0 0 20px 0; font-size: 16px; opacity: 0.9;">Pay this invoice securely with your credit card</p>
+          <div style="display: inline-block; background: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">Total Amount Due</p>
+            <p style="margin: 0 0 15px 0; font-size: 24px; font-weight: bold; color: #333;">${formatCurrency(invoiceData.total)}</p>
+            <a href="${paymentUrl}" target="_blank" style="display: inline-block; background: #007bff; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 16px; transition: background 0.3s;">
+              🔒 Click Here to Pay Now
+            </a>
+            <div style="margin-top: 10px; font-size: 12px; color: #666; word-break: break-all;">
+              Payment URL: <a href="${paymentUrl}" target="_blank" style="color: #007bff; text-decoration: underline;">${paymentUrl}</a>
+            </div>
+          </div>
+          <p style="color: white; margin: 15px 0 0 0; font-size: 12px; opacity: 0.8;">
+            Secure payment powered by ${organizationData?.payment_provider === 'stripe' ? 'Stripe' : 'Windcave'}
+          </p>
+        </div>
+        ` : ''}
       </div>
     </body>
     </html>
@@ -388,8 +409,16 @@ const generateEmailHTML = (invoiceData: InvoiceData, organizationData: Organizat
       </div>
 
       ${paymentUrl ? `
-      <div class="payment-button">
-        <a href="${paymentUrl}" target="_blank">Pay Now - ${formatCurrency(invoiceData.total)}</a>
+      <div class="payment-button" style="margin: 30px 0; text-align: center;">
+        <a href="${paymentUrl}" target="_blank" style="display: inline-block; background: #007bff; color: white; padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 18px; margin-bottom: 10px;">
+          🔒 Pay Invoice Now
+        </a>
+        <div style="margin-top: 10px; font-size: 13px; color: #666; word-break: break-all;">
+          Payment URL: <a href="${paymentUrl}" target="_blank" style="color: #007bff; text-decoration: underline;">${paymentUrl}</a>
+        </div>
+        <p style="color: #888; margin: 10px 0 0 0; font-size: 12px;">
+          Secure payment powered by ${organizationData?.payment_provider === 'stripe' ? 'Stripe' : 'Windcave'}
+        </p>
       </div>
       ` : ''}
 
@@ -435,7 +464,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Generate PDF attachment from the detailed invoice HTML
     console.log("Generating PDF attachment...");
-    const invoiceHtmlContent = generateInvoiceHTML(invoiceData, organizationData);
+    const invoiceHtmlContent = generateInvoiceHTML(invoiceData, organizationData, paymentUrl);
     const pdfBuffer = await generatePDFFromHTML(invoiceHtmlContent);
     
     // Generate email-friendly HTML content with payment link
