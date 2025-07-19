@@ -23,7 +23,7 @@ import EventCustomization from "@/components/EventCustomization";
 import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import { AppSidebar } from "@/components/AppSidebar";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X, Link, Package, Shield } from "lucide-react";
 import MerchandiseManager from "@/components/MerchandiseManager";
 import OrganizationSettings from "@/components/OrganizationSettings";
@@ -369,25 +369,32 @@ const OrgDashboard = () => {
       {/* Header with minimal controls */}
       <header className="border-b flex-shrink-0">
         <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-end gap-4">
-            <div className="flex items-center space-x-2">
-              <Label htmlFor="test-mode" className="text-sm">
-                {testMode ? "Test Mode" : "Live Mode"}
-              </Label>
-              <Switch
-                id="test-mode"
-                checked={testMode}
-                onCheckedChange={handleToggleTestMode}
-              />
+          <div className="flex items-center justify-between gap-4">
+            {/* Mobile sidebar trigger - only shows on mobile */}
+            <div className="flex items-center gap-2 md:hidden">
+              <SidebarTrigger className="h-8 w-8" />
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => navigate("/")}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Exit Dashboard
-            </Button>
+            
+            <div className="flex items-center gap-4 ml-auto">
+              <div className="flex items-center space-x-2">
+                <Label htmlFor="test-mode" className="text-sm">
+                  {testMode ? "Test Mode" : "Live Mode"}
+                </Label>
+                <Switch
+                  id="test-mode"
+                  checked={testMode}
+                  onCheckedChange={handleToggleTestMode}
+                />
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigate("/")}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Exit Dashboard
+              </Button>
+            </div>
           </div>
         </div>
       </header>
