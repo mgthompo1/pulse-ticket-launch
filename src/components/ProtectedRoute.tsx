@@ -9,11 +9,16 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children, fallback = "/auth" }: ProtectedRouteProps) => {
+  console.log("=== ProtectedRoute rendering ===");
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
+  console.log("=== ProtectedRoute state ===", { user: !!user, loading });
+
   useEffect(() => {
+    console.log("=== ProtectedRoute useEffect ===", { user: !!user, loading });
     if (!loading && !user) {
+      console.log("=== Redirecting to auth ===");
       navigate(fallback);
     }
   }, [user, loading, navigate, fallback]);

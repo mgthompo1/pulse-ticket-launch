@@ -51,6 +51,7 @@ const MobileSidebarTrigger = () => {
 };
 
 const OrgDashboard = () => {
+  console.log("=== OrgDashboard component rendering ===");
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
 
