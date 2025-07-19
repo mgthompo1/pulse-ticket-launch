@@ -868,13 +868,64 @@ const TicketWidget = () => {
     );
   }
 
+  // Get theme customization from event data
+  const themeCustomization = eventData?.widget_customization?.theme || {};
+  const primaryColor = themeCustomization.primaryColor || '#000000';
+  const secondaryColor = themeCustomization.secondaryColor || '#ffffff'; 
+  const backgroundColor = themeCustomization.backgroundColor || '#ffffff';
+  const textColor = themeCustomization.textColor || '#000000';
+  const fontFamily = themeCustomization.fontFamily || 'Inter';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/10">
+    <div 
+      className="min-h-screen"
+      style={{
+        backgroundColor: backgroundColor,
+        color: textColor,
+        fontFamily: fontFamily,
+        '--primary-color': primaryColor,
+        '--secondary-color': secondaryColor,
+        '--text-color': textColor,
+        '--bg-color': backgroundColor
+      } as React.CSSProperties}
+    >
+      <style>
+        {`
+          .custom-primary-bg { background-color: ${primaryColor} !important; }
+          .custom-primary-text { color: ${primaryColor} !important; }
+          .custom-primary-border { border-color: ${primaryColor} !important; }
+          .custom-secondary-bg { background-color: ${secondaryColor} !important; }
+          .custom-secondary-text { color: ${secondaryColor} !important; }
+          .custom-text { color: ${textColor} !important; }
+          .custom-bg { background-color: ${backgroundColor} !important; }
+          
+          /* Override specific elements */
+          .widget-card {
+            background-color: ${backgroundColor} !important;
+            color: ${textColor} !important;
+            border-color: ${primaryColor}20 !important;
+          }
+          
+          .widget-button {
+            background-color: ${primaryColor} !important;
+            color: ${secondaryColor} !important;
+            border-color: ${primaryColor} !important;
+          }
+          
+          .widget-button:hover {
+            background-color: ${primaryColor}dd !important;
+          }
+          
+          .widget-header {
+            background: linear-gradient(135deg, ${primaryColor}20, ${secondaryColor}20) !important;
+          }
+        `}
+      </style>
       <div className="container mx-auto px-4 py-8">
         {/* Event Header */}
         <div className="mb-8 animate-fade-in">
-          <Card className="overflow-hidden">
-            <div className="bg-gradient-to-r from-primary/10 to-accent/10 p-6">
+          <Card className="overflow-hidden widget-card">
+            <div className="widget-header p-6">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div className="flex-1">
                   {/* Logo and Event Title */}
@@ -958,7 +1009,7 @@ const TicketWidget = () => {
                           </div>
                           <Button 
                             onClick={() => addToCart(ticketType)}
-                            className="sm:w-auto w-full"
+                            className="sm:w-auto w-full widget-button"
                             disabled={ticketType.quantity_available - ticketType.quantity_sold <= 0}
                           >
                             <Plus className="h-4 w-4 mr-2" />
@@ -1287,7 +1338,7 @@ const TicketWidget = () => {
                       <Button type="button" variant="outline" onClick={() => setShowPayment(false)} className="flex-1">
                         Back
                       </Button>
-                      <Button onClick={handleCheckout} disabled={loading} className="flex-1">
+                      <Button onClick={handleCheckout} disabled={loading} className="flex-1 widget-button">
                         {loading ? "Processing..." : "Proceed to Payment"}
                       </Button>
                     </div>
