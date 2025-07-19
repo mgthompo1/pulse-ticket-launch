@@ -25,8 +25,8 @@ interface PaymentRecord {
   card_last_four: string;
   payment_date: string;
   status: string;
-  windcave_session_id?: string;
-  stripe_session_id?: string;
+  windcave_session_id?: string | null;
+  stripe_session_id?: string | null;
 }
 
 export const PaymentLog = ({ organizationId }: PaymentLogProps) => {

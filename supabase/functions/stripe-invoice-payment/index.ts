@@ -114,6 +114,7 @@ serve(async (req) => {
       .from("invoices")
       .update({
         payment_url: session.url,
+        stripe_session_id: session.id,
         status: 'sent' // Mark as sent when payment link is generated
       })
       .eq("id", invoiceId);
