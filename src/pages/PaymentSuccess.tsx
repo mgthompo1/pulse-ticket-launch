@@ -69,15 +69,30 @@ const PaymentSuccess = () => {
         const urlParams = new URLSearchParams(location.search);
         const sessionId = urlParams.get('sessionId');
         const merchantReference = urlParams.get('merchantReference');
+        const orderId = urlParams.get('orderId');
         
-        console.log('Payment success params:', { sessionId, merchantReference });
+        console.log('Payment success params:', { sessionId, merchantReference, orderId });
         console.log('Full URL search:', location.search);
 
-        if (sessionId || merchantReference) {
-          // Try to find the most recent completed/paid order first
+        if (sessionId || merchantReference || orderId) {
+          // Try to find the order by different parameters
           let order = null;
           
-          // First try to find by windcave_session_id
+          // First try to find by orderId (for Stripe payments)
+          if (orderId) {
+            const { data: orderById, error: orderError } = await supabase
+              .from('orders')
+              .select('*, events(name, event_date, venue, logo_url, description)')
+              .eq('id', orderId)
+              .single();
+
+            if (!orderError && orderById) {
+              order = orderById;
+              console.log('Found order by order ID:', order.id);
+            }
+          }
+          
+          // Then try to find by windcave_session_id (for Windcave payments)
           if (sessionId) {
             const { data: orderBySession, error: sessionError } = await supabase
               .from('orders')

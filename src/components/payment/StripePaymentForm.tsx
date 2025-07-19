@@ -12,7 +12,7 @@ interface StripePaymentFormProps {
   merchandiseCart: any[];
   customerInfo: any;
   total: number;
-  onSuccess: () => void;
+  onSuccess: (orderId: string) => void;
   onCancel: () => void;
 }
 
@@ -101,7 +101,7 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, onS
         description: "Your tickets have been purchased successfully!",
       });
 
-      onSuccess();
+      onSuccess(data.orderId);
     } catch (error: any) {
       console.error('Payment failed:', error);
       

@@ -1272,11 +1272,13 @@ const TicketWidget = () => {
                       merchandiseCart={merchandiseCart}
                       customerInfo={customerInfo}
                       total={getTotalAmount()}
-                      onSuccess={() => {
+                      onSuccess={(orderId: string) => {
                         setCart([]);
                         setMerchandiseCart([]);
                         setShowPayment(false);
-                        setShowSuccess(true);
+                        
+                        // Redirect to payment success page with order ID
+                        window.location.href = `/payment-success?orderId=${orderId}`;
                       }}
                       onCancel={() => setShowPayment(false)}
                     />
