@@ -101,30 +101,60 @@ const Auth = () => {
     setError("");
 
     try {
-      const { error } = await supabase.auth.signUp({
+      console.log("Starting sign-up process for:", email);
+      
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+          data: {
+            // Add any additional user metadata here
+            signup_source: invitationValid ? 'invitation' : 'public'
+          }
         }
       });
 
-      if (error) throw error;
+      console.log("Sign-up response:", { data, error });
 
-      // If this was an invitation sign-up, mark the invitation as accepted
-      const inviteToken = searchParams.get('invite');
-      if (inviteToken && invitationValid) {
-        await supabase
-          .from("admin_invitations" as any)
-          .update({ status: "accepted" })
-          .eq("token", inviteToken);
+      if (error) {
+        console.error("Sign-up error:", error);
+        throw error;
       }
 
-      toast({
-        title: "Success!",
-        description: "Please check your email for verification link.",
-      });
+      // Check if email confirmation is required
+      if (data.user && !data.user.email_confirmed_at) {
+        console.log("Email confirmation required for:", data.user.email);
+        
+        // If this was an invitation sign-up, mark the invitation as accepted
+        const inviteToken = searchParams.get('invite');
+        if (inviteToken && invitationValid) {
+          try {
+            await supabase
+              .from("admin_invitations" as any)
+              .update({ status: "accepted" })
+              .eq("token", inviteToken);
+            console.log("Invitation marked as accepted");
+          } catch (inviteError) {
+            console.error("Error updating invitation status:", inviteError);
+          }
+        }
+
+        toast({
+          title: "Account Created!",
+          description: "Please check your email for verification link. Check your spam folder if you don't see it.",
+        });
+      } else if (data.user && data.user.email_confirmed_at) {
+        // User is already confirmed, redirect to dashboard
+        toast({
+          title: "Welcome!",
+          description: "You've been signed in successfully.",
+        });
+        navigate("/dashboard");
+      }
+
     } catch (error: unknown) {
+      console.error("Sign-up process failed:", error);
       setError(error instanceof Error ? error.message : "Sign up failed");
     } finally {
       setLoading(false);
@@ -151,6 +181,39 @@ const Auth = () => {
       navigate("/dashboard");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Sign in failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendVerificationEmail = async () => {
+    if (!email) {
+      toast({
+        title: "Error",
+        description: "Please enter your email address first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Verification Email Sent!",
+        description: "Please check your email (and spam folder) for the verification link.",
+      });
+    } catch (error: unknown) {
+      console.error("Error resending verification email:", error);
+      setError(error instanceof Error ? error.message : "Failed to resend verification email");
     } finally {
       setLoading(false);
     }
@@ -271,6 +334,18 @@ const Auth = () => {
                   >
                     {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     Create Account
+                  </Button>
+                  
+                  {/* Resend verification email button */}
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    onClick={resendVerificationEmail}
+                    disabled={loading || !email}
+                    className="w-full"
+                  >
+                    {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Resend Verification Email
                   </Button>
                 </form>
               </TabsContent>

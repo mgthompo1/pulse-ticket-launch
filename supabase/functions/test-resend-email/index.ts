@@ -6,6 +6,7 @@ console.log("Resend API Key available:", !!resendApiKey);
 
 if (!resendApiKey) {
   console.error("RESEND_API_KEY environment variable is not set");
+  console.error("Please set the RESEND_API_KEY environment variable in your Supabase project");
 }
 
 const resend = new Resend(resendApiKey);
@@ -28,6 +29,10 @@ serve(async (req) => {
 
   try {
     console.log("=== RESEND API TEST STARTED ===");
+    
+    if (!resendApiKey) {
+      throw new Error("RESEND_API_KEY is not configured. Please set it in your Supabase project environment variables.");
+    }
     
     const { to, subject = "Resend API Test Email" }: TestEmailRequest = await req.json();
     
@@ -82,12 +87,26 @@ serve(async (req) => {
 
     console.log("Attempting to send test email...");
 
-    const emailResponse = await resend.emails.send({
-      from: "Ticket2 Platform <onboarding@resend.dev>",
-      to: [to],
-      subject: subject,
-      html: htmlContent,
-      text: `Resend API Test - Success!
+    // Try different sender options
+    const senderOptions = [
+      "Ticket2 Platform <onboarding@resend.dev>",
+      "noreply@ticket2.com",
+      "support@ticket2.com"
+    ];
+
+    let emailResponse;
+    let lastError;
+
+    for (const sender of senderOptions) {
+      try {
+        console.log(`Trying sender: ${sender}`);
+        
+        emailResponse = await resend.emails.send({
+          from: sender,
+          to: [to],
+          subject: subject,
+          html: htmlContent,
+          text: `Resend API Test - Success!
 
 If you're reading this email, your Resend API integration is working perfectly.
 
@@ -101,13 +120,23 @@ Next steps: Your email system is ready for production use!
 
 This is an automated test email from your Ticket2 platform.
 Powered by Resend API`,
-    });
+        });
+
+        console.log("Email sent successfully with sender:", sender);
+        break; // Success, exit the loop
+        
+      } catch (error) {
+        console.error(`Failed with sender ${sender}:`, error);
+        lastError = error;
+        continue; // Try next sender
+      }
+    }
+
+    if (!emailResponse || emailResponse.error) {
+      throw new Error(`All sender options failed. Last error: ${lastError?.message || emailResponse?.error?.message}`);
+    }
 
     console.log("Email sent successfully:", emailResponse);
-
-    if (emailResponse.error) {
-      throw new Error(`Resend API error: ${emailResponse.error.message}`);
-    }
 
     return new Response(JSON.stringify({
       success: true,
@@ -129,7 +158,8 @@ Powered by Resend API`,
     return new Response(JSON.stringify({
       success: false,
       error: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      details: "Check the Supabase function logs for more details"
     }), {
       status: 500,
       headers: {
