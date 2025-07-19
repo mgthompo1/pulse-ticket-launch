@@ -134,6 +134,15 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html, body, #root {
+    /* Reset any potential layout constraints */
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    overflow-x: auto;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
