@@ -17,6 +17,8 @@ import {
   CheckCircle,
   Clock
 } from "lucide-react";
+import { BillingManagement } from "./BillingManagement";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Initialize Stripe with a test publishable key (you can add your real key later)
 const stripePromise = loadStripe("pk_live_51RkWYvIkAZJOEIBEU4kM4sZ1jv3Jkdhfcr953tdGveqHA83bUo6pDA3KBSUUe9QbWbgTnT9uvXWSUO65PEFqlZ06009YvC3tjO");
@@ -267,7 +269,7 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
   }
 
   return (
-    <div className="space-y-6">
+    <Tabs defaultValue="overview" className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold mb-2">Billing & Usage</h2>
         <p className="text-muted-foreground">
@@ -275,129 +277,140 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
         </p>
       </div>
 
-      {/* Billing Status */}
-      <div className="flex items-center gap-2">
-        {billingData?.billing_status === 'active' ? (
-          <>
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            <span className="text-green-700">Billing Active</span>
-          </>
-        ) : (
-          <>
-            <Clock className="h-5 w-5 text-yellow-500" />
-            <span className="text-yellow-700">Setup Required</span>
-          </>
-        )}
-      </div>
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsTrigger value="management">Billing Management</TabsTrigger>
+      </TabsList>
 
-      {/* Current Month Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Month</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{currentMonthUsage.transactions}</div>
-            <p className="text-xs text-muted-foreground">
-              Transactions processed
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Transaction Volume</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${currentMonthUsage.volume.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">
-              Total volume processed
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Platform Fees</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${currentMonthUsage.fees.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">
-              Fees this month
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Usage */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Transactions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {usageData.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              No transactions this month
-            </p>
+      <TabsContent value="overview" className="space-y-6">
+        {/* Billing Status */}
+        <div className="flex items-center gap-2">
+          {billingData?.billing_status === 'active' ? (
+            <>
+              <CheckCircle className="h-5 w-5 text-green-500" />
+              <span className="text-green-700">Billing Active</span>
+            </>
           ) : (
-            <div className="space-y-3">
-              {usageData.slice(0, 10).map((record) => (
-                <div key={record.id} className="flex justify-between items-center py-2 border-b">
-                  <div>
-                    <p className="font-medium">${parseFloat(record.transaction_amount).toFixed(2)}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(record.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">${parseFloat(record.total_platform_fee).toFixed(2)}</p>
-                    <p className="text-sm text-muted-foreground">Platform fee</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <>
+              <Clock className="h-5 w-5 text-yellow-500" />
+              <span className="text-yellow-700">Setup Required</span>
+            </>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Invoice History */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Invoice History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {invoiceData.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              No invoices yet
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {invoiceData.map((invoice) => (
-                <div key={invoice.id} className="flex justify-between items-center py-3 border-b">
-                  <div>
-                    <p className="font-medium">
-                      {invoice.billing_period_start} - {invoice.billing_period_end}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {invoice.total_transactions} transactions
-                    </p>
+        {/* Current Month Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">This Month</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{currentMonthUsage.transactions}</div>
+              <p className="text-xs text-muted-foreground">
+                Transactions processed
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Transaction Volume</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${currentMonthUsage.volume.toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">
+                Total volume processed
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Platform Fees</CardTitle>
+              <Receipt className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${currentMonthUsage.fees.toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">
+                Fees this month
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Usage */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Transactions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {usageData.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                No transactions this month
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {usageData.slice(0, 10).map((record) => (
+                  <div key={record.id} className="flex justify-between items-center py-2 border-b">
+                    <div>
+                      <p className="font-medium">${parseFloat(record.transaction_amount).toFixed(2)}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(record.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">${parseFloat(record.total_platform_fee).toFixed(2)}</p>
+                      <p className="text-sm text-muted-foreground">Platform fee</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium">${parseFloat(invoice.total_platform_fees).toFixed(2)}</p>
-                    <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'}>
-                      {invoice.status}
-                    </Badge>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Invoice History */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Invoice History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {invoiceData.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                No invoices yet
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {invoiceData.map((invoice) => (
+                  <div key={invoice.id} className="flex justify-between items-center py-3 border-b">
+                    <div>
+                      <p className="font-medium">
+                        {invoice.billing_period_start} - {invoice.billing_period_end}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {invoice.total_transactions} transactions
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">${parseFloat(invoice.total_platform_fees).toFixed(2)}</p>
+                      <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'}>
+                        {invoice.status}
+                      </Badge>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="management">
+        <BillingManagement organizationId={organizationId} />
+      </TabsContent>
+    </Tabs>
   );
 };
 
