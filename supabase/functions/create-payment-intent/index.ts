@@ -8,9 +8,14 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log("=== FUNCTION ENTRY POINT ===");
+  
   if (req.method === "OPTIONS") {
+    console.log("=== OPTIONS REQUEST ===");
     return new Response(null, { headers: corsHeaders });
   }
+
+  console.log("=== POST REQUEST RECEIVED ===");
 
   try {
     console.log("=== CREATE PAYMENT INTENT START ===");
