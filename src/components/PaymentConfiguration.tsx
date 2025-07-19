@@ -20,6 +20,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
   const [paymentProvider, setPaymentProvider] = useState('stripe');
   const [stripeAccountId, setStripeAccountId] = useState('');
   const [stripePublishableKey, setStripePublishableKey] = useState('');
+  const [stripeSecretKey, setStripeSecretKey] = useState('');
   const [windcaveUsername, setWindcaveUsername] = useState('');
   const [windcaveApiKey, setWindcaveApiKey] = useState('');
   const [windcaveEndpoint, setWindcaveEndpoint] = useState('UAT');
@@ -50,6 +51,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         setPaymentProvider(data.payment_provider || 'stripe');
         setStripeAccountId(data.stripe_account_id || '');
         setStripePublishableKey(data.stripe_publishable_key || '');
+        setStripeSecretKey(data.stripe_secret_key || '');
         setWindcaveUsername(data.windcave_username || '');
         setWindcaveApiKey(data.windcave_api_key || '');
         setWindcaveEndpoint(data.windcave_endpoint || 'UAT');
@@ -75,6 +77,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         payment_provider: paymentProvider,
         stripe_account_id: stripeAccountId,
         stripe_publishable_key: stripePublishableKey,
+        stripe_secret_key: stripeSecretKey,
         windcave_username: windcaveUsername,
         windcave_api_key: windcaveApiKey,
         windcave_endpoint: windcaveEndpoint,
@@ -130,8 +133,10 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
               <StripeConfiguration 
                 stripeAccountId={stripeAccountId}
                 stripePublishableKey={stripePublishableKey}
+                stripeSecretKey={stripeSecretKey}
                 onStripeAccountIdChange={setStripeAccountId}
                 onStripePublishableKeyChange={setStripePublishableKey}
+                onStripeSecretKeyChange={setStripeSecretKey}
               />
             )}
 

@@ -40,6 +40,7 @@ serve(async (req) => {
           id,
           name,
           stripe_account_id,
+          stripe_secret_key,
           stripe_onboarding_complete
         )
       `)
@@ -50,8 +51,8 @@ serve(async (req) => {
       throw new Error("Event not found");
     }
 
-    if (!event.organizations.stripe_account_id || !event.organizations.stripe_onboarding_complete) {
-      throw new Error("Organization Stripe account not set up");
+    if (!event.organizations.stripe_account_id || !event.organizations.stripe_onboarding_complete || !event.organizations.stripe_secret_key) {
+      throw new Error("Organization Stripe account not fully configured");
     }
 
     // Get ticket types - filter only ticket items
@@ -96,7 +97,7 @@ serve(async (req) => {
     const platformFee = platformFeePercent + platformFeeFixed;
     const total = subtotal + platformFee;
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+    const stripe = new Stripe(event.organizations.stripe_secret_key, {
       apiVersion: "2023-10-16",
     });
 
