@@ -45,7 +45,7 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
       setLoading(true);
       
       // Get orders with event and payment information
-      const { data: orders, error } = await supabase
+      const { data: orders, error: ordersError } = await supabase
         .from('orders')
         .select(`
           id,
@@ -65,12 +65,32 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
         .eq('events.organization_id', organizationId)
         .in('status', ['completed', 'paid'])
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(50);
 
-      if (error) throw error;
+      // Get invoice payments for this organization
+      const { data: invoices, error: invoicesError } = await supabase
+        .from('invoices')
+        .select(`
+          id,
+          invoice_number,
+          client_name,
+          client_email,
+          total,
+          status,
+          created_at,
+          windcave_session_id,
+          paid_at
+        `)
+        .eq('organization_id', organizationId)
+        .eq('status', 'paid')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (ordersError) console.error('Orders error:', ordersError);
+      if (invoicesError) console.error('Invoices error:', invoicesError);
 
       // Transform orders into payment records
-      const paymentRecords: PaymentRecord[] = orders?.map(order => ({
+      const orderRecords: PaymentRecord[] = orders?.map(order => ({
         id: order.id,
         order_id: order.id,
         event_name: order.events?.name || 'Unknown Event',
@@ -78,15 +98,37 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
         customer_email: order.customer_email,
         total_amount: order.total_amount,
         payment_provider: order.stripe_session_id ? 'stripe' : order.windcave_session_id ? 'windcave' : 'unknown',
-        payment_method: 'Card', // We'll enhance this with actual card type detection
-        card_last_four: '****', // We'll enhance this with actual last 4 digits
+        payment_method: 'Card',
+        card_last_four: '****',
         payment_date: order.created_at,
         status: order.status,
         windcave_session_id: order.windcave_session_id,
         stripe_session_id: order.stripe_session_id,
       })) || [];
 
-      setPayments(paymentRecords);
+      // Transform invoices into payment records
+      const invoiceRecords: PaymentRecord[] = invoices?.map(invoice => ({
+        id: invoice.id,
+        order_id: invoice.invoice_number,
+        event_name: `Invoice: ${invoice.invoice_number}`,
+        customer_name: invoice.client_name,
+        customer_email: invoice.client_email,
+        total_amount: invoice.total,
+        payment_provider: invoice.windcave_session_id ? 'windcave' : 'unknown',
+        payment_method: 'Card',
+        card_last_four: '****',
+        payment_date: invoice.paid_at || invoice.created_at,
+        status: invoice.status,
+        windcave_session_id: invoice.windcave_session_id,
+        stripe_session_id: null,
+      })) || [];
+
+      // Combine and sort all payment records by date
+      const allPayments = [...orderRecords, ...invoiceRecords].sort((a, b) => 
+        new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime()
+      );
+
+      setPayments(allPayments.slice(0, 100)); // Limit to 100 total records
     } catch (error) {
       console.error('Error loading payments:', error);
       toast({
