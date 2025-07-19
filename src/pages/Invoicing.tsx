@@ -81,7 +81,8 @@ const Invoicing = () => {
   const [paymentUrl, setPaymentUrl] = useState<string>('');
   const [savedInvoices, setSavedInvoices] = useState<any[]>([]);
   const [currentInvoiceId, setCurrentInvoiceId] = useState<string | null>(null);
-  const [showInvoiceList, setShowInvoiceList] = useState(false);
+  const [showInvoiceList, setShowInvoiceList] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const dropInRef = useRef<HTMLDivElement>(null);
   
   const [invoiceData, setInvoiceData] = useState<InvoiceData>({
@@ -203,6 +204,46 @@ const Invoicing = () => {
       }
     } catch (error) {
       console.error("Error loading saved invoices:", error);
+    }
+  };
+
+  const updateInvoiceStatus = async (invoiceId: string, newStatus: 'draft' | 'sent' | 'paid' | 'overdue') => {
+    try {
+      const { error } = await supabase
+        .from("invoices")
+        .update({ 
+          status: newStatus,
+          ...(newStatus === 'paid' ? { paid_at: new Date().toISOString() } : {})
+        })
+        .eq("id", invoiceId);
+
+      if (error) throw error;
+
+      // Update local state
+      setSavedInvoices(prev => 
+        prev.map(invoice => 
+          invoice.id === invoiceId 
+            ? { ...invoice, status: newStatus, ...(newStatus === 'paid' ? { paid_at: new Date().toISOString() } : {}) }
+            : invoice
+        )
+      );
+
+      // If currently editing this invoice, update the current invoice data
+      if (currentInvoiceId === invoiceId) {
+        setInvoiceData(prev => ({ ...prev, status: newStatus }));
+      }
+
+      toast({
+        title: "Status Updated",
+        description: `Invoice status updated to ${newStatus}`,
+      });
+    } catch (error) {
+      console.error("Error updating invoice status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update invoice status",
+        variant: "destructive",
+      });
     }
   };
 
@@ -1508,11 +1549,11 @@ ${invoiceData.companyName}`;
 
                 <Button 
                   onClick={() => setShowInvoiceList(!showInvoiceList)}
-                  variant="outline"
+                  variant={showInvoiceList ? "secondary" : "outline"}
                   className="w-full"
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  {showInvoiceList ? "Hide" : "View"} Saved Invoices ({savedInvoices.length})
+                  {showInvoiceList ? "Hide Invoice History" : "Show Invoice History"} ({savedInvoices.length})
                 </Button>
 
                 {currentInvoiceId && (
@@ -1532,44 +1573,172 @@ ${invoiceData.companyName}`;
             {showInvoiceList && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Saved Invoices</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <span>Invoice History</span>
+                        <Badge variant="outline">{savedInvoices.length} Total</Badge>
+                      </CardTitle>
+                      <CardDescription>
+                        View and manage all your invoices. Click on any invoice to edit or resend.
+                      </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-32">
+                          <SelectValue placeholder="Filter by status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Status</SelectItem>
+                          <SelectItem value="draft">Draft</SelectItem>
+                          <SelectItem value="sent">Sent</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="overdue">Overdue</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  {/* Status Summary */}
+                  {savedInvoices.length > 0 && (
+                    <div className="flex gap-4 mt-4 p-3 bg-muted/50 rounded-lg">
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-green-600">
+                          {savedInvoices.filter(inv => inv.status === 'paid').length}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Paid</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-blue-600">
+                          {savedInvoices.filter(inv => inv.status === 'sent').length}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Sent</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-orange-600">
+                          {savedInvoices.filter(inv => inv.status === 'draft').length}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Draft</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-red-600">
+                          {savedInvoices.filter(inv => inv.status === 'overdue').length}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Overdue</div>
+                      </div>
+                      <Separator orientation="vertical" className="h-12" />
+                      <div className="text-center">
+                        <div className="text-lg font-semibold">
+                          ${savedInvoices.reduce((sum, inv) => sum + (inv.total || 0), 0).toFixed(2)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Total Value</div>
+                      </div>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
-                  {savedInvoices.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-4">No saved invoices yet</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {savedInvoices.map((invoice) => (
-                        <div key={invoice.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div className="flex-1">
-                            <div className="font-medium">{invoice.invoice_number}</div>
+                  {(() => {
+                    const filteredInvoices = statusFilter === 'all' 
+                      ? savedInvoices 
+                      : savedInvoices.filter(invoice => invoice.status === statusFilter);
+                    
+                    return filteredInvoices.length === 0 ? (
+                      <div className="text-center py-8">
+                        <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        {savedInvoices.length === 0 ? (
+                          <>
+                            <p className="text-muted-foreground">No invoices created yet</p>
+                            <p className="text-sm text-muted-foreground">Create your first invoice above</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-muted-foreground">No {statusFilter} invoices found</p>
+                            <p className="text-sm text-muted-foreground">Try changing the filter above</p>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {filteredInvoices.map((invoice) => (
+                        <div key={invoice.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                          <div className="flex-1 space-y-1">
+                            <div className="flex items-center gap-3">
+                              <div className="font-semibold text-base">{invoice.invoice_number}</div>
+                              <Badge variant={
+                                invoice.status === 'paid' ? 'default' : 
+                                invoice.status === 'sent' ? 'secondary' : 
+                                invoice.status === 'overdue' ? 'destructive' : 'outline'
+                              }>
+                                {invoice.status?.toUpperCase()}
+                              </Badge>
+                            </div>
                             <div className="text-sm text-muted-foreground">
-                              {invoice.client_name} • ${invoice.total.toFixed(2)}
+                              <span className="font-medium">{invoice.client_name}</span>
+                              {invoice.client_email && (
+                                <span className="mx-2">•</span>
+                              )}
+                              {invoice.client_email}
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(invoice.created_at).toLocaleDateString()}
+                            <div className="text-sm text-muted-foreground flex items-center gap-4">
+                              <span className="flex items-center gap-1">
+                                <DollarSign className="h-3 w-3" />
+                                ${invoice.total?.toFixed(2) || '0.00'}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                Due: {new Date(invoice.due_date || invoice.created_at).toLocaleDateString()}
+                              </span>
+                              <span>
+                                Created: {new Date(invoice.created_at).toLocaleDateString()}
+                              </span>
                             </div>
+                            {invoice.event_name && (
+                              <div className="text-sm text-muted-foreground">
+                                <span className="font-medium">Event:</span> {invoice.event_name}
+                              </div>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant={
-                              invoice.status === 'paid' ? 'default' : 
-                              invoice.status === 'sent' ? 'secondary' : 
-                              invoice.status === 'overdue' ? 'destructive' : 'outline'
-                            }>
-                              {invoice.status}
-                            </Badge>
+                          <div className="flex items-center gap-2 ml-4">
+                            {/* Status Dropdown */}
+                            <Select
+                              value={invoice.status || 'draft'}
+                              onValueChange={(value) => updateInvoiceStatus(invoice.id, value as 'draft' | 'sent' | 'paid' | 'overdue')}
+                            >
+                              <SelectTrigger className="w-24 h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="draft">Draft</SelectItem>
+                                <SelectItem value="sent">Sent</SelectItem>
+                                <SelectItem value="paid">Paid</SelectItem>
+                                <SelectItem value="overdue">Overdue</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            
+                            {invoice.payment_url && (
+                              <Button 
+                                onClick={() => window.open(invoice.payment_url, '_blank')}
+                                size="sm"
+                                variant="outline"
+                                className="text-xs"
+                              >
+                                <CreditCard className="h-3 w-3 mr-1" />
+                                Pay
+                              </Button>
+                            )}
                             <Button 
                               onClick={() => loadInvoice(invoice)}
                               size="sm"
-                              variant="ghost"
+                              variant="outline"
                             >
-                              Load
+                              View/Edit
                             </Button>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             )}
