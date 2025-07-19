@@ -16,6 +16,7 @@ import SecureAdminAuth from "./pages/SecureAdminAuth";
 import Ticket2LIVE from "./pages/Ticket2LIVE";
 import Invoicing from "./pages/Invoicing";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import InvoicePaymentSuccess from "./pages/InvoicePaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import XeroCallback from "./pages/XeroCallback";
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/master-admin" element={<MasterAdmin />} />
             <Route path="/ticket2live/:eventId" element={<Ticket2LIVE />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
+            <Route path="/invoice-payment-success" element={<InvoicePaymentSuccess />} />
             <Route path="/payment-failed" element={<PaymentFailed />} />
             <Route path="/payment-cancelled" element={<PaymentCancelled />} />
             <Route path="/xero-callback" element={<XeroCallback />} />

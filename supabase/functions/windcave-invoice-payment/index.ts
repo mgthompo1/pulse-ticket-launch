@@ -79,7 +79,7 @@ serve(async (req) => {
       merchantReference: `invoice-${invoice.invoice_number}-${Date.now()}`,
       language: "en",
       callbackUrls: {
-        approved: `${req.headers.get("origin")}/payment-success?invoice=${invoiceId}`,
+        approved: `${req.headers.get("origin")}/invoice-payment-success?invoice=${invoiceId}`,
         declined: `${req.headers.get("origin")}/payment-failed?invoice=${invoiceId}`,
         cancelled: `${req.headers.get("origin")}/payment-cancelled?invoice=${invoiceId}`
       }
