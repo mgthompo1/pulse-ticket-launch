@@ -1292,6 +1292,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_user_organization_id: {
+        Args: { user_uuid: string }
+        Returns: string
+      }
       log_security_event: {
         Args: {
           p_user_id: string
@@ -1302,6 +1306,10 @@ export type Database = {
           p_user_agent: string
         }
         Returns: undefined
+      }
+      user_owns_organization: {
+        Args: { org_id: string; user_uuid: string }
+        Returns: boolean
       }
     }
     Enums: {
