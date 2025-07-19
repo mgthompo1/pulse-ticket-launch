@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft } from "lucide-react";
-import { ResendTestEmail } from "@/components/ResendTestEmail";
+
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
@@ -120,10 +120,9 @@ const Auth = () => {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="signin" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
-                <TabsTrigger value="test-email">Test Email</TabsTrigger>
               </TabsList>
 
               {error && (
@@ -213,9 +212,6 @@ const Auth = () => {
                 </form>
               </TabsContent>
 
-              <TabsContent value="test-email" className="space-y-4">
-                <ResendTestEmail />
-              </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
