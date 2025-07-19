@@ -1553,14 +1553,6 @@ ${invoiceData.companyName}`;
                   {loading ? "Generating PDF..." : "Download PDF"}
                 </Button>
                 
-                <Button 
-                  onClick={initiatePayment}
-                  disabled={loading || invoiceData.total <= 0}
-                  className="w-full"
-                >
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Pay Now
-                </Button>
               </CardContent>
             </Card>
 
