@@ -1,6 +1,4 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@14.21.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,182 +6,27 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  console.log("=== FUNCTION ENTRY POINT ===");
+  console.log("Function started");
   
   if (req.method === "OPTIONS") {
-    console.log("=== OPTIONS REQUEST ===");
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log("=== POST REQUEST RECEIVED ===");
-
   try {
-    console.log("=== CREATE PAYMENT INTENT START ===");
+    console.log("Processing POST request");
     
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
-    console.log("Supabase client created");
-
-    const requestBody = await req.json();
-    console.log("Request body parsed successfully");
-    console.log("Request body:", JSON.stringify(requestBody, null, 2));
-    
-    const { eventId, items, tickets, customerInfo } = requestBody;
-    
-    // Handle both new items format and legacy tickets format
-    const ticketItems = items || tickets;
-    console.log("Ticket items:", JSON.stringify(ticketItems, null, 2));
-    console.log("Customer info:", JSON.stringify(customerInfo, null, 2));
-
-    // Get event and organization details
-    const { data: event, error: eventError } = await supabaseClient
-      .from("events")
-      .select(`
-        *,
-        organizations!inner(
-          id,
-          name,
-          stripe_account_id,
-          stripe_secret_key,
-          stripe_onboarding_complete
-        )
-      `)
-      .eq("id", eventId)
-      .single();
-
-    if (eventError || !event) {
-      throw new Error("Event not found");
-    }
-
-    if (!event.organizations.stripe_secret_key) {
-      throw new Error("Organization Stripe secret key not configured");
-    }
-
-    // Get ticket types - filter only ticket items
-    const ticketOnlyItems = ticketItems.filter((item: any) => 
-      item.type === 'ticket' || item.ticketTypeId
-    );
-    
-    if (ticketOnlyItems.length === 0) {
-      throw new Error("No ticket items found in order");
-    }
-    
-    const ticketIds = ticketOnlyItems.map((t: any) => t.ticketTypeId);
-    const { data: ticketTypes, error: ticketError } = await supabaseClient
-      .from("ticket_types")
-      .select("*")
-      .in("id", ticketIds);
-
-    if (ticketError || !ticketTypes) {
-      throw new Error("Ticket types not found");
-    }
-
-    // Calculate totals
-    let subtotal = 0;
-    const orderItems = ticketOnlyItems.map((ticket: any) => {
-      const ticketType = ticketTypes.find(t => t.id === ticket.ticketTypeId);
-      if (!ticketType) throw new Error(`Ticket type ${ticket.ticketTypeId} not found`);
-      
-      const itemTotal = ticketType.price * ticket.quantity;
-      subtotal += itemTotal;
-      
-      return {
-        ticket_type_id: ticket.ticketTypeId,
-        quantity: ticket.quantity,
-        unit_price: ticketType.price,
-      };
-    });
-
-    // Calculate platform fee (1% + $0.50 per ticket)
-    const totalTickets = ticketOnlyItems.reduce((sum: number, ticket: any) => sum + ticket.quantity, 0);
-    const platformFeePercent = Math.round(subtotal * 0.01); // 1%
-    const platformFeeFixed = totalTickets * 50; // $0.50 per ticket in cents
-    const platformFee = platformFeePercent + platformFeeFixed;
-    const total = subtotal + platformFee;
-
-    const stripe = new Stripe(event.organizations.stripe_secret_key, {
-      apiVersion: "2023-10-16",
-    });
-
-    // Create payment intent with Stripe Connect
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: total,
-      currency: "usd",
-      application_fee_amount: platformFee,
-      transfer_data: {
-        destination: event.organizations.stripe_account_id,
-      },
-      metadata: {
-        event_id: eventId,
-        organization_id: event.organizations.id,
-        customer_email: customerInfo.email,
-        customer_name: customerInfo.name,
-      },
-    });
-
-    // Create order record
-    console.log("Creating order with data:", {
-      event_id: eventId,
-      customer_name: customerInfo.name,
-      customer_email: customerInfo.email,
-      customer_phone: customerInfo.phone,
-      total_amount: total,
-      status: "pending",
-    });
-    
-    const { data: order, error: orderError } = await supabaseClient
-      .from("orders")
-      .insert({
-        event_id: eventId,
-        customer_name: customerInfo.name,
-        customer_email: customerInfo.email,
-        customer_phone: customerInfo.phone,
-        total_amount: total,
-        status: "pending",
-      })
-      .select()
-      .single();
-
-    if (orderError) {
-      console.error("Order creation error:", orderError);
-      throw new Error(`Failed to create order: ${orderError.message}`);
-    }
-    
-    if (!order) {
-      throw new Error("Failed to create order: No order returned");
-    }
-    
-    console.log("Order created successfully:", order.id);
-
-    // Create order items
-    const orderItemsWithOrderId = orderItems.map(item => ({
-      ...item,
-      order_id: order.id,
-    }));
-
-    await supabaseClient
-      .from("order_items")
-      .insert(orderItemsWithOrderId);
-
-    return new Response(JSON.stringify({
-      clientSecret: paymentIntent.client_secret,
-      orderId: order.id,
+    return new Response(JSON.stringify({ 
+      success: true,
+      message: "Function is working" 
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
-    console.error("=== CREATE PAYMENT INTENT ERROR ===");
-    console.error("Error message:", error.message);
-    console.error("Error stack:", error.stack);
-    console.error("Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    console.error("Error:", error.message);
     
     return new Response(JSON.stringify({ 
-      error: error.message,
-      details: error.stack 
+      error: error.message 
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
