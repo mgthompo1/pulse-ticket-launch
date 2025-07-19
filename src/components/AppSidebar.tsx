@@ -14,10 +14,17 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
+interface Event {
+  id: string;
+  name: string;
+  event_date: string;
+  status: string;
+}
+
 interface AppSidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  selectedEvent: any;
+  selectedEvent: Event | null;
 }
 
 const sidebarItems = [

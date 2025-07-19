@@ -5,12 +5,33 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+interface CartItem {
+  ticketTypeId: string;
+  quantity: number;
+  price: number;
+  name: string;
+}
+
+interface MerchandiseItem {
+  merchandiseId: string;
+  quantity: number;
+  price: number;
+  name: string;
+  options?: Record<string, string>;
+}
+
+interface CustomerInfo {
+  name: string;
+  email: string;
+  phone?: string;
+}
+
 interface StripePaymentFormProps {
   publishableKey: string;
   eventId: string;
-  cart: any[];
-  merchandiseCart: any[];
-  customerInfo: any;
+  cart: CartItem[];
+  merchandiseCart: MerchandiseItem[];
+  customerInfo: CustomerInfo;
   total: number;
   onSuccess: (orderId: string) => void;
   onCancel: () => void;
@@ -102,17 +123,19 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, onS
       });
 
       onSuccess(data.orderId);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Payment failed:', error);
       
       // Handle non-Stripe errors (like network issues or server errors)
       let errorTitle = "Payment Failed";
       let errorDescription = "There was an error processing your payment. Please try again.";
       
-      if (error.message?.includes('network') || error.message?.includes('fetch')) {
-        errorDescription = "Network error. Please check your connection and try again.";
-      } else if (error.message) {
-        errorDescription = error.message;
+      if (error instanceof Error) {
+        if (error.message?.includes('network') || error.message?.includes('fetch')) {
+          errorDescription = "Network error. Please check your connection and try again.";
+        } else if (error.message) {
+          errorDescription = error.message;
+        }
       }
       
       toast({

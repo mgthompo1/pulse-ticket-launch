@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings } from "lucide-react";
+import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle } from "lucide-react";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import MerchandiseManager from "@/components/MerchandiseManager";
@@ -25,7 +25,16 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [showSeatMapDesigner, setShowSeatMapDesigner] = useState(false);
-  const [eventData, setEventData] = useState<any>(null);
+  const [eventData, setEventData] = useState<{
+    id: string;
+    name: string;
+    status: string;
+    test_mode: boolean;
+    logo_url: string | null;
+    widget_customization?: Record<string, unknown>;
+    ticket_customization?: Record<string, unknown>;
+    email_customization?: Record<string, unknown>;
+  } | null>(null);
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
   
   // Widget customization state
@@ -52,6 +61,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     },
     seatMaps: {
       enabled: false
+    },
+    customQuestions: {
+      enabled: false,
+      questions: []
     }
   });
 
@@ -62,7 +75,8 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       backgroundColor: "#ffffff",
       textColor: "#000000",
       borderColor: "#e5e7eb",
-      qrCodePosition: "bottom-right"
+      qrCodePosition: "bottom-right",
+      fontFamily: "Inter"
     },
     content: {
       showLogo: true,
@@ -95,11 +109,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     }
   });
 
-  useEffect(() => {
-    loadCustomizations();
-  }, [eventId]);
-
-  const loadCustomizations = async () => {
+  const loadCustomizations = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from("events")
@@ -123,7 +133,11 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     } catch (error) {
       console.error("Error loading customizations:", error);
     }
-  };
+  }, [eventId]);
+
+  useEffect(() => {
+    loadCustomizations();
+  }, [loadCustomizations]);
 
   const saveCustomizations = async () => {
     setLoading(true);
@@ -162,6 +176,9 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       const updated = { ...prev };
       let current = updated;
       for (let i = 0; i < path.length - 1; i++) {
+        if (!current[path[i]]) {
+          current[path[i]] = {};
+        }
         current = current[path[i]];
       }
       current[path[path.length - 1]] = value;
@@ -205,6 +222,19 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           {loading ? "Saving..." : "Save Changes"}
         </Button>
       </div>
+
+      {/* Seat Map Designer Modal */}
+      {showSeatMapDesigner && eventData && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-lg shadow-lg w-full max-w-7xl h-[90vh] overflow-hidden">
+            <SeatMapDesigner
+              eventId={eventId}
+              eventName={eventData.name}
+              onClose={() => setShowSeatMapDesigner(false)}
+            />
+          </div>
+        </div>
+      )}
 
       <Tabs defaultValue="widget" className="space-y-4">
         <TabsList>
@@ -289,11 +319,52 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Inter">Inter</SelectItem>
+                      {/* Modern Sans-Serif Fonts */}
+                      <SelectItem value="Inter" className="font-inter">Inter</SelectItem>
+                      <SelectItem value="Roboto" className="font-roboto">Roboto</SelectItem>
+                      <SelectItem value="Open Sans" className="font-open-sans">Open Sans</SelectItem>
+                      <SelectItem value="Poppins" className="font-poppins">Poppins</SelectItem>
+                      <SelectItem value="Montserrat" className="font-montserrat">Montserrat</SelectItem>
+                      <SelectItem value="Lato" className="font-lato">Lato</SelectItem>
+                      <SelectItem value="Source Sans Pro" className="font-source-sans-pro">Source Sans Pro</SelectItem>
+                      <SelectItem value="Ubuntu" className="font-ubuntu">Ubuntu</SelectItem>
+                      <SelectItem value="Noto Sans" className="font-noto-sans">Noto Sans</SelectItem>
+                      <SelectItem value="Work Sans" className="font-work-sans">Work Sans</SelectItem>
+                      <SelectItem value="PT Sans" className="font-pt-sans">PT Sans</SelectItem>
+                      <SelectItem value="Oswald" className="font-oswald">Oswald</SelectItem>
+                      <SelectItem value="Raleway" className="font-raleway">Raleway</SelectItem>
+                      <SelectItem value="Nunito" className="font-nunito">Nunito</SelectItem>
+                      <SelectItem value="Quicksand" className="font-quicksand">Quicksand</SelectItem>
+                      <SelectItem value="Josefin Sans" className="font-josefin-sans">Josefin Sans</SelectItem>
+                      <SelectItem value="DM Sans" className="font-dm-sans">DM Sans</SelectItem>
+                      <SelectItem value="Outfit" className="font-outfit">Outfit</SelectItem>
+                      <SelectItem value="Plus Jakarta Sans" className="font-plus-jakarta-sans">Plus Jakarta Sans</SelectItem>
+                      <SelectItem value="Albert Sans" className="font-albert-sans">Albert Sans</SelectItem>
+                      <SelectItem value="Onest" className="font-onest">Onest</SelectItem>
+                      <SelectItem value="Geist" className="font-geist">Geist</SelectItem>
+                      <SelectItem value="Cal Sans" className="font-cal-sans">Cal Sans</SelectItem>
+                      <SelectItem value="General Sans" className="font-general-sans">General Sans</SelectItem>
+                      <SelectItem value="Clash Display" className="font-clash-display">Clash Display</SelectItem>
+                      <SelectItem value="Clash Grotesk" className="font-clash-grotesk">Clash Grotesk</SelectItem>
+                      <SelectItem value="Sentient" className="font-sentient">Sentient</SelectItem>
+                      <SelectItem value="Chillax" className="font-chillax">Chillax</SelectItem>
+                      <SelectItem value="Cabinet Grotesk" className="font-cabinet-grotesk">Cabinet Grotesk</SelectItem>
+                      <SelectItem value="Switzer" className="font-switzer">Switzer</SelectItem>
+                      <SelectItem value="Gambarino" className="font-gambarino">Gambarino</SelectItem>
+                      <SelectItem value="Melodrama" className="font-melodrama">Melodrama</SelectItem>
+                      <SelectItem value="Zodiak" className="font-zodiak">Zodiak</SelectItem>
+                      <SelectItem value="Panchang" className="font-panchang">Panchang</SelectItem>
+                      
+                      {/* Classic Serif Fonts */}
+                      <SelectItem value="Playfair Display" className="font-playfair-display">Playfair Display</SelectItem>
+                      <SelectItem value="Merriweather" className="font-merriweather">Merriweather</SelectItem>
+                      
+                      {/* System Fonts */}
                       <SelectItem value="Arial">Arial</SelectItem>
                       <SelectItem value="Georgia">Georgia</SelectItem>
                       <SelectItem value="Times New Roman">Times New Roman</SelectItem>
                       <SelectItem value="Helvetica">Helvetica</SelectItem>
+                      <SelectItem value="-apple-system">System Font</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -403,6 +474,195 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   rows={4}
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Custom Questions Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <HelpCircle className="h-5 w-5" />
+                Custom Questions
+              </CardTitle>
+              <CardDescription>
+                Add custom questions that customers must answer when purchasing tickets
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Enable/Disable Custom Questions */}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="space-y-1">
+                  <Label htmlFor="enableCustomQuestions" className="text-base font-medium">
+                    Enable Custom Questions
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Require customers to answer custom questions during ticket purchase
+                  </p>
+                </div>
+                <Switch
+                  id="enableCustomQuestions"
+                  checked={widgetCustomization.customQuestions?.enabled || false}
+                  onCheckedChange={(checked) => updateWidgetCustomization(['customQuestions', 'enabled'], checked)}
+                />
+              </div>
+
+              {/* Custom Questions Management - Only show when enabled */}
+              {widgetCustomization.customQuestions?.enabled && (
+                <div className="space-y-4">
+                  <div className="border-t pt-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-medium">Question Management</h4>
+                      <Button
+                        onClick={() => {
+                          const currentQuestions = widgetCustomization.customQuestions?.questions || [];
+                          if (currentQuestions.length >= 5) {
+                            toast({
+                              title: "Maximum Questions Reached",
+                              description: "You can only add up to 5 custom questions.",
+                              variant: "destructive"
+                            });
+                            return;
+                          }
+                          const newQuestion = {
+                            id: `question_${Date.now()}`,
+                            label: "",
+                            type: "text",
+                            required: false,
+                            options: ""
+                          };
+                          updateWidgetCustomization(['customQuestions', 'questions'], [...currentQuestions, newQuestion]);
+                        }}
+                        size="sm"
+                        disabled={(widgetCustomization.customQuestions?.questions || []).length >= 5}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Question
+                      </Button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {(widgetCustomization.customQuestions?.questions || []).map((question: any, index: number) => (
+                        <div key={question.id} className="border rounded-lg p-4 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h5 className="font-medium">Question {index + 1}</h5>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const currentQuestions = widgetCustomization.customQuestions?.questions || [];
+                                const updatedQuestions = currentQuestions.filter((q: any) => q.id !== question.id);
+                                updateWidgetCustomization(['customQuestions', 'questions'], updatedQuestions);
+                              }}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Question Label *</Label>
+                              <Input
+                                value={question.label}
+                                onChange={(e) => {
+                                  const currentQuestions = widgetCustomization.customQuestions?.questions || [];
+                                  const updatedQuestions = currentQuestions.map((q: any) =>
+                                    q.id === question.id ? { ...q, label: e.target.value } : q
+                                  );
+                                  updateWidgetCustomization(['customQuestions', 'questions'], updatedQuestions);
+                                }}
+                                placeholder="e.g., Dietary Requirements"
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label>Question Type</Label>
+                              <Select
+                                value={question.type}
+                                onValueChange={(value) => {
+                                  const currentQuestions = widgetCustomization.customQuestions?.questions || [];
+                                  const updatedQuestions = currentQuestions.map((q: any) =>
+                                    q.id === question.id ? { ...q, type: value } : q
+                                  );
+                                  updateWidgetCustomization(['customQuestions', 'questions'], updatedQuestions);
+                                }}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="text">Text Input</SelectItem>
+                                  <SelectItem value="textarea">Long Text</SelectItem>
+                                  <SelectItem value="select">Dropdown</SelectItem>
+                                  <SelectItem value="radio">Radio Buttons</SelectItem>
+                                  <SelectItem value="checkbox">Checkbox</SelectItem>
+                                  <SelectItem value="email">Email</SelectItem>
+                                  <SelectItem value="phone">Phone Number</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {/* Options field for select/radio/checkbox types */}
+                          {(question.type === 'select' || question.type === 'radio' || question.type === 'checkbox') && (
+                            <div className="space-y-2">
+                              <Label>Options (one per line)</Label>
+                              <Textarea
+                                value={question.options}
+                                onChange={(e) => {
+                                  const currentQuestions = widgetCustomization.customQuestions?.questions || [];
+                                  const updatedQuestions = currentQuestions.map((q: any) =>
+                                    q.id === question.id ? { ...q, options: e.target.value } : q
+                                  );
+                                  updateWidgetCustomization(['customQuestions', 'questions'], updatedQuestions);
+                                }}
+                                placeholder="Option 1&#10;Option 2&#10;Option 3"
+                                rows={3}
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Enter each option on a separate line
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              id={`required-${question.id}`}
+                              checked={question.required}
+                              onCheckedChange={(checked) => {
+                                const currentQuestions = widgetCustomization.customQuestions?.questions || [];
+                                const updatedQuestions = currentQuestions.map((q: any) =>
+                                  q.id === question.id ? { ...q, required: checked } : q
+                                );
+                                updateWidgetCustomization(['customQuestions', 'questions'], updatedQuestions);
+                              }}
+                            />
+                            <Label htmlFor={`required-${question.id}`}>Required field</Label>
+                          </div>
+                        </div>
+                      ))}
+
+                      {(widgetCustomization.customQuestions?.questions || []).length === 0 && (
+                        <div className="text-center p-6 border rounded-lg bg-muted/30">
+                          <HelpCircle className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-sm text-muted-foreground">
+                            No custom questions added yet. Click "Add Question" to get started.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Information when disabled */}
+              {!widgetCustomization.customQuestions?.enabled && (
+                <div className="text-center p-6 border rounded-lg bg-muted/30">
+                  <HelpCircle className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Enable custom questions above to collect additional information from customers during ticket purchase
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -609,6 +869,65 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                           <SelectItem value="top-right">Top Right</SelectItem>
                           <SelectItem value="bottom-left">Bottom Left</SelectItem>
                           <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ticketFontFamily">Font Family</Label>
+                      <Select
+                        value={ticketCustomization.design.fontFamily || "Inter"}
+                        onValueChange={(value) => updateTicketCustomization(['design', 'fontFamily'], value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {/* Modern Sans-Serif Fonts */}
+                          <SelectItem value="Inter" className="font-inter">Inter</SelectItem>
+                          <SelectItem value="Roboto" className="font-roboto">Roboto</SelectItem>
+                          <SelectItem value="Open Sans" className="font-open-sans">Open Sans</SelectItem>
+                          <SelectItem value="Poppins" className="font-poppins">Poppins</SelectItem>
+                          <SelectItem value="Montserrat" className="font-montserrat">Montserrat</SelectItem>
+                          <SelectItem value="Lato" className="font-lato">Lato</SelectItem>
+                          <SelectItem value="Source Sans Pro" className="font-source-sans-pro">Source Sans Pro</SelectItem>
+                          <SelectItem value="Ubuntu" className="font-ubuntu">Ubuntu</SelectItem>
+                          <SelectItem value="Noto Sans" className="font-noto-sans">Noto Sans</SelectItem>
+                          <SelectItem value="Work Sans" className="font-work-sans">Work Sans</SelectItem>
+                          <SelectItem value="PT Sans" className="font-pt-sans">PT Sans</SelectItem>
+                          <SelectItem value="Oswald" className="font-oswald">Oswald</SelectItem>
+                          <SelectItem value="Raleway" className="font-raleway">Raleway</SelectItem>
+                          <SelectItem value="Nunito" className="font-nunito">Nunito</SelectItem>
+                          <SelectItem value="Quicksand" className="font-quicksand">Quicksand</SelectItem>
+                          <SelectItem value="Josefin Sans" className="font-josefin-sans">Josefin Sans</SelectItem>
+                          <SelectItem value="DM Sans" className="font-dm-sans">DM Sans</SelectItem>
+                          <SelectItem value="Outfit" className="font-outfit">Outfit</SelectItem>
+                          <SelectItem value="Plus Jakarta Sans" className="font-plus-jakarta-sans">Plus Jakarta Sans</SelectItem>
+                          <SelectItem value="Albert Sans" className="font-albert-sans">Albert Sans</SelectItem>
+                          <SelectItem value="Onest" className="font-onest">Onest</SelectItem>
+                          <SelectItem value="Geist" className="font-geist">Geist</SelectItem>
+                          <SelectItem value="Cal Sans" className="font-cal-sans">Cal Sans</SelectItem>
+                          <SelectItem value="General Sans" className="font-general-sans">General Sans</SelectItem>
+                          <SelectItem value="Clash Display" className="font-clash-display">Clash Display</SelectItem>
+                          <SelectItem value="Clash Grotesk" className="font-clash-grotesk">Clash Grotesk</SelectItem>
+                          <SelectItem value="Sentient" className="font-sentient">Sentient</SelectItem>
+                          <SelectItem value="Chillax" className="font-chillax">Chillax</SelectItem>
+                          <SelectItem value="Cabinet Grotesk" className="font-cabinet-grotesk">Cabinet Grotesk</SelectItem>
+                          <SelectItem value="Switzer" className="font-switzer">Switzer</SelectItem>
+                          <SelectItem value="Gambarino" className="font-gambarino">Gambarino</SelectItem>
+                          <SelectItem value="Melodrama" className="font-melodrama">Melodrama</SelectItem>
+                          <SelectItem value="Zodiak" className="font-zodiak">Zodiak</SelectItem>
+                          <SelectItem value="Panchang" className="font-panchang">Panchang</SelectItem>
+                          
+                          {/* Classic Serif Fonts */}
+                          <SelectItem value="Playfair Display" className="font-playfair-display">Playfair Display</SelectItem>
+                          <SelectItem value="Merriweather" className="font-merriweather">Merriweather</SelectItem>
+                          
+                          {/* System Fonts */}
+                          <SelectItem value="Arial">Arial</SelectItem>
+                          <SelectItem value="Georgia">Georgia</SelectItem>
+                          <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                          <SelectItem value="Helvetica">Helvetica</SelectItem>
+                          <SelectItem value="-apple-system">System Font</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

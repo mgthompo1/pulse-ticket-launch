@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,18 +18,18 @@ interface AttendeeManagementProps {
 }
 
 interface Attendee {
-  ticket_id: string;
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string;
-  ticket_type: string;
-  ticket_status: string;
-  checked_in: boolean;
-  checked_in_at: string;
-  order_date: string;
-  price: number;
-  quantity: number;
-  ticket_code: string;
+  ticket_id: string | null;
+  customer_name: string | null;
+  customer_email: string | null;
+  customer_phone: string | null;
+  ticket_type: string | null;
+  ticket_status: string | null;
+  checked_in: boolean | null;
+  checked_in_at: string | null;
+  order_date: string | null;
+  price: number | null;
+  quantity: number | null;
+  ticket_code: string | null;
 }
 
 const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {

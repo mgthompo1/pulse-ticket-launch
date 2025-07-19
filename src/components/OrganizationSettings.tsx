@@ -4,10 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Building2, Mail, Globe, Phone, MapPin, Upload, Save } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Building2, Mail, Globe, Phone, MapPin, Upload, Save, Sun, Moon } from "lucide-react";
 
 interface OrganizationData {
   id: string;
@@ -25,6 +27,7 @@ interface OrganizationData {
 const OrganizationSettings: React.FC = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [organizationData, setOrganizationData] = useState<OrganizationData>({
@@ -384,6 +387,47 @@ const OrganizationSettings: React.FC = () => {
                 onChange={(e) => handleInputChange("country", e.target.value)}
                 placeholder="New Zealand"
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Theme Settings */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              {theme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+              Theme Settings
+            </CardTitle>
+            <CardDescription>
+              Customize the appearance of your dashboard
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="space-y-1">
+                <Label htmlFor="theme-toggle" className="text-base font-medium">
+                  Dark Mode
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Switch between light and dark themes for the dashboard
+                </p>
+              </div>
+              <Switch
+                id="theme-toggle"
+                checked={theme === 'dark'}
+                onCheckedChange={toggleTheme}
+              />
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Sun className="h-4 w-4" />
+                <span>Light</span>
+              </div>
+              <span>•</span>
+              <div className="flex items-center gap-1">
+                <Moon className="h-4 w-4" />
+                <span>Dark</span>
+              </div>
             </div>
           </CardContent>
         </Card>

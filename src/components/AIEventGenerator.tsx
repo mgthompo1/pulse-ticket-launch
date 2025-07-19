@@ -9,8 +9,22 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, Loader2, Copy, CheckCircle } from "lucide-react";
 
+interface GeneratedEventData {
+  name: string;
+  description: string;
+  venue: string;
+  marketingCopy: string;
+  suggestedTicketTypes: Array<{
+    name: string;
+    price: number;
+    description: string;
+  }>;
+  marketingTips: string[];
+  suggestedCapacity: number;
+}
+
 interface AIEventGeneratorProps {
-  onEventGenerated?: (eventData: any) => void;
+  onEventGenerated?: (eventData: GeneratedEventData) => void;
 }
 
 const AIEventGenerator = ({ onEventGenerated }: AIEventGeneratorProps) => {
@@ -21,7 +35,7 @@ const AIEventGenerator = ({ onEventGenerated }: AIEventGeneratorProps) => {
     duration: "",
     description: ""
   });
-  const [generatedContent, setGeneratedContent] = useState<any>(null);
+  const [generatedContent, setGeneratedContent] = useState<GeneratedEventData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const { toast } = useToast();
@@ -239,7 +253,7 @@ const AIEventGenerator = ({ onEventGenerated }: AIEventGeneratorProps) => {
               <div className="space-y-2">
                 <Label className="font-medium">Suggested Ticket Types</Label>
                 <div className="space-y-2">
-                  {generatedContent.suggestedTicketTypes?.map((ticket: any, index: number) => (
+                  {generatedContent.suggestedTicketTypes?.map((ticket, index: number) => (
                     <div key={index} className="p-3 border rounded-lg">
                       <div className="flex justify-between items-start">
                         <div>

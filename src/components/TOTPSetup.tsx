@@ -20,7 +20,11 @@ export const TOTPSetup = ({ onSetupComplete }: TOTPSetupProps) => {
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [totpEnabled, setTotpEnabled] = useState(false);
-  const [factors, setFactors] = useState<any[]>([]);
+  const [factors, setFactors] = useState<Array<{
+    id: string;
+    status: string;
+    factor_type: string;
+  }>>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -55,11 +59,11 @@ export const TOTPSetup = ({ onSetupComplete }: TOTPSetupProps) => {
         title: "TOTP Enrollment Started",
         description: "Scan the QR code with your authenticator app",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error enrolling TOTP:', error);
       toast({
         title: "Enrollment Failed",
-        description: error.message || "Failed to start TOTP enrollment",
+        description: error instanceof Error ? error.message : "Failed to start TOTP enrollment",
         variant: "destructive",
       });
     } finally {
@@ -94,11 +98,11 @@ export const TOTPSetup = ({ onSetupComplete }: TOTPSetupProps) => {
       });
       
       onSetupComplete?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error verifying TOTP:', error);
       toast({
         title: "Verification Failed",
-        description: error.message || "Invalid verification code",
+        description: error instanceof Error ? error.message : "Invalid verification code",
         variant: "destructive",
       });
     } finally {
@@ -128,11 +132,11 @@ export const TOTPSetup = ({ onSetupComplete }: TOTPSetupProps) => {
       });
       
       await checkTOTPStatus();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error disabling TOTP:', error);
       toast({
         title: "Disable Failed",
-        description: error.message || "Failed to disable TOTP",
+        description: error instanceof Error ? error.message : "Failed to disable TOTP",
         variant: "destructive",
       });
     }

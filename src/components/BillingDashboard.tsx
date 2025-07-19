@@ -95,7 +95,7 @@ const PaymentMethodSetup = ({ organizationId, onSuccess }: { organizationId: str
       console.error('Error setting up payment method:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to setup payment method",
+        description: error instanceof Error ? error.message : "Failed to setup payment method",
         variant: "destructive"
       });
     } finally {
@@ -139,9 +139,29 @@ const PaymentMethodSetup = ({ organizationId, onSuccess }: { organizationId: str
 
 const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isLoading }) => {
   const { toast } = useToast();
-  const [billingData, setBillingData] = useState<any>(null);
-  const [usageData, setUsageData] = useState<any[]>([]);
-  const [invoiceData, setInvoiceData] = useState<any[]>([]);
+  const [billingData, setBillingData] = useState<{
+    id: string;
+    organization_id: string;
+    stripe_customer_id: string;
+    billing_status: string;
+    billing_email: string;
+  } | null>(null);
+  const [usageData, setUsageData] = useState<Array<{
+    id: string;
+    transaction_amount: number;
+    total_platform_fee: number;
+    created_at: string;
+  }>>([]);
+  const [invoiceData, setInvoiceData] = useState<Array<{
+    id: string;
+    total_transaction_volume: number;
+    total_platform_fees: number;
+    total_transactions: number;
+    status: string;
+    created_at: string;
+    billing_period_start: string;
+    billing_period_end: string;
+  }>>([]);
   const [loading, setLoading] = useState(true);
   const [needsSetup, setNeedsSetup] = useState(false);
 
@@ -236,8 +256,8 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
 
   const currentMonthUsage = usageData.reduce((acc, record) => ({
     transactions: acc.transactions + 1,
-    volume: acc.volume + parseFloat(record.transaction_amount || 0),
-    fees: acc.fees + parseFloat(record.total_platform_fee || 0),
+    volume: acc.volume + (record.transaction_amount || 0),
+    fees: acc.fees + (record.total_platform_fee || 0),
   }), { transactions: 0, volume: 0, fees: 0 });
 
   if (needsSetup) {
@@ -355,13 +375,13 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
                 {usageData.slice(0, 10).map((record) => (
                   <div key={record.id} className="flex justify-between items-center py-2 border-b">
                     <div>
-                      <p className="font-medium">${parseFloat(record.transaction_amount).toFixed(2)}</p>
+                      <p className="font-medium">${record.transaction_amount.toFixed(2)}</p>
                       <p className="text-sm text-muted-foreground">
                         {new Date(record.created_at).toLocaleDateString()}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium">${parseFloat(record.total_platform_fee).toFixed(2)}</p>
+                      <p className="font-medium">${record.total_platform_fee.toFixed(2)}</p>
                       <p className="text-sm text-muted-foreground">Platform fee</p>
                     </div>
                   </div>
@@ -394,7 +414,7 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium">${parseFloat(invoice.total_platform_fees).toFixed(2)}</p>
+                      <p className="font-medium">${invoice.total_platform_fees.toFixed(2)}</p>
                       <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'}>
                         {invoice.status}
                       </Badge>

@@ -50,6 +50,8 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
   const [seatCounter, setSeatCounter] = useState(1);
   const [seatMapName, setSeatMapName] = useState('Main Seating Layout');
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [seatsPerRow, setSeatsPerRow] = useState(10);
+  const [rowSpacing, setRowSpacing] = useState(40);
 
   const seatColors = {
     standard: '#3b82f6',
@@ -201,13 +203,32 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
 
   const addRowOfSeats = () => {
     const startX = 200;
-    const startY = 200 + (seats.filter(s => s.row === currentRow).length * 40);
-    const seatsInRow = 10;
+    
+    // Calculate Y position based on existing rows, not just current row
+    const existingRows = [...new Set(seats.map(s => s.row))];
+    const currentRowIndex = existingRows.indexOf(currentRow);
+    let startY;
+    
+    if (currentRowIndex === -1) {
+      // This is a new row, find the highest Y position and add spacing
+      const maxY = seats.length > 0 ? Math.max(...seats.map(s => s.y)) : 160;
+      startY = maxY + rowSpacing;
+    } else {
+      // This row already exists, find the Y position of existing seats in this row
+      const existingSeatsInRow = seats.filter(s => s.row === currentRow);
+      if (existingSeatsInRow.length > 0) {
+        startY = existingSeatsInRow[0].y;
+      } else {
+        // Fallback: find the highest Y position and add spacing
+        const maxY = seats.length > 0 ? Math.max(...seats.map(s => s.y)) : 160;
+        startY = maxY + rowSpacing;
+      }
+    }
     
     const newSeats: Seat[] = [];
-    for (let i = 0; i < seatsInRow; i++) {
+    for (let i = 0; i < seatsPerRow; i++) {
       newSeats.push({
-        id: `seat-${Date.now()}-${i}`,
+        id: `seat-${Date.now()}-${Math.random()}`,
         x: startX + (i * 40),
         y: startY,
         row: currentRow,
@@ -217,7 +238,7 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
     }
     
     setSeats(prev => [...prev, ...newSeats]);
-    setSeatCounter(prev => prev + seatsInRow);
+    setSeatCounter(prev => prev + seatsPerRow);
   };
 
   const clearSeats = () => {
@@ -406,10 +427,38 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
                     </div>
                   </div>
 
+                  <div>
+                    <Label className="text-sm font-medium">Row Configuration</Label>
+                    <div className="space-y-2 mt-2">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Seats per Row</Label>
+                        <Input 
+                          type="number"
+                          value={seatsPerRow} 
+                          onChange={(e) => setSeatsPerRow(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-full"
+                          min="1"
+                          max="50"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Row Spacing (px)</Label>
+                        <Input 
+                          type="number"
+                          value={rowSpacing} 
+                          onChange={(e) => setRowSpacing(Math.max(20, parseInt(e.target.value) || 40))}
+                          className="w-full"
+                          min="20"
+                          max="100"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Button onClick={addRowOfSeats} className="w-full" size="sm">
                       <Plus className="w-4 h-4 mr-2" />
-                      Add Row of 10 Seats
+                      Add Row of {seatsPerRow} Seats
                     </Button>
                     <Button onClick={clearSeats} variant="outline" className="w-full" size="sm">
                       <Trash2 className="w-4 h-4 mr-2" />

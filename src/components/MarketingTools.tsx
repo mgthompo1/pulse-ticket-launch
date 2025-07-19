@@ -26,8 +26,16 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+interface Event {
+  id: string;
+  name: string;
+  status: string;
+  event_date: string;
+  description?: string;
+}
+
 interface MarketingToolsProps {
-  selectedEvent?: any;
+  selectedEvent?: Event;
 }
 
 export const MarketingTools = ({ selectedEvent }: MarketingToolsProps) => {

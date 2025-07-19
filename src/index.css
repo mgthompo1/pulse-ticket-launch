@@ -29,6 +29,44 @@ All colors MUST be HSL.
 }
 
 @layer base {
+  /* Font Family Classes for Preview */
+  .font-inter { font-family: 'Inter', sans-serif; }
+  .font-roboto { font-family: 'Roboto', sans-serif; }
+  .font-open-sans { font-family: 'Open Sans', sans-serif; }
+  .font-poppins { font-family: 'Poppins', sans-serif; }
+  .font-montserrat { font-family: 'Montserrat', sans-serif; }
+  .font-lato { font-family: 'Lato', sans-serif; }
+  .font-source-sans-pro { font-family: 'Source Sans Pro', sans-serif; }
+  .font-ubuntu { font-family: 'Ubuntu', sans-serif; }
+  .font-noto-sans { font-family: 'Noto Sans', sans-serif; }
+  .font-work-sans { font-family: 'Work Sans', sans-serif; }
+  .font-pt-sans { font-family: 'PT Sans', sans-serif; }
+  .font-oswald { font-family: 'Oswald', sans-serif; }
+  .font-raleway { font-family: 'Raleway', sans-serif; }
+  .font-nunito { font-family: 'Nunito', sans-serif; }
+  .font-quicksand { font-family: 'Quicksand', sans-serif; }
+  .font-josefin-sans { font-family: 'Josefin Sans', sans-serif; }
+  .font-dm-sans { font-family: 'DM Sans', sans-serif; }
+  .font-outfit { font-family: 'Outfit', sans-serif; }
+  .font-plus-jakarta-sans { font-family: 'Plus Jakarta Sans', sans-serif; }
+  .font-albert-sans { font-family: 'Albert Sans', sans-serif; }
+  .font-onest { font-family: 'Onest', sans-serif; }
+  .font-geist { font-family: 'Geist', sans-serif; }
+  .font-cal-sans { font-family: 'Cal Sans', sans-serif; }
+  .font-general-sans { font-family: 'General Sans', sans-serif; }
+  .font-clash-display { font-family: 'Clash Display', sans-serif; }
+  .font-clash-grotesk { font-family: 'Clash Grotesk', sans-serif; }
+  .font-sentient { font-family: 'Sentient', sans-serif; }
+  .font-chillax { font-family: 'Chillax', sans-serif; }
+  .font-cabinet-grotesk { font-family: 'Cabinet Grotesk', sans-serif; }
+  .font-switzer { font-family: 'Switzer', sans-serif; }
+  .font-gambarino { font-family: 'Gambarino', sans-serif; }
+  .font-melodrama { font-family: 'Melodrama', sans-serif; }
+  .font-zodiak { font-family: 'Zodiak', sans-serif; }
+  .font-panchang { font-family: 'Panchang', sans-serif; }
+  .font-playfair-display { font-family: 'Playfair Display', serif; }
+  .font-merriweather { font-family: 'Merriweather', serif; }
+
   :root {
     --background: 0 0% 99%;
     --foreground: 220 15% 15%;
@@ -140,10 +178,23 @@ All colors MUST be HSL.
     margin: 0;
     padding: 0;
     width: 100%;
-    overflow-x: auto;
+    overflow-x: hidden;
   }
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Fix for dashboard layout issues */
+  .dashboard-layout {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .dashboard-content {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 }

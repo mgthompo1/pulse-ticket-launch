@@ -29,7 +29,8 @@ ALTER TABLE events ADD COLUMN ticket_customization JSONB DEFAULT '{
     "backgroundColor": "#ffffff",
     "textColor": "#000000",
     "borderColor": "#e5e7eb",
-    "qrCodePosition": "bottom-right"
+    "qrCodePosition": "bottom-right",
+    "fontFamily": "Inter"
   },
   "content": {
     "showLogo": true,

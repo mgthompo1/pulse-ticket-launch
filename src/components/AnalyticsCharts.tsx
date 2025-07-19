@@ -18,37 +18,33 @@ import {
   Legend
 } from "recharts";
 
-const salesData = [
-  { month: "Jan", sales: 4000, tickets: 240 },
-  { month: "Feb", sales: 3000, tickets: 180 },
-  { month: "Mar", sales: 5000, tickets: 300 },
-  { month: "Apr", sales: 4500, tickets: 270 },
-  { month: "May", sales: 6000, tickets: 360 },
-  { month: "Jun", sales: 5500, tickets: 330 },
-];
-
-const eventTypeData = [
-  { name: "Concerts", value: 45, color: "hsl(var(--primary))" },
-  { name: "Conferences", value: 30, color: "hsl(var(--secondary))" },
-  { name: "Workshops", value: 15, color: "hsl(var(--accent))" },
-  { name: "Other", value: 10, color: "hsl(var(--muted))" },
-];
-
-const revenueData = [
-  { day: "Mon", revenue: 2400 },
-  { day: "Tue", revenue: 1398 },
-  { day: "Wed", revenue: 9800 },
-  { day: "Thu", revenue: 3908 },
-  { day: "Fri", revenue: 4800 },
-  { day: "Sat", revenue: 3800 },
-  { day: "Sun", revenue: 4300 },
-];
-
 interface AnalyticsChartsProps {
   className?: string;
+  salesData: Array<{ month: string; sales: number; tickets: number }>;
+  eventTypeData: Array<{ name: string; value: number; color: string }>;
+  revenueData: Array<{ day: string; revenue: number }>;
+  isLoading?: boolean;
 }
 
-export const AnalyticsCharts = ({ className }: AnalyticsChartsProps) => {
+export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueData, isLoading = false }: AnalyticsChartsProps) => {
+  if (isLoading) {
+    return (
+      <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${className}`}>
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i}>
+            <CardHeader>
+              <div className="h-4 bg-muted rounded animate-pulse" />
+              <div className="h-3 bg-muted rounded animate-pulse w-2/3" />
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px] bg-muted rounded animate-pulse" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${className}`}>
       {/* Sales Trend Chart */}

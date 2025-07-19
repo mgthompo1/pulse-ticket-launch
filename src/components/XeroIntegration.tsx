@@ -18,24 +18,25 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import type { Json } from '@/integrations/supabase/types';
 
 interface XeroConnection {
   id: string;
   tenant_id: string;
-  connection_status: string;
-  last_sync_at: string;
-  sync_settings: any;
+  connection_status: string | null;
+  last_sync_at: string | null;
+  sync_settings: Json;
   created_at: string;
 }
 
 interface XeroSyncLog {
   id: string;
   operation_type: string;
-  entity_type: string;
+  entity_type: string | null;
   status: string;
-  error_message: string;
+  error_message: string | null;
   created_at: string;
-  sync_data: any;
+  sync_data: Json;
 }
 
 interface XeroIntegrationProps {
@@ -52,8 +53,13 @@ const XeroIntegration: React.FC<XeroIntegrationProps> = ({ organizationId }) => 
 
   useEffect(() => {
     loadXeroConnection();
-    loadSyncLogs();
   }, [organizationId]);
+
+  useEffect(() => {
+    if (connection) {
+      loadSyncLogs();
+    }
+  }, [connection]);
 
   const loadXeroConnection = async () => {
     try {
@@ -192,7 +198,7 @@ const XeroIntegration: React.FC<XeroIntegrationProps> = ({ organizationId }) => 
       console.error('Error testing Xero connection:', error);
       toast({
         title: "Connection Test Failed",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Connection test failed",
         variant: "destructive",
       });
     } finally {
@@ -200,16 +206,16 @@ const XeroIntegration: React.FC<XeroIntegrationProps> = ({ organizationId }) => 
     }
   };
 
-  const updateSyncSettings = async (settings: any) => {
+  const updateSyncSettings = async (settings: Record<string, unknown>) => {
     try {
       const { error } = await supabase
         .from('xero_connections')
-        .update({ sync_settings: settings })
+        .update({ sync_settings: settings as Json })
         .eq('id', connection!.id);
 
       if (error) throw error;
 
-      setConnection(prev => prev ? { ...prev, sync_settings: settings } : null);
+      setConnection(prev => prev ? { ...prev, sync_settings: settings as Json } : null);
 
       toast({
         title: "Settings Updated",
@@ -272,10 +278,20 @@ const XeroIntegration: React.FC<XeroIntegrationProps> = ({ organizationId }) => 
   };
 
   if (loading) {
-    return <div>Loading Xero integration...</div>;
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span className="ml-2">Loading Xero integration...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   const isConnected = connection?.connection_status === 'connected';
+  const syncSettings = connection?.sync_settings as Record<string, unknown> | null;
 
   return (
     <div className="space-y-6">
@@ -354,10 +370,10 @@ const XeroIntegration: React.FC<XeroIntegrationProps> = ({ organizationId }) => 
                 </div>
                 <Switch
                   id="auto-invoices"
-                  checked={connection.sync_settings?.auto_create_invoices || false}
+                  checked={syncSettings?.auto_create_invoices === true}
                   onCheckedChange={(checked) => 
                     updateSyncSettings({
-                      ...connection.sync_settings,
+                      ...syncSettings,
                       auto_create_invoices: checked
                     })
                   }
@@ -375,10 +391,10 @@ const XeroIntegration: React.FC<XeroIntegrationProps> = ({ organizationId }) => 
                 </div>
                 <Switch
                   id="sync-customers"
-                  checked={connection.sync_settings?.sync_customers || false}
+                  checked={syncSettings?.sync_customers === true}
                   onCheckedChange={(checked) => 
                     updateSyncSettings({
-                      ...connection.sync_settings,
+                      ...syncSettings,
                       sync_customers: checked
                     })
                   }
@@ -396,10 +412,10 @@ const XeroIntegration: React.FC<XeroIntegrationProps> = ({ organizationId }) => 
                 </div>
                 <Switch
                   id="sync-products"
-                  checked={connection.sync_settings?.sync_products || false}
+                  checked={syncSettings?.sync_products === true}
                   onCheckedChange={(checked) => 
                     updateSyncSettings({
-                      ...connection.sync_settings,
+                      ...syncSettings,
                       sync_products: checked
                     })
                   }

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { MapPin, Users, Check } from "lucide-react";
 
 interface Seat {
@@ -36,7 +37,13 @@ export const GuestSeatSelector = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [seats, setSeats] = useState<Seat[]>([]);
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
-  const [seatMap, setSeatMap] = useState<any>(null);
+  const [seatMap, setSeatMap] = useState<{
+    id: string;
+    event_id: string;
+    name: string;
+    layout_data: Json;
+    total_seats: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const seatColors = {
@@ -82,7 +89,7 @@ export const GuestSeatSelector = ({
       if (seatsError) throw seatsError;
 
       // Check which seats are already taken (from existing orders/tickets)
-      const { data: takenTickets, error: takenError } = await supabase
+      const { data: _takenTickets, error: _takenError } = await supabase
         .from('tickets')
         .select(`
           id,

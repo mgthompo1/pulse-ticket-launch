@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
 };
 
 serve(async (req) => {
@@ -56,6 +57,8 @@ serve(async (req) => {
       });
 
       if (!refreshResponse.ok) {
+        const errorText = await refreshResponse.text();
+        console.error("Failed to refresh Xero token:", errorText);
         throw new Error("Failed to refresh Xero token");
       }
 
@@ -71,6 +74,32 @@ serve(async (req) => {
           token_expires_at: new Date(Date.now() + (tokens.expires_in * 1000)).toISOString()
         })
         .eq("id", connection.id);
+    }
+
+    if (action === "testConnection") {
+      // Test the connection by fetching organization details
+      const orgResponse = await fetch("https://api.xero.com/api.xro/2.0/Organisation", {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Xero-tenant-id": connection.tenant_id
+        }
+      });
+
+      if (!orgResponse.ok) {
+        const errorText = await orgResponse.text();
+        console.error("Failed to fetch organization details:", errorText);
+        throw new Error("Failed to test Xero connection");
+      }
+
+      const orgData = await orgResponse.json();
+      
+      return new Response(JSON.stringify({ 
+        success: true,
+        organisation: orgData.Organisations[0]
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
     if (action === "createInvoice") {
@@ -138,6 +167,10 @@ serve(async (req) => {
         }
       }
 
+      if (!contactId) {
+        throw new Error("Failed to create or find contact in Xero");
+      }
+
       // Create line items
       const lineItems = order.order_items.map((item: any) => {
         const itemName = item.ticket_types?.name || item.merchandise?.name || "Unknown Item";
@@ -174,6 +207,7 @@ serve(async (req) => {
 
       if (!invoiceResponse.ok) {
         const errorText = await invoiceResponse.text();
+        console.error("Failed to create Xero invoice:", errorText);
         throw new Error(`Failed to create Xero invoice: ${errorText}`);
       }
 
@@ -198,39 +232,9 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({ 
         success: true,
-        invoiceId: invoice.InvoiceID,
         invoiceNumber: invoice.InvoiceNumber,
+        invoiceId: invoice.InvoiceID,
         total: invoice.Total
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    }
-
-    if (action === "testConnection") {
-      // Test connection by fetching organisation info
-      const orgResponse = await fetch(`https://api.xero.com/api.xro/2.0/Organisation`, {
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Xero-tenant-id": connection.tenant_id
-        }
-      });
-
-      if (!orgResponse.ok) {
-        throw new Error("Failed to connect to Xero");
-      }
-
-      const orgData = await orgResponse.json();
-
-      // Update last sync time
-      await supabaseClient
-        .from("xero_connections")
-        .update({ last_sync_at: new Date().toISOString() })
-        .eq("id", connection.id);
-
-      return new Response(JSON.stringify({ 
-        success: true,
-        organisation: orgData.Organisations[0]
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -241,43 +245,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("Xero sync error:", error);
-    
-    // Log failed operation if we have the necessary info
-    if (error.message.includes("organizationId")) {
-      const supabaseClient = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-        { auth: { persistSession: false } }
-      );
-
-      const { organizationId, orderId, action } = await req.json();
-      
-      try {
-        const { data: connection } = await supabaseClient
-          .from("xero_connections")
-          .select("id")
-          .eq("organization_id", organizationId)
-          .single();
-
-        if (connection) {
-          await supabaseClient
-            .from("xero_sync_logs")
-            .insert({
-              xero_connection_id: connection.id,
-              operation_type: action || "unknown",
-              entity_type: "order",
-              entity_id: orderId || "unknown",
-              status: "failed",
-              error_message: error.message
-            });
-        }
-      } catch (logError) {
-        console.error("Failed to log error:", logError);
-      }
-    }
-
     return new Response(JSON.stringify({ 
-      error: error.message 
+      error: error instanceof Error ? error.message : "Unknown error occurred"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,

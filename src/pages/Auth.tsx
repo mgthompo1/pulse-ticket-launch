@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle } from "lucide-react";
 
 
 const Auth = () => {
@@ -17,19 +17,67 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [invitationValid, setInvitationValid] = useState(false);
+  const [invitationLoading, setInvitationLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     // Check if user is already logged in
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        navigate("/dashboard");
+        // Check if user has verified their email
+        if (user.email_confirmed_at) {
+          navigate("/dashboard");
+        } else {
+          // User exists but email not verified - show message
+          setError("Please check your email and click the verification link before signing in.");
+        }
       }
     };
     checkUser();
-  }, [navigate]);
+
+    // Check for invitation token
+    const checkInvitation = async () => {
+      const inviteToken = searchParams.get('invite');
+      const inviteEmail = searchParams.get('email');
+      
+      if (inviteToken && inviteEmail) {
+        setInvitationLoading(true);
+        try {
+          // Validate the invitation token
+          const { data: invitation, error } = await supabase
+            .from("admin_invitations" as any)
+            .select("*")
+            .eq("token", inviteToken)
+            .eq("email", inviteEmail)
+            .eq("status", "pending")
+            .gte("expires_at", new Date().toISOString())
+            .single();
+
+          if (error || !invitation) {
+            setError("Invalid or expired invitation link. Please contact support.");
+          } else {
+            setInvitationValid(true);
+            setEmail(inviteEmail);
+            toast({
+              title: "Welcome!",
+              description: "You've been invited to join Ticket2. Please complete your registration.",
+            });
+          }
+        } catch (error) {
+          console.error("Error validating invitation:", error);
+          setError("Error validating invitation. Please try again.");
+        } finally {
+          setInvitationLoading(false);
+        }
+      }
+    };
+
+    checkInvitation();
+  }, [navigate, searchParams, toast]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,12 +111,21 @@ const Auth = () => {
 
       if (error) throw error;
 
+      // If this was an invitation sign-up, mark the invitation as accepted
+      const inviteToken = searchParams.get('invite');
+      if (inviteToken && invitationValid) {
+        await supabase
+          .from("admin_invitations" as any)
+          .update({ status: "accepted" })
+          .eq("token", inviteToken);
+      }
+
       toast({
         title: "Success!",
         description: "Please check your email for verification link.",
       });
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "Sign up failed");
     } finally {
       setLoading(false);
     }
@@ -92,8 +149,8 @@ const Auth = () => {
         description: "You've been signed in successfully.",
       });
       navigate("/dashboard");
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "Sign in failed");
     } finally {
       setLoading(false);
     }
@@ -117,6 +174,12 @@ const Auth = () => {
             <CardDescription>
               Sign in to your account or create a new one
             </CardDescription>
+            {invitationValid && (
+              <div className="flex items-center justify-center gap-2 mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                <span className="text-sm text-green-700">You've been invited to join!</span>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="signin" className="space-y-4">

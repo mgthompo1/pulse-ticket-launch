@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/contexts/ThemeContext";
 import AIEventGenerator from "@/components/AIEventGenerator";
 import AIChatbot from "@/components/AIChatbot";
 import BillingDashboard from "@/components/BillingDashboard";
@@ -24,9 +25,10 @@ import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X, Link, Package, Shield, Menu } from "lucide-react";
+import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X, Link, Package, Shield, Menu, Sun, Moon } from "lucide-react";
 import MerchandiseManager from "@/components/MerchandiseManager";
 import OrganizationSettings from "@/components/OrganizationSettings";
+import OrganizationOnboarding from "@/components/OrganizationOnboarding";
 import Invoicing from "./Invoicing";
 import { SecurityDashboard } from "@/components/SecurityDashboard";
 import { MarketingTools } from "@/components/MarketingTools";
@@ -52,6 +54,7 @@ const MobileSidebarTrigger = () => {
 
 const OrgDashboard = () => {
   console.log("=== OrgDashboard component rendering ===");
+  const { theme, toggleTheme } = useTheme();
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
 
@@ -60,6 +63,7 @@ const OrgDashboard = () => {
   const [stripeOnboardingComplete, setStripeOnboardingComplete] = useState(false);
   const [organizationId, setOrganizationId] = useState<string>("");
   const [organizationData, setOrganizationData] = useState<any>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [paymentProvider, setPaymentProvider] = useState<"stripe" | "windcave">("stripe");
   const [testMode, setTestMode] = useState<boolean>(true);
   const [testModeAnalytics, setTestModeAnalytics] = useState({
@@ -67,6 +71,14 @@ const OrgDashboard = () => {
     totalOrders: 0,
     totalRevenue: 0,
     estimatedPlatformFees: 0
+  });
+
+  // Analytics data for charts
+  const [analyticsData, setAnalyticsData] = useState({
+    salesData: [],
+    eventTypeData: [],
+    revenueData: [],
+    isLoading: true
   });
 
   // Design state
@@ -184,13 +196,9 @@ const OrgDashboard = () => {
       if (error) {
         console.error("Error loading organization:", error);
         
-        // If no organization exists, show a message to create one
+        // If no organization exists, show onboarding
         if (error.code === 'PGRST116') {
-          toast({
-            title: "No Organization Found",
-            description: "Please create an organization first to manage events.",
-            variant: "destructive"
-          });
+          setShowOnboarding(true);
         }
         return;
       }
@@ -217,8 +225,10 @@ const OrgDashboard = () => {
         
         // Load events for this organization
         loadEvents(orgs.id);
-        // Load test mode analytics
-        loadTestModeAnalytics(orgs.id);
+              // Load test mode analytics
+      loadTestModeAnalytics(orgs.id);
+      // Load analytics data for charts
+      loadAnalyticsData(orgs.id);
       }
     };
 
@@ -285,6 +295,144 @@ const OrgDashboard = () => {
     }
   };
 
+  const loadAnalyticsData = async (orgId: string) => {
+    setAnalyticsData(prev => ({ ...prev, isLoading: true }));
+    
+    try {
+      // Load monthly sales data
+      const { data: monthlyData, error: monthlyError } = await supabase
+        .from("orders")
+        .select(`
+          created_at,
+          total_amount,
+          ticket_types!inner(
+            quantity_sold,
+            event_id
+          ),
+          events!inner(
+            organization_id
+          )
+        `)
+        .eq("events.organization_id", orgId)
+        .eq("test_mode", testMode)
+        .gte("created_at", new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000).toISOString());
+
+      if (monthlyError) {
+        console.error("Error loading monthly data:", monthlyError);
+      }
+
+      // Process monthly data
+      const monthlyStats = monthlyData?.reduce((acc, order) => {
+        const month = new Date(order.created_at).toLocaleDateString('en-US', { month: 'short' });
+        if (!acc[month]) {
+          acc[month] = { sales: 0, tickets: 0 };
+        }
+        acc[month].sales += order.total_amount || 0;
+        acc[month].tickets += order.ticket_types?.reduce((sum, tt) => sum + (tt.quantity_sold || 0), 0) || 0;
+        return acc;
+      }, {} as Record<string, { sales: number; tickets: number }>) || {};
+
+      const salesData = Object.entries(monthlyStats).map(([month, data]) => ({
+        month,
+        sales: Math.round(data.sales),
+        tickets: data.tickets
+      }));
+
+      // Load event type data
+      const { data: eventData, error: eventError } = await supabase
+        .from("events")
+        .select(`
+          id,
+          name,
+          ticket_types!inner(
+            quantity_sold,
+            price
+          )
+        `)
+        .eq("organization_id", orgId)
+        .eq("test_mode", testMode);
+
+      if (eventError) {
+        console.error("Error loading event data:", eventError);
+      }
+
+      // Process event type data (simplified - using event names as categories)
+      const eventStats = eventData?.reduce((acc, event) => {
+        const totalRevenue = event.ticket_types?.reduce((sum, tt) => 
+          sum + ((tt.quantity_sold || 0) * (tt.price || 0)), 0) || 0;
+        
+        // Use event name as category (in a real app, you'd have event categories)
+        const category = event.name.split(' ')[0] || 'Other';
+        if (!acc[category]) {
+          acc[category] = 0;
+        }
+        acc[category] += totalRevenue;
+        return acc;
+      }, {} as Record<string, number>) || {};
+
+      const eventTypeData = Object.entries(eventStats).map(([name, value], index) => ({
+        name,
+        value: Math.round(value),
+        color: [
+          "hsl(var(--primary))",
+          "hsl(var(--secondary))",
+          "hsl(var(--accent))",
+          "hsl(var(--muted))",
+          "hsl(var(--destructive))"
+        ][index % 5]
+      }));
+
+      // Load weekly revenue data
+      const { data: weeklyData, error: weeklyError } = await supabase
+        .from("orders")
+        .select(`
+          created_at,
+          total_amount,
+          events!inner(
+            organization_id
+          )
+        `)
+        .eq("events.organization_id", orgId)
+        .eq("test_mode", testMode)
+        .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+
+      if (weeklyError) {
+        console.error("Error loading weekly data:", weeklyError);
+      }
+
+      // Process weekly data
+      const weeklyStats = weeklyData?.reduce((acc, order) => {
+        const day = new Date(order.created_at).toLocaleDateString('en-US', { weekday: 'short' });
+        if (!acc[day]) {
+          acc[day] = 0;
+        }
+        acc[day] += order.total_amount || 0;
+        return acc;
+      }, {} as Record<string, number>) || {};
+
+      const revenueData = Object.entries(weeklyStats).map(([day, revenue]) => ({
+        day,
+        revenue: Math.round(revenue)
+      }));
+
+      setAnalyticsData({
+        salesData,
+        eventTypeData,
+        revenueData,
+        isLoading: false
+      });
+
+    } catch (error) {
+      console.error("Error loading analytics data:", error);
+      setAnalyticsData({
+        salesData: [],
+        eventTypeData: [],
+        revenueData: [],
+        isLoading: false
+      });
+    }
+  };
+
   const handleToggleTestMode = async () => {
     if (!organizationId) return;
 
@@ -311,6 +459,7 @@ const OrgDashboard = () => {
       // Reload events and analytics for the new mode
       loadEvents(organizationId);
       loadTestModeAnalytics(organizationId);
+      loadAnalyticsData(organizationId);
 
       toast({
         title: "Success",
@@ -323,6 +472,15 @@ const OrgDashboard = () => {
         description: "Failed to toggle test mode",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    // Reload organization data by triggering the useEffect
+    if (user) {
+      // Force a reload by updating the user dependency
+      window.location.reload();
     }
   };
 
@@ -382,9 +540,14 @@ const OrgDashboard = () => {
     }
   };
 
+  // Show onboarding if no organization exists
+  if (showOnboarding) {
+    return <OrganizationOnboarding onComplete={handleOnboardingComplete} />;
+  }
+
   return (
     <SidebarProvider>
-      <div className="h-screen bg-background flex flex-col">
+      <div className="h-screen bg-background flex flex-col dashboard-layout">
         {/* Header with minimal controls */}
         <header className="border-b flex-shrink-0">
           <div className="container mx-auto px-4 py-3">
@@ -395,6 +558,17 @@ const OrgDashboard = () => {
               </div>
               
               <div className="flex items-center gap-4 ml-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleTheme}
+                  className="flex items-center gap-2"
+                >
+                  {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                  <span className="hidden sm:inline">
+                    {theme === 'dark' ? 'Light' : 'Dark'} Mode
+                  </span>
+                </Button>
                 <div className="flex items-center space-x-2">
                   <Label htmlFor="test-mode" className="text-sm">
                     {testMode ? "Test Mode" : "Live Mode"}
@@ -426,8 +600,8 @@ const OrgDashboard = () => {
             selectedEvent={selectedEvent} 
           />
           
-          <main className="flex-1 min-w-0 p-4 md:p-8 overflow-auto">
-            <div className="w-full max-w-none">
+          <main className="flex-1 min-w-0 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
+            <div className="w-full dashboard-content">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8">
             <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -477,7 +651,12 @@ const OrgDashboard = () => {
               </div>
 
               {/* Add Analytics Charts */}
-              <AnalyticsCharts />
+              <AnalyticsCharts 
+                salesData={analyticsData.salesData}
+                eventTypeData={analyticsData.eventTypeData}
+                revenueData={analyticsData.revenueData}
+                isLoading={analyticsData.isLoading}
+              />
 
               <Card>
                 <CardHeader>

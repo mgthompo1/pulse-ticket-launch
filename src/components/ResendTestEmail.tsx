@@ -65,7 +65,7 @@ export const ResendTestEmail = () => {
         throw new Error(data.error || "Unknown error occurred");
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Test email failed:', error);
       
       setLastTest({
@@ -75,7 +75,7 @@ export const ResendTestEmail = () => {
 
       toast({
         title: "Test Failed",
-        description: error.message || "Failed to send test email",
+        description: error instanceof Error ? error.message : "Failed to send test email",
         variant: "destructive",
       });
     } finally {

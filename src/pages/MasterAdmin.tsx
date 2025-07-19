@@ -36,7 +36,10 @@ import {
   Edit,
   Save,
   Type,
-  FileText
+  FileText,
+  Mail,
+  Copy,
+  UserPlus
 } from "lucide-react";
 
 const MasterAdmin = () => {
@@ -47,6 +50,12 @@ const MasterAdmin = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [editingContent, setEditingContent] = useState<{[key: string]: string}>({});
   const [savingContent, setSavingContent] = useState<{[key: string]: boolean}>({});
+  
+  // Sign-up link state
+  const [signUpEmail, setSignUpEmail] = useState("");
+  const [signUpLink, setSignUpLink] = useState("");
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [showSignUpDialog, setShowSignUpDialog] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -139,6 +148,109 @@ const MasterAdmin = () => {
       grouped[item.section].push(item);
     });
     return grouped;
+  };
+
+  const generateSignUpLink = async () => {
+    if (!signUpEmail || !signUpEmail.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsGeneratingLink(true);
+    try {
+      // Generate a unique sign-up token
+      const token = crypto.randomUUID();
+      const signUpUrl = `${window.location.origin}/auth?invite=${token}&email=${encodeURIComponent(signUpEmail)}`;
+      
+      // Store the invitation in the database
+      const { error } = await supabase
+        .from("admin_invitations" as any)
+        .insert({
+          email: signUpEmail.trim(),
+          token: token,
+          invited_by: adminUser,
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
+          status: "pending"
+        } as any);
+
+      if (error) {
+        throw error;
+      }
+
+      setSignUpLink(signUpUrl);
+      setShowSignUpDialog(true);
+      
+      toast({
+        title: "Success",
+        description: "Sign-up link generated successfully!",
+      });
+
+    } catch (error) {
+      console.error("Error generating sign-up link:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate sign-up link. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
+
+  const copySignUpLink = async () => {
+    try {
+      await navigator.clipboard.writeText(signUpLink);
+      toast({
+        title: "Copied!",
+        description: "Sign-up link copied to clipboard",
+      });
+    } catch (error) {
+      console.error("Error copying link:", error);
+      toast({
+        title: "Error",
+        description: "Failed to copy link to clipboard",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const sendSignUpEmail = async () => {
+    try {
+      // Call the send-invitation-email function
+      const { error } = await supabase.functions.invoke('send-invitation-email', {
+        body: {
+          email: signUpEmail,
+          signUpLink: signUpLink,
+          invitedBy: adminUser
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Email Sent!",
+        description: `Sign-up invitation sent to ${signUpEmail}`,
+      });
+
+      // Reset form
+      setSignUpEmail("");
+      setSignUpLink("");
+      setShowSignUpDialog(false);
+
+    } catch (error) {
+      console.error("Error sending invitation email:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send invitation email. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const organizations = [
@@ -306,6 +418,81 @@ const MasterAdmin = () => {
 
           {/* Organizations Tab */}
           <TabsContent value="organizations" className="space-y-6">
+            {/* Send Sign-Up Link Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="w-5 h-5" />
+                  Send Sign-Up Invitation
+                </CardTitle>
+                <CardDescription>
+                  Generate and send a sign-up link to invite new users to the platform
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <Label htmlFor="signup-email">Email Address</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="Enter email address to invite"
+                      value={signUpEmail}
+                      onChange={(e) => setSignUpEmail(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <Button 
+                      onClick={generateSignUpLink}
+                      disabled={isGeneratingLink || !signUpEmail.trim()}
+                      className="flex items-center gap-2"
+                    >
+                      {isGeneratingLink ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Mail className="h-4 w-4" />
+                      )}
+                      Generate Link
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Generated Link Display */}
+                {signUpLink && (
+                  <div className="border rounded-lg p-4 bg-muted/50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <Label className="text-sm font-medium">Generated Sign-Up Link</Label>
+                        <div className="mt-1 text-sm text-muted-foreground break-all">
+                          {signUpLink}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 ml-4">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={copySignUpLink}
+                          className="flex items-center gap-2"
+                        >
+                          <Copy className="h-3 w-3" />
+                          Copy
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={sendSignUpEmail}
+                          className="flex items-center gap-2"
+                        >
+                          <Mail className="h-3 w-3" />
+                          Send Email
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Organization Management</CardTitle>

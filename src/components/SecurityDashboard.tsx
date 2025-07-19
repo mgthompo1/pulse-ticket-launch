@@ -14,8 +14,8 @@ export const SecurityDashboard = () => {
   const [securityStatus, setSecurityStatus] = useState({
     totpEnabled: false,
     emailVerified: false,
-    passwordStrength: 'unknown',
-    lastSignIn: null,
+    passwordStrength: 'unknown' as 'unknown' | 'weak' | 'moderate' | 'strong',
+    lastSignIn: null as string | null,
     activeSessions: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -35,7 +35,7 @@ export const SecurityDashboard = () => {
       // Get user metadata
       const { data: userData } = await supabase.auth.getUser();
       const emailVerified = userData.user?.email_confirmed_at != null;
-      const lastSignIn = userData.user?.last_sign_in_at;
+      const lastSignIn = userData.user?.last_sign_in_at || null;
 
       setSecurityStatus({
         totpEnabled,
@@ -65,10 +65,10 @@ export const SecurityDashboard = () => {
         title: "Password Reset Sent",
         description: "Check your email for password reset instructions",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Reset Failed",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Password reset failed",
         variant: "destructive",
       });
     }

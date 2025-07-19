@@ -196,7 +196,7 @@ const ChartTooltipContent = React.forwardRef<
                 )}
               >
                 {formatter && item?.value !== undefined && item.name ? (
-                  formatter(item.value, item.name, item, index, item.payload)
+                  formatter(item.value, item.name, item as any, index as number, item.payload)
                 ) : (
                   <>
                     {itemConfig?.icon ? (
@@ -260,7 +260,13 @@ const ChartLegendContent = React.forwardRef<
   React.ComponentProps<"div"> & {
     hideIcon?: boolean
     nameKey?: string
-    payload?: any[]
+    payload?: Array<{
+      dataKey: string;
+      name: string;
+      value: number;
+      color: string;
+      payload: Record<string, unknown>;
+    }>
     verticalAlign?: "top" | "bottom"
   }
 >(
