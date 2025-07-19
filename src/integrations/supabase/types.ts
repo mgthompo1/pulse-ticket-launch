@@ -716,6 +716,7 @@ export type Database = {
           city: string | null
           country: string | null
           created_at: string
+          credit_card_processing_fee_percentage: number | null
           currency: string | null
           custom_css: string | null
           email: string
@@ -748,6 +749,7 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string
+          credit_card_processing_fee_percentage?: number | null
           currency?: string | null
           custom_css?: string | null
           email: string
@@ -780,6 +782,7 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string
+          credit_card_processing_fee_percentage?: number | null
           currency?: string | null
           custom_css?: string | null
           email?: string

@@ -55,6 +55,7 @@ const TicketWidget = () => {
   const [showSeatSelection, setShowSeatSelection] = useState(false);
   const [pendingSeatSelection, setPendingSeatSelection] = useState<any>(null);
   const [selectedSeats, setSelectedSeats] = useState<Record<string, string[]>>({});
+  const [creditCardProcessingFee, setCreditCardProcessingFee] = useState(0);
 
   useEffect(() => {
     if (eventId) {
@@ -79,7 +80,8 @@ const TicketWidget = () => {
             windcave_endpoint,
             apple_pay_merchant_id,
             currency,
-            logo_url
+            logo_url,
+            credit_card_processing_fee_percentage
           )
         `)
         .eq("id", eventId)
@@ -96,6 +98,7 @@ const TicketWidget = () => {
 
       setEventData(event);
       setPaymentProvider(event.organizations?.payment_provider || "stripe");
+      setCreditCardProcessingFee(event.organizations?.credit_card_processing_fee_percentage || 0);
 
       // Load ticket types
       const { data: types, error: typesError } = await supabase
@@ -301,7 +304,12 @@ const TicketWidget = () => {
   const getTotalAmount = () => {
     const ticketTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const merchandiseTotal = getMerchandiseTotal();
-    return ticketTotal + merchandiseTotal;
+    const subtotal = ticketTotal + merchandiseTotal;
+    
+    // Apply credit card processing fee if configured
+    const processingFeeAmount = creditCardProcessingFee > 0 ? (subtotal * creditCardProcessingFee / 100) : 0;
+    
+    return subtotal + processingFeeAmount;
   };
 
   const handleCheckout = async () => {
@@ -1089,6 +1097,7 @@ const TicketWidget = () => {
                     ))}
                     
                     <div className="border-t pt-3">
+                      {/* Subtotal breakdown */}
                       {cart.length > 0 && (
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm">Tickets:</span>
@@ -1101,6 +1110,21 @@ const TicketWidget = () => {
                           <span className="text-sm">${getMerchandiseTotal().toFixed(2)}</span>
                         </div>
                       )}
+                      
+                      {/* Show subtotal if there's a processing fee */}
+                      {creditCardProcessingFee > 0 && (
+                        <>
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm">Subtotal:</span>
+                            <span className="text-sm">${(cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm">Credit Card Processing Fee ({creditCardProcessingFee}%):</span>
+                            <span className="text-sm">${((cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()) * creditCardProcessingFee / 100).toFixed(2)}</span>
+                          </div>
+                        </>
+                      )}
+                      
                       <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
                         <span>Total:</span>
                         <span className="text-primary">${getTotalAmount().toFixed(2)}</span>

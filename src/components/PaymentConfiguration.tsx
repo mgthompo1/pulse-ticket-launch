@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { PaymentProviderSelector } from './payment/PaymentProviderSelector';
@@ -26,6 +28,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [currency, setCurrency] = useState('NZD');
+  const [creditCardProcessingFee, setCreditCardProcessingFee] = useState(0);
 
   useEffect(() => {
     const loadPaymentConfig = async () => {
@@ -52,6 +55,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         setWindcaveStationId(data.windcave_station_id || '');
         setCurrency(data.currency || 'NZD');
         setApplePayMerchantId(data.apple_pay_merchant_id || '');
+        setCreditCardProcessingFee(data.credit_card_processing_fee_percentage || 0);
       }
     };
 
@@ -75,6 +79,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         windcave_station_id: windcaveStationId,
         currency: currency,
         apple_pay_merchant_id: applePayMerchantId,
+        credit_card_processing_fee_percentage: creditCardProcessingFee,
       })
       .eq('id', organizationId);
 
@@ -143,6 +148,23 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
             onApplePayMerchantIdChange={setApplePayMerchantId}
           />
         )}
+
+        <div className="space-y-3">
+          <Label htmlFor="creditCardFee">Credit Card Processing Fee (%)</Label>
+          <Input
+            id="creditCardFee"
+            type="number"
+            step="0.01"
+            min="0"
+            max="100"
+            value={creditCardProcessingFee}
+            onChange={(e) => setCreditCardProcessingFee(parseFloat(e.target.value) || 0)}
+            placeholder="Enter percentage (e.g., 2.5 for 2.5%)"
+          />
+          <p className="text-sm text-muted-foreground">
+            Optional processing fee added to ticket cost (e.g., 2.5 for 2.5%). Leave at 0 to disable.
+          </p>
+        </div>
 
         <div className="pt-4">
           <Button onClick={handleSave} disabled={loading} className="w-full">
