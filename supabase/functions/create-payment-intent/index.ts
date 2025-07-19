@@ -126,15 +126,12 @@ serve(async (req) => {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: total,
       currency: "usd",
-      application_fee_amount: platformFee,
-      transfer_data: {
-        destination: event.organizations.stripe_account_id,
-      },
       metadata: {
         event_id: eventId,
         organization_id: event.organizations.id,
         customer_email: customerInfo.email,
         customer_name: customerInfo.name,
+        platform_fee: platformFee.toString(),
       },
     });
     console.log("Payment intent created:", paymentIntent.id);
