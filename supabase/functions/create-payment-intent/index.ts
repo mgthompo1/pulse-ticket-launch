@@ -168,7 +168,15 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error("=== CREATE PAYMENT INTENT ERROR ===");
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
+    console.error("Full error object:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      details: error.stack 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
