@@ -63,7 +63,7 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
           )
         `)
         .eq('events.organization_id', organizationId)
-        .in('status', ['completed', 'paid'])
+        .or('status.in.(completed,paid),and(status.eq.pending,stripe_session_id.not.is.null)')
         .order('created_at', { ascending: false })
         .limit(50);
 
