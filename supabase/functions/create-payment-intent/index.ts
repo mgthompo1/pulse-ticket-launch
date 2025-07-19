@@ -51,8 +51,8 @@ serve(async (req) => {
       throw new Error("Event not found");
     }
 
-    if (!event.organizations.stripe_account_id || !event.organizations.stripe_onboarding_complete || !event.organizations.stripe_secret_key) {
-      throw new Error("Organization Stripe account not fully configured");
+    if (!event.organizations.stripe_secret_key) {
+      throw new Error("Organization Stripe secret key not configured");
     }
 
     // Get ticket types - filter only ticket items
