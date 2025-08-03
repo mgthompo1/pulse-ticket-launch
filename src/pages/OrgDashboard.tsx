@@ -207,7 +207,8 @@ const OrgDashboard = () => {
         console.log("Organization loaded:", orgs);
         setOrganizationId(orgs.id);
         setOrganizationData(orgs);
-        setTestMode(orgs.test_mode ?? true);
+        const orgTestMode = orgs.test_mode ?? true;
+        setTestMode(orgTestMode);
         setStripeConnected(!!(orgs as any).stripe_account_id);
         setStripeOnboardingComplete(!!(orgs as any).stripe_onboarding_complete);
         setPaymentProvider((orgs as any).payment_provider || "stripe");
@@ -223,24 +224,27 @@ const OrgDashboard = () => {
           currency: (orgs as any).currency || "NZD"
         });
         
-        // Load events for this organization
-        loadEvents(orgs.id);
-              // Load test mode analytics
-      loadTestModeAnalytics(orgs.id);
-      // Load analytics data for charts
-      loadAnalyticsData(orgs.id);
+        // Load events for this organization with correct test mode
+        loadEvents(orgs.id, orgTestMode);
+        // Load test mode analytics with correct test mode
+        loadTestModeAnalytics(orgs.id, orgTestMode);
+        // Load analytics data for charts with correct test mode
+        loadAnalyticsData(orgs.id, orgTestMode);
       }
     };
 
     loadOrganization();
   }, [user]);
 
-  const loadEvents = async (orgId: string) => {
+  const loadEvents = async (orgId: string, mode?: boolean) => {
+    const currentTestMode = mode !== undefined ? mode : testMode;
+    console.log("Loading events for org:", orgId, "test_mode:", currentTestMode);
+    
     const { data: eventsData, error } = await supabase
       .from("events")
       .select("*")
       .eq("organization_id", orgId)
-      .eq("test_mode", testMode)
+      .eq("test_mode", currentTestMode)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -265,12 +269,15 @@ const OrgDashboard = () => {
     }
   };
 
-  const loadTestModeAnalytics = async (orgId: string) => {
+  const loadTestModeAnalytics = async (orgId: string, mode?: boolean) => {
+    const currentTestMode = mode !== undefined ? mode : testMode;
+    console.log("Loading analytics for org:", orgId, "test_mode:", currentTestMode);
+    
     const { data: analyticsData, error } = await supabase
       .from("test_mode_analytics")
       .select("*")
       .eq("organization_id", orgId)
-      .eq("test_mode", testMode)
+      .eq("test_mode", currentTestMode)
       .single();
 
     if (error) {
@@ -295,7 +302,10 @@ const OrgDashboard = () => {
     }
   };
 
-  const loadAnalyticsData = async (orgId: string) => {
+  const loadAnalyticsData = async (orgId: string, mode?: boolean) => {
+    const currentTestMode = mode !== undefined ? mode : testMode;
+    console.log("Loading analytics data for org:", orgId, "test_mode:", currentTestMode);
+    
     setAnalyticsData(prev => ({ ...prev, isLoading: true }));
     
     try {
@@ -314,7 +324,7 @@ const OrgDashboard = () => {
           )
         `)
         .eq("events.organization_id", orgId)
-        .eq("test_mode", testMode)
+        .eq("test_mode", currentTestMode)
         .gte("created_at", new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000).toISOString());
 
       if (monthlyError) {
@@ -350,7 +360,7 @@ const OrgDashboard = () => {
           )
         `)
         .eq("organization_id", orgId)
-        .eq("test_mode", testMode);
+        .eq("test_mode", currentTestMode);
 
       if (eventError) {
         console.error("Error loading event data:", eventError);
@@ -393,7 +403,7 @@ const OrgDashboard = () => {
           )
         `)
         .eq("events.organization_id", orgId)
-        .eq("test_mode", testMode)
+        .eq("test_mode", currentTestMode)
         .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
 
       if (weeklyError) {
@@ -456,10 +466,10 @@ const OrgDashboard = () => {
 
       setTestMode(newTestMode);
       
-      // Reload events and analytics for the new mode
-      loadEvents(organizationId);
-      loadTestModeAnalytics(organizationId);
-      loadAnalyticsData(organizationId);
+      // Reload events and analytics for the new mode with explicit test mode
+      loadEvents(organizationId, newTestMode);
+      loadTestModeAnalytics(organizationId, newTestMode);
+      loadAnalyticsData(organizationId, newTestMode);
 
       toast({
         title: "Success",
@@ -526,8 +536,8 @@ const OrgDashboard = () => {
         description: ""
       });
 
-      // Reload events
-      loadEvents(organizationId);
+      // Reload events with current test mode
+      loadEvents(organizationId, testMode);
     } catch (error) {
       console.error("Error creating event:", error);
       toast({
