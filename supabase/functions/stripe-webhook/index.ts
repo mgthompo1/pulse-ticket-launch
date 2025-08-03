@@ -120,6 +120,23 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
         console.error("Error updating order:", orderError);
       } else {
         console.log("Order marked as paid:", orderId);
+        
+        // Send ticket confirmation email
+        try {
+          console.log("Triggering ticket email for order:", orderId);
+          
+          const emailResponse = await supabaseClient.functions.invoke('send-ticket-email', {
+            body: { orderId: orderId }
+          });
+          
+          if (emailResponse.error) {
+            console.error("Error sending ticket email:", emailResponse.error);
+          } else {
+            console.log("Ticket email sent successfully for order:", orderId);
+          }
+        } catch (emailError) {
+          console.error("Failed to send ticket email:", emailError);
+        }
       }
     }
 
@@ -159,6 +176,23 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent,
         console.error("Error updating order:", updateError);
       } else {
         console.log("Order marked as paid:", order.id);
+        
+        // Send ticket confirmation email
+        try {
+          console.log("Triggering ticket email for order:", order.id);
+          
+          const emailResponse = await supabaseClient.functions.invoke('send-ticket-email', {
+            body: { orderId: order.id }
+          });
+          
+          if (emailResponse.error) {
+            console.error("Error sending ticket email:", emailResponse.error);
+          } else {
+            console.log("Ticket email sent successfully for order:", order.id);
+          }
+        } catch (emailError) {
+          console.error("Failed to send ticket email:", emailError);
+        }
       }
     }
 
