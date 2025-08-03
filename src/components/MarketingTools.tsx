@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,8 @@ import {
   MessageSquare
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Event {
   id: string;
@@ -38,8 +40,11 @@ interface MarketingToolsProps {
   selectedEvent?: Event;
 }
 
-export const MarketingTools = ({ selectedEvent }: MarketingToolsProps) => {
+export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: MarketingToolsProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(initialSelectedEvent || null);
   const [emailCampaign, setEmailCampaign] = useState({
     subject: "",
     content: "",
@@ -51,6 +56,52 @@ export const MarketingTools = ({ selectedEvent }: MarketingToolsProps) => {
     scheduled: false,
     scheduleDate: ""
   });
+
+  // Load events when component mounts
+  useEffect(() => {
+    const loadEvents = async () => {
+      if (!user) return;
+
+      try {
+        // First get the organization
+        const { data: org, error: orgError } = await supabase
+          .from("organizations")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (orgError || !org) {
+          console.error("Error loading organization:", orgError);
+          return;
+        }
+
+        // Then get events for this organization
+        const { data: eventsData, error: eventsError } = await supabase
+          .from("events")
+          .select("id, name, status, event_date, description")
+          .eq("organization_id", org.id)
+          .order("created_at", { ascending: false });
+
+        if (eventsError) {
+          console.error("Error loading events:", eventsError);
+          return;
+        }
+
+        setEvents(eventsData || []);
+      } catch (error) {
+        console.error("Error loading events:", error);
+      }
+    };
+
+    loadEvents();
+  }, [user]);
+
+  // Update selectedEvent when initialSelectedEvent changes
+  useEffect(() => {
+    if (initialSelectedEvent) {
+      setSelectedEvent(initialSelectedEvent);
+    }
+  }, [initialSelectedEvent]);
 
   const handleCopyShareLink = () => {
     if (selectedEvent) {
@@ -88,11 +139,43 @@ export const MarketingTools = ({ selectedEvent }: MarketingToolsProps) => {
 
   if (!selectedEvent) {
     return (
-      <Card>
-        <CardContent className="p-6">
-          <p className="text-muted-foreground text-center">Select an event to access marketing tools</p>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Marketing Tools</CardTitle>
+            <CardDescription>Select an event to access marketing tools</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {events.length === 0 ? (
+              <p className="text-muted-foreground text-center py-8">
+                No events found. Create an event first to access marketing tools.
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <Label>Select an Event</Label>
+                <Select onValueChange={(eventId) => {
+                  const event = events.find(e => e.id === eventId);
+                  if (event) setSelectedEvent(event);
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose an event to promote" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {events.map((event) => (
+                      <SelectItem key={event.id} value={event.id}>
+                        <div className="flex items-center justify-between w-full">
+                          <span>{event.name}</span>
+                          <Badge variant="outline" className="ml-2">{event.status}</Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
