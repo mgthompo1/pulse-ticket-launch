@@ -3,7 +3,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, Download, Mail } from "lucide-react";
+import { CheckCircle, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface InvoiceData {
@@ -63,7 +63,10 @@ export default function InvoicePaymentSuccess() {
           .eq("id", invoiceId);
       }
 
-      setInvoice(invoiceData);
+      setInvoice({
+        ...invoiceData,
+        paid_at: invoiceData.paid_at || new Date().toISOString()
+      });
     } catch (error) {
       console.error("Error:", error);
       toast({

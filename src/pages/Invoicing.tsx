@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,9 +21,7 @@ import {
   Building, 
   User, 
   Calendar, 
-  CreditCard,
   Download,
-  Send,
   DollarSign
 } from "lucide-react";
 
@@ -601,7 +599,7 @@ const Invoicing = () => {
         if (data.links && Array.isArray(data.links)) {
           console.log("Available payment links:", data.links);
           // Find the payment URL (use the hpp link for hosted payment page)
-          const paymentLink = data.links.find(link => link.rel === "hpp");
+          const paymentLink = data.links.find((link: any) => link.rel === "hpp");
           if (paymentLink) {
             const generatedUrl = paymentLink.href;
             console.log("Generated Windcave payment URL:", generatedUrl);
@@ -635,7 +633,7 @@ const Invoicing = () => {
     return null;
   };
 
-  const initiatePayment = async () => {
+  // const initiatePayment = async () => {
     if (invoiceData.total <= 0) {
       toast({
         title: "Error",
@@ -695,7 +693,7 @@ const Invoicing = () => {
 
       if (data.links && Array.isArray(data.links)) {
         // Store payment URL for invoice
-        const paymentLink = data.links.find(link => link.method === "GET" || link.rel === "payment");
+        const paymentLink = data.links.find((link: any) => link.method === "GET" || link.rel === "payment");
         if (paymentLink) {
           setPaymentUrl(paymentLink.href);
         }
@@ -718,7 +716,7 @@ const Invoicing = () => {
     }
   };
 
-  const initializeWindcaveDropIn = (links: any[], amount: number) => {
+  // const initializeWindcaveDropIn = (links: any[], amount: number) => {
     if (!dropInRef.current) {
       console.error("Drop-In container not found");
       return;
@@ -1011,7 +1009,7 @@ const Invoicing = () => {
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-4">
               <CardTitle>Invoice {invoiceData.invoiceNumber}</CardTitle>
-              <Badge variant={invoiceData.status === 'paid' ? 'success' : invoiceData.status === 'sent' ? 'default' : 'outline'}>
+              <Badge variant={invoiceData.status === 'paid' ? 'default' : invoiceData.status === 'sent' ? 'secondary' : 'outline'}>
                 {invoiceData.status.charAt(0).toUpperCase() + invoiceData.status.slice(1)}
               </Badge>
             </div>
@@ -1268,7 +1266,7 @@ const Invoicing = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {invoiceData.items.map((item, index) => (
+                  {invoiceData.items.map((item, _index) => (
                     <div key={item.id} className="grid grid-cols-12 gap-2 items-end">
                       <div className="col-span-5">
                         <Label htmlFor={`description-${item.id}`}>Description</Label>

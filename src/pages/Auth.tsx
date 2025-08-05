@@ -18,7 +18,7 @@ const Auth = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [invitationValid, setInvitationValid] = useState(false);
-  const [invitationLoading, setInvitationLoading] = useState(false);
+  // const [invitationLoading, setInvitationLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -45,7 +45,7 @@ const Auth = () => {
       const inviteEmail = searchParams.get('email');
       
       if (inviteToken && inviteEmail) {
-        setInvitationLoading(true);
+        // setInvitationLoading(true);
         try {
           // Validate the invitation token
           const { data: invitation, error } = await supabase
@@ -73,7 +73,7 @@ const Auth = () => {
           console.error("Error validating invitation:", error);
           setError("Error validating invitation. Please try again.");
         } finally {
-          setInvitationLoading(false);
+          // setInvitationLoading(false);
         }
       }
     };
