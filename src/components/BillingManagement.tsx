@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +36,7 @@ interface BillingManagementProps {
   organizationId: string;
 }
 
-const UpdatePaymentMethod = ({ organizationId, onSuccess }: { organizationId: string; onSuccess: () => void }) => {
+const UpdatePaymentMethod = ({ onSuccess }: { organizationId: string; onSuccess: () => void }) => {
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
@@ -106,7 +106,7 @@ const UpdatePaymentMethod = ({ organizationId, onSuccess }: { organizationId: st
       console.error('Error updating payment method:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update payment method",
+        description: error instanceof Error ? error.message : "Failed to update payment method",
         variant: "destructive"
       });
     } finally {

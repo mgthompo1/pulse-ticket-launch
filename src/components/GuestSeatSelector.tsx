@@ -28,7 +28,6 @@ interface GuestSeatSelectorProps {
 
 export const GuestSeatSelector = ({ 
   eventId, 
-  ticketTypeId, 
   requestedQuantity, 
   onSeatsSelected, 
   onSkip 

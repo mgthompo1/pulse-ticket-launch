@@ -1,4 +1,3 @@
-import React from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -9,7 +8,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, CreditCard, Sparkles, Link, FileText, Shield } from "lucide-react";
+import { Calendar, Users, Settings, BarChart3, Mail, Palette, CreditCard, Sparkles, Link, FileText, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";

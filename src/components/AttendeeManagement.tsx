@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Search, Filter, Download, Mail, CheckCircle, AlertCircle, Clock, MapPin, Calendar, Ticket } from "lucide-react";
+import { Users, Search, Filter, Download, Mail, CheckCircle, Clock, MapPin, Calendar, Ticket } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -97,14 +97,16 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
   const calculateAnalytics = (attendeeData: Attendee[]) => {
     const totalTickets = attendeeData.length;
     const checkedInCount = attendeeData.filter(a => a.checked_in).length;
-    const totalRevenue = attendeeData.reduce((sum, a) => sum + (a.price * a.quantity), 0);
+    const totalRevenue = attendeeData.reduce((sum, a) => sum + ((a.price || 0) * (a.quantity || 0)), 0);
     const checkInRate = totalTickets > 0 ? (checkedInCount / totalTickets) * 100 : 0;
 
     // Ticket type breakdown
     const ticketTypeBreakdown = attendeeData.reduce((acc, attendee) => {
-      acc[attendee.ticket_type] = (acc[attendee.ticket_type] || 0) + attendee.quantity;
+      const ticketType = attendee.ticket_type || 'Unknown';
+      const quantity = attendee.quantity || 0;
+      acc[ticketType] = (acc[ticketType] || 0) + quantity;
       return acc;
-    }, {});
+    }, {} as Record<string, number>);
 
     // Location breakdown (simplified - in real app would use actual location data)
     const locationBreakdown = {
@@ -129,9 +131,9 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(attendee =>
-        attendee.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        attendee.customer_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        attendee.ticket_code.toLowerCase().includes(searchTerm.toLowerCase())
+        (attendee.customer_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (attendee.customer_email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (attendee.ticket_code || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -158,15 +160,15 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
     const csvContent = [
       ["Name", "Email", "Phone", "Ticket Type", "Status", "Checked In", "Order Date", "Price", "Ticket Code"],
       ...filteredAttendees.map(attendee => [
-        attendee.customer_name,
-        attendee.customer_email,
+        attendee.customer_name || '',
+        attendee.customer_email || '',
         attendee.customer_phone || "",
-        attendee.ticket_type,
-        attendee.ticket_status,
+        attendee.ticket_type || '',
+        attendee.ticket_status || '',
         attendee.checked_in ? "Yes" : "No",
-        new Date(attendee.order_date).toLocaleDateString(),
-        `$${attendee.price.toFixed(2)}`,
-        attendee.ticket_code
+        attendee.order_date ? new Date(attendee.order_date).toLocaleDateString() : '',
+        `$${(attendee.price || 0).toFixed(2)}`,
+        attendee.ticket_code || ''
       ])
     ].map(row => row.join(",")).join("\n");
 
@@ -185,6 +187,8 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
   };
 
   const toggleCheckIn = async (attendee: Attendee) => {
+    if (!attendee.ticket_id) return;
+    
     try {
       if (attendee.checked_in) {
         // Remove check-in
@@ -220,7 +224,7 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
 
       toast({
         title: "Success",
-        description: `${attendee.customer_name} has been ${attendee.checked_in ? 'checked out' : 'checked in'}`
+        description: `${attendee.customer_name || 'Attendee'} has been ${attendee.checked_in ? 'checked out' : 'checked in'}`
       });
 
       loadAttendees();
@@ -267,7 +271,7 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
     }
   };
 
-  const uniqueTicketTypes = [...new Set(attendees.map(a => a.ticket_type))];
+  const uniqueTicketTypes = [...new Set(attendees.map(a => a.ticket_type).filter(Boolean))];
 
   return (
     <div className="space-y-6">
@@ -443,7 +447,7 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
                   {uniqueTicketTypes.map(type => (
-                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                    <SelectItem key={type} value={type || ''}>{type}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -504,15 +508,15 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
                   </TableRow>
                 ) : (
                   filteredAttendees.map((attendee) => (
-                    <TableRow key={attendee.ticket_id}>
+                    <TableRow key={attendee.ticket_id || `row-${Math.random()}`}>
                       <TableCell className="font-medium">
-                        {attendee.customer_name}
+                        {attendee.customer_name || 'N/A'}
                       </TableCell>
-                      <TableCell>{attendee.customer_email}</TableCell>
-                      <TableCell>{attendee.ticket_type}</TableCell>
+                      <TableCell>{attendee.customer_email || 'N/A'}</TableCell>
+                      <TableCell>{attendee.ticket_type || 'N/A'}</TableCell>
                       <TableCell>
-                        <Badge variant={getStatusBadgeVariant(attendee.ticket_status)}>
-                          {attendee.ticket_status}
+                        <Badge variant={getStatusBadgeVariant(attendee.ticket_status || '')}>
+                          {attendee.ticket_status || 'N/A'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -523,7 +527,7 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
                             <Clock className="h-4 w-4 text-gray-400" />
                           )}
                           <span className="text-sm">
-                            {attendee.checked_in 
+                            {attendee.checked_in && attendee.checked_in_at
                               ? new Date(attendee.checked_in_at).toLocaleString()
                               : "Not checked in"
                             }
@@ -531,9 +535,9 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {new Date(attendee.order_date).toLocaleDateString()}
+                        {attendee.order_date ? new Date(attendee.order_date).toLocaleDateString() : 'N/A'}
                       </TableCell>
-                      <TableCell>${attendee.price.toFixed(2)}</TableCell>
+                      <TableCell>${(attendee.price || 0).toFixed(2)}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Button 

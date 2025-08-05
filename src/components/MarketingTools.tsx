@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import {
   Megaphone, 
   TrendingUp, 
   Target, 
-  Calendar,
+  
   Copy,
   Download,
   ExternalLink,
@@ -87,7 +87,10 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
           return;
         }
 
-        setEvents(eventsData || []);
+        setEvents((eventsData || []).map(event => ({
+          ...event,
+          description: event.description || undefined
+        })));
       } catch (error) {
         console.error("Error loading events:", error);
       }

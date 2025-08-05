@@ -118,7 +118,16 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         .single();
 
       if (error) throw error;
-      setEventData(data);
+      setEventData({ 
+        id: eventId,
+        name: data.name,
+        status: data.status,
+        test_mode: data.test_mode,
+        logo_url: data.logo_url,
+        widget_customization: data.widget_customization as Record<string, unknown>,
+        ticket_customization: data.ticket_customization as Record<string, unknown>,
+        email_customization: data.email_customization as Record<string, unknown>
+      });
       setCurrentLogoUrl(data?.logo_url || null);
 
       if (data?.widget_customization) {
@@ -173,7 +182,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
   const updateWidgetCustomization = (path: string[], value: any) => {
     setWidgetCustomization(prev => {
-      const updated = { ...prev };
+      const updated = { ...prev } as any;
       let current = updated;
       for (let i = 0; i < path.length - 1; i++) {
         if (!current[path[i]]) {
