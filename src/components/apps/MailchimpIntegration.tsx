@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ const MailchimpIntegration = () => {
       return;
     }
     setLoading(true);
-    const { error, data } = await supabase.functions.invoke("mailchimp-sync", {
+    const { error } = await supabase.functions.invoke("mailchimp-sync", {
       body: { apiKey, listId, eventId: selectedEvent }
     });
     setLoading(false);

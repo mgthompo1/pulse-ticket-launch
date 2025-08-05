@@ -4,10 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, QrCode, Key, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Shield, CheckCircle, AlertTriangle } from 'lucide-react';
 
 interface TOTPSetupProps {
   onSetupComplete?: () => void;
@@ -83,7 +83,7 @@ export const TOTPSetup = ({ onSetupComplete }: TOTPSetupProps) => {
 
     setIsVerifying(true);
     try {
-      const { data, error } = await supabase.auth.mfa.verify({
+      const { error } = await supabase.auth.mfa.verify({
         factorId: factors[0]?.id,
         challengeId: factors[0]?.id,
         code: verificationCode,

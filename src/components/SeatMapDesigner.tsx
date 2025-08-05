@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -9,16 +9,12 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Plus, 
-  Minus, 
-  Square, 
   Circle, 
-  RotateCcw, 
   Save, 
   Grid3x3, 
   MousePointer, 
   Trash2,
-  Eye,
-  Settings
+  Eye
 } from "lucide-react";
 
 interface Seat {
@@ -45,7 +41,7 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
   const [selectedSeatType, setSelectedSeatType] = useState<Seat['type']>('standard');
   const [isDrawing, setIsDrawing] = useState(false);
   const [draggedSeat, setDraggedSeat] = useState<string | null>(null);
-  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  const [canvasSize] = useState({ width: 800, height: 600 });
   const [currentRow, setCurrentRow] = useState('A');
   const [seatCounter, setSeatCounter] = useState(1);
   const [seatMapName, setSeatMapName] = useState('Main Seating Layout');

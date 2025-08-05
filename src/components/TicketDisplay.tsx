@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { format } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,7 +33,7 @@ interface TicketDisplayProps {
 }
 
 export const TicketDisplay = ({ ticket, eventDetails, organizationDetails, ticketCustomization }: TicketDisplayProps) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // const canvasRef = useRef<HTMLCanvasElement>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
 
   useEffect(() => {

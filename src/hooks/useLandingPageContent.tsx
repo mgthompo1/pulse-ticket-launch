@@ -24,7 +24,12 @@ export const useLandingPageContent = () => {
         .order("key", { ascending: true });
 
       if (error) throw error;
-      setContent(data || []);
+      setContent((data || []).map(item => ({
+        ...item,
+        description: item.description || undefined,
+        content_type: item.content_type || 'text',
+        updated_at: item.updated_at || new Date().toISOString()
+      })));
     } catch (error) {
       console.error("Error fetching landing page content:", error);
     } finally {

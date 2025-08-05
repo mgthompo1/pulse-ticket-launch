@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Zap, Crown, Building } from "lucide-react";
+import { Check, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLandingPageContent } from "@/hooks/useLandingPageContent";
 
@@ -38,7 +38,7 @@ export const Pricing = () => {
   const navigate = useNavigate();
   const { getContentByKey } = useLandingPageContent();
 
-  const handlePlanClick = (planName: string) => {
+  const handlePlanClick = () => {
     navigate('/auth');
   };
   return (
@@ -106,7 +106,7 @@ export const Pricing = () => {
                   variant={plan.ctaVariant} 
                   size="lg" 
                   className="w-full group-hover:scale-105 transition-transform"
-                  onClick={() => handlePlanClick(plan.name)}
+                  onClick={() => handlePlanClick()}
                 >
                   {plan.cta}
                 </Button>

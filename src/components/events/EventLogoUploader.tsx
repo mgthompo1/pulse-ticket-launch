@@ -68,7 +68,7 @@ export const EventLogoUploader = ({ eventId, currentLogoUrl, onLogoChange }: Eve
       console.error('Error uploading logo:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to upload logo",
+        description: error instanceof Error ? error.message : "Failed to upload logo",
         variant: "destructive"
       });
     } finally {

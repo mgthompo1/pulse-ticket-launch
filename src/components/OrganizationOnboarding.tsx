@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Building2, Mail, Globe, Save, ArrowRight } from "lucide-react";
+import { Building2, ArrowRight } from "lucide-react";
 
 interface OrganizationOnboardingProps {
   onComplete: () => void;
@@ -54,7 +54,7 @@ const OrganizationOnboarding: React.FC<OrganizationOnboardingProps> = ({ onCompl
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("organizations")
         .insert({
           user_id: user.id,

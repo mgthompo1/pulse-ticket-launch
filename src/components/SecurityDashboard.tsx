@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { TOTPSetup } from './TOTPSetup';
-import { Shield, Key, AlertTriangle, CheckCircle, Clock, User, Mail } from 'lucide-react';
+import { Shield, Key, AlertTriangle, CheckCircle, Clock, Mail } from 'lucide-react';
 
 export const SecurityDashboard = () => {
   const { user } = useAuth();
