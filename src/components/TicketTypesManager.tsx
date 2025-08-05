@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit2, Trash2, DollarSign, Calendar } from "lucide-react";
+import { Plus, Edit2, Trash2, DollarSign } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -61,7 +61,10 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      setTicketTypes(data || []);
+      setTicketTypes((data || []).map(type => ({
+        ...type,
+        description: type.description || ''
+      })));
     } catch (error) {
       console.error("Error loading ticket types:", error);
       toast({

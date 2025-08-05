@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -57,7 +57,16 @@ const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCa
         .order('category', { ascending: true });
 
       if (error) throw error;
-      setMerchandise(data || []);
+      setMerchandise((data || []).map(item => ({
+        ...item,
+        description: item.description || '',
+        category: item.category || 'apparel',
+        color_options: item.color_options || [],
+        size_options: item.size_options || [],
+        is_active: item.is_active ?? true,
+        image_url: item.image_url || '',
+        stock_quantity: item.stock_quantity || 0
+      })));
     } catch (error) {
       console.error('Error fetching merchandise:', error);
       toast({

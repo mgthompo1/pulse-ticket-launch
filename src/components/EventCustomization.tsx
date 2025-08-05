@@ -197,9 +197,12 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
   const updateTicketCustomization = (path: string[], value: any) => {
     setTicketCustomization(prev => {
-      const updated = { ...prev };
+      const updated = { ...prev } as any;
       let current = updated;
       for (let i = 0; i < path.length - 1; i++) {
+        if (!current[path[i]]) {
+          current[path[i]] = {};
+        }
         current = current[path[i]];
       }
       current[path[path.length - 1]] = value;
@@ -209,9 +212,12 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
   const updateEmailCustomization = (path: string[], value: any) => {
     setEmailCustomization(prev => {
-      const updated = { ...prev };
+      const updated = { ...prev } as any;
       let current = updated;
       for (let i = 0; i < path.length - 1; i++) {
+        if (!current[path[i]]) {
+          current[path[i]] = {};
+        }
         current = current[path[i]];
       }
       current[path[path.length - 1]] = value;
@@ -982,7 +988,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                             <Label>Event Logo Upload</Label>
                             <EventLogoUploader 
                               eventId={eventId}
-                              currentLogoUrl={currentLogoUrl}
+                               currentLogoUrl={currentLogoUrl || undefined}
                               onLogoChange={(logoUrl) => {
                                 setCurrentLogoUrl(logoUrl);
                                 // Refresh event data to get updated logo
@@ -1160,7 +1166,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         <TabsContent value="settings" className="space-y-6">
           <EventLogoUploader
             eventId={eventId}
-            currentLogoUrl={currentLogoUrl}
+            currentLogoUrl={currentLogoUrl || undefined}
             onLogoChange={url => {
               setCurrentLogoUrl(url);
               setEventData(prev => prev ? { ...prev, logo_url: url } : prev);
@@ -1199,7 +1205,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
                           if (error) throw error;
 
-                          setEventData(prev => ({ ...prev, status: checked ? 'published' : 'draft' }));
+                          setEventData(prev => prev ? ({ ...prev, status: checked ? 'published' : 'draft' }) : null);
                           
                           toast({
                             title: "Success",
@@ -1319,7 +1325,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
                       if (error) throw error;
 
-                      setEventData(prev => ({ ...prev, test_mode: checked }));
+                      setEventData(prev => prev ? ({ ...prev, test_mode: checked }) : null);
                       
                       toast({
                         title: "Success",
