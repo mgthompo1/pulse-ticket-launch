@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
 const XeroCallback = () => {
-  const navigate = useNavigate();
+  
   const [searchParams] = useSearchParams();
   
   const code = searchParams.get('code');

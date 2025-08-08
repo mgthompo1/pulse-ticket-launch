@@ -143,7 +143,18 @@ const loadGuests = async () => {
       .eq("event_id", eventId);
 
       if (error) throw error;
-      setGuests(data || []);
+      setGuests((data || []).map((g: any) => ({
+        ticket_id: g.ticket_id || "",
+        ticket_code: g.ticket_code || "",
+        ticket_status: g.ticket_status || "",
+        checked_in: !!g.checked_in,
+        customer_name: g.customer_name || "",
+        customer_email: g.customer_email || "",
+        ticket_type: g.ticket_type || "",
+        order_date: g.order_date || "",
+        checked_in_at: g.checked_in_at || undefined,
+        lanyard_printed: Boolean(g.lanyard_printed),
+      })) as GuestStatus[]);
     } catch (error) {
       console.error("Error loading guests:", error);
       toast({ title: "Error loading guests", variant: "destructive" });
@@ -431,11 +442,12 @@ const handleCreateConcessionItem = async () => {
         ...ticketCart.map(ticket => ({ type: 'ticket', ...ticket }))
       ];
 
-      const { data, error } = await supabase
+      if (!eventId) throw new Error("Missing event ID");
+      const { error } = await supabase
         .from("pos_transactions")
         .insert([
           {
-            event_id: eventId,
+            event_id: eventId as string,
             payment_method: "cash",
             total_amount: getCartTotal(),
             items: allItems,
@@ -474,7 +486,7 @@ const handleCreateConcessionItem = async () => {
         ...ticketCart.map(ticket => ({ type: 'ticket', ...ticket }))
       ];
 
-      const { data, error } = await supabase.functions.invoke("stripe-terminal", {
+      const { error } = await supabase.functions.invoke("stripe-terminal", {
         body: {
           action: "create_payment_intent",
           amount: getCartTotal(),
@@ -803,7 +815,7 @@ const handleCreateConcessionItem = async () => {
                         <div className="flex justify-between items-center mt-2">
                           <span className="font-bold text-green-600">${item.price.toFixed(2)}</span>
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline">{item.stock_quantity} in stock</Badge>
+                            <Badge variant="outline">{item.stock_quantity ?? 0} in stock</Badge>
                             <Button size="sm" onClick={() => addToCart(item)}>
                               <Plus className="h-4 w-4" />
                             </Button>

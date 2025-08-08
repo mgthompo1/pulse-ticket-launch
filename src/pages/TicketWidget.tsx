@@ -54,7 +54,7 @@ const TicketWidget = () => {
   const dropInRef = useRef<HTMLDivElement>(null);
   const [showSeatSelection, setShowSeatSelection] = useState(false);
   const [pendingSeatSelection, setPendingSeatSelection] = useState<any>(null);
-  const [selectedSeats, setSelectedSeats] = useState<Record<string, string[]>>({});
+  const [, setSelectedSeats] = useState<Record<string, string[]>>({});
   const [creditCardProcessingFee, setCreditCardProcessingFee] = useState(0);
   const [paymentProvider, setPaymentProvider] = useState('stripe');
   const [stripePublishableKey, setStripePublishableKey] = useState('');
@@ -92,7 +92,7 @@ const TicketWidget = () => {
           credit_card_processing_fee_percentage
         )
         `)
-        .eq("id", eventId)
+        .eq("id", eventId as string)
         .single();
 
       if (eventError) {
@@ -113,7 +113,7 @@ const TicketWidget = () => {
       const { data: types, error: typesError } = await supabase
         .from("ticket_types")
         .select("*")
-        .eq("event_id", eventId)
+        .eq("event_id", eventId as string)
         .order("price", { ascending: true });
 
       if (typesError) {
@@ -163,7 +163,7 @@ const TicketWidget = () => {
       return;
     }
     
-    scripts.forEach((scriptPath, index) => {
+    scripts.forEach((scriptPath) => {
       const script = document.createElement('script');
       script.src = baseUrl + scriptPath;
       script.async = true;
@@ -230,7 +230,7 @@ const TicketWidget = () => {
     const { data: seatMaps } = await supabase
       .from('seat_maps')
       .select('id')
-      .eq('event_id', eventId)
+      .eq('event_id', eventId as string)
       .limit(1);
 
     if (seatMaps && seatMaps.length > 0) {
@@ -432,7 +432,7 @@ const TicketWidget = () => {
 
         if (stripeError) throw stripeError;
       }
-    } catch (error) {
+     } catch (error: any) {
       console.error("Checkout error:", error);
       toast({
         title: "Error",
@@ -442,15 +442,6 @@ const TicketWidget = () => {
     }
   };
 
-  // Helper function to extract session ID from various sources
-  const extractSessionId = (source?: any) => {
-    if (source?.sessionId || source?.session_id || source?.id) {
-      return source.sessionId || source.session_id || source.id;
-    }
-    // Fallback to extracting from links
-    return windcaveLinks.find(link => link.sessionId)?.sessionId || 
-           windcaveLinks[0]?.href?.split('/').pop();
-  };
 
   const initializeWindcaveDropIn = (links: any[], totalAmount: number) => {
     console.log("=== INITIALIZING WINDCAVE DROP-IN ===");
@@ -506,7 +497,7 @@ const TicketWidget = () => {
             // Apple Pay configuration matching sample
             applePay: {
               merchantId: eventData.organizations.apple_pay_merchant_id,
-              onSuccess: function(status) {
+               onSuccess: function(status: any) {
                 console.log("=== APPLE PAY SUCCESS CALLBACK ===");
                 console.log("Apple Pay status:", status);
                 
@@ -520,7 +511,7 @@ const TicketWidget = () => {
                 }
                 
                 // Return Promise for non-done status as per sample
-                return new Promise(async (resolve, reject) => {
+                return new Promise(async (resolve) => {
                   try {
                     console.log("Processing Apple Pay transaction...");
                     
@@ -534,7 +525,7 @@ const TicketWidget = () => {
                       });
                       
                 // Call the Drop In success function to finalize the order
-                const { data, error } = await anonymousSupabase.functions.invoke('windcave-dropin-success', {
+                const { error } = await anonymousSupabase.functions.invoke('windcave-dropin-success', {
                         body: { 
                           sessionId: sessionId,
                           eventId: eventData.id
@@ -568,7 +559,7 @@ const TicketWidget = () => {
                   }
                 });
               },
-              onError: function(stage, error) {
+              onError: function(stage: any, error: any) {
                 console.error("=== APPLE PAY ERROR CALLBACK ===");
                 console.error("Stage:", stage, "Error:", error);
                 
@@ -593,7 +584,7 @@ const TicketWidget = () => {
               googleMerchantId: "00000000", // Use 00000000 for test as per sample
               supportPANOnly: true,
               supportTokens: true,
-              onSuccess: function(status) {
+              onSuccess: function(status: any) {
                 console.log("=== GOOGLE PAY SUCCESS CALLBACK ===");
                 if (status === "done") {
                   console.log("Google Pay transaction finished");
@@ -603,7 +594,7 @@ const TicketWidget = () => {
                   }
                 }
               },
-              onError: function(stage, error) {
+              onError: function(stage: any, error: any) {
                 console.error("=== GOOGLE PAY ERROR CALLBACK ===");
                 console.error("Stage:", stage, "Error:", error);
                 
@@ -618,7 +609,7 @@ const TicketWidget = () => {
             }
           } : undefined,
           // Optional callback triggered when payment starts
-          onPaymentStart: (paymentMethod: string, next: () => void, cancel: () => void) => {
+          onPaymentStart: (paymentMethod: string, next: () => void) => {
             console.log("=== PAYMENT START CALLBACK ===");
             console.log("Payment method selected:", paymentMethod);
             
@@ -699,7 +690,7 @@ const TicketWidget = () => {
                   window.location.href = '/payment-success';
                 }, 1500);
                 
-              } catch (error) {
+               } catch (error: any) {
                 console.error("=== COMPLETE ERROR DETAILS ===");
                 console.error("Error finalizing order:", error);
                 console.error("Error type:", typeof error);
@@ -756,7 +747,7 @@ const TicketWidget = () => {
         // Create the drop-in using the simpler approach from the example
         window.windcaveDropIn = window.WindcavePayments.DropIn.create(data);
         
-      } catch (error) {
+      } catch (error: any) {
         console.error("=== DROP-IN INITIALIZATION ERROR ===");
         console.error("Error:", error);
         console.error("Error type:", typeof error);
@@ -796,79 +787,6 @@ const TicketWidget = () => {
     }
   };
 
-  // Separate verification function for reusability
-  const verifyPaymentStatus = async (sessionId: string, showToasts: boolean = true) => {
-    try {
-      console.log("=== VERIFYING PAYMENT STATUS ===");
-      console.log("Session ID:", sessionId);
-      
-      // Try the payment status check function
-      const { data, error } = await anonymousSupabase.functions.invoke("windcave-payment-status", {
-        body: { 
-          eventId,
-          txnRef: sessionId,
-          orderId: sessionId
-        }
-      });
-
-      console.log("Verification response:", { data, error });
-
-      if (error) {
-        console.error("Payment verification error:", error);
-        if (showToasts) {
-          toast({
-            title: "Payment Verification Failed",
-            description: "Please contact support if payment was deducted.",
-            variant: "destructive"
-          });
-        }
-        return { success: false, error };
-      }
-
-      if (data?.success && data?.status === 'completed') {
-        console.log("=== PAYMENT VERIFIED SUCCESSFULLY ===");
-        
-        // Clear any existing polling
-        if ((window as any).windcaveStatusInterval) {
-          clearInterval((window as any).windcaveStatusInterval);
-        }
-        
-        if (showToasts) {
-          toast({
-            title: "Payment Successful!",
-            description: `Your ${data.ticketCount} ticket(s) have been purchased successfully!`
-          });
-        }
-        
-        // Redirect to success page with order details
-        setTimeout(() => {
-          window.location.href = `/payment-success?orderId=${data.orderId}`;
-        }, 1500);
-        
-        return { success: true, data };
-      } else {
-        console.log("Payment not yet successful:", data);
-        if (showToasts && data?.status) {
-          toast({
-            title: "Payment Status",
-            description: `Payment status: ${data.status}`,
-            variant: data.status === 'failed' ? 'destructive' : 'default'
-          });
-        }
-        return { success: false, data };
-      }
-    } catch (verificationError) {
-      console.error("Payment verification error:", verificationError);
-      if (showToasts) {
-        toast({
-          title: "Verification Error",
-          description: "Unable to verify payment status. Please contact support.",
-          variant: "destructive"
-        });
-      }
-      return { success: false, error: verificationError };
-    }
-  };
 
   const handleBackToTickets = () => {
     setShowPaymentForm(false);
