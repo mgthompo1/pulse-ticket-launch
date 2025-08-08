@@ -8,8 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,15 +16,12 @@ import { useTheme } from "@/contexts/ThemeContext";
 import AIEventGenerator from "@/components/AIEventGenerator";
 import AIChatbot from "@/components/AIChatbot";
 import BillingDashboard from "@/components/BillingDashboard";
-import { EventLogoUploader } from "@/components/events/EventLogoUploader";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import EventCustomization from "@/components/EventCustomization";
 import { PaymentConfiguration } from "@/components/PaymentConfiguration";
-import AttendeeManagement from "@/components/AttendeeManagement";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, Settings, BarChart3, Mail, Palette, Globe, Plus, Edit, Trash2, CreditCard, Sparkles, MessageSquare, Bell, Monitor, LogOut, X, Link, Package, Shield, Menu, Sun, Moon } from "lucide-react";
-import MerchandiseManager from "@/components/MerchandiseManager";
+import { Calendar, Users, Ticket, BarChart3, Edit, Monitor, LogOut, Menu, Sun, Moon } from "lucide-react";
 import OrganizationSettings from "@/components/OrganizationSettings";
 import OrganizationOnboarding from "@/components/OrganizationOnboarding";
 import Invoicing from "./Invoicing";
@@ -34,6 +29,31 @@ import { SecurityDashboard } from "@/components/SecurityDashboard";
 import { MarketingTools } from "@/components/MarketingTools";
 import { AnalyticsCharts } from "@/components/AnalyticsCharts";
 import { useNavigate } from "react-router-dom";
+
+// Types
+type DashboardEvent = {
+  id: string;
+  name: string;
+  date: string;
+  venue: string | null;
+  capacity: number;
+  description: string | null;
+  status: string;
+  test_mode: boolean;
+  tickets: { sold: number; total: number };
+  revenue: string;
+};
+
+type SalesPoint = { month: string; sales: number; tickets: number };
+type EventTypeDatum = { name: string; value: number; color: string };
+type RevenuePoint = { day: string; revenue: number };
+
+type AnalyticsState = {
+  salesData: SalesPoint[];
+  eventTypeData: EventTypeDatum[];
+  revenueData: RevenuePoint[];
+  isLoading: boolean;
+};
 
 // Custom mobile sidebar trigger component
 const MobileSidebarTrigger = () => {
@@ -55,51 +75,31 @@ const MobileSidebarTrigger = () => {
 const OrgDashboard = () => {
   console.log("=== OrgDashboard component rendering ===");
   const { theme, toggleTheme } = useTheme();
-  const [events, setEvents] = useState([]);
-  const [selectedEvent, setSelectedEvent] = useState(null);
+const [events, setEvents] = useState<DashboardEvent[]>([]);
+const [selectedEvent, setSelectedEvent] = useState<DashboardEvent | null>(null);
 
-  const [activeTab, setActiveTab] = useState("overview");
-  const [stripeConnected, setStripeConnected] = useState(false);
-  const [stripeOnboardingComplete, setStripeOnboardingComplete] = useState(false);
-  const [organizationId, setOrganizationId] = useState<string>("");
-  const [organizationData, setOrganizationData] = useState<any>(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [paymentProvider, setPaymentProvider] = useState<"stripe" | "windcave">("stripe");
-  const [testMode, setTestMode] = useState<boolean>(true);
-  const [testModeAnalytics, setTestModeAnalytics] = useState({
-    totalEvents: 0,
-    totalOrders: 0,
-    totalRevenue: 0,
-    estimatedPlatformFees: 0
-  });
+const [activeTab, setActiveTab] = useState("overview");
+const [organizationId, setOrganizationId] = useState<string>("");
+const [showOnboarding, setShowOnboarding] = useState(false);
+const [testMode, setTestMode] = useState<boolean>(true);
+const [testModeAnalytics, setTestModeAnalytics] = useState({
+  totalEvents: 0,
+  totalOrders: 0,
+  totalRevenue: 0,
+  estimatedPlatformFees: 0
+});
 
-  // Analytics data for charts
-  const [analyticsData, setAnalyticsData] = useState({
-    salesData: [],
-    eventTypeData: [],
-    revenueData: [],
-    isLoading: true
-  });
+// Analytics data for charts
+const [analyticsData, setAnalyticsData] = useState<AnalyticsState>({
+  salesData: [],
+  eventTypeData: [],
+  revenueData: [],
+  isLoading: true
+});
 
-  // Design state
-  const [selectedColor, setSelectedColor] = useState("#000000");
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [customCss, setCustomCss] = useState("");
-  const [stripeSecretKey, setStripeSecretKey] = useState("");
-  const [windcaveConfig, setWindcaveConfig] = useState({
-    username: "",
-    apiKey: "",
-    endpoint: "UAT" as "SEC" | "UAT",
-    enabled: false,
-    applePayMerchantId: "",
-    hitUsername: "",
-    hitKey: "",
-    stationId: "",
-    currency: "NZD"
-  });
-  const { toast } = useToast();
-  const { user } = useAuth();
-  const navigate = useNavigate();
+const { toast } = useToast();
+const { user } = useAuth();
+const navigate = useNavigate();
 
   const [eventForm, setEventForm] = useState({
     name: "",
@@ -110,72 +110,9 @@ const OrgDashboard = () => {
   });
   const [isCreatingEvent, setIsCreatingEvent] = useState(false);
 
-  // Ticket type form state
-  const [ticketTypeForm, setTicketTypeForm] = useState({
-    name: "",
-    description: "",
-    price: "",
-    quantity: "",
-    saleStartDate: "",
-    saleEndDate: ""
-  });
-  const [isCreatingTicketType, setIsCreatingTicketType] = useState(false);
-  const [ticketTypes, setTicketTypes] = useState([]);
-  const [showSeatMapDesigner, setShowSeatMapDesigner] = useState(false);
   
-  // Edit ticket type state
-  const [editingTicketType, setEditingTicketType] = useState(null);
-  const [editTicketTypeForm, setEditTicketTypeForm] = useState({
-    name: "",
-    description: "",
-    price: "",
-    quantity: "",
-    saleStartDate: "",
-    saleEndDate: ""
-  });
-  const [isUpdatingTicketType, setIsUpdatingTicketType] = useState(false);
-  
-  // Custom questions state
-  const [customQuestions, setCustomQuestions] = useState([]);
-  const [showCustomQuestionsDialog, setShowCustomQuestionsDialog] = useState(false);
-  const [showAdvancedSettingsDialog, setShowAdvancedSettingsDialog] = useState(false);
-  const [newQuestion, setNewQuestion] = useState({
-    label: "",
-    type: "text",
-    required: false,
-    options: ""
-  });
-  
-  // Advanced settings state
-  const [advancedSettings, setAdvancedSettings] = useState({
-    collectPhone: false,
-    requireApproval: false,
-    customSuccessMessage: "",
-    emailNotifications: true,
-    reminderEmails: true
-  });
 
-  const loadTicketTypes = async (eventId: string) => {
-    const { data: ticketTypesData, error } = await supabase
-      .from("ticket_types")
-      .select("*")
-      .eq("event_id", eventId)
-      .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Error loading ticket types:", error);
-      return;
-    }
-
-    setTicketTypes(ticketTypesData || []);
-  };
-
-  // Load ticket types when selectedEvent changes
-  React.useEffect(() => {
-    if (selectedEvent?.id) {
-      loadTicketTypes(selectedEvent.id);
-    }
-  }, [selectedEvent]);
 
   // Load organization and events
   React.useEffect(() => {
@@ -203,34 +140,16 @@ const OrgDashboard = () => {
         return;
       }
 
-      if (orgs) {
-        console.log("Organization loaded:", orgs);
-        setOrganizationId(orgs.id);
-        setOrganizationData(orgs);
-        const orgTestMode = orgs.test_mode ?? true;
-        setTestMode(orgTestMode);
-        setStripeConnected(!!(orgs as any).stripe_account_id);
-        setStripeOnboardingComplete(!!(orgs as any).stripe_onboarding_complete);
-        setPaymentProvider((orgs as any).payment_provider || "stripe");
-        setWindcaveConfig({
-          username: (orgs as any).windcave_username || "",
-          apiKey: (orgs as any).windcave_api_key || "",
-          endpoint: (orgs as any).windcave_endpoint || "UAT",
-          enabled: !!(orgs as any).windcave_enabled,
-          applePayMerchantId: (orgs as any).apple_pay_merchant_id || "",
-          hitUsername: (orgs as any).windcave_hit_username || "",
-          hitKey: (orgs as any).windcave_hit_key || "",
-          stationId: (orgs as any).windcave_station_id || "",
-          currency: (orgs as any).currency || "NZD"
-        });
-        
-        // Load events for this organization with correct test mode
-        loadEvents(orgs.id, orgTestMode);
-        // Load test mode analytics with correct test mode
-        loadTestModeAnalytics(orgs.id, orgTestMode);
-        // Load analytics data for charts with correct test mode
-        loadAnalyticsData(orgs.id, orgTestMode);
-      }
+if (orgs) {
+  console.log("Organization loaded:", orgs);
+  setOrganizationId(orgs.id);
+  const orgTestMode = (orgs as any).test_mode ?? true;
+  setTestMode(orgTestMode);
+  // Load events and analytics for this organization with correct test mode
+  loadEvents(orgs.id, orgTestMode);
+  loadTestModeAnalytics(orgs.id, orgTestMode);
+  loadAnalyticsData(orgs.id, orgTestMode);
+}
     };
 
     loadOrganization();
@@ -506,7 +425,7 @@ const OrgDashboard = () => {
 
     setIsCreatingEvent(true);
     try {
-      const { data: newEvent, error } = await supabase
+      const { error } = await supabase
         .from("events")
         .insert({
           name: eventForm.name,
@@ -612,7 +531,7 @@ const OrgDashboard = () => {
           
           <main className="flex-1 min-w-0 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
             <div className="w-full dashboard-content">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8">
+<Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8">
             <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <Card className="gradient-card hover-scale">
@@ -661,12 +580,12 @@ const OrgDashboard = () => {
               </div>
 
               {/* Add Analytics Charts */}
-              <AnalyticsCharts 
-                salesData={analyticsData.salesData}
-                eventTypeData={analyticsData.eventTypeData}
-                revenueData={analyticsData.revenueData}
-                isLoading={analyticsData.isLoading}
-              />
+<AnalyticsCharts 
+  salesData={analyticsData.salesData}
+  eventTypeData={analyticsData.eventTypeData}
+  revenueData={analyticsData.revenueData}
+  isLoading={analyticsData.isLoading}
+/>
 
               <Card>
                 <CardHeader>
@@ -889,13 +808,13 @@ const OrgDashboard = () => {
           <AIChatbot context={{ organizationId }} />
 
           {/* Seat Map Designer Modal */}
-          {showSeatMapDesigner && selectedEvent && (
-            <SeatMapDesigner
-              eventId={selectedEvent.id}
-              eventName={selectedEvent.name}
-              onClose={() => setShowSeatMapDesigner(false)}
-            />
-          )}
+{showSeatMapDesigner && selectedEvent && (
+  <SeatMapDesigner
+    eventId={selectedEvent.id}
+    eventName={selectedEvent.name}
+    onClose={() => setShowSeatMapDesigner(false)}
+  />
+)}
             </div>
           </main>
         </div>
