@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,33 +6,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useLandingPageContent } from "@/hooks/useLandingPageContent";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  Users, 
-  Building2, 
-  Calendar, 
-  DollarSign, 
-  Settings, 
-  BarChart3, 
+  Users,
+  Building2,
+  Calendar,
+  DollarSign,
   Shield,
   LogOut,
   Loader2,
-  AlertTriangle,
-  TrendingUp,
   Database,
-  Activity,
   CheckCircle,
-  XCircle,
   Server,
   Globe,
-  UserCheck,
-  Ban,
   Edit,
   Save,
   Type,
@@ -56,7 +48,7 @@ const MasterAdmin = () => {
   const [signUpEmail, setSignUpEmail] = useState("");
   const [signUpLink, setSignUpLink] = useState("");
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
-  const [showSignUpDialog, setShowSignUpDialog] = useState(false);
+  
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [metrics, setMetrics] = useState({
     organizations: 0,
@@ -168,21 +160,8 @@ const MasterAdmin = () => {
       const ticketsSold = ticketTypes?.reduce((sum, t) => sum + (t.quantity_sold || 0), 0) || 0;
       // Active Events (count of events with status = 'active')
       const { count: activeEvents } = await supabase.from("events").select("*", { count: "exact", head: true }).eq("status", "active");
-      // Daily Active Users (count of unique users who performed an action today)
-      // If you have an 'activity_log' or similar table, use it. Otherwise, fallback to users table count.
-      let dailyActiveUsers = 0;
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      const isoToday = today.toISOString();
-      const { data: activityLog, error: activityError } = await supabase.from("activity_log").select("user_id, timestamp").gte("timestamp", isoToday);
-      if (!activityError && activityLog) {
-        const uniqueUsers = new Set(activityLog.map(a => a.user_id));
-        dailyActiveUsers = uniqueUsers.size;
-      } else {
-        // fallback: count of users
-        const { count: userCount } = await supabase.from("users").select("*", { count: "exact", head: true });
-        dailyActiveUsers = userCount || 0;
-      }
+      // Daily Active Users - not available (no activity log/users table), set to 0 for now
+      const dailyActiveUsers = 0;
       setAnalytics({
         loading: false,
         transactionFees,
@@ -293,8 +272,7 @@ const MasterAdmin = () => {
     }
     // If a link is already generated for this email, do not generate again
     if (signUpLink && signUpLink.includes(encodeURIComponent(signUpEmail))) {
-      setShowSignUpDialog(true);
-      return;
+      // Link already generated for this email, nothing to do
     }
     setIsGeneratingLink(true);
     try {
@@ -315,7 +293,7 @@ const MasterAdmin = () => {
         throw error;
       }
       setSignUpLink(signUpUrl);
-      setShowSignUpDialog(true);
+      // Keep generated link in state for display
       toast({
         title: "Success",
         description: "Sign-up link generated successfully!",
@@ -378,7 +356,7 @@ const MasterAdmin = () => {
       // Reset form
       setSignUpEmail("");
       setSignUpLink("");
-      setShowSignUpDialog(false);
+      // Dialog state removed; just clear local state
     } catch (error) {
       console.error("Error sending invitation email:", error);
       toast({
