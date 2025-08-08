@@ -12,7 +12,6 @@ const PaymentSuccess = () => {
   const navigate = useNavigate();
   const [orderDetails, setOrderDetails] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [downloadingTickets, setDownloadingTickets] = useState(false);
   const [tickets, setTickets] = useState<any[]>([]);
   const [showTickets, setShowTickets] = useState(false);
 
@@ -36,11 +35,10 @@ const PaymentSuccess = () => {
         return;
       }
 
-      // Format tickets for display
       const formattedTickets = orderItems.flatMap(item => 
-        item.tickets.map((ticket: any) => ({
+        (item.tickets || []).map((ticket: any) => ({
           ...ticket,
-          ticketTypeName: item.ticket_types.name,
+          ticketTypeName: item.ticket_types?.name ?? "Ticket",
           eventName: orderDetails.events?.name,
           eventDate: orderDetails.events?.event_date,
           customerName: orderDetails.customer_name
@@ -212,7 +210,7 @@ const PaymentSuccess = () => {
                   <DialogTitle>Your Tickets</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-6 py-4">
-                  {tickets.map((ticket, index) => (
+                  {tickets.map((ticket) => (
                     <div key={ticket.id} className="print:break-after-page">
                       <TicketDisplay 
                         ticket={ticket}

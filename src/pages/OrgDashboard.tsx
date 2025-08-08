@@ -109,6 +109,7 @@ const navigate = useNavigate();
     description: ""
   });
   const [isCreatingEvent, setIsCreatingEvent] = useState(false);
+  const [showSeatMapDesigner, setShowSeatMapDesigner] = useState(false);
 
   
 
@@ -523,10 +524,10 @@ if (orgs) {
 
         {/* Sidebar and content below header - takes remaining space */}
         <div className="flex flex-1 min-h-0 w-full">
-          <AppSidebar 
+<AppSidebar 
             activeTab={activeTab} 
             setActiveTab={setActiveTab} 
-            selectedEvent={selectedEvent} 
+            selectedEvent={selectedEvent ? { id: selectedEvent.id, name: selectedEvent.name, event_date: selectedEvent.date, status: selectedEvent.status } : null} 
           />
           
           <main className="flex-1 min-w-0 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
@@ -784,7 +785,7 @@ if (orgs) {
             </TabsContent>
 
             <TabsContent value="marketing" className="space-y-6">
-              <MarketingTools selectedEvent={selectedEvent} />
+<MarketingTools selectedEvent={selectedEvent ? { id: selectedEvent.id, name: selectedEvent.name, status: selectedEvent.status, event_date: selectedEvent.date, description: (selectedEvent.description ?? undefined) } : undefined} />
             </TabsContent>
 
             <TabsContent value="billing" className="space-y-6">

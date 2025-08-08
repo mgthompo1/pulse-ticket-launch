@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { CreditCard, Users, CheckCircle, Printer, Plus, Search, ShoppingCart, BarChart3, TrendingUp, DollarSign, Package } from "lucide-react";
+import { CreditCard, Users, CheckCircle, Printer, Plus, ShoppingCart, BarChart3, TrendingUp, DollarSign, Package } from "lucide-react";
 
 interface GuestStatus {
   ticket_id: string;
@@ -28,10 +28,10 @@ interface GuestStatus {
 interface ConcessionItem {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   price: number;
-  category: string;
-  stock_quantity: number;
+  category: string | null;
+  stock_quantity: number | null;
 }
 
 interface CartItem extends ConcessionItem {
@@ -57,8 +57,6 @@ const Ticket2LIVE = () => {
     category: "food",
     stock_quantity: ""
   });
-  const [editingItem, setEditingItem] = useState<string | null>(null);
-  
   // Ticket sales state
   const [ticketTypes, setTicketTypes] = useState<any[]>([]);
   const [ticketCart, setTicketCart] = useState<any[]>([]);
@@ -79,14 +77,21 @@ const Ticket2LIVE = () => {
   const [organizationConfig, setOrganizationConfig] = useState<any>(null);
 
   // Analytics state
-  const [analytics, setAnalytics] = useState({
-    totalRevenue: 0,
-    totalTransactions: 0,
-    popularItems: [],
-    dailySales: [],
-    categoryBreakdown: [],
-    recentTransactions: []
-  });
+const [analytics, setAnalytics] = useState<{
+  totalRevenue: number;
+  totalTransactions: number;
+  popularItems: { name: string; count: number; revenue: number }[];
+  dailySales: { date: string; amount: number }[];
+  categoryBreakdown: { category: string; revenue: number }[];
+  recentTransactions: any[];
+}>({
+  totalRevenue: 0,
+  totalTransactions: 0,
+  popularItems: [],
+  dailySales: [],
+  categoryBreakdown: [],
+  recentTransactions: []
+});
 
   // Load event data
   useEffect(() => {
@@ -99,41 +104,43 @@ const Ticket2LIVE = () => {
     }
   }, [eventId]);
 
-  const loadOrganizationConfig = async () => {
-    try {
-      const { data: event, error } = await supabase
-        .from("events")
-        .select(`
-          *,
-          organizations!inner(
-            windcave_hit_username,
-            windcave_hit_key,
-            windcave_station_id,
-            windcave_enabled
-          )
-        `)
-        .eq("id", eventId)
-        .single();
+const loadOrganizationConfig = async () => {
+  if (!eventId) return;
+  try {
+    const { data: event, error } = await supabase
+      .from("events")
+      .select(`
+        *,
+        organizations!inner(
+          windcave_hit_username,
+          windcave_hit_key,
+          windcave_station_id,
+          windcave_enabled
+        )
+      `)
+      .eq("id", eventId)
+      .single();
 
-      if (error) throw error;
-      console.log("Organization config loaded:", event?.organizations);
-      setOrganizationConfig(event?.organizations);
-    } catch (error) {
-      console.error("Error loading organization config:", error);
-      toast({
-        title: "Configuration Error",
-        description: "Failed to load Windcave configuration",
-        variant: "destructive"
-      });
-    }
-  };
+    if (error) throw error;
+    console.log("Organization config loaded:", event?.organizations);
+    setOrganizationConfig(event?.organizations);
+  } catch (error) {
+    console.error("Error loading organization config:", error);
+    toast({
+      title: "Configuration Error",
+      description: "Failed to load Windcave configuration",
+      variant: "destructive"
+    });
+  }
+};
 
-  const loadGuests = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("guest_status_view")
-        .select("*")
-        .eq("event_id", eventId);
+const loadGuests = async () => {
+  if (!eventId) return;
+  try {
+    const { data, error } = await supabase
+      .from("guest_status_view")
+      .select("*")
+      .eq("event_id", eventId);
 
       if (error) throw error;
       setGuests(data || []);
@@ -143,12 +150,13 @@ const Ticket2LIVE = () => {
     }
   };
 
-  const loadConcessionItems = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("concession_items")
-        .select("*")
-        .eq("event_id", eventId);
+const loadConcessionItems = async () => {
+  if (!eventId) return;
+  try {
+    const { data, error } = await supabase
+      .from("concession_items")
+      .select("*")
+      .eq("event_id", eventId);
 
       if (error) throw error;
       setConcessionItems(data || []);
@@ -157,12 +165,13 @@ const Ticket2LIVE = () => {
     }
   };
 
-  const loadTicketTypes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("ticket_types")
-        .select("*")
-        .eq("event_id", eventId);
+const loadTicketTypes = async () => {
+  if (!eventId) return;
+  try {
+    const { data, error } = await supabase
+      .from("ticket_types")
+      .select("*")
+      .eq("event_id", eventId);
 
       if (error) throw error;
       setTicketTypes(data || []);
@@ -171,13 +180,14 @@ const Ticket2LIVE = () => {
     }
   };
 
-  const loadAnalytics = async () => {
-    try {
-      const { data: transactions, error } = await supabase
-        .from("pos_transactions")
-        .select("*")
-        .eq("event_id", eventId)
-        .eq("status", "completed");
+const loadAnalytics = async () => {
+  if (!eventId) return;
+  try {
+    const { data: transactions, error } = await supabase
+      .from("pos_transactions")
+      .select("*")
+      .eq("event_id", eventId)
+      .eq("status", "completed");
 
       if (error) throw error;
 
@@ -247,36 +257,40 @@ const Ticket2LIVE = () => {
     }
   };
 
-  const handleCreateConcessionItem = async () => {
-    if (!newItem.name || !newItem.price) {
-      toast({ title: "Please fill in required fields", variant: "destructive" });
-      return;
-    }
+const handleCreateConcessionItem = async () => {
+  if (!newItem.name || !newItem.price) {
+    toast({ title: "Please fill in required fields", variant: "destructive" });
+    return;
+  }
+  if (!eventId) {
+    toast({ title: "Missing event context", variant: "destructive" });
+    return;
+  }
 
-    try {
-      const { error } = await supabase
-        .from("concession_items")
-        .insert([
-          {
-            event_id: eventId,
-            name: newItem.name,
-            description: newItem.description,
-            price: parseFloat(newItem.price),
-            category: newItem.category,
-            stock_quantity: parseInt(newItem.stock_quantity) || 0
-          }
-        ]);
+  try {
+    const { error } = await supabase
+      .from("concession_items")
+      .insert([
+        {
+          event_id: eventId,
+          name: newItem.name,
+          description: newItem.description,
+          price: parseFloat(newItem.price),
+          category: newItem.category,
+          stock_quantity: parseInt(newItem.stock_quantity) || 0
+        }
+      ]);
 
-      if (error) throw error;
+    if (error) throw error;
 
-      toast({ title: "Item created successfully!" });
-      setNewItem({ name: "", description: "", price: "", category: "food", stock_quantity: "" });
-      loadConcessionItems();
-    } catch (error) {
-      console.error("Error creating item:", error);
-      toast({ title: "Failed to create item", variant: "destructive" });
-    }
-  };
+    toast({ title: "Item created successfully!" });
+    setNewItem({ name: "", description: "", price: "", category: "food", stock_quantity: "" });
+    loadConcessionItems();
+  } catch (error) {
+    console.error("Error creating item:", error);
+    toast({ title: "Failed to create item", variant: "destructive" });
+  }
+};
 
   const handleDeleteConcessionItem = async (itemId: string) => {
     try {
@@ -620,7 +634,7 @@ const Ticket2LIVE = () => {
       }));
       toast({ 
         title: "Payment Failed", 
-        description: error.message || "Unable to process payment",
+        description: (error as any)?.message || "Unable to process payment",
         variant: "destructive" 
       });
     } finally {
