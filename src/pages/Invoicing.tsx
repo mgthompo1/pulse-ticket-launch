@@ -633,7 +633,7 @@ const Invoicing = () => {
     return null;
   };
 
-  // const initiatePayment = async () => {
+  const initiatePayment = async () => {
     if (invoiceData.total <= 0) {
       toast({
         title: "Error",
@@ -716,7 +716,7 @@ const Invoicing = () => {
     }
   };
 
-  // const initializeWindcaveDropIn = (links: any[], amount: number) => {
+  const initializeWindcaveDropIn = (links: any[], amount: number) => {
     if (!dropInRef.current) {
       console.error("Drop-In container not found");
       return;
