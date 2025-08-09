@@ -50,7 +50,7 @@ const TicketWidget = () => {
   const [loading, setLoading] = useState(true);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [windcaveDropIn, setWindcaveDropIn] = useState<any>(null);
-  const [windcaveLinks, setWindcaveLinks] = useState<any[]>([]);
+  const [, setWindcaveLinks] = useState<any[]>([]);
   const dropInRef = useRef<HTMLDivElement>(null);
   const [showSeatSelection, setShowSeatSelection] = useState(false);
   const [pendingSeatSelection, setPendingSeatSelection] = useState<any>(null);

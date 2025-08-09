@@ -1155,8 +1155,8 @@ const handleCreateConcessionItem = async () => {
                               <div className="flex items-center gap-4 mt-1">
                                 <span className="font-bold text-green-600">${item.price.toFixed(2)}</span>
                                 <Badge variant="outline">{item.category}</Badge>
-                                <Badge variant={item.stock_quantity > 10 ? "default" : "destructive"}>
-                                  {item.stock_quantity} in stock
+                                <Badge variant={(item.stock_quantity ?? 0) > 10 ? "default" : "destructive"}>
+                                  {(item.stock_quantity ?? 0)} in stock
                                 </Badge>
                               </div>
                             </div>
