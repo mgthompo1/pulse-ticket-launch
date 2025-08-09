@@ -31,11 +31,13 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     status: string;
     test_mode: boolean;
     logo_url: string | null;
+    venue: string | null;
     widget_customization?: Record<string, unknown>;
     ticket_customization?: Record<string, unknown>;
     email_customization?: Record<string, unknown>;
   } | null>(null);
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
+  const [eventVenue, setEventVenue] = useState<string>("");
   
   // Widget customization state
   const [widgetCustomization, setWidgetCustomization] = useState({
@@ -113,7 +115,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     try {
       const { data, error } = await supabase
         .from("events")
-        .select("widget_customization, ticket_customization, email_customization, name, status, test_mode, logo_url")
+        .select("widget_customization, ticket_customization, email_customization, name, status, test_mode, logo_url, venue")
         .eq("id", eventId)
         .single();
 
@@ -124,11 +126,13 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         status: data.status,
         test_mode: data.test_mode,
         logo_url: data.logo_url,
+        venue: data.venue,
         widget_customization: data.widget_customization as Record<string, unknown>,
         ticket_customization: data.ticket_customization as Record<string, unknown>,
         email_customization: data.email_customization as Record<string, unknown>
       });
       setCurrentLogoUrl(data?.logo_url || null);
+      setEventVenue(data?.venue || "");
 
       if (data?.widget_customization) {
         setWidgetCustomization(data.widget_customization as typeof widgetCustomization);
@@ -1223,6 +1227,41 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         }
                       }}
                     />
+                  </div>
+                </div>
+              </div>
+
+              {/* Event Details */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="venueName">Venue Name</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="venueName"
+                      placeholder="e.g. Spark Arena"
+                      value={eventVenue}
+                      onChange={(e) => setEventVenue(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          const { error } = await supabase
+                            .from("events")
+                            .update({ venue: eventVenue || null })
+                            .eq("id", eventId);
+                          if (error) throw error;
+                          setEventData(prev => prev ? ({ ...prev, venue: eventVenue || null }) : prev);
+                          toast({ title: "Saved", description: "Venue updated" });
+                        } catch (error) {
+                          console.error("Error updating venue:", error);
+                          toast({ title: "Error", description: "Failed to update venue", variant: "destructive" });
+                        }
+                      }}
+                    >
+                      Save
+                    </Button>
                   </div>
                 </div>
               </div>
