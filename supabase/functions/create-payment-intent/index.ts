@@ -23,18 +23,30 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
+    // Get organization first
     const { data: org } = await supabaseClient
       .from("organizations")
-      .select("stripe_secret_key")
+      .select("id")
       .eq("name", "Mitchs Ticket Company")
       .single();
 
-    if (!org?.stripe_secret_key) {
-      throw new Error("No secret key found");
+    if (!org) {
+      throw new Error("Organization not found");
+    }
+
+    // Get payment credentials
+    const { data: credentials } = await supabaseClient
+      .from("payment_credentials")
+      .select("stripe_secret_key")
+      .eq("organization_id", org.id)
+      .single();
+
+    if (!credentials?.stripe_secret_key) {
+      throw new Error("No Stripe secret key found");
     }
 
     console.log("=== TESTING STRIPE KEY ===");
-    const stripe = new Stripe.default(org.stripe_secret_key, {
+    const stripe = new Stripe.default(credentials.stripe_secret_key, {
       apiVersion: "2023-10-16",
     });
 

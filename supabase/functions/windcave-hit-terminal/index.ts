@@ -37,11 +37,6 @@ serve(async (req) => {
         .select(`
           *,
           organizations!inner(
-            windcave_hit_username,
-            windcave_hit_key,
-            windcave_endpoint,
-            windcave_enabled,
-            windcave_station_id,
             currency
           )
         `)
@@ -49,15 +44,26 @@ serve(async (req) => {
         .single();
 
       if (eventError || !event) {
-        throw new Error("Event not found or not accessible");
+        throw new Error("Event not found");
+      }
+
+      // Get payment credentials
+      const { data: credentials, error: credError } = await supabaseClient
+        .from("payment_credentials")
+        .select("windcave_hit_username, windcave_hit_key, windcave_endpoint, windcave_enabled, windcave_station_id")
+        .eq("organization_id", event.organization_id)
+        .single();
+
+      if (credError || !credentials) {
+        throw new Error("Payment credentials not found");
       }
 
       const org = event.organizations;
-      if (!org.windcave_enabled || !org.windcave_hit_username || !org.windcave_hit_key) {
+      if (!credentials.windcave_enabled || !credentials.windcave_hit_username || !credentials.windcave_hit_key) {
         throw new Error("Windcave HIT terminal not configured for this organization");
       }
 
-      const terminalStationId = org.windcave_station_id;
+      const terminalStationId = credentials.windcave_station_id;
       if (!terminalStationId) {
         throw new Error("Terminal station ID not configured for this organization");
       }
@@ -73,7 +79,7 @@ serve(async (req) => {
       console.log("[WINDCAVE-HIT-TERMINAL] Calculated total amount", { totalAmount, currency });
 
       // Correct HIT API endpoint
-      const baseUrl = org.windcave_endpoint === "SEC" 
+      const baseUrl = credentials.windcave_endpoint === "SEC" 
         ? "https://sec.windcave.com/hit/pos.aspx"
         : "https://uat.windcave.com/hit/pos.aspx";
 
@@ -81,7 +87,7 @@ serve(async (req) => {
       const txnRef = `${event.name.replace(/\s+/g, '')}-${Date.now()}`;
 
       // Create proper HIT XML request using Scr format
-      const xmlRequest = `<Scr action="doScrHIT" user="${org.windcave_hit_username}" key="${org.windcave_hit_key}">
+      const xmlRequest = `<Scr action="doScrHIT" user="${credentials.windcave_hit_username}" key="${credentials.windcave_hit_key}">
     <Amount>${totalAmount.toFixed(2)}</Amount>
     <Cur>${currency}</Cur>
     <TxnType>Purchase</TxnType>
@@ -205,12 +211,7 @@ serve(async (req) => {
         .select(`
           *,
           events!inner(
-            organizations!inner(
-              windcave_hit_username,
-              windcave_hit_key,
-              windcave_endpoint,
-              windcave_station_id
-            )
+            organization_id
           )
         `)
         .eq("windcave_session_id", statusTxnRef)
@@ -220,16 +221,26 @@ serve(async (req) => {
         throw new Error("Order not found for transaction reference");
       }
 
-      const org = order.events.organizations;
-      const terminalStationId = org.windcave_station_id;
+      // Get payment credentials for status check
+      const { data: statusCredentials, error: statusCredError } = await supabaseClient
+        .from("payment_credentials")
+        .select("windcave_hit_username, windcave_hit_key, windcave_endpoint, windcave_station_id")
+        .eq("organization_id", order.events.organization_id)
+        .single();
+
+      if (statusCredError || !statusCredentials) {
+        throw new Error("Payment credentials not found for status check");
+      }
+
+      const terminalStationId = statusCredentials.windcave_station_id;
 
       // Correct HIT API endpoint
-      const baseUrl = org.windcave_endpoint === "SEC" 
+      const baseUrl = statusCredentials.windcave_endpoint === "SEC" 
         ? "https://sec.windcave.com/hit/pos.aspx"
         : "https://uat.windcave.com/hit/pos.aspx";
 
       // Create status request XML using correct format from documentation
-      const statusXml = `<Scr action="doScrHIT" user="${org.windcave_hit_username}" key="${org.windcave_hit_key}">
+      const statusXml = `<Scr action="doScrHIT" user="${statusCredentials.windcave_hit_username}" key="${statusCredentials.windcave_hit_key}">
     <Station>${terminalStationId}</Station>
     <TxnType>Status</TxnType>
     <TxnRef>${statusTxnRef}</TxnRef>

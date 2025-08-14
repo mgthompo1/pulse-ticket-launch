@@ -31,10 +31,6 @@ serve(async (req) => {
       .select(`
         *,
         organizations!inner(
-          windcave_username,
-          windcave_api_key,
-          windcave_endpoint,
-          windcave_enabled,
           payment_provider
         )
       `)
@@ -45,12 +41,23 @@ serve(async (req) => {
       throw new Error("Event not found");
     }
 
+    // Get payment credentials
+    const { data: credentials, error: credError } = await supabaseClient
+      .from("payment_credentials")
+      .select("windcave_username, windcave_api_key, windcave_endpoint, windcave_enabled")
+      .eq("organization_id", event.organization_id)
+      .single();
+
+    if (credError || !credentials) {
+      throw new Error("Payment credentials not found");
+    }
+
     const org = event.organizations;
-    if (!org.windcave_enabled || org.payment_provider !== "windcave") {
+    if (!credentials.windcave_enabled || org.payment_provider !== "windcave") {
       throw new Error("Windcave not configured for this organization");
     }
 
-    if (!org.windcave_username || !org.windcave_api_key) {
+    if (!credentials.windcave_username || !credentials.windcave_api_key) {
       throw new Error("Windcave credentials not configured");
     }
 
@@ -60,7 +67,7 @@ serve(async (req) => {
     }, 0);
 
     // Windcave API endpoint
-    const windcaveEndpoint = org.windcave_endpoint === "SEC" 
+    const windcaveEndpoint = credentials.windcave_endpoint === "SEC" 
       ? "https://sec.windcave.com/api/v1/sessions"
       : "https://uat.windcave.com/api/v1/sessions";
 
@@ -82,13 +89,13 @@ serve(async (req) => {
     console.log("=== WINDCAVE API REQUEST ===");
     console.log("Endpoint:", windcaveEndpoint);
     console.log("Request payload:", JSON.stringify(sessionData, null, 2));
-    console.log("Authorization header:", `Basic ${btoa(`${org.windcave_username}:${org.windcave_api_key}`)}`);
+    console.log("Authorization header:", `Basic ${btoa(`${credentials.windcave_username}:${credentials.windcave_api_key}`)}`);
 
     const windcaveResponse = await fetch(windcaveEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Basic ${btoa(`${org.windcave_username}:${org.windcave_api_key}`)}`
+        "Authorization": `Basic ${btoa(`${credentials.windcave_username}:${credentials.windcave_api_key}`)}`
       },
       body: JSON.stringify(sessionData)
     });
