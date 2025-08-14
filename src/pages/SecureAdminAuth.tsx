@@ -99,7 +99,7 @@ const SecureAdminAuth = () => {
         <Card className="border-2 border-primary/10 shadow-xl">
           <CardHeader className="text-center space-y-2">
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center mb-4">
-              <Shield className="w-8 h-8 text-white" />
+              <Shield className="w-8 h-8 text-primary-foreground" />
             </div>
             <CardTitle className="text-2xl font-bold gradient-text">
               Secure Admin Access

@@ -22,7 +22,7 @@ export const Footer = () => {
           <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center space-x-2">
               <div className="bg-gradient-primary p-2 rounded-lg">
-                <Ticket className="h-6 w-6 text-white" />
+                <Ticket className="h-6 w-6 text-primary-foreground" />
               </div>
               <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
                 Ticket2

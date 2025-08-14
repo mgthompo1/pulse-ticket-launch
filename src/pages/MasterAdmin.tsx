@@ -75,7 +75,7 @@ const MasterAdmin = () => {
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !isAdminAuthenticated) {
-      navigate("/admin-auth");
+      navigate("/secure-admin-auth");
     }
   }, [isAdminAuthenticated, authLoading, navigate]);
 
@@ -375,7 +375,7 @@ const MasterAdmin = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center">
-                <Shield className="w-6 h-6 text-white" />
+                <Shield className="w-6 w-6 text-primary-foreground" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold gradient-text">Ticket2 Master Admin</h1>

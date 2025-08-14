@@ -2,6 +2,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ProtectedAdminRoute } from "./components/ProtectedAdminRoute";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -50,7 +51,11 @@ const App = () => (
               <Route path="/widget/:eventId" element={<TicketWidget />} />
               <Route path="/admin-auth" element={<AdminAuth />} />
               <Route path="/secure-admin" element={<SecureAdminAuth />} />
-              <Route path="/master-admin" element={<MasterAdmin />} />
+          <Route path="/master-admin" element={
+            <ProtectedAdminRoute>
+              <MasterAdmin />
+            </ProtectedAdminRoute>
+          } />
               <Route path="/ticket2live/:eventId" element={<Ticket2LIVE />} />
               <Route path="/payment-success" element={<PaymentSuccess />} />
               <Route path="/invoice-payment-success" element={<InvoicePaymentSuccess />} />

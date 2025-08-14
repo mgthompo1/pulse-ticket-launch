@@ -93,6 +93,7 @@ All colors MUST be HSL.
     /* Custom design tokens */
     --gradient-primary: linear-gradient(135deg, hsl(210, 18%, 30%), hsl(210, 18%, 40%));
     --gradient-secondary: linear-gradient(135deg, hsl(210, 6%, 98%), hsl(210, 6%, 93%));
+    --gradient-subtle: linear-gradient(135deg, hsl(210, 6%, 98%) 0%, hsl(210, 6%, 95%) 100%);
     --gradient-hero: linear-gradient(135deg, hsl(210, 18%, 30%) 0%, hsl(210, 18%, 35%) 50%, hsl(210, 18%, 40%) 100%);
     
     --shadow-elegant: 0 10px 30px -10px hsl(210 18% 30% / 0.15);
@@ -196,5 +197,57 @@ All colors MUST be HSL.
     width: 100%;
     max-width: 100%;
     overflow-x: hidden;
+  }
+
+  /* Accessibility enhancements */
+  .high-contrast {
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 20%;
+    --accent: 0 0% 85%;
+    --accent-foreground: 0 0% 0%;
+    --border: 0 0% 50%;
+  }
+
+  .reduced-motion * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  [data-font-size="small"] {
+    font-size: 0.875rem;
+  }
+
+  [data-font-size="large"] {
+    font-size: 1.125rem;
+  }
+
+  /* Focus indicators */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  /* Skip to content link */
+  .skip-to-content {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    padding: 8px;
+    text-decoration: none;
+    z-index: 1000;
+    border-radius: 4px;
+    transition: top 0.3s;
+  }
+
+  .skip-to-content:focus {
+    top: 6px;
   }
 }

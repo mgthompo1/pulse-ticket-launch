@@ -123,9 +123,9 @@ const TicketWidget = () => {
 
       setTicketTypes(types || []);
       
-      // Load appropriate Windcave scripts based on organization endpoint
+  // Load appropriate Windcave scripts based on organization endpoint
       if (event.organizations?.payment_provider === "windcave") {
-        loadWindcaveScripts(event.organizations.windcave_endpoint || "UAT");
+        await loadWindcaveScripts(event.organizations.windcave_endpoint || "UAT");
       }
       
     } catch (error) {
@@ -141,7 +141,8 @@ const TicketWidget = () => {
   };
 
   // Function to dynamically load Windcave scripts based on endpoint
-  const loadWindcaveScripts = (endpoint: string) => {
+  const loadWindcaveScripts = async (endpoint: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
     const baseUrl = endpoint === "SEC" ? "https://sec.windcave.com" : "https://uat.windcave.com";
     const scripts = [
       "/js/lib/drop-in-v1.js",
@@ -163,22 +164,29 @@ const TicketWidget = () => {
       return;
     }
     
+    let loadedCount = 0;
+    const totalScripts = scripts.length;
+    
     scripts.forEach((scriptPath) => {
       const script = document.createElement('script');
       script.src = baseUrl + scriptPath;
       script.async = true;
       script.onload = () => {
         console.log(`✅ Windcave script loaded successfully: ${scriptPath}`);
+        loadedCount++;
+        
         if (scriptPath === "/js/windcavepayments-dropin-v1.js") {
-          // Main drop-in script loaded, check if WindcavePayments is available
           setTimeout(() => {
             console.log("Drop-in script loaded, WindcavePayments available:", !!window.WindcavePayments);
             if (window.WindcavePayments) {
               console.log("WindcavePayments object:", window.WindcavePayments);
               console.log("DropIn available:", !!window.WindcavePayments.DropIn);
-              console.log("DropIn.create available:", !!window.WindcavePayments.DropIn?.create);
             }
           }, 500);
+        }
+        
+        if (loadedCount === totalScripts) {
+          resolve();
         }
       };
       script.onerror = (error) => {
@@ -188,8 +196,10 @@ const TicketWidget = () => {
           description: `Failed to load ${scriptPath}. Please check your internet connection.`,
           variant: "destructive"
         });
+        reject(error);
       };
       document.head.appendChild(script);
+    });
     });
   };
 
@@ -423,7 +433,7 @@ const TicketWidget = () => {
 
         if (error) throw error;
 
-        const stripe = await loadStripe("pk_test_your_stripe_publishable_key");
+        const stripe = await loadStripe(stripePublishableKey);
         if (!stripe) throw new Error("Failed to load Stripe");
 
         const { error: stripeError } = await stripe.redirectToCheckout({
