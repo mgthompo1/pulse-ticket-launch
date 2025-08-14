@@ -57,7 +57,7 @@ const TicketWidget = () => {
   const [, setSelectedSeats] = useState<Record<string, string[]>>({});
   const [creditCardProcessingFee, setCreditCardProcessingFee] = useState(0);
   const [paymentProvider, setPaymentProvider] = useState('stripe');
-  const [stripePublishableKey, setStripePublishableKey] = useState('');
+  const [stripePublishableKey] = useState('');
   const [showPayment, setShowPayment] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   // State for custom question answers
@@ -72,25 +72,18 @@ const TicketWidget = () => {
 
   const loadEventData = async () => {
     try {
-      // Load event details
+      // Load event details with safe payment configuration
       const { data: event, error: eventError } = await supabase
         .from("events")
         .select(`
           *,
-        organizations (
-          name,
-          payment_provider,
-          stripe_account_id,
-          stripe_publishable_key,
-          windcave_enabled,
-          windcave_username,
-          windcave_api_key,
-          windcave_endpoint,
-          apple_pay_merchant_id,
-          currency,
-          logo_url,
-          credit_card_processing_fee_percentage
-        )
+          organizations (
+            name,
+            payment_provider,
+            currency,
+            logo_url,
+            credit_card_processing_fee_percentage
+          )
         `)
         .eq("id", eventId as string)
         .single();
@@ -105,9 +98,12 @@ const TicketWidget = () => {
       }
 
       setEventData(event);
-      setPaymentProvider(event.organizations?.payment_provider || "stripe");
-      setCreditCardProcessingFee(event.organizations?.credit_card_processing_fee_percentage || 0);
-      setStripePublishableKey(event.organizations?.stripe_publishable_key || '');
+
+      // Get safe payment configuration from organization data
+      if (event.organizations) {
+        setPaymentProvider(event.organizations.payment_provider || "stripe");
+        setCreditCardProcessingFee(event.organizations.credit_card_processing_fee_percentage || 0);
+      }
 
       // Load ticket types
       const { data: types, error: typesError } = await supabase
@@ -123,9 +119,9 @@ const TicketWidget = () => {
 
       setTicketTypes(types || []);
       
-  // Load appropriate Windcave scripts based on organization endpoint
+      // Load appropriate Windcave scripts if Windcave is the payment provider
       if (event.organizations?.payment_provider === "windcave") {
-        await loadWindcaveScripts(event.organizations.windcave_endpoint || "UAT");
+        await loadWindcaveScripts("UAT"); // Default to UAT for public widgets
       }
       
     } catch (error) {

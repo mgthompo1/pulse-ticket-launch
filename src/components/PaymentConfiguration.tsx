@@ -35,77 +35,110 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
   const [creditCardProcessingFee, setCreditCardProcessingFee] = useState(0);
 
   useEffect(() => {
-    const loadPaymentConfig = async () => {
-      const { data, error } = await supabase
+    loadPaymentConfiguration();
+  }, [organizationId]);
+
+  const loadPaymentConfiguration = async () => {
+    try {
+      // Get basic organization info (non-sensitive)
+      const { data: orgData, error: orgError } = await supabase
         .from('organizations')
-        .select('*')
+        .select('payment_provider, currency, credit_card_processing_fee_percentage')
         .eq('id', organizationId)
         .single();
 
-      if (error) {
-        console.error('Error loading payment config:', error);
+      if (orgError) {
+        console.error('Error loading organization:', orgError);
         return;
       }
 
-      if (data) {
-        setPaymentProvider(data.payment_provider || 'stripe');
-        setStripeAccountId(data.stripe_account_id || '');
-        setStripePublishableKey(data.stripe_publishable_key || '');
-        setStripeSecretKey(data.stripe_secret_key || '');
-        setWindcaveUsername(data.windcave_username || '');
-        setWindcaveApiKey(data.windcave_api_key || '');
-        setWindcaveEndpoint(data.windcave_endpoint || 'UAT');
-        setWindcaveEnabled(data.windcave_enabled || false);
-        setWindcaveHitUsername(data.windcave_hit_username || '');
-        setWindcaveHitKey(data.windcave_hit_key || '');
-        setWindcaveStationId(data.windcave_station_id || '');
-        setCurrency(data.currency || 'NZD');
-        setApplePayMerchantId(data.apple_pay_merchant_id || '');
-        setCreditCardProcessingFee(data.credit_card_processing_fee_percentage || 0);
-      }
-    };
+      // Get payment credentials securely
+      const { data: credData } = await supabase
+        .from('payment_credentials')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .single();
 
-    loadPaymentConfig();
-  }, [organizationId]);
+      if (orgData) {
+        setPaymentProvider(orgData.payment_provider || 'stripe');
+        setCurrency(orgData.currency || 'NZD');
+        setCreditCardProcessingFee(orgData.credit_card_processing_fee_percentage || 0);
+      }
+
+      if (credData) {
+        setStripeAccountId(credData.stripe_account_id || '');
+        setStripePublishableKey(credData.stripe_publishable_key || '');
+        setStripeSecretKey(credData.stripe_secret_key || '');
+        setWindcaveUsername(credData.windcave_username || '');
+        setWindcaveApiKey(credData.windcave_api_key || '');
+        setWindcaveEndpoint(credData.windcave_endpoint || 'UAT');
+        setWindcaveEnabled(credData.windcave_enabled || false);
+        setWindcaveHitUsername(credData.windcave_hit_username || '');
+        setWindcaveHitKey(credData.windcave_hit_key || '');
+        setWindcaveStationId(credData.windcave_station_id || '');
+        setApplePayMerchantId(credData.apple_pay_merchant_id || '');
+      }
+    } catch (error) {
+      console.error('Error loading payment configuration:', error);
+    }
+  };
 
   const handleSave = async () => {
     setLoading(true);
     
-    const { error } = await supabase
-      .from('organizations')
-      .update({
-        payment_provider: paymentProvider,
-        stripe_account_id: stripeAccountId,
-        stripe_publishable_key: stripePublishableKey,
-        stripe_secret_key: stripeSecretKey,
-        windcave_username: windcaveUsername,
-        windcave_api_key: windcaveApiKey,
-        windcave_endpoint: windcaveEndpoint,
-        windcave_enabled: windcaveEnabled,
-        windcave_hit_username: windcaveHitUsername,
-        windcave_hit_key: windcaveHitKey,
-        windcave_station_id: windcaveStationId,
-        currency: currency,
-        apple_pay_merchant_id: applePayMerchantId,
-        credit_card_processing_fee_percentage: creditCardProcessingFee,
-      })
-      .eq('id', organizationId);
+    try {
+      // Update organization with non-sensitive data
+      const { error: orgError } = await supabase
+        .from('organizations')
+        .update({
+          payment_provider: paymentProvider,
+          currency: currency,
+          credit_card_processing_fee_percentage: creditCardProcessingFee
+        })
+        .eq('id', organizationId);
 
-    if (error) {
-      console.error('Error saving payment config:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save payment configuration",
-        variant: "destructive",
-      });
-    } else {
+      if (orgError) {
+        throw orgError;
+      }
+
+      // Upsert payment credentials securely
+      const { error: credError } = await supabase
+        .from('payment_credentials')
+        .upsert({
+          organization_id: organizationId,
+          stripe_account_id: stripeAccountId,
+          stripe_publishable_key: stripePublishableKey,
+          stripe_secret_key: stripeSecretKey,
+          windcave_username: windcaveUsername,
+          windcave_api_key: windcaveApiKey,
+          windcave_endpoint: windcaveEndpoint,
+          windcave_enabled: windcaveEnabled,
+          windcave_hit_username: windcaveHitUsername,
+          windcave_hit_key: windcaveHitKey,
+          windcave_station_id: windcaveStationId,
+          apple_pay_merchant_id: applePayMerchantId
+        }, {
+          onConflict: 'organization_id'
+        });
+
+      if (credError) {
+        throw credError;
+      }
+
       toast({
         title: "Success",
         description: "Payment configuration saved successfully",
       });
+    } catch (error: any) {
+      console.error('Error saving payment configuration:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save payment configuration",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (

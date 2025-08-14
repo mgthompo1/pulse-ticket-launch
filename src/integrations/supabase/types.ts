@@ -739,7 +739,6 @@ export type Database = {
       organizations: {
         Row: {
           address: string | null
-          apple_pay_merchant_id: string | null
           billing_setup_completed: boolean
           billing_setup_required: boolean
           brand_colors: Json | null
@@ -756,25 +755,13 @@ export type Database = {
           payment_provider: string | null
           phone: string | null
           postal_code: string | null
-          stripe_account_id: string | null
-          stripe_onboarding_complete: boolean | null
-          stripe_publishable_key: string | null
-          stripe_secret_key: string | null
           test_mode: boolean
           updated_at: string
           user_id: string
           website: string | null
-          windcave_api_key: string | null
-          windcave_enabled: boolean | null
-          windcave_endpoint: string | null
-          windcave_hit_key: string | null
-          windcave_hit_username: string | null
-          windcave_station_id: string | null
-          windcave_username: string | null
         }
         Insert: {
           address?: string | null
-          apple_pay_merchant_id?: string | null
           billing_setup_completed?: boolean
           billing_setup_required?: boolean
           brand_colors?: Json | null
@@ -791,25 +778,13 @@ export type Database = {
           payment_provider?: string | null
           phone?: string | null
           postal_code?: string | null
-          stripe_account_id?: string | null
-          stripe_onboarding_complete?: boolean | null
-          stripe_publishable_key?: string | null
-          stripe_secret_key?: string | null
           test_mode?: boolean
           updated_at?: string
           user_id: string
           website?: string | null
-          windcave_api_key?: string | null
-          windcave_enabled?: boolean | null
-          windcave_endpoint?: string | null
-          windcave_hit_key?: string | null
-          windcave_hit_username?: string | null
-          windcave_station_id?: string | null
-          windcave_username?: string | null
         }
         Update: {
           address?: string | null
-          apple_pay_merchant_id?: string | null
           billing_setup_completed?: boolean
           billing_setup_required?: boolean
           brand_colors?: Json | null
@@ -826,14 +801,42 @@ export type Database = {
           payment_provider?: string | null
           phone?: string | null
           postal_code?: string | null
-          stripe_account_id?: string | null
-          stripe_onboarding_complete?: boolean | null
-          stripe_publishable_key?: string | null
-          stripe_secret_key?: string | null
           test_mode?: boolean
           updated_at?: string
           user_id?: string
           website?: string | null
+        }
+        Relationships: []
+      }
+      payment_credentials: {
+        Row: {
+          apple_pay_merchant_id: string | null
+          created_at: string
+          id: string
+          organization_id: string
+          stripe_account_id: string | null
+          stripe_onboarding_complete: boolean | null
+          stripe_publishable_key: string | null
+          stripe_secret_key: string | null
+          updated_at: string
+          windcave_api_key: string | null
+          windcave_enabled: boolean | null
+          windcave_endpoint: string | null
+          windcave_hit_key: string | null
+          windcave_hit_username: string | null
+          windcave_station_id: string | null
+          windcave_username: string | null
+        }
+        Insert: {
+          apple_pay_merchant_id?: string | null
+          created_at?: string
+          id?: string
+          organization_id: string
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean | null
+          stripe_publishable_key?: string | null
+          stripe_secret_key?: string | null
+          updated_at?: string
           windcave_api_key?: string | null
           windcave_enabled?: boolean | null
           windcave_endpoint?: string | null
@@ -842,7 +845,33 @@ export type Database = {
           windcave_station_id?: string | null
           windcave_username?: string | null
         }
-        Relationships: []
+        Update: {
+          apple_pay_merchant_id?: string | null
+          created_at?: string
+          id?: string
+          organization_id?: string
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean | null
+          stripe_publishable_key?: string | null
+          stripe_secret_key?: string | null
+          updated_at?: string
+          windcave_api_key?: string | null
+          windcave_enabled?: boolean | null
+          windcave_endpoint?: string | null
+          windcave_hit_key?: string | null
+          windcave_hit_username?: string | null
+          windcave_station_id?: string | null
+          windcave_username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_credentials_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pos_transactions: {
         Row: {
@@ -1321,6 +1350,31 @@ export type Database = {
       generate_ticket_code: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_organization_payment_config: {
+        Args: { p_organization_id: string }
+        Returns: {
+          apple_pay_merchant_id: string
+          credit_card_processing_fee_percentage: number
+          currency: string
+          payment_provider: string
+          stripe_publishable_key: string
+          windcave_enabled: boolean
+          windcave_endpoint: string
+        }[]
+      }
+      get_payment_credentials_for_processing: {
+        Args: { p_event_id?: string; p_organization_id: string }
+        Returns: {
+          stripe_account_id: string
+          stripe_secret_key: string
+          windcave_api_key: string
+          windcave_endpoint: string
+          windcave_hit_key: string
+          windcave_hit_username: string
+          windcave_station_id: string
+          windcave_username: string
+        }[]
       }
       get_user_organization_id: {
         Args: { user_uuid: string }
