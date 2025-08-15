@@ -298,7 +298,7 @@ const PaymentSuccess = () => {
                 <div className="space-y-6 py-4">
                   {/* Hidden area for printing */}
                   <div id="tickets-print-area" className="hidden">
-                    {tickets.map((ticket, index) => (
+                    {tickets.map((ticket) => (
                       <div key={ticket.id} className="ticket-container">
                         <TicketDisplay 
                           ticket={ticket}
