@@ -6,341 +6,1484 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.3 (519615d)"
+  }
   public: {
     Tables: {
+      admin_invitations: {
+        Row: {
+          created_at: string | null
+          email: string
+          expires_at: string | null
+          id: string
+          invited_by: string | null
+          status: string
+          token: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          expires_at?: string | null
+          id?: string
+          invited_by?: string | null
+          status?: string
+          token: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          expires_at?: string | null
+          id?: string
+          invited_by?: string | null
+          status?: string
+          token?: string
+        }
+        Relationships: []
+      }
+      admin_sessions: {
+        Row: {
+          admin_user_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          ip_address: unknown | null
+          last_activity: string
+          session_token: string
+          user_agent: string | null
+        }
+        Insert: {
+          admin_user_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          ip_address?: unknown | null
+          last_activity?: string
+          session_token: string
+          user_agent?: string | null
+        }
+        Update: {
+          admin_user_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_address?: unknown | null
+          last_activity?: string
+          session_token?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_sessions_admin_user_id_fkey"
+            columns: ["admin_user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          last_login_at: string | null
+          password_hash: string
+          totp_secret: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean
+          last_login_at?: string | null
+          password_hash: string
+          totp_secret?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          last_login_at?: string | null
+          password_hash?: string
+          totp_secret?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ai_generated_content: {
+        Row: {
+          content_type: string
+          created_at: string
+          generated_content: Json
+          id: string
+          input_data: Json
+          used: boolean
+          user_id: string | null
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          generated_content: Json
+          id?: string
+          input_data: Json
+          used?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          generated_content?: Json
+          id?: string
+          input_data?: Json
+          used?: boolean
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      billing_customers: {
+        Row: {
+          billing_email: string
+          billing_status: string
+          created_at: string
+          id: string
+          organization_id: string
+          payment_method_id: string | null
+          stripe_customer_id: string
+          subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          billing_email: string
+          billing_status?: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          payment_method_id?: string | null
+          stripe_customer_id: string
+          subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          billing_email?: string
+          billing_status?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          payment_method_id?: string | null
+          stripe_customer_id?: string
+          subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_customers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_invoices: {
+        Row: {
+          billing_period_end: string
+          billing_period_start: string
+          created_at: string
+          due_date: string | null
+          id: string
+          organization_id: string
+          paid_at: string | null
+          status: string
+          stripe_invoice_id: string | null
+          total_platform_fees: number
+          total_transaction_volume: number
+          total_transactions: number
+        }
+        Insert: {
+          billing_period_end: string
+          billing_period_start: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          organization_id: string
+          paid_at?: string | null
+          status?: string
+          stripe_invoice_id?: string | null
+          total_platform_fees?: number
+          total_transaction_volume?: number
+          total_transactions?: number
+        }
+        Update: {
+          billing_period_end?: string
+          billing_period_start?: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          organization_id?: string
+          paid_at?: string | null
+          status?: string
+          stripe_invoice_id?: string | null
+          total_platform_fees?: number
+          total_transaction_volume?: number
+          total_transactions?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_invoices_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          context: Json | null
+          created_at: string
+          id: string
+          messages: Json
+          session_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          messages?: Json
+          session_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          messages?: Json
+          session_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      check_ins: {
+        Row: {
+          checked_in_at: string
+          checked_in_by: string | null
+          created_at: string
+          id: string
+          lanyard_printed: boolean | null
+          notes: string | null
+          ticket_id: string
+        }
+        Insert: {
+          checked_in_at?: string
+          checked_in_by?: string | null
+          created_at?: string
+          id?: string
+          lanyard_printed?: boolean | null
+          notes?: string | null
+          ticket_id: string
+        }
+        Update: {
+          checked_in_at?: string
+          checked_in_by?: string | null
+          created_at?: string
+          id?: string
+          lanyard_printed?: boolean | null
+          notes?: string | null
+          ticket_id?: string
+        }
+        Relationships: []
+      }
+      concession_items: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          event_id: string
+          id: string
+          name: string
+          price: number
+          stock_quantity: number | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          event_id: string
+          id?: string
+          name: string
+          price: number
+          stock_quantity?: number | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          event_id?: string
+          id?: string
+          name?: string
+          price?: number
+          stock_quantity?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      email_notifications: {
+        Row: {
+          email_type: string
+          id: string
+          order_id: string | null
+          recipient_email: string
+          sent_at: string
+          status: string
+          subject: string
+        }
+        Insert: {
+          email_type: string
+          id?: string
+          order_id?: string | null
+          recipient_email: string
+          sent_at?: string
+          status?: string
+          subject: string
+        }
+        Update: {
+          email_type?: string
+          id?: string
+          order_id?: string | null
+          recipient_email?: string
+          sent_at?: string
+          status?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_notifications_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
-          id: string;
-          name: string;
-          event_date: string;
-          venue?: string;
-          description?: string;
-          created_at: string;
-          updated_at: string;
-          organization_id: string;
-          is_published: boolean;
-          theme_customization?: ThemeCustomization;
-        };
+          capacity: number
+          created_at: string
+          description: string | null
+          email_customization: Json | null
+          event_date: string
+          featured_image_url: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          organization_id: string
+          requires_approval: boolean | null
+          status: string
+          test_mode: boolean
+          ticket_customization: Json | null
+          updated_at: string
+          venue: string | null
+          widget_customization: Json | null
+        }
         Insert: {
-          id?: string;
-          name: string;
-          event_date: string;
-          venue?: string;
-          description?: string;
-          created_at?: string;
-          updated_at?: string;
-          organization_id: string;
-          is_published?: boolean;
-          theme_customization?: ThemeCustomization;
-        };
+          capacity?: number
+          created_at?: string
+          description?: string | null
+          email_customization?: Json | null
+          event_date: string
+          featured_image_url?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          organization_id: string
+          requires_approval?: boolean | null
+          status?: string
+          test_mode?: boolean
+          ticket_customization?: Json | null
+          updated_at?: string
+          venue?: string | null
+          widget_customization?: Json | null
+        }
         Update: {
-          id?: string;
-          name?: string;
-          event_date?: string;
-          venue?: string;
-          description?: string;
-          created_at?: string;
-          updated_at?: string;
-          organization_id?: string;
-          is_published?: boolean;
-          theme_customization?: ThemeCustomization;
-        };
-      };
-      organizations: {
+          capacity?: number
+          created_at?: string
+          description?: string | null
+          email_customization?: Json | null
+          event_date?: string
+          featured_image_url?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          organization_id?: string
+          requires_approval?: boolean | null
+          status?: string
+          test_mode?: boolean
+          ticket_customization?: Json | null
+          updated_at?: string
+          venue?: string | null
+          widget_customization?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      landing_page_content: {
         Row: {
-          id: string;
-          name: string;
-          created_at: string;
-          updated_at: string;
-          stripe_account_id?: string;
-          windcave_endpoint?: string;
-          apple_pay_merchant_id?: string;
-          currency?: string;
-        };
+          content_type: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          key: string
+          section: string
+          updated_at: string | null
+          value: string
+        }
         Insert: {
-          id?: string;
-          name: string;
-          created_at?: string;
-          updated_at?: string;
-          stripe_account_id?: string;
-          windcave_endpoint?: string;
-          apple_pay_merchant_id?: string;
-          currency?: string;
-        };
+          content_type?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          key: string
+          section: string
+          updated_at?: string | null
+          value: string
+        }
         Update: {
-          id?: string;
-          name?: string;
-          created_at?: string;
-          updated_at?: string;
-          stripe_account_id?: string;
-          windcave_endpoint?: string;
-          apple_pay_merchant_id?: string;
-          currency?: string;
-        };
-      };
-      ticket_types: {
-        Row: {
-          id: string;
-          name: string;
-          price: number;
-          quantity: number;
-          event_id: string;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          name: string;
-          price: number;
-          quantity: number;
-          event_id: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          name?: string;
-          price?: number;
-          quantity?: number;
-          event_id?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
+          content_type?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          key?: string
+          section?: string
+          updated_at?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
       merchandise: {
         Row: {
-          id: string;
-          name: string;
-          price: number;
-          description?: string;
-          event_id: string;
-          created_at: string;
-          updated_at: string;
-        };
+          category: string | null
+          color_options: string[] | null
+          created_at: string
+          description: string | null
+          event_id: string
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          name: string
+          price: number
+          size_options: string[] | null
+          stock_quantity: number | null
+          updated_at: string
+        }
         Insert: {
-          id?: string;
-          name: string;
-          price: number;
-          description?: string;
-          event_id: string;
-          created_at?: string;
-          updated_at?: string;
-        };
+          category?: string | null
+          color_options?: string[] | null
+          created_at?: string
+          description?: string | null
+          event_id: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name: string
+          price: number
+          size_options?: string[] | null
+          stock_quantity?: number | null
+          updated_at?: string
+        }
         Update: {
-          id?: string;
-          name?: string;
-          price?: number;
-          description?: string;
-          event_id?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      custom_questions: {
+          category?: string | null
+          color_options?: string[] | null
+          created_at?: string
+          description?: string | null
+          event_id?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string
+          price?: number
+          size_options?: string[] | null
+          stock_quantity?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchandise_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchandise_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "guest_status_view"
+            referencedColumns: ["event_id"]
+          },
+        ]
+      }
+      order_items: {
         Row: {
-          id: string;
-          question: string;
-          required: boolean;
-          event_id: string;
-          created_at: string;
-          updated_at: string;
-        };
+          created_at: string
+          id: string
+          item_type: string | null
+          merchandise_id: string | null
+          merchandise_options: Json | null
+          order_id: string
+          quantity: number
+          ticket_type_id: string | null
+          unit_price: number
+        }
         Insert: {
-          id?: string;
-          question: string;
-          required: boolean;
-          event_id: string;
-          created_at?: string;
-          updated_at?: string;
-        };
+          created_at?: string
+          id?: string
+          item_type?: string | null
+          merchandise_id?: string | null
+          merchandise_options?: Json | null
+          order_id: string
+          quantity: number
+          ticket_type_id?: string | null
+          unit_price: number
+        }
         Update: {
-          id?: string;
-          question?: string;
-          required?: boolean;
-          event_id?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-    };
-  };
+          created_at?: string
+          id?: string
+          item_type?: string | null
+          merchandise_id?: string | null
+          merchandise_options?: Json | null
+          order_id?: string
+          quantity?: number
+          ticket_type_id?: string | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_merchandise_id_fkey"
+            columns: ["merchandise_id"]
+            isOneToOne: false
+            referencedRelation: "merchandise"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_ticket_type_id_fkey"
+            columns: ["ticket_type_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          custom_answers: Json | null
+          customer_email: string
+          customer_name: string
+          customer_phone: string | null
+          event_id: string
+          id: string
+          status: string
+          stripe_session_id: string | null
+          test_mode: boolean
+          total_amount: number
+          updated_at: string
+          windcave_session_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          custom_answers?: Json | null
+          customer_email: string
+          customer_name: string
+          customer_phone?: string | null
+          event_id: string
+          id?: string
+          status?: string
+          stripe_session_id?: string | null
+          test_mode?: boolean
+          total_amount: number
+          updated_at?: string
+          windcave_session_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          custom_answers?: Json | null
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string | null
+          event_id?: string
+          id?: string
+          status?: string
+          stripe_session_id?: string | null
+          test_mode?: boolean
+          total_amount?: number
+          updated_at?: string
+          windcave_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "guest_status_view"
+            referencedColumns: ["event_id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          address: string | null
+          billing_setup_completed: boolean
+          billing_setup_required: boolean
+          brand_colors: Json | null
+          city: string | null
+          country: string | null
+          created_at: string
+          credit_card_processing_fee_percentage: number | null
+          currency: string | null
+          custom_css: string | null
+          email: string
+          id: string
+          logo_url: string | null
+          name: string
+          payment_provider: string | null
+          phone: string | null
+          postal_code: string | null
+          test_mode: boolean
+          updated_at: string
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          billing_setup_completed?: boolean
+          billing_setup_required?: boolean
+          brand_colors?: Json | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          credit_card_processing_fee_percentage?: number | null
+          currency?: string | null
+          custom_css?: string | null
+          email: string
+          id?: string
+          logo_url?: string | null
+          name: string
+          payment_provider?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          test_mode?: boolean
+          updated_at?: string
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          billing_setup_completed?: boolean
+          billing_setup_required?: boolean
+          brand_colors?: Json | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          credit_card_processing_fee_percentage?: number | null
+          currency?: string | null
+          custom_css?: string | null
+          email?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+          payment_provider?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          test_mode?: boolean
+          updated_at?: string
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      payment_credentials: {
+        Row: {
+          apple_pay_merchant_id: string | null
+          created_at: string
+          id: string
+          organization_id: string
+          stripe_account_id: string | null
+          stripe_onboarding_complete: boolean | null
+          stripe_publishable_key: string | null
+          stripe_secret_key: string | null
+          updated_at: string
+          windcave_api_key: string | null
+          windcave_enabled: boolean | null
+          windcave_endpoint: string | null
+          windcave_hit_key: string | null
+          windcave_hit_username: string | null
+          windcave_station_id: string | null
+          windcave_username: string | null
+        }
+        Insert: {
+          apple_pay_merchant_id?: string | null
+          created_at?: string
+          id?: string
+          organization_id: string
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean | null
+          stripe_publishable_key?: string | null
+          stripe_secret_key?: string | null
+          updated_at?: string
+          windcave_api_key?: string | null
+          windcave_enabled?: boolean | null
+          windcave_endpoint?: string | null
+          windcave_hit_key?: string | null
+          windcave_hit_username?: string | null
+          windcave_station_id?: string | null
+          windcave_username?: string | null
+        }
+        Update: {
+          apple_pay_merchant_id?: string | null
+          created_at?: string
+          id?: string
+          organization_id?: string
+          stripe_account_id?: string | null
+          stripe_onboarding_complete?: boolean | null
+          stripe_publishable_key?: string | null
+          stripe_secret_key?: string | null
+          updated_at?: string
+          windcave_api_key?: string | null
+          windcave_enabled?: boolean | null
+          windcave_endpoint?: string | null
+          windcave_hit_key?: string | null
+          windcave_hit_username?: string | null
+          windcave_station_id?: string | null
+          windcave_username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_credentials_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_transactions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_email: string | null
+          customer_name: string | null
+          event_id: string
+          id: string
+          items: Json
+          payment_method: string
+          status: string
+          stripe_payment_intent_id: string | null
+          total_amount: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          event_id: string
+          id?: string
+          items?: Json
+          payment_method?: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          total_amount: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          event_id?: string
+          id?: string
+          items?: Json
+          payment_method?: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          total_amount?: number
+        }
+        Relationships: []
+      }
+      seat_maps: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          layout_data: Json
+          name: string
+          total_seats: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          layout_data?: Json
+          name?: string
+          total_seats?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          layout_data?: Json
+          name?: string
+          total_seats?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seat_maps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seat_maps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "guest_status_view"
+            referencedColumns: ["event_id"]
+          },
+        ]
+      }
+      seats: {
+        Row: {
+          created_at: string
+          id: string
+          is_available: boolean
+          price_override: number | null
+          row_label: string
+          seat_map_id: string
+          seat_number: string
+          seat_type: string
+          section: string | null
+          x_position: number
+          y_position: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          price_override?: number | null
+          row_label: string
+          seat_map_id: string
+          seat_number: string
+          seat_type?: string
+          section?: string | null
+          x_position: number
+          y_position: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          price_override?: number | null
+          row_label?: string
+          seat_map_id?: string
+          seat_number?: string
+          seat_type?: string
+          section?: string | null
+          x_position?: number
+          y_position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seats_seat_map_id_fkey"
+            columns: ["seat_map_id"]
+            isOneToOne: false
+            referencedRelation: "seat_maps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_audit_log: {
+        Row: {
+          admin_user_id: string | null
+          created_at: string
+          event_data: Json | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          admin_user_id?: string | null
+          created_at?: string
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          admin_user_id?: string | null
+          created_at?: string
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      ticket_types: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_id: string
+          id: string
+          name: string
+          price: number
+          quantity_available: number
+          quantity_sold: number
+          sale_end_date: string | null
+          sale_start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_id: string
+          id?: string
+          name: string
+          price: number
+          quantity_available: number
+          quantity_sold?: number
+          sale_end_date?: string | null
+          sale_start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_id?: string
+          id?: string
+          name?: string
+          price?: number
+          quantity_available?: number
+          quantity_sold?: number
+          sale_end_date?: string | null
+          sale_start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_types_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_types_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "guest_status_view"
+            referencedColumns: ["event_id"]
+          },
+        ]
+      }
+      tickets: {
+        Row: {
+          checked_in: boolean | null
+          created_at: string
+          id: string
+          order_item_id: string
+          status: string
+          ticket_code: string
+          used_at: string | null
+        }
+        Insert: {
+          checked_in?: boolean | null
+          created_at?: string
+          id?: string
+          order_item_id: string
+          status?: string
+          ticket_code: string
+          used_at?: string | null
+        }
+        Update: {
+          checked_in?: boolean | null
+          created_at?: string
+          id?: string
+          order_item_id?: string
+          status?: string
+          ticket_code?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      usage_records: {
+        Row: {
+          billed: boolean
+          billing_period_end: string
+          billing_period_start: string
+          created_at: string
+          id: string
+          invoice_id: string | null
+          order_id: string | null
+          organization_id: string
+          platform_fee_fixed: number
+          platform_fee_percentage: number
+          total_platform_fee: number
+          transaction_amount: number
+        }
+        Insert: {
+          billed?: boolean
+          billing_period_end: string
+          billing_period_start: string
+          created_at?: string
+          id?: string
+          invoice_id?: string | null
+          order_id?: string | null
+          organization_id: string
+          platform_fee_fixed?: number
+          platform_fee_percentage?: number
+          total_platform_fee: number
+          transaction_amount: number
+        }
+        Update: {
+          billed?: boolean
+          billing_period_end?: string
+          billing_period_start?: string
+          created_at?: string
+          id?: string
+          invoice_id?: string | null
+          order_id?: string | null
+          organization_id?: string
+          platform_fee_fixed?: number
+          platform_fee_percentage?: number
+          total_platform_fee?: number
+          transaction_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_records_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "usage_records_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      xero_connections: {
+        Row: {
+          access_token: string | null
+          connection_status: string | null
+          created_at: string
+          id: string
+          last_sync_at: string | null
+          organization_id: string
+          refresh_token: string | null
+          sync_settings: Json | null
+          tenant_id: string
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          connection_status?: string | null
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          organization_id: string
+          refresh_token?: string | null
+          sync_settings?: Json | null
+          tenant_id: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          connection_status?: string | null
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          organization_id?: string
+          refresh_token?: string | null
+          sync_settings?: Json | null
+          tenant_id?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xero_connections_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      xero_sync_logs: {
+        Row: {
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          error_message: string | null
+          id: string
+          operation_type: string
+          status: string
+          sync_data: Json | null
+          xero_connection_id: string
+          xero_entity_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error_message?: string | null
+          id?: string
+          operation_type: string
+          status: string
+          sync_data?: Json | null
+          xero_connection_id: string
+          xero_entity_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error_message?: string | null
+          id?: string
+          operation_type?: string
+          status?: string
+          sync_data?: Json | null
+          xero_connection_id?: string
+          xero_entity_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xero_sync_logs_xero_connection_id_fkey"
+            columns: ["xero_connection_id"]
+            isOneToOne: false
+            referencedRelation: "xero_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      guest_status_view: {
+        Row: {
+          check_in_notes: string | null
+          checked_in: boolean | null
+          checked_in_at: string | null
+          checked_in_by: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          event_id: string | null
+          event_name: string | null
+          lanyard_printed: boolean | null
+          order_date: string | null
+          price: number | null
+          quantity: number | null
+          ticket_code: string | null
+          ticket_id: string | null
+          ticket_status: string | null
+          ticket_type: string | null
+        }
+        Relationships: []
+      }
+      test_mode_analytics: {
+        Row: {
+          estimated_platform_fees: number | null
+          organization_id: string | null
+          test_mode: boolean | null
+          total_events: number | null
+          total_orders: number | null
+          total_revenue: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Functions: {
+      calculate_platform_fee: {
+        Args:
+          | Record<PropertyKey, never>
+          | { order_id: number }
+          | { transaction_amount: number }
+        Returns: number
+      }
+      create_admin_session: {
+        Args: {
+          p_admin_id: string
+          p_ip?: unknown
+          p_token: string
+          p_user_agent?: string
+        }
+        Returns: string
+      }
+      generate_ticket_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_organization_payment_config: {
+        Args: { p_organization_id: string }
+        Returns: {
+          apple_pay_merchant_id: string
+          credit_card_processing_fee_percentage: number
+          currency: string
+          payment_provider: string
+          stripe_publishable_key: string
+          windcave_enabled: boolean
+          windcave_endpoint: string
+        }[]
+      }
+      get_payment_credentials_for_processing: {
+        Args: { p_event_id?: string; p_organization_id: string }
+        Returns: {
+          stripe_account_id: string
+          stripe_secret_key: string
+          windcave_api_key: string
+          windcave_endpoint: string
+          windcave_hit_key: string
+          windcave_hit_username: string
+          windcave_station_id: string
+          windcave_username: string
+        }[]
+      }
+      get_user_organization_id: {
+        Args: { user_uuid: string }
+        Returns: string
+      }
+      invalidate_admin_session: {
+        Args: { token: string }
+        Returns: boolean
+      }
+      is_authenticated_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      log_security_event: {
+        Args: {
+          p_admin_user_id: string
+          p_event_data: Json
+          p_event_type: string
+          p_ip_address: unknown
+          p_user_agent: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      user_owns_organization: {
+        Args: { org_id: string; user_uuid: string }
+        Returns: boolean
+      }
+      validate_admin_session: {
+        Args: { token: string }
+        Returns: string
+      }
+      verify_ticket_code: {
+        Args: { p_event_id: string; p_ticket_code: string }
+        Returns: {
+          customer_name: string
+          error_message: string
+          is_used: boolean
+          is_valid: boolean
+          ticket_id: string
+          ticket_type: string
+        }[]
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
 
-export interface ThemeCustomization {
-  primaryColor?: string;
-  secondaryColor?: string;
-  backgroundColor?: string;
-  fontFamily?: string;
-}
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-export interface CustomerInfo {
-  name: string;
-  email: string;
-  phone?: string;
-}
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-export interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  quantity_available?: number;
-  quantity_sold?: number;
-  description?: string;
-  event_id?: string;
-  type?: string;
-  selectedSeats?: string[];
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
-export interface MerchandiseCartItem {
-  merchandise: {
-    id: string;
-    name: string;
-    price: number;
-    description?: string;
-  };
-  quantity: number;
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
-export interface WindcaveLink {
-  href: string;
-  rel: string;
-  method: string;
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
-export interface WindcaveSession {
-  id: string;
-  status: string;
-  links: WindcaveLink[];
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
-export interface PaymentResult {
-  success: boolean;
-  message: string;
-  orderId?: string;
-  error?: string;
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
-export interface EventData {
-  id: string;
-  name: string;
-  event_date: string;
-  venue?: string;
-  description?: string;
-  theme_customization?: ThemeCustomization;
-  widget_customization?: any;
-  organizations: {
-    id: string;
-    name: string;
-    stripe_account_id?: string;
-    windcave_endpoint?: string;
-    apple_pay_merchant_id?: string;
-    currency?: string;
-  };
-}
-
-export interface TicketType {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  quantity_available: number;
-  quantity_sold: number;
-  description?: string;
-  event_id: string;
-  type?: string;
-}
-
-export interface MerchandiseItem {
-  id: string;
-  name: string;
-  price: number;
-  description?: string;
-  selectedSize?: string;
-  selectedColor?: string;
-}
-
-export interface CustomQuestion {
-  id: string;
-  question: string;
-  required: boolean;
-  label?: string;
-  type?: string;
-}
-
-export interface OrderData {
-  id: string;
-  customer_info: CustomerInfo;
-  cart: CartItem[];
-  merchandise_cart: MerchandiseCartItem[];
-  total_amount: number;
-  status: string;
-  created_at: string;
-}
-
-export interface AnalyticsData {
-  totalTickets: number;
-  totalRevenue: number;
-  ticketsSold: number;
-  averageOrderValue: number;
-}
-
-export interface BillingData {
-  id: string;
-  organization_id: string;
-  stripe_account_id?: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface PaymentMethod {
-  id: string;
-  type: string;
-  last4?: string;
-  brand?: string;
-  exp_month?: number;
-  exp_year?: number;
-}
-
-export interface InvoiceData {
-  id: string;
-  organization_id: string;
-  amount: number;
-  status: string;
-  due_date: string;
-  created_at: string;
-}
-
-export interface AdminUser {
-  id: string;
-  email: string;
-  role: string;
-  created_at: string;
-}
-
-export interface SecurityEvent {
-  id: string;
-  type: string;
-  description: string;
-  severity: 'low' | 'medium' | 'high';
-  created_at: string;
-}
-
-export interface XeroConnection {
-  id: string;
-  organization_id: string;
-  access_token: string;
-  refresh_token: string;
-  expires_at: string;
-  created_at: string;
-}
-
-export interface MailchimpConnection {
-  id: string;
-  organization_id: string;
-  api_key: string;
-  list_id: string;
-  created_at: string;
-}
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
