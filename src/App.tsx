@@ -29,46 +29,54 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/dashboard" element={
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Public routes - NO theme context, consistent appearance */}
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/widget/:eventId" element={<TicketWidget />} />
+            <Route path="/admin-auth" element={<AdminAuth />} />
+            <Route path="/secure-admin" element={<SecureAdminAuth />} />
+            <Route path="/ticketflolive/:eventId" element={<TicketFloLIVE />} />
+            <Route path="/payment-success" element={<PaymentSuccess />} />
+            <Route path="/invoice-payment-success" element={<InvoicePaymentSuccess />} />
+            <Route path="/payment-failed" element={<PaymentFailed />} />
+            <Route path="/payment-cancelled" element={<PaymentCancelled />} />
+            <Route path="/xero-callback" element={<XeroCallback />} />
+            
+            {/* Authenticated routes - WITH theme context */}
+            <Route path="/dashboard" element={
+              <ThemeProvider>
                 <ProtectedRoute>
                   <OrgDashboard />
                 </ProtectedRoute>
-              } />
-              <Route path="/invoicing" element={
+              </ThemeProvider>
+            } />
+            <Route path="/invoicing" element={
+              <ThemeProvider>
                 <ProtectedRoute>
                   <Invoicing />
                 </ProtectedRoute>
-              } />
-              <Route path="/widget/:eventId" element={<TicketWidget />} />
-              <Route path="/admin-auth" element={<AdminAuth />} />
-              <Route path="/secure-admin" element={<SecureAdminAuth />} />
-          <Route path="/master-admin" element={
-            <ProtectedAdminRoute>
-              <MasterAdmin />
-            </ProtectedAdminRoute>
-          } />
-              <Route path="/ticketflolive/:eventId" element={<TicketFloLIVE />} />
-              <Route path="/payment-success" element={<PaymentSuccess />} />
-              <Route path="/invoice-payment-success" element={<InvoicePaymentSuccess />} />
-              <Route path="/payment-failed" element={<PaymentFailed />} />
-              <Route path="/payment-cancelled" element={<PaymentCancelled />} />
-              <Route path="/xero-callback" element={<XeroCallback />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </ThemeProvider>
+              </ThemeProvider>
+            } />
+            <Route path="/master-admin" element={
+              <ThemeProvider>
+                <ProtectedAdminRoute>
+                  <MasterAdmin />
+                </ProtectedAdminRoute>
+              </ThemeProvider>
+            } />
+            
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

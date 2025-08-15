@@ -1,5 +1,4 @@
-import { useState } from "react";
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import XeroIntegration from "@/components/XeroIntegration";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,7 +73,7 @@ const MobileSidebarTrigger = () => {
 
 const OrgDashboard = () => {
   console.log("=== OrgDashboard component rendering ===");
-  const { theme, toggleTheme } = useTheme();
+  const { themePreset } = useTheme();
 const [events, setEvents] = useState<DashboardEvent[]>([]);
 const [selectedEvent, setSelectedEvent] = useState<DashboardEvent | null>(null);
 
@@ -144,7 +143,7 @@ const navigate = useNavigate();
 if (orgs) {
   console.log("Organization loaded:", orgs);
   setOrganizationId(orgs.id);
-  const orgTestMode = (orgs as any).test_mode ?? true;
+  const orgTestMode = (orgs as { test_mode?: boolean }).test_mode ?? true;
   setTestMode(orgTestMode);
   // Load events and analytics for this organization with correct test mode
   loadEvents(orgs.id, orgTestMode);
@@ -156,7 +155,7 @@ if (orgs) {
     loadOrganization();
   }, [user]);
 
-  const loadEvents = async (orgId: string, mode?: boolean) => {
+  const loadEvents = useCallback(async (orgId: string, mode?: boolean) => {
     const currentTestMode = mode !== undefined ? mode : testMode;
     console.log("Loading events for org:", orgId, "test_mode:", currentTestMode);
     
@@ -187,9 +186,9 @@ if (orgs) {
       }));
       setEvents(formattedEvents);
     }
-  };
+  }, [testMode]);
 
-  const loadTestModeAnalytics = async (orgId: string, mode?: boolean) => {
+  const loadTestModeAnalytics = useCallback(async (orgId: string, mode?: boolean) => {
     const currentTestMode = mode !== undefined ? mode : testMode;
     console.log("Loading analytics for org:", orgId, "test_mode:", currentTestMode);
     
@@ -220,9 +219,9 @@ if (orgs) {
         estimatedPlatformFees: analyticsData.estimated_platform_fees || 0
       });
     }
-  };
+  }, [testMode]);
 
-  const loadAnalyticsData = async (orgId: string, mode?: boolean) => {
+  const loadAnalyticsData = useCallback(async (orgId: string, mode?: boolean) => {
     const currentTestMode = mode !== undefined ? mode : testMode;
     console.log("Loading analytics data for org:", orgId, "test_mode:", currentTestMode);
     
@@ -252,116 +251,28 @@ if (orgs) {
       }
 
       // Process monthly data
-      const monthlyStats = monthlyData?.reduce((acc, order) => {
-        const month = new Date(order.created_at).toLocaleDateString('en-US', { month: 'short' });
-        if (!acc[month]) {
-          acc[month] = { sales: 0, tickets: 0 };
-        }
-        acc[month].sales += order.total_amount || 0;
-        acc[month].tickets += order.ticket_types?.reduce((sum, tt) => sum + (tt.quantity_sold || 0), 0) || 0;
-        return acc;
-      }, {} as Record<string, { sales: number; tickets: number }>) || {};
+      if (monthlyData) {
+        const monthlyStats = monthlyData.reduce((acc, order) => {
+          const month = new Date(order.created_at).toISOString().slice(0, 7);
+          if (!acc[month]) {
+            acc[month] = { revenue: 0, orders: 0 };
+          }
+          acc[month].revenue += order.total_amount;
+          acc[month].orders += 1;
+          return acc;
+        }, {} as Record<string, { revenue: number; orders: number }>);
 
-      const salesData = Object.entries(monthlyStats).map(([month, data]) => ({
-        month,
-        sales: Math.round(data.sales),
-        tickets: data.tickets
-      }));
-
-      // Load event type data
-      const { data: eventData, error: eventError } = await supabase
-        .from("events")
-        .select(`
-          id,
-          name,
-          ticket_types!inner(
-            quantity_sold,
-            price
-          )
-        `)
-        .eq("organization_id", orgId)
-        .eq("test_mode", currentTestMode);
-
-      if (eventError) {
-        console.error("Error loading event data:", eventError);
+        setAnalyticsData(prev => ({
+          ...prev,
+          monthlyData: monthlyStats,
+          isLoading: false
+        }));
       }
-
-      // Process event type data (simplified - using event names as categories)
-      const eventStats = eventData?.reduce((acc, event) => {
-        const totalRevenue = event.ticket_types?.reduce((sum, tt) => 
-          sum + ((tt.quantity_sold || 0) * (tt.price || 0)), 0) || 0;
-        
-        // Use event name as category (in a real app, you'd have event categories)
-        const category = event.name.split(' ')[0] || 'Other';
-        if (!acc[category]) {
-          acc[category] = 0;
-        }
-        acc[category] += totalRevenue;
-        return acc;
-      }, {} as Record<string, number>) || {};
-
-      const eventTypeData = Object.entries(eventStats).map(([name, value], index) => ({
-        name,
-        value: Math.round(value),
-        color: [
-          "hsl(var(--primary))",
-          "hsl(var(--secondary))",
-          "hsl(var(--accent))",
-          "hsl(var(--muted))",
-          "hsl(var(--destructive))"
-        ][index % 5]
-      }));
-
-      // Load weekly revenue data
-      const { data: weeklyData, error: weeklyError } = await supabase
-        .from("orders")
-        .select(`
-          created_at,
-          total_amount,
-          events!inner(
-            organization_id
-          )
-        `)
-        .eq("events.organization_id", orgId)
-        .eq("test_mode", currentTestMode)
-        .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
-
-      if (weeklyError) {
-        console.error("Error loading weekly data:", weeklyError);
-      }
-
-      // Process weekly data
-      const weeklyStats = weeklyData?.reduce((acc, order) => {
-        const day = new Date(order.created_at).toLocaleDateString('en-US', { weekday: 'short' });
-        if (!acc[day]) {
-          acc[day] = 0;
-        }
-        acc[day] += order.total_amount || 0;
-        return acc;
-      }, {} as Record<string, number>) || {};
-
-      const revenueData = Object.entries(weeklyStats).map(([day, revenue]) => ({
-        day,
-        revenue: Math.round(revenue)
-      }));
-
-      setAnalyticsData({
-        salesData,
-        eventTypeData,
-        revenueData,
-        isLoading: false
-      });
-
     } catch (error) {
       console.error("Error loading analytics data:", error);
-      setAnalyticsData({
-        salesData: [],
-        eventTypeData: [],
-        revenueData: [],
-        isLoading: false
-      });
+      setAnalyticsData(prev => ({ ...prev, isLoading: false }));
     }
-  };
+  }, [testMode]);
 
   const handleToggleTestMode = async () => {
     if (!organizationId) return;
@@ -488,17 +399,6 @@ if (orgs) {
               </div>
               
               <div className="flex items-center gap-4 ml-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={toggleTheme}
-                  className="flex items-center gap-2"
-                >
-                  {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                  <span className="hidden sm:inline">
-                    {theme === 'dark' ? 'Light' : 'Dark'} Mode
-                  </span>
-                </Button>
                 <div className="flex items-center space-x-2">
                   <Label htmlFor="test-mode" className="text-sm">
                     {testMode ? "Test Mode" : "Live Mode"}
@@ -535,7 +435,7 @@ if (orgs) {
 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8">
             <TabsContent value="overview" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <Card className="gradient-card hover-scale">
+                <Card className="gradient-card hover-scale animate-in fade-in-0">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Events</CardTitle>
                     <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -546,7 +446,7 @@ if (orgs) {
                   </CardContent>
                 </Card>
 
-                <Card className="gradient-card hover-scale">
+                <Card className="gradient-card hover-scale animate-in fade-in-0" style={{ animationDelay: '100ms' }}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Tickets Sold</CardTitle>
                     <Ticket className="h-4 w-4 text-muted-foreground" />
@@ -557,7 +457,7 @@ if (orgs) {
                   </CardContent>
                 </Card>
 
-                <Card className="gradient-card hover-scale">
+                <Card className="gradient-card hover-scale animate-in fade-in-0" style={{ animationDelay: '200ms' }}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Revenue</CardTitle>
                     <BarChart3 className="h-4 w-4 text-muted-foreground" />
@@ -568,7 +468,7 @@ if (orgs) {
                   </CardContent>
                 </Card>
 
-                <Card className="gradient-card hover-scale">
+                <Card className="gradient-card hover-scale animate-in fade-in-0" style={{ animationDelay: '300ms' }}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Platform Fees</CardTitle>
                     <Users className="h-4 w-4 text-muted-foreground" />
@@ -596,7 +496,7 @@ if (orgs) {
                 <CardContent>
                   <div className="space-y-4">
                     {events.map((event) => (
-                       <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors gap-4">
+                       <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors hover-lift animate-in fade-in-0 gap-4">
                          <div className="space-y-1 flex-1">
                            <h3 className="font-medium">{event.name}</h3>
                            <p className="text-sm text-muted-foreground">{event.date} • {event.venue}</p>
@@ -617,7 +517,7 @@ if (orgs) {
                                  setSelectedEvent(event);
                                  setActiveTab("event-details");
                                }}
-                               className="flex-1 sm:flex-none"
+                               className="flex-1 sm:flex-none hover-scale"
                              >
                                <Users className="h-4 w-4 mr-2" />
                                <span className="hidden sm:inline">Manage</span>
@@ -627,7 +527,7 @@ if (orgs) {
                                variant="outline"
                                size="sm"
                                onClick={() => window.open(`/ticketflolive/${event.id}`, '_blank')}
-                               className="flex-1 sm:flex-none"
+                               className="flex-1 sm:flex-none hover-scale"
                              >
                                <Monitor className="h-4 w-4 mr-2" />
                                <span className="hidden sm:inline">TicketFloLIVE</span>

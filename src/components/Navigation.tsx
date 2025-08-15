@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Ticket } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Ticket, Menu, X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 
@@ -31,17 +32,15 @@ export const Navigation = () => {
   ];
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
+    <nav className="fixed top-0 w-full z-50 bg-background/70 backdrop-blur-xl border-b border-border/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center space-x-2">
-            <div className="bg-gradient-primary p-2 rounded-lg">
-              <Ticket className="h-6 w-6 text-primary-foreground" />
+            <div className="p-2 rounded-lg border border-border/60 shadow-sm">
+              <Ticket className="h-6 w-6 text-primary" />
             </div>
-            <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              TicketFlo
-            </span>
+            <span className="text-lg font-semibold tracking-tight text-foreground">TicketFlo</span>
           </div>
 
           {/* Desktop Navigation */}
@@ -60,11 +59,11 @@ export const Navigation = () => {
           </div>
 
           {/* Desktop CTA */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Button variant="ghost" size="sm" onClick={handleSignIn}>
+          <div className="hidden md:flex items-center space-x-2">
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={handleSignIn}>
               Sign In
             </Button>
-            <Button variant="gradient" size="sm" onClick={handleStartTrial}>
+            <Button variant="default" size="sm" onClick={handleStartTrial}>
               Sign Up Now
             </Button>
           </div>

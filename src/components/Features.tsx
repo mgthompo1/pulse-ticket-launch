@@ -10,7 +10,7 @@ import {
   Gift, 
   MessageSquare,
   Code,
-  Infinity,
+  Infinity as InfinityIcon,
   Sparkles,
   Zap
 } from "lucide-react";
@@ -18,7 +18,7 @@ import { useLandingPageContent } from "@/hooks/useLandingPageContent";
 
 const features = [
   {
-    icon: Infinity,
+    icon: InfinityIcon,
     title: "Unlimited Ticket Types",
     description: "Create as many ticket categories as you need with flexible pricing, quantities, and availability windows.",
     badge: "Core Feature"

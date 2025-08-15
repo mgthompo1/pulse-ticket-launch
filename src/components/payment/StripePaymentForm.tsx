@@ -82,7 +82,7 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, onS
 
       if (paymentError) {
         // Handle specific payment decline messages
-        let errorTitle = "Payment Failed";
+        const errorTitle = "Payment Failed";
         let errorDescription = "Please try again or use a different payment method.";
         
         if (paymentError.type === 'card_error') {
@@ -127,7 +127,7 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, onS
       console.error('Payment failed:', error);
       
       // Handle non-Stripe errors (like network issues or server errors)
-      let errorTitle = "Payment Failed";
+      const errorTitle = "Payment Failed";
       let errorDescription = "There was an error processing your payment. Please try again.";
       
       if (error instanceof Error) {

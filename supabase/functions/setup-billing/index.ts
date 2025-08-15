@@ -50,7 +50,7 @@ serve(async (req) => {
     });
 
     // Check if billing customer already exists
-    let { data: existingBilling } = await supabaseClient
+    const { data: existingBilling } = await supabaseClient
       .from('billing_customers')
       .select('*')
       .eq('organization_id', org.id)

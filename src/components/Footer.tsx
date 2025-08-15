@@ -14,19 +14,17 @@ const footerLinks = {
 
 export const Footer = () => {
   return (
-    <footer className="bg-muted/30 border-t border-border/50">
+    <footer className="bg-secondary/50 border-t border-border/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Main footer content */}
         <div className="py-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
           {/* Brand section */}
           <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center space-x-2">
-              <div className="bg-gradient-primary p-2 rounded-lg">
-                <Ticket className="h-6 w-6 text-primary-foreground" />
+              <div className="p-2 rounded-lg border border-border/60 shadow-sm">
+                <Ticket className="h-6 w-6 text-primary" />
               </div>
-              <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                TicketFlo
-              </span>
+              <span className="text-lg font-semibold tracking-tight text-foreground">TicketFlo</span>
             </div>
             
             <p className="text-muted-foreground leading-relaxed max-w-md">
@@ -92,7 +90,7 @@ export const Footer = () => {
         {/* Bottom bar */}
         <div className="py-6 border-t border-border/50 flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
           <p className="text-sm text-muted-foreground">
-            © 2024 TicketFlo. Beta software. All rights reserved.
+            © 2024 TicketFlo. All rights reserved.
           </p>
         </div>
       </div>

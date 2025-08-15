@@ -13,13 +13,79 @@ import MerchandiseSelector from "@/components/MerchandiseSelector";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { loadStripe } from "@stripe/stripe-js";
+import { 
+  EventData, 
+  TicketType, 
+  CartItem, 
+  MerchandiseCartItem, 
+  CustomerInfo, 
+  WindcaveLink, 
+  CustomQuestion,
+  WindcaveSession 
+} from "@/integrations/supabase/types";
 
 // Extend the global Window interface to include WindcavePayments
 declare global {
   interface Window {
-    WindcavePayments?: any;
-    windcaveDropIn?: any;
+    WindcavePayments?: {
+      DropIn: {
+        create: (config: WindcaveDropInConfig) => WindcaveDropInInstance;
+      };
+    };
+    windcaveDropIn?: WindcaveDropInInstance | null;
   }
+}
+
+interface WindcaveDropInConfig {
+  container: string;
+  links: WindcaveLink[];
+  totalValue: string;
+  card: {
+    hideCardholderName: boolean;
+    supportedCards: string[];
+    disableCardAutoComplete: boolean;
+    cardImagePlacement: string;
+    sideIcons: string[];
+    enableCardValidation: boolean;
+    enableCardFormatting: boolean;
+  };
+  security: {
+    enableAutoComplete: boolean;
+    enableSecureForm: boolean;
+    enableFormValidation: boolean;
+  };
+  mobilePayments?: {
+    buttonType: string;
+    buttonStyle: string;
+    buttonLocale: string;
+    merchantName: string;
+    countryCode: string;
+    currencyCode: string;
+    supportedNetworks: string[];
+    isTest: boolean;
+    applePay: {
+      merchantId: string;
+      onSuccess: (status: string) => Promise<boolean> | void;
+      onError?: (stage: string, error: string) => void;
+    };
+    googlePay?: {
+      onSuccess: (status: string) => Promise<boolean> | void;
+      onError?: (stage: string, error: string) => void;
+    };
+  };
+  onSuccess?: (status: string, data?: any) => Promise<void> | void;
+  onError?: (error: string) => void;
+  options: {
+    enableAutoComplete: boolean;
+    enableSecureForm: boolean;
+    enableFormValidation: boolean;
+    enableCardValidation: boolean;
+    enableCardFormatting: boolean;
+  };
+}
+
+interface WindcaveDropInInstance {
+  close: () => void;
 }
 
 const TicketWidget = () => {
@@ -38,22 +104,22 @@ const TicketWidget = () => {
     }
   );
   
-  const [eventData, setEventData] = useState<any>(null);
-  const [ticketTypes, setTicketTypes] = useState<any[]>([]);
-  const [cart, setCart] = useState<any[]>([]);
-  const [merchandiseCart, setMerchandiseCart] = useState<any[]>([]);
-  const [customerInfo, setCustomerInfo] = useState({
+  const [eventData, setEventData] = useState<EventData | null>(null);
+  const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [merchandiseCart, setMerchandiseCart] = useState<MerchandiseCartItem[]>([]);
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     name: "",
     email: "",
     phone: ""
   });
   const [loading, setLoading] = useState(true);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [windcaveDropIn, setWindcaveDropIn] = useState<any>(null);
-  const [, setWindcaveLinks] = useState<any[]>([]);
+  const [windcaveDropIn, setWindcaveDropIn] = useState<WindcaveDropInInstance | null>(null);
+  const [, setWindcaveLinks] = useState<WindcaveLink[]>([]);
   const dropInRef = useRef<HTMLDivElement>(null);
   const [showSeatSelection, setShowSeatSelection] = useState(false);
-  const [pendingSeatSelection, setPendingSeatSelection] = useState<any>(null);
+  const [pendingSeatSelection, setPendingSeatSelection] = useState<CartItem | null>(null);
   const [, setSelectedSeats] = useState<Record<string, string[]>>({});
   const [creditCardProcessingFee, setCreditCardProcessingFee] = useState(0);
   const [paymentProvider, setPaymentProvider] = useState('stripe');
@@ -61,7 +127,7 @@ const TicketWidget = () => {
   const [showPayment, setShowPayment] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   // State for custom question answers
-  const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
+  const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
   const [customErrors, setCustomErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -211,7 +277,7 @@ const TicketWidget = () => {
     return Object.values(checks).every(Boolean);
   };
 
-  const addToCart = async (ticketType: any) => {
+  const addToCart = async (ticketType: TicketType) => {
     // Check if event has seat maps available
     const { data: seatMaps } = await supabase
       .from('seat_maps')
@@ -222,8 +288,15 @@ const TicketWidget = () => {
     if (seatMaps && seatMaps.length > 0) {
       // Event has seating - show seat selector
       setPendingSeatSelection({
-        ticketType,
-        quantity: 1
+        id: ticketType.id,
+        name: ticketType.name,
+        price: ticketType.price,
+        quantity: 1,
+        quantity_available: ticketType.quantity_available,
+        quantity_sold: ticketType.quantity_sold,
+        description: ticketType.description,
+        event_id: eventId as string,
+        type: 'ticket'
       });
       setShowSeatSelection(true);
       return;
@@ -263,7 +336,7 @@ const TicketWidget = () => {
   const handleSeatsSelected = (seats: string[]) => {
     if (pendingSeatSelection) {
       const newCartItem = {
-        ...pendingSeatSelection.ticketType,
+        ...pendingSeatSelection,
         quantity: pendingSeatSelection.quantity,
         selectedSeats: seats
       };
@@ -271,7 +344,7 @@ const TicketWidget = () => {
       setCart(prevCart => [...prevCart, newCartItem]);
       setSelectedSeats(prev => ({
         ...prev,
-        [pendingSeatSelection.ticketType.id]: seats
+        [pendingSeatSelection.id]: seats
       }));
     }
     
@@ -282,7 +355,7 @@ const TicketWidget = () => {
   const handleSkipSeatSelection = () => {
     if (pendingSeatSelection) {
       const newCartItem = {
-        ...pendingSeatSelection.ticketType,
+        ...pendingSeatSelection,
         quantity: pendingSeatSelection.quantity
       };
       setCart(prevCart => [...prevCart, newCartItem]);
@@ -315,7 +388,7 @@ const TicketWidget = () => {
   // Validate custom questions before checkout
   const validateCustomQuestions = () => {
     const errors: Record<string, string> = {};
-    customQuestions.forEach((q: any) => {
+    customQuestions.forEach((q: CustomQuestion) => {
       if (q.required && !customAnswers[q.id]?.toString().trim()) {
         errors[q.id] = 'This field is required.';
       }
@@ -429,7 +502,7 @@ const TicketWidget = () => {
   };
 
 
-  const initializeWindcaveDropIn = (links: any[], totalAmount: number) => {
+  const initializeWindcaveDropIn = (links: WindcaveLink[], totalAmount: number) => {
     console.log("=== INITIALIZING WINDCAVE DROP-IN ===");
     console.log("Links received:", links);
     console.log("Total amount:", totalAmount);
@@ -466,9 +539,18 @@ const TicketWidget = () => {
           card: {
             hideCardholderName: true,
             supportedCards: ["visa", "mastercard", "amex"], // lowercase as per sample
-            disableCardAutoComplete: false,
+            disableCardAutoComplete: false, // This should be false to enable auto-fill
             cardImagePlacement: "right",
-            sideIcons: ["visa", "mastercard", "amex"]
+            sideIcons: ["visa", "mastercard", "amex"],
+            // Add security settings
+            enableCardValidation: true,
+            enableCardFormatting: true
+          },
+          // Add security configuration
+          security: {
+            enableAutoComplete: true,
+            enableSecureForm: true,
+            enableFormValidation: true
           },
           // Mobile Payments configuration matching sample structure
           mobilePayments: eventData?.organizations?.apple_pay_merchant_id ? {
@@ -483,7 +565,7 @@ const TicketWidget = () => {
             // Apple Pay configuration matching sample
             applePay: {
               merchantId: eventData.organizations.apple_pay_merchant_id,
-               onSuccess: function(status: any) {
+               onSuccess: function(status: string) {
                 console.log("=== APPLE PAY SUCCESS CALLBACK ===");
                 console.log("Apple Pay status:", status);
                 
@@ -604,7 +686,7 @@ const TicketWidget = () => {
             next();
           },
           // General onSuccess callback (for non-Apple Pay payments)
-          onSuccess: async (status: any, data?: any) => {
+          onSuccess: async (status: string, data?: any) => {
             console.log("=== WINDCAVE SUCCESS CALLBACK ===");
             console.log("Success status:", status);
             console.log("Success data:", data);
@@ -731,7 +813,17 @@ const TicketWidget = () => {
         console.log("Initializing Windcave Drop-In with data:", data);
         
         // Create the drop-in using the simpler approach from the example
-        window.windcaveDropIn = window.WindcavePayments.DropIn.create(data);
+        window.windcaveDropIn = window.WindcavePayments.DropIn.create({
+          ...data,
+          // Additional configuration to ensure proper security
+          options: {
+            enableAutoComplete: true,
+            enableSecureForm: true,
+            enableFormValidation: true,
+            enableCardValidation: true,
+            enableCardFormatting: true
+          }
+        });
         
       } catch (error: any) {
         console.error("=== DROP-IN INITIALIZATION ERROR ===");
@@ -783,669 +875,579 @@ const TicketWidget = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-accent/20">
-        <div className="text-center animate-fade-in">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-lg font-medium">Loading event details...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!eventData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-accent/20">
-        <div className="text-center animate-fade-in">
-          <h1 className="text-3xl font-bold mb-4">Event Not Found</h1>
-          <p className="text-muted-foreground">The event you're looking for doesn't exist or is not available.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Get theme customization from event data
-  const themeCustomization = eventData?.widget_customization?.theme || {};
-  const primaryColor = themeCustomization.primaryColor || '#000000';
-  const secondaryColor = themeCustomization.secondaryColor || '#ffffff'; 
-  const backgroundColor = themeCustomization.backgroundColor || '#ffffff';
-  const textColor = themeCustomization.textColor || '#000000';
-  const fontFamily = themeCustomization.fontFamily || 'Inter';
-
   return (
-    <div 
-      className="min-h-screen"
-      style={{
-        backgroundColor: backgroundColor,
-        color: textColor,
-        fontFamily: fontFamily,
-        '--primary-color': primaryColor,
-        '--secondary-color': secondaryColor,
-        '--text-color': textColor,
-        '--bg-color': backgroundColor
-      } as React.CSSProperties}
-    >
-      <style>
-        {`
-          .custom-primary-bg { background-color: ${primaryColor} !important; }
-          .custom-primary-text { color: ${primaryColor} !important; }
-          .custom-primary-border { border-color: ${primaryColor} !important; }
-          .custom-secondary-bg { background-color: ${secondaryColor} !important; }
-          .custom-secondary-text { color: ${secondaryColor} !important; }
-          .custom-text { color: ${textColor} !important; }
-          .custom-bg { background-color: ${backgroundColor} !important; }
-          
-          /* Override specific elements */
-          .widget-card {
-            background-color: ${backgroundColor} !important;
-            color: ${textColor} !important;
-            border-color: ${primaryColor}20 !important;
-          }
-          
-          .widget-button {
-            background-color: ${primaryColor} !important;
-            color: ${secondaryColor} !important;
-            border-color: ${primaryColor} !important;
-          }
-          
-          .widget-button:hover {
-            background-color: ${primaryColor}dd !important;
-          }
-          
-          .widget-header {
-            background: linear-gradient(135deg, ${primaryColor}20, ${secondaryColor}20) !important;
-          }
-        `}
-      </style>
-      <div className="container mx-auto px-4 py-8">
-        {/* Event Header */}
-        <div className="mb-8 animate-fade-in">
-          <Card className="overflow-hidden widget-card">
-            <div className="widget-header p-6">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div className="flex-1">
-                  {/* Logo and Event Title */}
-                  <div className="flex items-center gap-4 mb-4">
-                    {eventData.logo_url && (
-                      <img 
-                        src={eventData.logo_url} 
-                        alt={`${eventData.name} logo`}
-                        className="w-16 h-16 object-contain rounded-lg bg-background/50 p-2"
-                      />
-                    )}
-                    <div>
-                      <h1 className="text-3xl lg:text-4xl font-bold">{eventData.name}</h1>
-                      <p className="text-muted-foreground text-sm">
-                        by {eventData.organizations?.name}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <p className="text-muted-foreground text-lg mb-4">{eventData.description}</p>
-                  <div className="flex flex-wrap gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      <span>{new Date(eventData.event_date).toLocaleDateString()}</span>
-                    </div>
-                    {eventData.venue && (
-                      <div className="flex items-center gap-2">
-                        <Globe className="h-4 w-4" />
-                        <span>{eventData.venue}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {eventData.featured_image_url && (
-                  <div className="w-full lg:w-48 h-32 rounded-lg overflow-hidden">
-                    <img 
-                      src={eventData.featured_image_url} 
-                      alt={eventData.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
+    <div className="min-h-screen bg-background">
+      {loading ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading event...</p>
+          </div>
         </div>
-
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="xl:col-span-2 space-y-6">
-            {/* Customer Information - First */}
-            <Card className="animate-fade-in">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Ticket className="h-5 w-5" />
-                  Your Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name">Full Name *</Label>
-                    <Input
-                      id="name"
-                      value={customerInfo.name}
-                      onChange={(e) => setCustomerInfo(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="John Doe"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email Address *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={customerInfo.email}
-                      onChange={(e) => setCustomerInfo(prev => ({ ...prev, email: e.target.value }))}
-                      placeholder="john@example.com"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      value={customerInfo.phone}
-                      onChange={(e) => setCustomerInfo(prev => ({ ...prev, phone: e.target.value }))}
-                      placeholder="+1 (555) 123-4567"
-                      className="mt-1"
-                    />
-                  </div>
+      ) : !eventData ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Ticket className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h1 className="text-2xl font-bold mb-2">Event Not Found</h1>
+            <p className="text-muted-foreground">The event you're looking for doesn't exist or isn't published.</p>
+          </div>
+        </div>
+      ) : (
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          {/* Event Header */}
+          <div className="text-left mb-8">
+            <h1 className="text-3xl font-bold mb-2">{eventData.name}</h1>
+            <div className="flex items-center gap-6 text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                <span>{new Date(eventData.event_date).toLocaleDateString()}</span>
+              </div>
+              {eventData.venue && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  <span>{eventData.venue}</span>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Custom Questions - Second */}
-            {customQuestions.length > 0 && (
-              <Card className="animate-fade-in">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <HelpCircle className="h-5 w-5" />
-                    Required Information
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Please provide the following information before selecting your tickets.
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {customQuestions.map((q: any) => (
-                      <div key={q.id} className="space-y-2">
-                        <Label className="font-medium">
-                          {q.label} {q.required && <span className="text-destructive">*</span>}
-                        </Label>
-                        {q.type === 'text' && (
-                          <Input
-                            value={customAnswers[q.id] || ''}
-                            onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
-                            placeholder={q.label}
-                          />
-                        )}
-                        {q.type === 'textarea' && (
-                          <textarea
-                            className="w-full border rounded p-2"
-                            value={customAnswers[q.id] || ''}
-                            onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
-                            placeholder={q.label}
-                            rows={3}
-                          />
-                        )}
-                        {(q.type === 'select' || q.type === 'radio') && (
-                          <select
-                            className="w-full border rounded p-2"
-                            value={customAnswers[q.id] || ''}
-                            onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
-                          >
-                            <option value="">Select...</option>
-                            {(q.options || '').split('\n').map((opt: string, idx: number) => (
-                              <option key={idx} value={opt.trim()}>{opt.trim()}</option>
-                            ))}
-                          </select>
-                        )}
-                        {q.type === 'checkbox' && (
-                          <div className="flex flex-col gap-1">
-                            {(q.options || '').split('\n').map((opt: string, idx: number) => (
-                              <label key={idx} className="flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  checked={Array.isArray(customAnswers[q.id]) ? customAnswers[q.id].includes(opt.trim()) : false}
-                                  onChange={e => {
-                                    setCustomAnswers(a => {
-                                      const arr = Array.isArray(a[q.id]) ? a[q.id] : [];
-                                      if (e.target.checked) {
-                                        return { ...a, [q.id]: [...arr, opt.trim()] };
-                                      } else {
-                                        return { ...a, [q.id]: arr.filter((v: string) => v !== opt.trim()) };
-                                      }
-                                    });
-                                  }}
-                                />
-                                {opt.trim()}
-                              </label>
-                            ))}
-                          </div>
-                        )}
-                        {q.type === 'email' && (
-                          <Input
-                            type="email"
-                            value={customAnswers[q.id] || ''}
-                            onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
-                            placeholder={q.label}
-                          />
-                        )}
-                        {q.type === 'phone' && (
-                          <Input
-                            type="tel"
-                            value={customAnswers[q.id] || ''}
-                            onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
-                            placeholder={q.label}
-                          />
-                        )}
-                        {customErrors[q.id] && (
-                          <p className="text-xs text-destructive">{customErrors[q.id]}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Ticket Selection */}
-            <Card className="animate-fade-in">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Ticket className="h-5 w-5" />
-                  Select Your Tickets
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {ticketTypes.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Ticket className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">No ticket types available for this event.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {ticketTypes.map((ticketType) => (
-                      <div key={ticketType.id} className="border rounded-lg p-4 hover:shadow-md transition-all duration-200 hover-scale">
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-lg">{ticketType.name}</h3>
-                            {ticketType.description && (
-                              <p className="text-sm text-muted-foreground mt-1">{ticketType.description}</p>
-                            )}
-                            <div className="flex items-center gap-4 mt-2">
-                              <span className="text-2xl font-bold text-primary">${ticketType.price}</span>
-                              <span className="text-sm text-muted-foreground">
-                                {ticketType.quantity_available - ticketType.quantity_sold} available
-                              </span>
-                            </div>
-                          </div>
-                          <Button 
-                            onClick={() => addToCart(ticketType)}
-                            className="sm:w-auto w-full widget-button"
-                            disabled={ticketType.quantity_available - ticketType.quantity_sold <= 0}
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add to Cart
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Merchandise Selection */}
-            <MerchandiseSelector 
-              eventId={eventId!} 
-              onCartUpdate={setMerchandiseCart}
-            />
-
-            {/* Seat Selection - Fourth (only if seats are in cart) */}
-            {cart.some(item => item.selectedSeats) && (
-              <Card className="animate-fade-in">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5" />
-                    Selected Seats
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {cart.filter(item => item.selectedSeats).map((item) => (
-                      <div key={item.id} className="flex items-center justify-between p-3 bg-accent/10 rounded-lg">
-                        <span className="font-medium">{item.name}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {item.selectedSeats?.length} seat(s) selected
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+              )}
+            </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Cart Summary */}
-            <Card className="animate-fade-in">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ShoppingCart className="h-5 w-5" />
-                  Order Summary
-                  {(cart.length > 0 || merchandiseCart.length > 0) && (
-                    <Badge variant="secondary" className="ml-auto">
-                      {cart.reduce((sum, item) => sum + item.quantity, 0) + merchandiseCart.reduce((sum, item) => sum + item.quantity, 0)}
-                    </Badge>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {cart.length === 0 && merchandiseCart.length === 0 ? (
-                  <div className="text-center py-6">
-                    <ShoppingCart className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-                    <p className="text-muted-foreground">Your cart is empty</p>
-                    <p className="text-sm text-muted-foreground mt-1">Add tickets or merchandise to get started</p>
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            {/* Main Content */}
+            <div className="xl:col-span-2 space-y-6">
+              {/* Customer Information - First */}
+              <Card className="animate-in fade-in-0">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Ticket className="h-5 w-5" />
+                    Your Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="name">Full Name *</Label>
+                      <Input
+                        id="name"
+                        value={customerInfo.name}
+                        onChange={(e) => setCustomerInfo(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="John Doe"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="email">Email Address *</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={customerInfo.email}
+                        onChange={(e) => setCustomerInfo(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="john@example.com"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        value={customerInfo.phone}
+                        onChange={(e) => setCustomerInfo(prev => ({ ...prev, phone: e.target.value }))}
+                        placeholder="+1 (555) 123-4567"
+                        className="mt-1"
+                      />
+                    </div>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Ticket Cart Items */}
-                    {cart.map((item) => (
-                      <div key={item.id} className="flex justify-between items-start gap-3 p-3 bg-accent/10 rounded-lg">
-                        <div className="flex-1">
-                          <p className="font-medium">{item.name}</p>
-                          <p className="text-sm text-muted-foreground">${item.price} each</p>
-                          {item.selectedSeats && item.selectedSeats.length > 0 && (
-                            <p className="text-xs text-primary flex items-center gap-1 mt-1">
-                              <MapPin className="h-3 w-3" />
-                              Seats selected: {item.selectedSeats.length} seat(s)
-                            </p>
+                </CardContent>
+              </Card>
+
+              {/* Custom Questions - Second */}
+              {customQuestions.length > 0 && (
+                <Card className="animate-in fade-in-0">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <HelpCircle className="h-5 w-5" />
+                      Required Information
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Please provide the following information before selecting your tickets.
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {customQuestions.map((q: CustomQuestion) => (
+                        <div key={q.id} className="space-y-2">
+                          <Label className="font-medium">
+                            {q.label} {q.required && <span className="text-destructive">*</span>}
+                          </Label>
+                          {q.type === 'text' && (
+                            <Input
+                              value={customAnswers[q.id] || ''}
+                              onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                              placeholder={q.label}
+                            />
+                          )}
+                          {q.type === 'textarea' && (
+                            <textarea
+                              className="w-full border rounded p-2"
+                              value={customAnswers[q.id] || ''}
+                              onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                              placeholder={q.label}
+                              rows={3}
+                            />
+                          )}
+                          {(q.type === 'select' || q.type === 'radio') && (
+                            <select
+                              className="w-full border rounded p-2"
+                              value={customAnswers[q.id] || ''}
+                              onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                            >
+                              <option value="">Select...</option>
+                              {(q.options || '').split('\n').map((opt: string, idx: number) => (
+                                <option key={idx} value={opt.trim()}>{opt.trim()}</option>
+                              ))}
+                            </select>
+                          )}
+                          {q.type === 'checkbox' && (
+                            <div className="flex flex-col gap-1">
+                              {(q.options || '').split('\n').map((opt: string, idx: number) => (
+                                <label key={idx} className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={Array.isArray(customAnswers[q.id]) ? customAnswers[q.id].includes(opt.trim()) : false}
+                                    onChange={e => {
+                                      setCustomAnswers(a => {
+                                        const arr = Array.isArray(a[q.id]) ? a[q.id] : [];
+                                        if (e.target.checked) {
+                                          return { ...a, [q.id]: [...arr, opt.trim()] };
+                                        } else {
+                                          return { ...a, [q.id]: arr.filter((v: string) => v !== opt.trim()) };
+                                        }
+                                      });
+                                    }}
+                                  />
+                                  {opt.trim()}
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                          {q.type === 'email' && (
+                            <Input
+                              type="email"
+                              value={customAnswers[q.id] || ''}
+                              onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                              placeholder={q.label}
+                            />
+                          )}
+                          {q.type === 'phone' && (
+                            <Input
+                              type="tel"
+                              value={customAnswers[q.id] || ''}
+                              onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                              placeholder={q.label}
+                            />
+                          )}
+                          {customErrors[q.id] && (
+                            <p className="text-xs text-destructive">{customErrors[q.id]}</p>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-8 text-center font-medium">{item.quantity}</span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-                    {/* Merchandise Cart Items */}
-                    {merchandiseCart.map((item, index) => (
-                      <div key={`merch-${index}`} className="flex justify-between items-start gap-3 p-3 bg-primary/5 rounded-lg">
-                        <div className="flex-1">
-                          <p className="font-medium">{item.merchandise.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            ${item.merchandise.price} each
-                            {item.selectedSize && ` • Size: ${item.selectedSize}`}
-                            {item.selectedColor && ` • Color: ${item.selectedColor}`}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="w-8 text-center font-medium">{item.quantity}</span>
-                          <span className="text-sm font-medium">
-                            ${(item.merchandise.price * item.quantity).toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    <div className="border-t pt-3">
-                      {/* Subtotal breakdown */}
-                      {cart.length > 0 && (
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm">Tickets:</span>
-                          <span className="text-sm">${cart.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}</span>
-                        </div>
-                      )}
-                      {merchandiseCart.length > 0 && (
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm">Merchandise:</span>
-                          <span className="text-sm">${getMerchandiseTotal().toFixed(2)}</span>
-                        </div>
-                      )}
-                      
-                      {/* Show subtotal if there's a processing fee */}
-                      {creditCardProcessingFee > 0 && (
-                        <>
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm">Subtotal:</span>
-                            <span className="text-sm">${(cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()).toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm">Credit Card Processing Fee ({creditCardProcessingFee}%):</span>
-                            <span className="text-sm">${((cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()) * creditCardProcessingFee / 100).toFixed(2)}</span>
-                          </div>
-                        </>
-                      )}
-                      
-                      <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
-                        <span>Total:</span>
-                        <span className="text-primary">${getTotalAmount().toFixed(2)}</span>
-                      </div>
-                    </div>
-                    
-                     <Button 
-                      onClick={() => {
-                        if (paymentProvider === "windcave") {
-                          handleCheckout();
-                        } else {
-                          setShowPayment(true);
-                        }
-                      }}
-                      className="w-full mt-4"
-                      size="lg"
-                      disabled={!customerInfo.name || !customerInfo.email || (cart.length === 0 && merchandiseCart.length === 0)}
-                    >
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Proceed to Payment
-                    </Button>
-                    
-                    {(!customerInfo.name || !customerInfo.email) && (
-                      <p className="text-xs text-muted-foreground text-center">
-                        Please fill in your information to continue
-                      </p>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Payment Form - Windcave Integration */}
-            {showPaymentForm && paymentProvider === "windcave" && (
-              <Card className="animate-fade-in">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <CreditCard className="h-5 w-5" />
-                      Payment
-                    </CardTitle>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={handleBackToTickets}
-                      className="p-2"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Complete your payment securely
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  {/* Windcave Drop-In Container */}
-                  <div 
-                    ref={dropInRef}
-                    id="windcave-drop-in"
-                    className="w-full max-w-none"
-                    style={{
-                      fontFamily: 'inherit',
-                      fontSize: '14px',
-                      lineHeight: '1.5'
-                    }}
-                  >
-                    <div className="flex items-center justify-center h-full">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                        <p className="text-sm text-muted-foreground">Loading secure payment form...</p>
-                        <p className="text-xs text-muted-foreground mt-2">This may take a few moments</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Payment Status Messages */}
-                  <div className="mt-4 p-3 bg-muted/20 rounded-lg">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span>Secure payment powered by Windcave</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Your payment information is encrypted and secure. Do not refresh this page during payment.
-                    </p>
-                    
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
-        
-        {/* Payment Modal - Only for Stripe */}
-        {showPayment && paymentProvider === "stripe" && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="w-full max-w-md">
-              <Card>
+              {/* Ticket Selection */}
+              <Card className="animate-in fade-in-0">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
-                    Complete Payment
+                    <Ticket className="h-5 w-5" />
+                    Select Your Tickets
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Order Summary */}
-                  <div className="bg-muted/20 p-4 rounded-lg">
-                    <h3 className="font-medium mb-2">Order Summary</h3>
-                    <div className="space-y-1 text-sm">
-                      {cart.map(item => (
-                        <div key={item.id} className="flex justify-between">
-                          <span>{item.name} x{item.quantity}</span>
-                          <span>${(item.price * item.quantity).toFixed(2)}</span>
-                        </div>
-                      ))}
-                      {merchandiseCart.map((item, index) => (
-                        <div key={index} className="flex justify-between">
-                          <span>{item.merchandise.name} x{item.quantity}</span>
-                          <span>${(item.merchandise.price * item.quantity).toFixed(2)}</span>
-                        </div>
-                      ))}
-                      {creditCardProcessingFee > 0 && (
-                        <div className="flex justify-between text-muted-foreground border-t pt-2">
-                          <span>Processing Fee ({creditCardProcessingFee}%)</span>
-                          <span>${((cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()) * creditCardProcessingFee / 100).toFixed(2)}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between font-bold text-lg border-t pt-2">
-                        <span>Total</span>
-                        <span>${getTotalAmount().toFixed(2)}</span>
-                      </div>
+                <CardContent>
+                  {ticketTypes.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Ticket className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-muted-foreground">No ticket types available for this event.</p>
                     </div>
-                  </div>
-
-                  {paymentProvider === 'stripe' && stripePublishableKey ? (
-                    <StripePaymentForm
-                      publishableKey={stripePublishableKey}
-                      eventId={eventId!}
-                      cart={cart}
-                      merchandiseCart={merchandiseCart}
-                      customerInfo={customerInfo}
-                      total={getTotalAmount()}
-                      onSuccess={(orderId: string) => {
-                        setCart([]);
-                        setMerchandiseCart([]);
-                        setShowPayment(false);
-                        
-                        // Redirect to payment success page with order ID
-                        window.location.href = `/payment-success?orderId=${orderId}`;
-                      }}
-                      onCancel={() => setShowPayment(false)}
-                    />
                   ) : (
-                    <div className="flex gap-3">
-                      <Button type="button" variant="outline" onClick={() => setShowPayment(false)} className="flex-1">
-                        Back
-                      </Button>
-                      <Button onClick={handleCheckout} disabled={loading} className="flex-1 widget-button">
-                        {loading ? "Processing..." : "Proceed to Payment"}
-                      </Button>
+                    <div className="space-y-4">
+                      {ticketTypes.map((ticketType) => (
+                        <div key={ticketType.id} className="border rounded-lg p-4 hover:shadow-md transition-all duration-200 hover-lift animate-in fade-in-0">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-lg">{ticketType.name}</h3>
+                              {ticketType.description && (
+                                <p className="text-sm text-muted-foreground mt-1">{ticketType.description}</p>
+                              )}
+                              <div className="flex items-center gap-4 mt-2">
+                                <span className="text-2xl font-bold text-primary">${ticketType.price}</span>
+                                <span className="text-sm text-muted-foreground">
+                                  {ticketType.quantity_available - ticketType.quantity_sold} available
+                                </span>
+                              </div>
+                            </div>
+                            <Button 
+                              onClick={() => addToCart(ticketType)}
+                              className="sm:w-auto w-full widget-button hover-scale"
+                              disabled={ticketType.quantity_available - ticketType.quantity_sold <= 0}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add to Cart
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </CardContent>
               </Card>
-            </div>
-          </div>
-        )}
 
-        {/* Success Modal */}
-        {showSuccess && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="w-full max-w-md">
-              <Card>
-                <CardContent className="text-center p-8">
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">Payment Successful!</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Your tickets have been purchased successfully. Check your email for confirmation details.
-                  </p>
-                  <Button onClick={() => setShowSuccess(false)} className="w-full">
-                    Continue
-                  </Button>
+              {/* Merchandise Selection */}
+              <MerchandiseSelector 
+                eventId={eventId!} 
+                onCartUpdate={setMerchandiseCart}
+              />
+
+              {/* Seat Selection - Fourth (only if seats are in cart) */}
+              {cart.some(item => item.selectedSeats) && (
+                <Card className="animate-in fade-in-0">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MapPin className="h-5 w-5" />
+                      Selected Seats
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {cart.filter(item => item.selectedSeats).map((item) => (
+                        <div key={item.id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                          <span className="font-medium">{item.name}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {item.selectedSeats?.length} seat(s) selected
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Cart Summary */}
+              <Card className="animate-in fade-in-0">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ShoppingCart className="h-5 w-5" />
+                    Order Summary
+                    {(cart.length > 0 || merchandiseCart.length > 0) && (
+                      <Badge variant="secondary" className="ml-auto">
+                        {cart.reduce((sum, item) => sum + item.quantity, 0) + merchandiseCart.reduce((sum, item) => sum + item.quantity, 0)}
+                      </Badge>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {cart.length === 0 && merchandiseCart.length === 0 ? (
+                    <div className="text-center py-6">
+                      <ShoppingCart className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                      <p className="text-muted-foreground">Your cart is empty</p>
+                      <p className="text-sm text-muted-foreground mt-1">Add tickets or merchandise to get started</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Ticket Cart Items */}
+                      {cart.map((item) => (
+                        <div key={item.id} className="flex justify-between items-start gap-3 p-3 bg-secondary/50 rounded-lg">
+                          <div className="flex-1">
+                            <p className="font-medium">{item.name}</p>
+                            <p className="text-sm text-muted-foreground">${item.price} each</p>
+                            {item.selectedSeats && item.selectedSeats.length > 0 && (
+                              <p className="text-xs text-primary flex items-center gap-1 mt-1">
+                                <MapPin className="h-3 w-3" />
+                                Seats selected: {item.selectedSeats.length} seat(s)
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
+                              className="h-8 w-8 p-0 hover-scale"
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="w-8 text-center font-medium">{item.quantity}</span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
+                              className="h-8 w-8 p-0 hover-scale"
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Merchandise Cart Items */}
+                      {merchandiseCart.map((item, index) => (
+                        <div key={`merch-${index}`} className="flex justify-between items-start gap-3 p-3 bg-primary/5 rounded-lg">
+                          <div className="flex-1">
+                            <p className="font-medium">{item.merchandise.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              ${item.merchandise.price} each
+                              {item.selectedSize && ` • Size: ${item.selectedSize}`}
+                              {item.selectedColor && ` • Color: ${item.selectedColor}`}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-8 text-center font-medium">{item.quantity}</span>
+                            <span className="text-sm font-medium">
+                              ${(item.merchandise.price * item.quantity).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <div className="border-t pt-3">
+                        {/* Subtotal breakdown */}
+                        {cart.length > 0 && (
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm">Tickets:</span>
+                            <span className="text-sm">${cart.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2)}</span>
+                          </div>
+                        )}
+                        {merchandiseCart.length > 0 && (
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm">Merchandise:</span>
+                            <span className="text-sm">${getMerchandiseTotal().toFixed(2)}</span>
+                          </div>
+                        )}
+                         
+                        {/* Show subtotal if there's a processing fee */}
+                        {creditCardProcessingFee > 0 && (
+                          <>
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm">Subtotal:</span>
+                              <span className="text-sm">${(cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()).toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm">Credit Card Processing Fee ({creditCardProcessingFee}%):</span>
+                              <span className="text-sm">${((cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()) * creditCardProcessingFee / 100).toFixed(2)}</span>
+                            </div>
+                          </>
+                        )}
+                         
+                        <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
+                          <span>Total:</span>
+                          <span className="text-primary">${getTotalAmount().toFixed(2)}</span>
+                        </div>
+                      </div>
+                       
+                      <Button 
+                        onClick={() => {
+                          if (paymentProvider === "windcave") {
+                            handleCheckout();
+                          } else {
+                            setShowPayment(true);
+                          }
+                        }}
+                        className="w-full mt-4 hover-scale"
+                        size="lg"
+                        disabled={!customerInfo.name || !customerInfo.email || (cart.length === 0 && merchandiseCart.length === 0)}
+                      >
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        Proceed to Payment
+                      </Button>
+                       
+                      {(!customerInfo.name || !customerInfo.email) && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          Please fill in your information to continue
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
-            </div>
-          </div>
-        )}
 
-        {/* Seat Selection Modal */}
-        {showSeatSelection && pendingSeatSelection && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="w-full max-w-6xl max-h-[90vh] overflow-hidden">
-              <GuestSeatSelector
-                eventId={eventId!}
-                ticketTypeId={pendingSeatSelection.ticketType.id}
-                requestedQuantity={pendingSeatSelection.quantity}
-                onSeatsSelected={handleSeatsSelected}
-                onSkip={handleSkipSeatSelection}
-              />
+              {/* Payment Form - Windcave Integration */}
+              {showPaymentForm && paymentProvider === "windcave" && (
+                <Card className="animate-in fade-in-0">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <CreditCard className="h-5 w-5" />
+                        Payment
+                      </CardTitle>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={handleBackToTickets}
+                        className="p-2 hover-scale"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Complete your payment securely
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Windcave Drop-In Container */}
+                    <div 
+                      ref={dropInRef}
+                      id="windcave-drop-in"
+                      className="w-full max-w-none"
+                      style={{
+                        fontFamily: 'inherit',
+                        fontSize: '14px',
+                        lineHeight: '1.5'
+                      }}
+                    >
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                          <p className="text-sm text-muted-foreground">Loading secure payment form...</p>
+                          <p className="text-xs text-muted-foreground mt-2">This may take a few moments</p>
+                        </div>
+                      </div>
+                    </div>
+                     
+                    {/* Payment Status Messages */}
+                    <div className="mt-4 p-3 bg-muted/20 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span>Secure payment powered by Windcave</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Your payment information is encrypted and secure. Do not refresh this page during payment.
+                      </p>
+                       
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
-        )}
-      </div>
+          
+          {/* Payment Modal - Only for Stripe */}
+          {showPayment && paymentProvider === "stripe" && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="w-full max-w-md">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="h-5 w-5" />
+                      Complete Payment
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Order Summary */}
+                    <div className="bg-muted/20 p-4 rounded-lg">
+                      <h3 className="font-medium mb-2">Order Summary</h3>
+                      <div className="space-y-1 text-sm">
+                        {cart.map(item => (
+                          <div key={item.id} className="flex justify-between">
+                            <span>{item.name} x{item.quantity}</span>
+                            <span>${(item.price * item.quantity).toFixed(2)}</span>
+                          </div>
+                        ))}
+                        {merchandiseCart.map((item, index) => (
+                          <div key={index} className="flex justify-between">
+                            <span>{item.merchandise.name} x{item.quantity}</span>
+                            <span>${(item.merchandise.price * item.quantity).toFixed(2)}</span>
+                          </div>
+                        ))}
+                        {creditCardProcessingFee > 0 && (
+                          <div className="flex justify-between text-muted-foreground border-t pt-2">
+                            <span>Processing Fee ({creditCardProcessingFee}%)</span>
+                            <span>${((cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()) * creditCardProcessingFee / 100).toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between font-bold text-lg border-t pt-2">
+                          <span>Total</span>
+                          <span>${getTotalAmount().toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {paymentProvider === 'stripe' && stripePublishableKey ? (
+                      <StripePaymentForm
+                        publishableKey={stripePublishableKey}
+                        eventId={eventId!}
+                        cart={cart}
+                        merchandiseCart={merchandiseCart}
+                        customerInfo={customerInfo}
+                        total={getTotalAmount()}
+                        onSuccess={(orderId: string) => {
+                          setCart([]);
+                          setMerchandiseCart([]);
+                          setShowPayment(false);
+                          
+                          // Redirect to payment success page with order ID
+                          window.location.href = `/payment-success?orderId=${orderId}`;
+                        }}
+                        onCancel={() => setShowPayment(false)}
+                      />
+                    ) : (
+                      <div className="flex gap-3">
+                        <Button type="button" variant="outline" onClick={() => setShowPayment(false)} className="flex-1">
+                          Back
+                        </Button>
+                        <Button onClick={handleCheckout} disabled={loading} className="flex-1 widget-button">
+                          {loading ? "Processing..." : "Proceed to Payment"}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {/* Success Modal */}
+          {showSuccess && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="w-full max-w-md">
+                <Card>
+                  <CardContent className="text-center p-8">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-bold mb-2">Payment Successful!</h3>
+                    <p className="text-muted-foreground mb-6">
+                      Your tickets have been purchased successfully. Check your email for confirmation details.
+                    </p>
+                    <Button onClick={() => setShowSuccess(false)} className="w-full">
+                      Continue
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {/* Seat Selection Modal */}
+          {showSeatSelection && pendingSeatSelection && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="w-full max-w-6xl max-h-[90vh] overflow-hidden">
+                <GuestSeatSelector
+                  eventId={eventId!}
+                  ticketTypeId={pendingSeatSelection.id}
+                  requestedQuantity={pendingSeatSelection.quantity}
+                  onSeatsSelected={handleSeatsSelected}
+                  onSkip={handleSkipSeatSelection}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

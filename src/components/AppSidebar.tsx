@@ -127,13 +127,8 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
                           setActiveTab(item.id);
                         }
                       }}
-                      className={`w-full justify-start ${
-                        isActive 
-                          ? "bg-primary text-primary-foreground" 
-                          : isDisabled 
-                            ? "opacity-50 cursor-not-allowed" 
-                            : "hover:bg-accent hover:text-accent-foreground"
-                      }`}
+                      data-active={isActive}
+                      className={`w-full justify-start ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                       disabled={isDisabled}
                     >
                       <item.icon className="mr-3 h-4 w-4" />
