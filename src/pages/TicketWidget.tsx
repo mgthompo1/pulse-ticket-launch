@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Minus, Plus, ShoppingCart, ArrowLeft, Calendar, Ticket, CreditCard, MapPin, HelpCircle } from "lucide-react";
 import { GuestSeatSelector } from "@/components/GuestSeatSelector";
 import MerchandiseSelector from "@/components/MerchandiseSelector";
@@ -1026,16 +1027,21 @@ const TicketWidget = () => {
                             />
                           )}
                           {(q.type === 'select' || q.type === 'radio') && (
-                            <select
-                              className="w-full border rounded p-2"
+                            <Select
                               value={customAnswers[q.id] || ''}
-                              onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                              onValueChange={(value) => setCustomAnswers(a => ({ ...a, [q.id]: value }))}
                             >
-                              <option value="">Select...</option>
-                              {((q as any).options || '').split('\n').map((opt: string, idx: number) => (
-                                <option key={idx} value={opt.trim()}>{opt.trim()}</option>
-                              ))}
-                            </select>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {((q as any).options || '').split('\n').map((opt: string, idx: number) => (
+                                  <SelectItem key={idx} value={opt.trim()}>
+                                    {opt.trim()}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           )}
                           {q.type === 'checkbox' && (
                             <div className="flex flex-col gap-1">
