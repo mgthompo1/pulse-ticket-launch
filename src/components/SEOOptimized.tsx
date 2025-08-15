@@ -13,7 +13,7 @@ interface SEOOptimizedProps {
 
 export const SEOOptimized = ({
   children,
-  title = "Professional Event Ticketing Platform - Ticket2",
+  title = "Professional Event Ticketing Platform - TicketFlo",
   description = "Create, manage, and sell tickets for your events with our comprehensive ticketing platform. Features include seat selection, payment processing, and real-time analytics.",
   keywords = "event tickets, ticketing platform, event management, online tickets, seat selection, event booking",
   canonicalUrl,

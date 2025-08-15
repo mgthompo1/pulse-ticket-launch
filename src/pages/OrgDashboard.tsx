@@ -626,11 +626,11 @@ if (orgs) {
                              <Button
                                variant="outline"
                                size="sm"
-                               onClick={() => window.open(`/ticket2live/${event.id}`, '_blank')}
+                               onClick={() => window.open(`/ticketflolive/${event.id}`, '_blank')}
                                className="flex-1 sm:flex-none"
                              >
                                <Monitor className="h-4 w-4 mr-2" />
-                               <span className="hidden sm:inline">Ticket2LIVE</span>
+                               <span className="hidden sm:inline">TicketFloLIVE</span>
                                <span className="sm:hidden">Live</span>
                              </Button>
                            </div>

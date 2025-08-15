@@ -25,7 +25,7 @@ export const Footer = () => {
                 <Ticket className="h-6 w-6 text-primary-foreground" />
               </div>
               <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                Ticket2
+                TicketFlo
               </span>
             </div>
             
@@ -36,7 +36,7 @@ export const Footer = () => {
             <div className="space-y-3 text-sm text-muted-foreground">
               <div className="flex items-center space-x-2">
                 <Mail className="h-4 w-4" />
-                <span>hello@ticket2.com</span>
+                <span>hello@ticketflo.com</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Phone className="h-4 w-4" />
@@ -92,7 +92,7 @@ export const Footer = () => {
         {/* Bottom bar */}
         <div className="py-6 border-t border-border/50 flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
           <p className="text-sm text-muted-foreground">
-            © 2024 Ticket2. Beta software. All rights reserved.
+            © 2024 TicketFlo. Beta software. All rights reserved.
           </p>
         </div>
       </div>

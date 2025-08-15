@@ -378,7 +378,7 @@ const MasterAdmin = () => {
                 <Shield className="w-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold gradient-text">Ticket2 Master Admin</h1>
+                <h1 className="text-2xl font-bold gradient-text">TicketFlo Master Admin</h1>
                 <p className="text-sm text-muted-foreground">Welcome back, {adminUser}</p>
               </div>
             </div>
@@ -877,11 +877,11 @@ const MasterAdmin = () => {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Platform Name</Label>
-                    <Input defaultValue="Ticket2" />
+                    <Input defaultValue="TicketFlo" />
                   </div>
                   <div className="space-y-2">
                     <Label>Support Email</Label>
-                    <Input defaultValue="support@ticket2.com" />
+                    <Input defaultValue="support@ticketflo.com" />
                   </div>
                   <div className="space-y-2">
                     <Label>Maintenance Mode</Label>

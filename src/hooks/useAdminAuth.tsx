@@ -10,8 +10,8 @@ export const useAdminAuth = () => {
   }, []);
 
   const checkAuthStatus = () => {
-    const authStatus = sessionStorage.getItem("ticket2_admin_auth");
-    const user = sessionStorage.getItem("ticket2_admin_user");
+    const authStatus = sessionStorage.getItem("ticketflo_admin_auth");
+    const user = sessionStorage.getItem("ticketflo_admin_user");
     
     setIsAdminAuthenticated(authStatus === "true");
     setAdminUser(user);
@@ -19,8 +19,8 @@ export const useAdminAuth = () => {
   };
 
   const logout = () => {
-    sessionStorage.removeItem("ticket2_admin_auth");
-    sessionStorage.removeItem("ticket2_admin_user");
+    sessionStorage.removeItem("ticketflo_admin_auth");
+    sessionStorage.removeItem("ticketflo_admin_user");
     setIsAdminAuthenticated(false);
     setAdminUser(null);
   };

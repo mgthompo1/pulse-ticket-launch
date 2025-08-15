@@ -15,7 +15,7 @@ import TicketWidget from "./pages/TicketWidget";
 import MasterAdmin from "./pages/MasterAdmin";
 import AdminAuth from "./pages/AdminAuth";
 import SecureAdminAuth from "./pages/SecureAdminAuth";
-import Ticket2LIVE from "./pages/Ticket2LIVE";
+import TicketFloLIVE from "./pages/TicketFloLIVE";
 import Invoicing from "./pages/Invoicing";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import InvoicePaymentSuccess from "./pages/InvoicePaymentSuccess";
@@ -56,7 +56,7 @@ const App = () => (
               <MasterAdmin />
             </ProtectedAdminRoute>
           } />
-              <Route path="/ticket2live/:eventId" element={<Ticket2LIVE />} />
+              <Route path="/ticketflolive/:eventId" element={<TicketFloLIVE />} />
               <Route path="/payment-success" element={<PaymentSuccess />} />
               <Route path="/invoice-payment-success" element={<InvoicePaymentSuccess />} />
               <Route path="/payment-failed" element={<PaymentFailed />} />

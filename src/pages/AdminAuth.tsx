@@ -18,7 +18,7 @@ const AdminAuth = () => {
 
   // Check if already logged in
   useEffect(() => {
-    const isAdminLoggedIn = sessionStorage.getItem("ticket2_admin_auth");
+    const isAdminLoggedIn = sessionStorage.getItem("ticketflo_admin_auth");
     if (isAdminLoggedIn === "true") {
       navigate("/master-admin");
     }
@@ -32,14 +32,14 @@ const AdminAuth = () => {
     await new Promise(resolve => setTimeout(resolve, 500));
 
     // Check hardcoded credentials
-    if (credentials.username === "Ticket22025" && credentials.password === "Fujifilm95!") {
+    if (credentials.username === "TicketFlo2025" && credentials.password === "Fujifilm95!") {
       // Set session
-      sessionStorage.setItem("ticket2_admin_auth", "true");
-      sessionStorage.setItem("ticket2_admin_user", "Ticket22025");
+      sessionStorage.setItem("ticketflo_admin_auth", "true");
+      sessionStorage.setItem("ticketflo_admin_user", "TicketFlo2025");
       
       toast({
         title: "Welcome back!",
-        description: "Successfully logged in as Ticket2 Administrator",
+        description: "Successfully logged in as TicketFlo Administrator",
       });
 
       // Redirect to master admin page
@@ -71,7 +71,7 @@ const AdminAuth = () => {
               <Shield className="w-8 h-8 text-primary-foreground" />
             </div>
             <CardTitle className="text-2xl font-bold gradient-text">
-              Ticket2 Master Admin
+              TicketFlo Master Admin
             </CardTitle>
             <CardDescription className="text-muted-foreground">
               Enter your administrator credentials to access the master control panel

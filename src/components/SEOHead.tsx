@@ -13,7 +13,7 @@ interface SEOHeadProps {
 }
 
 export const SEOHead = ({
-  title = "Ticket2 - Event Ticketing Platform",
+  title = "TicketFlo - Event Ticketing Platform",
   description = "Professional event ticketing platform with advanced features for organizers and seamless experience for attendees.",
   canonical,
   ogTitle,

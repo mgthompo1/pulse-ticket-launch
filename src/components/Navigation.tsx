@@ -40,7 +40,7 @@ export const Navigation = () => {
               <Ticket className="h-6 w-6 text-primary-foreground" />
             </div>
             <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Ticket2
+              TicketFlo
             </span>
           </div>
 

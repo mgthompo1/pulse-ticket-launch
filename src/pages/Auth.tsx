@@ -66,7 +66,7 @@ const Auth = () => {
             setEmail(inviteEmail);
             toast({
               title: "Welcome!",
-              description: "You've been invited to join Ticket2. Please complete your registration.",
+              description: "You've been invited to join TicketFlo. Please complete your registration.",
             });
           }
         } catch (error) {
@@ -234,7 +234,7 @@ const Auth = () => {
         <Card className="gradient-card">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Welcome to Ticket2
+              Welcome to TicketFlo
             </CardTitle>
             <CardDescription>
               Sign in to your account or create a new one

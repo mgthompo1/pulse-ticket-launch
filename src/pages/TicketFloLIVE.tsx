@@ -38,7 +38,7 @@ interface CartItem extends ConcessionItem {
   quantity: number;
 }
 
-const Ticket2LIVE = () => {
+const TicketFloLIVE = () => {
   const { eventId } = useParams();
   const { toast } = useToast();
   const [guests, setGuests] = useState<GuestStatus[]>([]);
@@ -686,7 +686,7 @@ const handleCreateConcessionItem = async () => {
 
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-8">Ticket2LIVE - Event Management</h1>
+      <h1 className="text-3xl font-bold mb-8">TicketFloLIVE - Event Management</h1>
       
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -1397,4 +1397,4 @@ const handleCreateConcessionItem = async () => {
   );
 };
 
-export default Ticket2LIVE;
+export default TicketFloLIVE;
