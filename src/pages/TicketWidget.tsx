@@ -123,7 +123,7 @@ const TicketWidget = () => {
   const [, setSelectedSeats] = useState<Record<string, string[]>>({});
   const [creditCardProcessingFee, setCreditCardProcessingFee] = useState(0);
   const [paymentProvider, setPaymentProvider] = useState('stripe');
-  const [stripePublishableKey] = useState('');
+  const [stripePublishableKey, setStripePublishableKey] = useState('');
   const [showPayment, setShowPayment] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   // State for custom question answers
@@ -169,6 +169,23 @@ const TicketWidget = () => {
       if (event.organizations) {
         setPaymentProvider(event.organizations.payment_provider || "stripe");
         setCreditCardProcessingFee(event.organizations.credit_card_processing_fee_percentage || 0);
+        
+        // Load payment configuration including Stripe publishable key
+        try {
+          const { data: paymentConfig, error: configError } = await supabase
+            .rpc('get_organization_payment_config', { 
+              p_organization_id: event.organization_id 
+            });
+
+          if (!configError && paymentConfig && paymentConfig.length > 0) {
+            const config = paymentConfig[0];
+            if (config.stripe_publishable_key) {
+              setStripePublishableKey(config.stripe_publishable_key);
+            }
+          }
+        } catch (configError) {
+          console.error("Error loading payment config:", configError);
+        }
       }
 
       // Load ticket types
