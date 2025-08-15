@@ -167,8 +167,24 @@ serve(async (req) => {
       html: emailContent.html,
     });
 
+    logStep("Resend API response", { 
+      response: emailResponse,
+      hasError: !!emailResponse.error,
+      hasData: !!emailResponse.data
+    });
+
     if (emailResponse.error) {
-      throw new Error(`Email failed: ${emailResponse.error.message}`);
+      logStep("Resend error details", { 
+        error: emailResponse.error,
+        errorMessage: emailResponse.error.message,
+        errorName: emailResponse.error.name
+      });
+      throw new Error(`Email failed: ${JSON.stringify(emailResponse.error)}`);
+    }
+
+    if (!emailResponse.data) {
+      logStep("No data in email response", { fullResponse: emailResponse });
+      throw new Error(`Email failed: No data returned from Resend API`);
     }
 
     logStep("Email sent successfully", { emailId: emailResponse.data?.id });
