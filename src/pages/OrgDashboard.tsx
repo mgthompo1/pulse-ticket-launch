@@ -643,6 +643,43 @@ if (orgs) {
             </TabsContent>
 
             <TabsContent value="events" className="space-y-6">
+              {/* Events List - Now at the top */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Your Events</CardTitle>
+                  <CardDescription>Manage your existing events</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {events.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No events created yet. Create your first event below!</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {events.map((event) => (
+                        <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors gap-4">
+                          <div className="space-y-1 flex-1">
+                            <h3 className="font-medium">{event.name}</h3>
+                            <p className="text-sm text-muted-foreground">{new Date(event.date).toLocaleDateString()} • {event.venue}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedEvent(event);
+                                setActiveTab("event-details");
+                              }}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Manage
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle>Create New Event</CardTitle>
@@ -707,43 +744,6 @@ if (orgs) {
                   </Button>
                 </CardContent>
               </Card>
-
-              {/* Events List */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Your Events</CardTitle>
-                  <CardDescription>Manage your existing events</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {events.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">No events created yet. Create your first event above!</p>
-                  ) : (
-                    <div className="space-y-4">
-                      {events.map((event) => (
-                        <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors gap-4">
-                          <div className="space-y-1 flex-1">
-                            <h3 className="font-medium">{event.name}</h3>
-                            <p className="text-sm text-muted-foreground">{new Date(event.date).toLocaleDateString()} • {event.venue}</p>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedEvent(event);
-                                setActiveTab("event-details");
-                              }}
-                            >
-                              <Edit className="h-4 w-4 mr-2" />
-                              Manage
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
             </TabsContent>
 
             <TabsContent value="event-details" className="space-y-6">
@@ -774,11 +774,15 @@ if (orgs) {
 
             <TabsContent value="design" className="space-y-6">
               {selectedEvent ? (
-                <EventCustomization eventId={selectedEvent.id} />
+                <SeatMapDesigner
+                  eventId={selectedEvent.id}
+                  eventName={selectedEvent.name}
+                  onClose={() => setShowSeatMapDesigner(false)}
+                />
               ) : (
                 <Card>
                   <CardContent className="p-6">
-                    <p className="text-muted-foreground text-center">Select an event to customize its design</p>
+                    <p className="text-muted-foreground text-center">Select an event to design its seat map and layout</p>
                   </CardContent>
                 </Card>
               )}
