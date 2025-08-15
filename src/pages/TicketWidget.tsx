@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Minus, Plus, ShoppingCart, ArrowLeft, Calendar, Globe, Ticket, CreditCard, MapPin } from "lucide-react";
+import { Minus, Plus, ShoppingCart, ArrowLeft, Calendar, Globe, Ticket, CreditCard, MapPin, HelpCircle } from "lucide-react";
 import { GuestSeatSelector } from "@/components/GuestSeatSelector";
 import MerchandiseSelector from "@/components/MerchandiseSelector";
 import { Badge } from "@/components/ui/badge";
@@ -212,27 +212,7 @@ const TicketWidget = () => {
   };
 
   const addToCart = async (ticketType: any) => {
-    // First check if seat maps are enabled in widget customization
-    const seatMapsEnabled = eventData?.widget_customization?.seatMaps?.enabled || false;
-    
-    if (!seatMapsEnabled) {
-      // Seat maps are disabled - add directly to cart
-      setCart(prevCart => {
-        const existingItem = prevCart.find(item => item.id === ticketType.id);
-        if (existingItem) {
-          return prevCart.map(item =>
-            item.id === ticketType.id
-              ? { ...item, quantity: item.quantity + 1 }
-              : item
-          );
-        } else {
-          return [...prevCart, { ...ticketType, quantity: 1 }];
-        }
-      });
-      return;
-    }
-
-    // Check if event has seat maps (only if enabled in widget customization)
+    // Check if event has seat maps available
     const { data: seatMaps } = await supabase
       .from('seat_maps')
       .select('id')
@@ -933,6 +913,102 @@ const TicketWidget = () => {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="xl:col-span-2 space-y-6">
+            {/* Custom Questions - Moved to top */}
+            {customQuestions.length > 0 && (
+              <Card className="animate-fade-in">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <HelpCircle className="h-5 w-5" />
+                    Additional Information
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Please provide the following information before selecting your tickets.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {customQuestions.map((q: any) => (
+                      <div key={q.id} className="space-y-2">
+                        <Label className="font-medium">
+                          {q.label} {q.required && <span className="text-destructive">*</span>}
+                        </Label>
+                        {q.type === 'text' && (
+                          <Input
+                            value={customAnswers[q.id] || ''}
+                            onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                            placeholder={q.label}
+                          />
+                        )}
+                        {q.type === 'textarea' && (
+                          <textarea
+                            className="w-full border rounded p-2"
+                            value={customAnswers[q.id] || ''}
+                            onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                            placeholder={q.label}
+                            rows={3}
+                          />
+                        )}
+                        {(q.type === 'select' || q.type === 'radio') && (
+                          <select
+                            className="w-full border rounded p-2"
+                            value={customAnswers[q.id] || ''}
+                            onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                          >
+                            <option value="">Select...</option>
+                            {(q.options || '').split('\n').map((opt: string, idx: number) => (
+                              <option key={idx} value={opt.trim()}>{opt.trim()}</option>
+                            ))}
+                          </select>
+                        )}
+                        {q.type === 'checkbox' && (
+                          <div className="flex flex-col gap-1">
+                            {(q.options || '').split('\n').map((opt: string, idx: number) => (
+                              <label key={idx} className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={Array.isArray(customAnswers[q.id]) ? customAnswers[q.id].includes(opt.trim()) : false}
+                                  onChange={e => {
+                                    setCustomAnswers(a => {
+                                      const arr = Array.isArray(a[q.id]) ? a[q.id] : [];
+                                      if (e.target.checked) {
+                                        return { ...a, [q.id]: [...arr, opt.trim()] };
+                                      } else {
+                                        return { ...a, [q.id]: arr.filter((v: string) => v !== opt.trim()) };
+                                      }
+                                    });
+                                  }}
+                                />
+                                {opt.trim()}
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                        {q.type === 'email' && (
+                          <Input
+                            type="email"
+                            value={customAnswers[q.id] || ''}
+                            onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                            placeholder={q.label}
+                          />
+                        )}
+                        {q.type === 'phone' && (
+                          <Input
+                            type="tel"
+                            value={customAnswers[q.id] || ''}
+                            onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                            placeholder={q.label}
+                          />
+                        )}
+                        {customErrors[q.id] && (
+                          <p className="text-xs text-destructive">{customErrors[q.id]}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Ticket Selection */}
             <Card className="animate-fade-in">
               <CardHeader>
@@ -1028,88 +1104,6 @@ const TicketWidget = () => {
                   </div>
                 </CardContent>
               </Card>
-            )}
-            {customQuestions.length > 0 && (
-              <div className="space-y-4 mt-4">
-                <h3 className="font-medium">Additional Information</h3>
-                {customQuestions.map((q: any) => (
-                  <div key={q.id} className="space-y-1">
-                    <Label className="font-medium">
-                      {q.label} {q.required && <span className="text-destructive">*</span>}
-                    </Label>
-                    {q.type === 'text' && (
-                      <Input
-                        value={customAnswers[q.id] || ''}
-                        onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
-                        placeholder={q.label}
-                      />
-                    )}
-                    {q.type === 'textarea' && (
-                      <textarea
-                        className="w-full border rounded p-2"
-                        value={customAnswers[q.id] || ''}
-                        onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
-                        placeholder={q.label}
-                        rows={3}
-                      />
-                    )}
-                    {(q.type === 'select' || q.type === 'radio') && (
-                      <select
-                        className="w-full border rounded p-2"
-                        value={customAnswers[q.id] || ''}
-                        onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
-                      >
-                        <option value="">Select...</option>
-                        {(q.options || '').split('\n').map((opt: string, idx: number) => (
-                          <option key={idx} value={opt.trim()}>{opt.trim()}</option>
-                        ))}
-                      </select>
-                    )}
-                    {q.type === 'checkbox' && (
-                      <div className="flex flex-col gap-1">
-                        {(q.options || '').split('\n').map((opt: string, idx: number) => (
-                          <label key={idx} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={Array.isArray(customAnswers[q.id]) ? customAnswers[q.id].includes(opt.trim()) : false}
-                              onChange={e => {
-                                setCustomAnswers(a => {
-                                  const arr = Array.isArray(a[q.id]) ? a[q.id] : [];
-                                  if (e.target.checked) {
-                                    return { ...a, [q.id]: [...arr, opt.trim()] };
-                                  } else {
-                                    return { ...a, [q.id]: arr.filter((v: string) => v !== opt.trim()) };
-                                  }
-                                });
-                              }}
-                            />
-                            {opt.trim()}
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                    {q.type === 'email' && (
-                      <Input
-                        type="email"
-                        value={customAnswers[q.id] || ''}
-                        onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
-                        placeholder={q.label}
-                      />
-                    )}
-                    {q.type === 'phone' && (
-                      <Input
-                        type="tel"
-                        value={customAnswers[q.id] || ''}
-                        onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
-                        placeholder={q.label}
-                      />
-                    )}
-                    {customErrors[q.id] && (
-                      <p className="text-xs text-destructive">{customErrors[q.id]}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
             )}
           </div>
 
