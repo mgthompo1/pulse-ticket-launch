@@ -152,12 +152,18 @@ serve(async (req) => {
     };
 
     // Send email using Resend
-    const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendApiKey) {
+      throw new Error("RESEND_API_KEY environment variable is not set");
+    }
+    
+    const resend = new Resend(resendApiKey);
     
     logStep("Sending email", { 
       recipient: emailContent.to,
       subject: emailContent.subject,
-      ticketCount: allTickets.length
+      ticketCount: allTickets.length,
+      hasApiKey: !!resendApiKey
     });
 
     const emailResponse = await resend.emails.send({
