@@ -44,7 +44,12 @@ interface OrderDetails {
     id: string;
     quantity: number;
     unit_price: number;
+    item_type: string;
     ticket_types: {
+      name: string;
+      price: number;
+    } | null;
+    merchandise: {
       name: string;
       price: number;
     } | null;
@@ -83,7 +88,6 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events, testMode
         .from('events')
         .select('*')
         .eq('id', eventId)
-        .eq('test_mode', testMode)
         .single();
 
       if (eventError) throw eventError;
@@ -97,6 +101,7 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events, testMode
           order_items (
             *,
             ticket_types (name, price),
+            merchandise (name, price),
             tickets (id, ticket_code, status, checked_in, used_at)
           )
         `)
@@ -111,7 +116,9 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events, testMode
       if (ordersData) {
         const totalRevenue = ordersData.reduce((sum, order) => sum + (order.total_amount || 0), 0);
         const totalTicketsSold = ordersData.reduce((sum, order) => 
-          sum + order.order_items.reduce((itemSum: number, item: any) => itemSum + item.quantity, 0), 0
+          sum + order.order_items.reduce((itemSum: number, item: any) => 
+            item.item_type === 'ticket' ? itemSum + item.quantity : itemSum, 0
+          ), 0
         );
         const totalAttendees = ordersData.length;
         const checkedInCount = ordersData.reduce((sum, order) => 
@@ -340,17 +347,18 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events, testMode
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>Order Date</TableHead>
-                      <TableHead>Tickets</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead>Order Date</TableHead>
+                        <TableHead>Items</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Custom Answers</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
                   <TableBody>
                     {orders.map((order) => (
                       <TableRow key={order.id}>
@@ -367,23 +375,40 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events, testMode
                           <p className="text-sm">{format(new Date(order.created_at), 'MMM d, yyyy')}</p>
                           <p className="text-xs text-muted-foreground">{format(new Date(order.created_at), 'HH:mm')}</p>
                         </TableCell>
-                        <TableCell>
-                          <div>
-                            {order.order_items.map((item, index) => (
-                              <div key={index} className="text-sm">
-                                {item.quantity}x {item.ticket_types?.name || 'Unknown'}
-                              </div>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <p className="font-medium">${order.total_amount.toFixed(2)}</p>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
-                            {order.status}
-                          </Badge>
-                        </TableCell>
+                         <TableCell>
+                           <div>
+                             {order.order_items.map((item, index) => (
+                               <div key={index} className="text-sm">
+                                 {item.quantity}x {
+                                   item.item_type === 'merchandise' 
+                                     ? (item.merchandise?.name || 'Unknown Merchandise')
+                                     : (item.ticket_types?.name || 'General Admission')
+                                 }
+                               </div>
+                             ))}
+                           </div>
+                         </TableCell>
+                         <TableCell>
+                           <p className="font-medium">${order.total_amount.toFixed(2)}</p>
+                         </TableCell>
+                         <TableCell>
+                           <div className="space-y-1">
+                             {order.custom_answers && Object.keys(order.custom_answers).length > 0 ? (
+                               Object.entries(order.custom_answers).map(([key, value]) => (
+                                 <div key={key} className="text-xs">
+                                   <span className="font-medium">{key}:</span> {String(value)}
+                                 </div>
+                               ))
+                             ) : (
+                               <span className="text-xs text-muted-foreground">No custom answers</span>
+                             )}
+                           </div>
+                         </TableCell>
+                         <TableCell>
+                           <Badge variant={order.status === 'completed' || order.status === 'paid' ? 'default' : 'secondary'}>
+                             {order.status}
+                           </Badge>
+                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

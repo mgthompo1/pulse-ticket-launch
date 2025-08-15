@@ -142,9 +142,11 @@ serve(async (req) => {
             .select("*")
             .eq("order_id", order.id);
 
-          if (orderItems && orderItems.length > 0) {
+           if (orderItems && orderItems.length > 0) {
             const tickets = [];
-            for (const item of orderItems) {
+            // Only generate tickets for ticket items, not merchandise
+            const ticketItems = orderItems.filter(item => item.item_type === 'ticket');
+            for (const item of ticketItems) {
               for (let i = 0; i < item.quantity; i++) {
                 tickets.push({
                   order_item_id: item.id,
@@ -154,14 +156,16 @@ serve(async (req) => {
               }
             }
             
-            const { error: ticketsError } = await supabaseClient
-              .from("tickets")
-              .insert(tickets);
-              
-            if (ticketsError) {
-              logStep("Error creating tickets", ticketsError);
-            } else {
-              logStep("Tickets created successfully", { ticketCount: tickets.length });
+            if (tickets.length > 0) {
+              const { error: ticketsError } = await supabaseClient
+                .from("tickets")
+                .insert(tickets);
+                
+              if (ticketsError) {
+                logStep("Error creating tickets", ticketsError);
+              } else {
+                logStep("Tickets created successfully", { ticketCount: tickets.length });
+              }
             }
           }
         } catch (ticketError) {

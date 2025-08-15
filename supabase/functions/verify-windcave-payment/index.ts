@@ -141,9 +141,10 @@ serve(async (req) => {
       throw new Error("Failed to fetch order items");
     }
 
-    // Create individual tickets
+    // Create individual tickets only for ticket items, not merchandise
     const ticketsToCreate = [];
-    for (const item of orderItems) {
+    const ticketItems = orderItems.filter(item => item.item_type === 'ticket');
+    for (const item of ticketItems) {
       for (let i = 0; i < item.quantity; i++) {
         ticketsToCreate.push({
           order_item_id: item.id,
@@ -153,15 +154,17 @@ serve(async (req) => {
       }
     }
 
-    const { error: ticketsError } = await supabaseClient
-      .from("tickets")
-      .insert(ticketsToCreate);
+    if (ticketsToCreate.length > 0) {
+      const { error: ticketsError } = await supabaseClient
+        .from("tickets")
+        .insert(ticketsToCreate);
 
-    if (ticketsError) {
-      console.error("Failed to create tickets:", ticketsError);
-      // Don't fail the verification, but log the error
-    } else {
-      console.log(`Created ${ticketsToCreate.length} tickets for order ${order.id}`);
+      if (ticketsError) {
+        console.error("Failed to create tickets:", ticketsError);
+        // Don't fail the verification, but log the error
+      } else {
+        console.log(`Created ${ticketsToCreate.length} tickets for order ${order.id}`);
+      }
     }
 
     // Send confirmation email
