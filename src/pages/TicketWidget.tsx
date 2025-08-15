@@ -893,6 +893,38 @@ const TicketWidget = () => {
         </div>
       ) : (
         <div className="max-w-7xl mx-auto px-4 py-8">
+          {/* Custom Header Text */}
+          {eventData.widget_customization?.branding?.customHeaderText && (
+            <div className="text-center mb-6">
+              <div 
+                className="text-lg font-medium"
+                style={{ color: eventData.widget_customization?.theme?.textColor }}
+                dangerouslySetInnerHTML={{ __html: eventData.widget_customization.branding.customHeaderText }}
+              />
+            </div>
+          )}
+
+          {/* Organization Logo */}
+          {eventData.widget_customization?.branding?.showOrgLogo && (eventData.organizations as any)?.logo_url && (
+            <div className="text-center mb-6">
+              <img 
+                src={(eventData.organizations as any).logo_url} 
+                alt={`${eventData.organizations.name || 'Organization'} Logo`}
+                className="h-16 mx-auto object-contain"
+              />
+            </div>
+          )}
+
+          {/* Event Logo */}
+          {eventData.widget_customization?.layout?.showEventImage && (eventData as any).logo_url && (
+            <div className="text-center mb-6">
+              <img 
+                src={(eventData as any).logo_url} 
+                alt={`${eventData.name} Logo`}
+                className="h-20 mx-auto object-contain rounded-lg"
+              />
+            </div>
+          )}
           {/* Event Header */}
           <div className="text-left mb-8">
             <h1 className="text-3xl font-bold mb-2">{eventData.name}</h1>
