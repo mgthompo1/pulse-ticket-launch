@@ -1383,6 +1383,10 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: string
       }
+      is_authenticated_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       log_security_event: {
         Args: {
           p_admin_user_id: string
