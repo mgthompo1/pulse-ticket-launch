@@ -167,7 +167,7 @@ serve(async (req) => {
     });
 
     const emailResponse = await resend.emails.send({
-      from: "TicketFlo Platform <onboarding@resend.dev>",
+      from: "TicketFlo <noreply@ticketflo.com>",
       to: [emailContent.to],
       subject: emailContent.subject,
       html: emailContent.html,

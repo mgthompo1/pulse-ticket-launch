@@ -170,7 +170,7 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, onS
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
           Cancel
         </Button>
-        <Button type="submit" disabled={!stripe || loading} className="flex-1">
+        <Button type="submit" disabled={!stripe || loading} variant="success" className="flex-1">
           {loading ? "Processing..." : `Pay $${total.toFixed(2)}`}
         </Button>
       </div>
