@@ -45,6 +45,7 @@ serve(async (req) => {
           )
         ),
         order_items!inner(
+          id,
           quantity,
           unit_price,
           item_type,
