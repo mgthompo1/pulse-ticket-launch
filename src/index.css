@@ -69,36 +69,36 @@ All colors MUST be HSL.
 
   :root {
     --background: 0 0% 98%;
-    --foreground: 210 12% 16%;
+    --foreground: 0 0% 0%;
 
     --card: 0 0% 100%;
-    --card-foreground: 210 12% 16%;
+    --card-foreground: 0 0% 0%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 12% 16%;
+    --popover-foreground: 0 0% 0%;
 
-    --primary: 210 18% 30%;
+    --primary: 0 0% 0%;
     --primary-foreground: 0 0% 98%;
-    --primary-glow: 210 18% 40%;
+    --primary-glow: 0 0% 10%;
 
     --secondary: 210 6% 93%;
-    --secondary-foreground: 210 12% 16%;
+    --secondary-foreground: 0 0% 0%;
 
     --muted: 210 6% 96%;
     --muted-foreground: 210 8% 46%;
 
     --accent: 210 12% 85%;
-    --accent-foreground: 210 12% 16%;
+    --accent-foreground: 0 0% 0%;
 
     /* Custom design tokens */
-    --gradient-primary: linear-gradient(135deg, hsl(210, 18%, 30%), hsl(210, 18%, 40%));
+    --gradient-primary: linear-gradient(135deg, hsl(0, 0%, 0%), hsl(0, 0%, 10%));
     --gradient-secondary: linear-gradient(135deg, hsl(210, 6%, 98%), hsl(210, 6%, 93%));
     --gradient-subtle: linear-gradient(135deg, hsl(210, 6%, 98%) 0%, hsl(210, 6%, 95%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(210, 18%, 30%) 0%, hsl(210, 18%, 35%) 50%, hsl(210, 18%, 40%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(0, 0%, 0%) 0%, hsl(0, 0%, 5%) 50%, hsl(0, 0%, 10%) 100%);
     
-    --shadow-elegant: 0 10px 30px -10px hsl(210 18% 30% / 0.15);
-    --shadow-glow: 0 0 40px hsl(210 18% 40% / 0.2);
-    --shadow-card: 0 4px 20px -2px hsl(210 12% 16% / 0.08);
+    --shadow-elegant: 0 10px 30px -10px hsl(0 0% 0% / 0.15);
+    --shadow-glow: 0 0 40px hsl(0 0% 10% / 0.2);
+    --shadow-card: 0 4px 20px -2px hsl(0 0% 0% / 0.08);
     
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
