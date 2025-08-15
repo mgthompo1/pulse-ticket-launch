@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Calendar, Mail, Download, Eye } from "lucide-react";
+import { CheckCircle, Calendar, Mail, Download, Eye, Printer, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { TicketDisplay } from "@/components/TicketDisplay";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 const PaymentSuccess = () => {
   const location = useLocation();
@@ -14,6 +16,7 @@ const PaymentSuccess = () => {
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState<any[]>([]);
   const [showTickets, setShowTickets] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   const loadTickets = async () => {
     if (!orderDetails) return;
@@ -57,7 +60,90 @@ const PaymentSuccess = () => {
   };
 
   const printTickets = () => {
-    window.print();
+    const printContent = document.getElementById('tickets-print-area');
+    if (!printContent) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Event Tickets</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 0; 
+              padding: 20px;
+              background: white;
+            }
+            .ticket-container { 
+              page-break-after: always; 
+              margin-bottom: 30px;
+            }
+            .ticket-container:last-child { 
+              page-break-after: avoid; 
+            }
+            @media print {
+              body { margin: 0; padding: 10px; }
+              .ticket-container { 
+                page-break-after: always; 
+                margin-bottom: 0;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          ${printContent.innerHTML}
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+  };
+
+  const generatePDF = async () => {
+    setIsGeneratingPDF(true);
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const ticketElements = document.querySelectorAll('.ticket-for-pdf');
+      
+      for (let i = 0; i < ticketElements.length; i++) {
+        const element = ticketElements[i] as HTMLElement;
+        
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff'
+        });
+        
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = 170; // A4 width minus margins
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        if (i > 0) {
+          pdf.addPage();
+        }
+        
+        pdf.addImage(imgData, 'PNG', 20, 20, imgWidth, imgHeight);
+      }
+      
+      pdf.save(`${orderDetails.events?.name || 'Event'}-tickets.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  const addToWallet = () => {
+    // This would typically integrate with Apple Wallet or Google Pay
+    // For now, we'll show an alert with instructions
+    alert('To add tickets to your mobile wallet:\n\n1. Take a screenshot of your tickets\n2. Save the QR codes to your photos\n3. Show the QR codes at the event entrance\n\nWallet integration coming soon!');
   };
 
   useEffect(() => {
@@ -205,13 +291,41 @@ const PaymentSuccess = () => {
                   View Tickets
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Your Tickets</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-6 py-4">
+                  {/* Hidden area for printing */}
+                  <div id="tickets-print-area" className="hidden">
+                    {tickets.map((ticket, index) => (
+                      <div key={ticket.id} className="ticket-container">
+                        <TicketDisplay 
+                          ticket={ticket}
+                          eventDetails={{
+                            venue: orderDetails?.events?.venue,
+                            logo_url: orderDetails?.events?.logo_url,
+                            description: orderDetails?.events?.description
+                          }}
+                          organizationDetails={{
+                            logo_url: orderDetails?.events?.organizations?.logo_url,
+                            name: orderDetails?.events?.organizations?.name
+                          }}
+                          ticketCustomization={orderDetails?.events?.ticket_customization || {
+                            content: {
+                              showLogo: true,
+                              logoSource: "event",
+                              customLogoUrl: ""
+                            }
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Visible tickets for PDF generation */}
                   {tickets.map((ticket) => (
-                    <div key={ticket.id} className="print:break-after-page">
+                    <div key={ticket.id} className="ticket-for-pdf">
                       <TicketDisplay 
                         ticket={ticket}
                         eventDetails={{
@@ -233,10 +347,24 @@ const PaymentSuccess = () => {
                       />
                     </div>
                   ))}
-                  <div className="flex gap-2 pt-4 print:hidden">
-                    <Button onClick={printTickets} className="flex-1">
+                  
+                  <div className="flex flex-col sm:flex-row gap-2 pt-4">
+                    <Button onClick={printTickets} variant="outline" className="flex-1">
+                      <Printer className="h-4 w-4 mr-2" />
+                      Print Tickets
+                    </Button>
+                    <Button 
+                      onClick={generatePDF} 
+                      variant="outline" 
+                      className="flex-1"
+                      disabled={isGeneratingPDF}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      {isGeneratingPDF ? 'Generating...' : 'Save as PDF'}
+                    </Button>
+                    <Button onClick={addToWallet} variant="outline" className="flex-1">
                       <Download className="h-4 w-4 mr-2" />
-                      Print/Save Tickets
+                      Add to Wallet
                     </Button>
                   </div>
                 </div>
