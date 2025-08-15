@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
-import AIEventGenerator from "@/components/AIEventGenerator";
+import { EventAnalytics } from "@/components/EventAnalytics";
 import AIChatbot from "@/components/AIChatbot";
 import BillingDashboard from "@/components/BillingDashboard";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
@@ -760,8 +760,8 @@ if (orgs) {
               )}
             </TabsContent>
 
-            <TabsContent value="ai-tools" className="space-y-6">
-              <AIEventGenerator />
+            <TabsContent value="analytics" className="space-y-6">
+              <EventAnalytics events={events} testMode={testMode} />
             </TabsContent>
 
             <TabsContent value="invoicing" className="space-y-6">
