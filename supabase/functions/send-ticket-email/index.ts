@@ -178,6 +178,23 @@ serve(async (req) => {
       .update({ status: "completed" })
       .eq("id", orderId);
 
+    // Send organiser notification if enabled
+    try {
+      logStep("Checking organiser notification settings");
+      const emailCustomization = order.events.email_customization as any;
+      const notificationsEnabled = emailCustomization?.notifications?.organiserNotifications;
+      
+      if (notificationsEnabled) {
+        logStep("Sending organiser notification");
+        await supabaseClient.functions.invoke('send-organiser-notification', {
+          body: { orderId: orderId }
+        });
+      }
+    } catch (notificationError) {
+      logStep("ERROR sending organiser notification", { message: notificationError });
+      // Don't fail the main function if notification fails
+    }
+
     return new Response(JSON.stringify({ 
       success: true, 
       ticketsGenerated: allTickets.length,

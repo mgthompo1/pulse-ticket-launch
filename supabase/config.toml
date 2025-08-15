@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.admin-logout]
 verify_jwt = false
+
+[functions.send-organiser-notification]
+verify_jwt = false

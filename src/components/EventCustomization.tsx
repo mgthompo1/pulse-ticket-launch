@@ -108,6 +108,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     branding: {
       showLogo: true,
       logoPosition: "header"
+    },
+    notifications: {
+      organiserNotifications: false,
+      organiserEmail: ""
     }
   });
 
@@ -1154,6 +1158,38 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     onCheckedChange={(checked) => updateEmailCustomization(['branding', 'showLogo'], checked)}
                   />
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Organiser Notifications</CardTitle>
+                <CardDescription>Get notified when tickets are sold</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="organiserNotifications">Send notifications when tickets are sold</Label>
+                  <Switch
+                    id="organiserNotifications"
+                    checked={emailCustomization.notifications?.organiserNotifications || false}
+                    onCheckedChange={(checked) => updateEmailCustomization(['notifications', 'organiserNotifications'], checked)}
+                  />
+                </div>
+                {emailCustomization.notifications?.organiserNotifications && (
+                  <div className="space-y-2">
+                    <Label htmlFor="organiserEmail">Notification Email</Label>
+                    <Input
+                      id="organiserEmail"
+                      type="email"
+                      value={emailCustomization.notifications?.organiserEmail || ""}
+                      onChange={(e) => updateEmailCustomization(['notifications', 'organiserEmail'], e.target.value)}
+                      placeholder="Enter email to receive notifications"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      You'll receive an email with ticket details and customer information each time a ticket is sold.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
