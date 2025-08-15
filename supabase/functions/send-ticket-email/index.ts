@@ -47,9 +47,13 @@ serve(async (req) => {
         order_items!inner(
           quantity,
           unit_price,
-          ticket_types!inner(
+          item_type,
+          ticket_types(
             name,
             description
+          ),
+          merchandise(
+            name
           )
         )
       `)
@@ -65,8 +69,10 @@ serve(async (req) => {
       eventName: order.events.name 
     });
 
-    // Generate tickets for each order item
-    const ticketPromises = order.order_items.map(async (item: any) => {
+    // Generate tickets only for ticket items (not merchandise)
+    const ticketItems = order.order_items.filter((item: any) => item.item_type === 'ticket');
+    
+    const ticketPromises = ticketItems.map(async (item: any) => {
       const tickets = [];
       for (let i = 0; i < item.quantity; i++) {
         const { data: ticket, error: ticketError } = await supabaseClient
@@ -87,7 +93,7 @@ serve(async (req) => {
 
         tickets.push({
           code: ticket,
-          type: item.ticket_types.name,
+          type: item.ticket_types?.name || 'General Admission',
           price: item.unit_price
         });
       }
