@@ -107,28 +107,6 @@ const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCa
     });
   };
 
-  const updateQuantity = (index: number, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      setCart(cart.filter((_, i) => i !== index));
-    } else {
-      setCart(cart.map((item, i) => 
-        i === index ? { ...item, quantity: newQuantity } : item
-      ));
-    }
-  };
-
-  const getTotalPrice = () => {
-    return cart.reduce((total, item) => total + (item.merchandise.price * item.quantity), 0);
-  };
-
-  const groupedMerchandise = merchandise.reduce((groups, item) => {
-    const category = item.category;
-    if (!groups[category]) {
-      groups[category] = [];
-    }
-    groups[category].push(item);
-    return groups;
-  }, {} as Record<string, MerchandiseItem[]>);
 
   if (loading) {
     return <div>Loading merchandise...</div>;
@@ -139,97 +117,73 @@ const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCa
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ShoppingCart className="h-5 w-5" />
-            Event Merchandise
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            {Object.entries(groupedMerchandise).map(([category, items]) => (
-              <div key={category}>
-                <h3 className="text-lg font-semibold mb-3 capitalize">{category}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {items.map((item) => (
-                    <MerchandiseCard
-                      key={item.id}
-                      item={item}
-                      onAddToCart={addToCart}
-                    />
-                  ))}
+    <Card className="animate-in fade-in-0">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ShoppingCart className="h-5 w-5" />
+          Event Merchandise
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {merchandise.length === 0 ? (
+          <div className="text-center py-8">
+            <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-muted-foreground">No merchandise available for this event.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {merchandise.map((item) => (
+              <div key={item.id} className="border rounded-lg p-4 hover:shadow-md transition-all duration-200 hover-lift animate-in fade-in-0">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div className="flex gap-4 flex-1">
+                    {item.image_url && (
+                      <img
+                        src={item.image_url}
+                        alt={item.name}
+                        className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
+                      />
+                    )}
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg">{item.name}</h3>
+                      {item.description && (
+                        <p className="text-muted-foreground text-sm mt-1">{item.description}</p>
+                      )}
+                      <div className="text-lg font-bold text-primary mt-2">${item.price}</div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="outline" className="text-xs">
+                          {item.stock_quantity} in stock
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs capitalize">
+                          {item.category}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <MerchandiseCardControls
+                    item={item}
+                    onAddToCart={addToCart}
+                  />
                 </div>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </CardContent>
+    </Card>
 
-      {cart.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Merchandise Cart</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {cart.map((item, index) => (
-                <div key={`${item.merchandise.id}-${item.selectedSize}-${item.selectedColor}`} 
-                     className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="font-medium">{item.merchandise.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      ${item.merchandise.price} each
-                      {item.selectedSize && ` • Size: ${item.selectedSize}`}
-                      {item.selectedColor && ` • Color: ${item.selectedColor}`}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => updateQuantity(index, item.quantity - 1)}
-                    >
-                      <Minus className="h-3 w-3" />
-                    </Button>
-                    <span className="w-8 text-center">{item.quantity}</span>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => updateQuantity(index, item.quantity + 1)}
-                      disabled={item.quantity >= item.merchandise.stock_quantity}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                    <div className="ml-2 font-medium">
-                      ${(item.merchandise.price * item.quantity).toFixed(2)}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <div className="border-t pt-3">
-                <div className="flex justify-between items-center text-lg font-semibold">
-                  <span>Merchandise Total:</span>
-                  <span>${getTotalPrice().toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
   );
 };
 
-interface MerchandiseCardProps {
+interface MerchandiseCardControlsProps {
   item: MerchandiseItem;
   onAddToCart: (item: MerchandiseItem, size?: string, color?: string) => void;
 }
 
-const MerchandiseCard: React.FC<MerchandiseCardProps> = ({ item, onAddToCart }) => {
+const MerchandiseCardControls: React.FC<MerchandiseCardControlsProps> = ({ item, onAddToCart }) => {
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
+  const [quantity, setQuantity] = useState(0);
 
   const canAddToCart = () => {
     const needsSize = item.size_options && item.size_options.length > 0;
@@ -242,80 +196,89 @@ const MerchandiseCard: React.FC<MerchandiseCardProps> = ({ item, onAddToCart }) 
   };
 
   const handleAddToCart = () => {
-    if (canAddToCart()) {
-      onAddToCart(item, selectedSize || undefined, selectedColor || undefined);
+    if (canAddToCart() && quantity > 0) {
+      for (let i = 0; i < quantity; i++) {
+        onAddToCart(item, selectedSize || undefined, selectedColor || undefined);
+      }
+      setQuantity(0);
     }
   };
 
   return (
-    <Card className="h-full">
-      <CardContent className="p-4">
-        {item.image_url && (
-          <img
-            src={item.image_url}
-            alt={item.name}
-            className="w-full h-32 object-cover rounded-lg mb-3"
-          />
-        )}
-        <div className="space-y-3">
-          <div>
-            <h4 className="font-semibold">{item.name}</h4>
-            <p className="text-sm text-muted-foreground">{item.description}</p>
-            <div className="text-lg font-bold text-primary">${item.price}</div>
-          </div>
-
-          {item.size_options && item.size_options.length > 0 && (
-            <div>
-              <label className="text-sm font-medium">Size:</label>
-              <Select value={selectedSize} onValueChange={setSelectedSize}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select size" />
-                </SelectTrigger>
-                <SelectContent>
-                  {item.size_options.map((size) => (
-                    <SelectItem key={size} value={size}>
-                      {size}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {item.color_options && item.color_options.length > 0 && (
-            <div>
-              <label className="text-sm font-medium">Color:</label>
-              <Select value={selectedColor} onValueChange={setSelectedColor}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select color" />
-                </SelectTrigger>
-                <SelectContent>
-                  {item.color_options.map((color) => (
-                    <SelectItem key={color} value={color}>
-                      {color}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between">
-            <Badge variant="outline">
-              {item.stock_quantity} in stock
-            </Badge>
-            <Button
-              size="sm"
-              onClick={handleAddToCart}
-              disabled={!canAddToCart() || item.stock_quantity === 0}
-            >
-              <Plus className="h-3 w-3 mr-1" />
-              Add to Cart
-            </Button>
-          </div>
+    <div className="flex flex-col gap-3 sm:min-w-[200px]">
+      {/* Size Selection */}
+      {item.size_options && item.size_options.length > 0 && (
+        <div>
+          <label className="text-sm font-medium">Size:</label>
+          <Select value={selectedSize} onValueChange={setSelectedSize}>
+            <SelectTrigger className="mt-1 h-8">
+              <SelectValue placeholder="Select size" />
+            </SelectTrigger>
+            <SelectContent>
+              {item.size_options.map((size) => (
+                <SelectItem key={size} value={size}>
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      </CardContent>
-    </Card>
+      )}
+
+      {/* Color Selection */}
+      {item.color_options && item.color_options.length > 0 && (
+        <div>
+          <label className="text-sm font-medium">Color:</label>
+          <Select value={selectedColor} onValueChange={setSelectedColor}>
+            <SelectTrigger className="mt-1 h-8">
+              <SelectValue placeholder="Select color" />
+            </SelectTrigger>
+            <SelectContent>
+              {item.color_options.map((color) => (
+                <SelectItem key={color} value={color}>
+                  {color}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Quantity Controls */}
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setQuantity(Math.max(0, quantity - 1))}
+          disabled={quantity <= 0}
+          className="h-8 w-8 p-0"
+        >
+          <Minus className="h-3 w-3" />
+        </Button>
+        <span className="w-8 text-center text-sm font-medium">{quantity}</span>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setQuantity(Math.min(item.stock_quantity, quantity + 1))}
+          disabled={quantity >= item.stock_quantity}
+          className="h-8 w-8 p-0"
+        >
+          <Plus className="h-3 w-3" />
+        </Button>
+      </div>
+
+      {/* Add to Cart Button */}
+      {quantity > 0 && (
+        <Button
+          size="sm"
+          onClick={handleAddToCart}
+          disabled={!canAddToCart() || item.stock_quantity === 0}
+          className="w-full"
+        >
+          Add {quantity} to Cart
+        </Button>
+      )}
+    </div>
   );
 };
 
