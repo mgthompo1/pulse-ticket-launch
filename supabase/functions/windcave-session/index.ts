@@ -130,7 +130,7 @@ serve(async (req) => {
 
     console.log("Links array received:", JSON.stringify(windcaveResult.links, null, 2));
 
-    // Store the order in the database
+    // Store the order in the database with custom answers
     const { data: order, error: orderError } = await supabaseClient
       .from("orders")
       .insert({
@@ -140,6 +140,7 @@ serve(async (req) => {
         customer_phone: customerInfo?.phone || null,
         total_amount: totalAmount,
         status: "pending",
+        custom_answers: customerInfo?.customAnswers || {},
         windcave_session_id: windcaveResult.id // Store Windcave session ID in the correct field
       })
       .select()
