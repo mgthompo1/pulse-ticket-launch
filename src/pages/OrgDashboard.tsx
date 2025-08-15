@@ -23,7 +23,7 @@ import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { Calendar, Users, Ticket, BarChart3, Edit, Monitor, LogOut, Menu } from "lucide-react";
 import OrganizationSettings from "@/components/OrganizationSettings";
 import OrganizationOnboarding from "@/components/OrganizationOnboarding";
-import Invoicing from "./Invoicing";
+
 import { SecurityDashboard } from "@/components/SecurityDashboard";
 import { MarketingTools } from "@/components/MarketingTools";
 import { AnalyticsCharts } from "@/components/AnalyticsCharts";
@@ -663,9 +663,6 @@ if (orgs) {
               <EventAnalytics events={events} testMode={testMode} />
             </TabsContent>
 
-            <TabsContent value="invoicing" className="space-y-6">
-              <Invoicing />
-            </TabsContent>
 
             <TabsContent value="payments" className="space-y-6">
               <PaymentConfiguration organizationId={organizationId} />

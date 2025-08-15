@@ -67,27 +67,7 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
         .order('created_at', { ascending: false })
         .limit(50);
 
-      // Get invoice payments for this organization
-      const { data: invoices, error: invoicesError } = await supabase
-        .from('invoices')
-        .select(`
-          id,
-          invoice_number,
-          client_name,
-          client_email,
-          total,
-          status,
-          created_at,
-          windcave_session_id,
-          paid_at
-        `)
-        .eq('organization_id', organizationId)
-        .eq('status', 'paid')
-        .order('created_at', { ascending: false })
-        .limit(50);
-
       if (ordersError) console.error('Orders error:', ordersError);
-      if (invoicesError) console.error('Invoices error:', invoicesError);
 
       // Transform orders into payment records
       const orderRecords: PaymentRecord[] = orders?.map(order => ({
@@ -106,25 +86,8 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
         stripe_session_id: order.stripe_session_id,
       })) || [];
 
-      // Transform invoices into payment records
-      const invoiceRecords: PaymentRecord[] = invoices?.map(invoice => ({
-        id: invoice.id,
-        order_id: invoice.invoice_number,
-        event_name: `Invoice: ${invoice.invoice_number}`,
-        customer_name: invoice.client_name,
-        customer_email: invoice.client_email,
-        total_amount: invoice.total,
-        payment_provider: invoice.windcave_session_id ? 'windcave' : 'unknown',
-        payment_method: 'Card',
-        card_last_four: '****',
-        payment_date: invoice.paid_at || invoice.created_at,
-        status: invoice.status,
-        windcave_session_id: invoice.windcave_session_id,
-        stripe_session_id: null,
-      })) || [];
-
       // Combine and sort all payment records by date
-      const allPayments = [...orderRecords, ...invoiceRecords].sort((a, b) => 
+      const allPayments = [...orderRecords].sort((a, b) =>
         new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime()
       );
 

@@ -16,9 +16,7 @@ import MasterAdmin from "./pages/MasterAdmin";
 import AdminAuth from "./pages/AdminAuth";
 import SecureAdminAuth from "./pages/SecureAdminAuth";
 import TicketFloLIVE from "./pages/TicketFloLIVE";
-import Invoicing from "./pages/Invoicing";
 import PaymentSuccess from "./pages/PaymentSuccess";
-import InvoicePaymentSuccess from "./pages/InvoicePaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import XeroCallback from "./pages/XeroCallback";
@@ -43,7 +41,6 @@ const App = () => (
             <Route path="/secure-admin" element={<SecureAdminAuth />} />
             <Route path="/ticketflolive/:eventId" element={<TicketFloLIVE />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
-            <Route path="/invoice-payment-success" element={<InvoicePaymentSuccess />} />
             <Route path="/payment-failed" element={<PaymentFailed />} />
             <Route path="/payment-cancelled" element={<PaymentCancelled />} />
             <Route path="/xero-callback" element={<XeroCallback />} />
@@ -53,13 +50,6 @@ const App = () => (
               <ThemeProvider>
                 <ProtectedRoute>
                   <OrgDashboard />
-                </ProtectedRoute>
-              </ThemeProvider>
-            } />
-            <Route path="/invoicing" element={
-              <ThemeProvider>
-                <ProtectedRoute>
-                  <Invoicing />
                 </ProtectedRoute>
               </ThemeProvider>
             } />

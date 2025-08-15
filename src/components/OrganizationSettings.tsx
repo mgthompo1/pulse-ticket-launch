@@ -232,7 +232,7 @@ const OrganizationSettings: React.FC = () => {
               Company Logo
             </CardTitle>
             <CardDescription>
-              Upload your company logo. This will appear on invoices and tickets.
+              Upload your company logo. This will appear on tickets.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
