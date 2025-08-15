@@ -913,13 +913,58 @@ const TicketWidget = () => {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="xl:col-span-2 space-y-6">
-            {/* Custom Questions - Moved to top */}
+            {/* Customer Information - First */}
+            <Card className="animate-fade-in">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Ticket className="h-5 w-5" />
+                  Your Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="name">Full Name *</Label>
+                    <Input
+                      id="name"
+                      value={customerInfo.name}
+                      onChange={(e) => setCustomerInfo(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="John Doe"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email Address *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={customerInfo.email}
+                      onChange={(e) => setCustomerInfo(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="john@example.com"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input
+                      id="phone"
+                      value={customerInfo.phone}
+                      onChange={(e) => setCustomerInfo(prev => ({ ...prev, phone: e.target.value }))}
+                      placeholder="+1 (555) 123-4567"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Custom Questions - Second */}
             {customQuestions.length > 0 && (
               <Card className="animate-fade-in">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <HelpCircle className="h-5 w-5" />
-                    Additional Information
+                    Required Information
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
                     Please provide the following information before selecting your tickets.
@@ -1062,45 +1107,25 @@ const TicketWidget = () => {
               onCartUpdate={setMerchandiseCart}
             />
 
-            {/* Customer Information - Only show if cart has items */}
-            {(cart.length > 0 || merchandiseCart.length > 0) && (
+            {/* Seat Selection - Fourth (only if seats are in cart) */}
+            {cart.some(item => item.selectedSeats) && (
               <Card className="animate-fade-in">
                 <CardHeader>
-                  <CardTitle>Your Information</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5" />
+                    Selected Seats
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="name">Full Name *</Label>
-                      <Input
-                        id="name"
-                        value={customerInfo.name}
-                        onChange={(e) => setCustomerInfo(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="John Doe"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="email">Email Address *</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={customerInfo.email}
-                        onChange={(e) => setCustomerInfo(prev => ({ ...prev, email: e.target.value }))}
-                        placeholder="john@example.com"
-                        className="mt-1"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <Label htmlFor="phone">Phone Number</Label>
-                      <Input
-                        id="phone"
-                        value={customerInfo.phone}
-                        onChange={(e) => setCustomerInfo(prev => ({ ...prev, phone: e.target.value }))}
-                        placeholder="+1 (555) 123-4567"
-                        className="mt-1"
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    {cart.filter(item => item.selectedSeats).map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 bg-accent/10 rounded-lg">
+                        <span className="font-medium">{item.name}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {item.selectedSeats?.length} seat(s) selected
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
