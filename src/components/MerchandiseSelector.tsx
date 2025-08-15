@@ -271,9 +271,10 @@ const MerchandiseCardControls: React.FC<MerchandiseCardControlsProps> = ({ item,
       {quantity > 0 && (
         <Button
           size="sm"
+          variant="secondary"
           onClick={handleAddToCart}
           disabled={!canAddToCart() || item.stock_quantity === 0}
-          className="w-full"
+          className="w-full bg-neutral-900 hover:bg-neutral-800 text-white border-0"
         >
           Add {quantity} to Cart
         </Button>
