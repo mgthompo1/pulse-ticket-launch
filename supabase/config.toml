@@ -68,3 +68,9 @@ verify_jwt = false
 
 [functions.xero-sync]
 verify_jwt = false
+
+[functions.validate-admin-session]
+verify_jwt = false
+
+[functions.admin-logout]
+verify_jwt = false

@@ -20,19 +20,30 @@ const SecureAdminAuth = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if user is already logged in
-    const checkAuth = () => {
-      const adminToken = sessionStorage.getItem("admin_secure_token");
+    // Check if user is already logged in with new token system
+    const checkAuth = async () => {
+      const adminToken = sessionStorage.getItem("ticketflo_admin_token");
       if (adminToken) {
         try {
-          const tokenData = JSON.parse(atob(adminToken));
-          if (tokenData.expiresAt > Date.now()) {
+          const response = await fetch(`https://yoxsewbpoqxscsutqlcb.supabase.co/functions/v1/validate-admin-session`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ token: adminToken })
+          });
+
+          const result = await response.json();
+          if (result.valid) {
             navigate("/master-admin");
           } else {
-            sessionStorage.removeItem("admin_secure_token");
+            sessionStorage.removeItem("ticketflo_admin_token");
+            sessionStorage.removeItem("ticketflo_admin_user");
           }
         } catch (error) {
-          sessionStorage.removeItem("admin_secure_token");
+          console.error('Session validation error:', error);
+          sessionStorage.removeItem("ticketflo_admin_token");
+          sessionStorage.removeItem("ticketflo_admin_user");
         }
       }
     };
@@ -65,7 +76,8 @@ const SecureAdminAuth = () => {
       }
 
       if (data.success && data.token) {
-        sessionStorage.setItem("admin_secure_token", data.token);
+        sessionStorage.setItem("ticketflo_admin_token", data.token);
+        sessionStorage.setItem("ticketflo_admin_user", JSON.stringify(data.admin));
         toast({
           title: "Authentication Successful",
           description: "Welcome to the secure admin panel",

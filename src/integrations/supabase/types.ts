@@ -44,6 +44,47 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_sessions: {
+        Row: {
+          admin_user_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          ip_address: unknown | null
+          last_activity: string
+          session_token: string
+          user_agent: string | null
+        }
+        Insert: {
+          admin_user_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          ip_address?: unknown | null
+          last_activity?: string
+          session_token: string
+          user_agent?: string | null
+        }
+        Update: {
+          admin_user_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          ip_address?: unknown | null
+          last_activity?: string
+          session_token?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_sessions_admin_user_id_fkey"
+            columns: ["admin_user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_users: {
         Row: {
           created_at: string
@@ -1350,6 +1391,15 @@ export type Database = {
           | { transaction_amount: number }
         Returns: number
       }
+      create_admin_session: {
+        Args: {
+          p_admin_id: string
+          p_ip?: unknown
+          p_token: string
+          p_user_agent?: string
+        }
+        Returns: string
+      }
       generate_ticket_code: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1383,6 +1433,10 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: string
       }
+      invalidate_admin_session: {
+        Args: { token: string }
+        Returns: boolean
+      }
       is_authenticated_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
@@ -1401,6 +1455,10 @@ export type Database = {
       user_owns_organization: {
         Args: { org_id: string; user_uuid: string }
         Returns: boolean
+      }
+      validate_admin_session: {
+        Args: { token: string }
+        Returns: string
       }
       verify_ticket_code: {
         Args: { p_event_id: string; p_ticket_code: string }

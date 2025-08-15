@@ -101,15 +101,26 @@ serve(async (req) => {
       p_user_agent: userAgent
     });
 
-    // Generate session token (in production, use JWT)
-    const sessionToken = btoa(JSON.stringify({
-      adminId: adminUser.id,
-      email: adminUser.email,
-      loginTime: Date.now(),
-      expiresAt: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
-    }));
+    // Generate secure session token
+    const sessionToken = crypto.randomUUID() + '-' + Date.now().toString(36);
 
-    console.log("Admin authentication successful");
+    // Create secure admin session in database
+    const { data: sessionData, error: sessionError } = await supabaseClient.rpc(
+      'create_admin_session',
+      {
+        p_admin_id: adminUser.id,
+        p_token: sessionToken,
+        p_ip: clientIP,
+        p_user_agent: userAgent
+      }
+    );
+
+    if (sessionError) {
+      console.error("Failed to create admin session:", sessionError);
+      throw new Error("Failed to create secure session");
+    }
+
+    console.log("Admin authentication successful with secure session");
 
     return new Response(JSON.stringify({
       success: true,
