@@ -111,7 +111,7 @@ export const TicketDisplay = ({ ticket, eventDetails, organizationDetails, ticke
             <img 
               src={logoUrl} 
               alt="Logo" 
-              className="h-16 w-auto mx-auto mb-3 object-contain"
+              className="h-12 w-auto mx-auto mb-3 object-contain max-w-[200px]"
             />
           )}
           <h1 className="text-xl font-bold text-foreground">{ticket.eventName}</h1>

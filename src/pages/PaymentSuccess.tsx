@@ -22,11 +22,12 @@ const PaymentSuccess = () => {
     if (!orderDetails) return;
     
     try {
-      // Get tickets for this order
+      // Get only ticket items (not merchandise) and their tickets
       const { data: orderItems, error: orderItemsError } = await supabase
         .from('order_items')
         .select('*, tickets(*), ticket_types(name)')
-        .eq('order_id', orderDetails.id);
+        .eq('order_id', orderDetails.id)
+        .eq('item_type', 'ticket'); // Only get ticket items
 
       if (orderItemsError) {
         console.error('Error fetching tickets:', orderItemsError);
