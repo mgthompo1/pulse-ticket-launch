@@ -148,7 +148,7 @@ const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCa
                       {item.description && (
                         <p className="text-muted-foreground text-sm mt-1">{item.description}</p>
                       )}
-                      <div className="text-lg font-bold text-primary mt-2">${item.price}</div>
+                      <div className="text-lg font-bold text-neutral-900 mt-2">${item.price}</div>
                       <div className="flex items-center gap-2 mt-2">
                         <Badge variant="outline" className="text-xs">
                           {item.stock_quantity} in stock

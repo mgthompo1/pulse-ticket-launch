@@ -1111,7 +1111,7 @@ const TicketWidget = () => {
                                 <p className="text-sm text-muted-foreground mt-1">{ticketType.description}</p>
                               )}
                               <div className="flex items-center gap-4 mt-2">
-                                <span className="text-2xl font-bold text-primary">${ticketType.price}</span>
+                                <span className="text-2xl font-bold text-neutral-900">${ticketType.price}</span>
                                 <span className="text-sm text-muted-foreground">
                                   {ticketType.quantity_available - ticketType.quantity_sold} available
                                 </span>
@@ -1196,7 +1196,7 @@ const TicketWidget = () => {
                             <p className="font-medium">{item.name}</p>
                             <p className="text-sm text-muted-foreground">${item.price} each</p>
                             {item.selectedSeats && item.selectedSeats.length > 0 && (
-                              <p className="text-xs text-primary flex items-center gap-1 mt-1">
+                              <p className="text-xs text-neutral-700 flex items-center gap-1 mt-1">
                                 <MapPin className="h-3 w-3" />
                                 Seats selected: {item.selectedSeats.length} seat(s)
                               </p>
@@ -1275,7 +1275,7 @@ const TicketWidget = () => {
                          
                         <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
                           <span>Total:</span>
-                          <span className="text-primary">${getTotalAmount().toFixed(2)}</span>
+                          <span className="text-neutral-900">${getTotalAmount().toFixed(2)}</span>
                         </div>
                       </div>
                        
