@@ -35,12 +35,12 @@ export const Hero = () => {
 
           {/* Main headline */}
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-semibold tracking-tight text-foreground mb-6 leading-[1.05]">
-            A modern ticketing platform for real events
+            A modern ticket platform for all events
           </h1>
 
           {/* Subheadline */}
           <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-            Create, manage, and sell tickets—beautifully. Built for organizers who care about experience and conversion.
+            Create manage and sell tickets - beautifully. Built for simplicity, ease of use and conversion.
           </p>
 
           {/* CTA Buttons */}
