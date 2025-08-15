@@ -1119,7 +1119,8 @@ const TicketWidget = () => {
                             </div>
                             <Button 
                               onClick={() => addToCart(ticketType)}
-                              className="sm:w-auto w-full widget-button hover-scale"
+                              variant="secondary"
+                              className="sm:w-auto w-full hover-scale bg-neutral-900 hover:bg-neutral-800 text-white border-0"
                               disabled={ticketType.quantity_available - ticketType.quantity_sold <= 0}
                             >
                               <Plus className="h-4 w-4 mr-2" />
@@ -1286,7 +1287,8 @@ const TicketWidget = () => {
                             setShowPayment(true);
                           }
                         }}
-                        className="w-full mt-4 hover-scale"
+                        variant="secondary"
+                        className="w-full mt-4 hover-scale bg-neutral-900 hover:bg-neutral-800 text-white border-0"
                         size="lg"
                         disabled={!customerInfo.name || !customerInfo.email || (cart.length === 0 && merchandiseCart.length === 0)}
                       >
@@ -1428,7 +1430,7 @@ const TicketWidget = () => {
                         <Button type="button" variant="outline" onClick={() => setShowPayment(false)} className="flex-1">
                           Back
                         </Button>
-                        <Button onClick={handleCheckout} disabled={loading} className="flex-1 widget-button">
+                        <Button onClick={handleCheckout} disabled={loading} variant="secondary" className="flex-1 bg-neutral-900 hover:bg-neutral-800 text-white border-0">
                           {loading ? "Processing..." : "Proceed to Payment"}
                         </Button>
                       </div>
@@ -1454,7 +1456,7 @@ const TicketWidget = () => {
                     <p className="text-muted-foreground mb-6">
                       Your tickets have been purchased successfully. Check your email for confirmation details.
                     </p>
-                    <Button onClick={() => setShowSuccess(false)} className="w-full">
+                    <Button onClick={() => setShowSuccess(false)} variant="secondary" className="w-full bg-neutral-900 hover:bg-neutral-800 text-white border-0">
                       Continue
                     </Button>
                   </CardContent>
