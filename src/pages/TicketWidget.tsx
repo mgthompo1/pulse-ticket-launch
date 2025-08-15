@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { createClient } from '@supabase/supabase-js';
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Minus, Plus, ShoppingCart, ArrowLeft, Calendar, Globe, Ticket, CreditCard, MapPin, HelpCircle } from "lucide-react";
+import { Minus, Plus, ShoppingCart, ArrowLeft, Calendar, Ticket, CreditCard, MapPin, HelpCircle } from "lucide-react";
 import { GuestSeatSelector } from "@/components/GuestSeatSelector";
 import MerchandiseSelector from "@/components/MerchandiseSelector";
 import { Badge } from "@/components/ui/badge";
@@ -20,8 +20,7 @@ import {
   MerchandiseCartItem, 
   CustomerInfo, 
   WindcaveLink, 
-  CustomQuestion,
-  WindcaveSession 
+  CustomQuestion
 } from "@/integrations/supabase/types";
 
 // Extend the global Window interface to include WindcavePayments
@@ -434,8 +433,8 @@ const TicketWidget = () => {
           ...item.merchandise, 
           quantity: item.quantity,
           type: 'merchandise',
-          selectedSize: item.selectedSize,
-          selectedColor: item.selectedColor
+          selectedSize: (item as any).selectedSize,
+          selectedColor: (item as any).selectedColor
         }))
       ];
 
@@ -813,7 +812,7 @@ const TicketWidget = () => {
         console.log("Initializing Windcave Drop-In with data:", data);
         
         // Create the drop-in using the simpler approach from the example
-        window.windcaveDropIn = window.WindcavePayments.DropIn.create({
+        window.windcaveDropIn = window.WindcavePayments?.DropIn.create({
           ...data,
           // Additional configuration to ensure proper security
           options: {
@@ -823,7 +822,7 @@ const TicketWidget = () => {
             enableCardValidation: true,
             enableCardFormatting: true
           }
-        });
+        } as any);
         
       } catch (error: any) {
         console.error("=== DROP-IN INITIALIZATION ERROR ===");
@@ -1001,25 +1000,25 @@ const TicketWidget = () => {
                               onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
                             >
                               <option value="">Select...</option>
-                              {(q.options || '').split('\n').map((opt: string, idx: number) => (
+                              {((q as any).options || '').split('\n').map((opt: string, idx: number) => (
                                 <option key={idx} value={opt.trim()}>{opt.trim()}</option>
                               ))}
                             </select>
                           )}
                           {q.type === 'checkbox' && (
                             <div className="flex flex-col gap-1">
-                              {(q.options || '').split('\n').map((opt: string, idx: number) => (
+                              {((q as any).options || '').split('\n').map((opt: string, idx: number) => (
                                 <label key={idx} className="flex items-center gap-2">
                                   <input
                                     type="checkbox"
                                     checked={Array.isArray(customAnswers[q.id]) ? customAnswers[q.id].includes(opt.trim()) : false}
                                     onChange={e => {
-                                      setCustomAnswers(a => {
+                                      setCustomAnswers((a: any) => {
                                         const arr = Array.isArray(a[q.id]) ? a[q.id] : [];
                                         if (e.target.checked) {
                                           return { ...a, [q.id]: [...arr, opt.trim()] };
                                         } else {
-                                          return { ...a, [q.id]: arr.filter((v: string) => v !== opt.trim()) };
+                                          return { ...a, [q.id]: (arr as string[]).filter((v: string) => v !== opt.trim()) };
                                         }
                                       });
                                     }}
@@ -1199,8 +1198,8 @@ const TicketWidget = () => {
                             <p className="font-medium">{item.merchandise.name}</p>
                             <p className="text-sm text-muted-foreground">
                               ${item.merchandise.price} each
-                              {item.selectedSize && ` • Size: ${item.selectedSize}`}
-                              {item.selectedColor && ` • Color: ${item.selectedColor}`}
+                              {(item as any).selectedSize && ` • Size: ${(item as any).selectedSize}`}
+                              {(item as any).selectedColor && ` • Color: ${(item as any).selectedColor}`}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
@@ -1378,8 +1377,8 @@ const TicketWidget = () => {
                       <StripePaymentForm
                         publishableKey={stripePublishableKey}
                         eventId={eventId!}
-                        cart={cart}
-                        merchandiseCart={merchandiseCart}
+                        cart={cart as any}
+                        merchandiseCart={merchandiseCart as any}
                         customerInfo={customerInfo}
                         total={getTotalAmount()}
                         onSuccess={(orderId: string) => {

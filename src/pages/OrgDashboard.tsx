@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import XeroIntegration from "@/components/XeroIntegration";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useTheme } from "@/contexts/ThemeContext";
+
 import { EventAnalytics } from "@/components/EventAnalytics";
 import AIChatbot from "@/components/AIChatbot";
 import BillingDashboard from "@/components/BillingDashboard";
@@ -20,7 +20,7 @@ import EventCustomization from "@/components/EventCustomization";
 import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, BarChart3, Edit, Monitor, LogOut, Menu, Sun, Moon } from "lucide-react";
+import { Calendar, Users, Ticket, BarChart3, Edit, Monitor, LogOut, Menu } from "lucide-react";
 import OrganizationSettings from "@/components/OrganizationSettings";
 import OrganizationOnboarding from "@/components/OrganizationOnboarding";
 import Invoicing from "./Invoicing";
@@ -73,7 +73,6 @@ const MobileSidebarTrigger = () => {
 
 const OrgDashboard = () => {
   console.log("=== OrgDashboard component rendering ===");
-  const { themePreset } = useTheme();
 const [events, setEvents] = useState<DashboardEvent[]>([]);
 const [selectedEvent, setSelectedEvent] = useState<DashboardEvent | null>(null);
 

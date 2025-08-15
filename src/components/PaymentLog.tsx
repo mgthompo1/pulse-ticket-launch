@@ -93,7 +93,7 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
       const orderRecords: PaymentRecord[] = orders?.map(order => ({
         id: order.id,
         order_id: order.id,
-        event_name: order.events?.name || 'Unknown Event',
+        event_name: (order.events as any)?.name || 'Unknown Event',
         customer_name: order.customer_name,
         customer_email: order.customer_email,
         total_amount: order.total_amount,
