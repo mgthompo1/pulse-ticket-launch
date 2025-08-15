@@ -101,8 +101,7 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events, testMode
           )
         `)
         .eq('event_id', eventId)
-        .eq('test_mode', testMode)
-        .eq('status', 'completed')
+        .in('status', ['completed', 'paid'])
         .order('created_at', { ascending: false });
 
       if (ordersError) throw ordersError;
