@@ -171,9 +171,10 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
             )}
           </div>
 
-          {/* Order Summary Sidebar */}
+          {/* Order Summary Sidebar - Aligned with ticket cards */}
           <div className="lg:col-span-1">
-            <div className="sticky top-8">
+            {/* Add top margin to align with ticket cards instead of header text */}
+            <div className="sticky top-8" style={{ marginTop: currentStep === 'tickets' ? '3.5rem' : '0' }}>
               <OrderSummary
                 eventData={eventData}
                 cartItems={cartItems}

@@ -160,8 +160,8 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
+    <Card className="w-full max-w-sm">
+      <CardHeader className="pb-4">
         <CardTitle className="text-lg">Order Summary</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
