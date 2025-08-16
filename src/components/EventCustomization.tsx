@@ -1386,7 +1386,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     Choose how tickets will be delivered to customers by default
                   </p>
                   <Select
-                    value={eventData?.ticket_delivery_method || 'qr_ticket'}
+                    value={(eventData as any)?.ticket_delivery_method || 'qr_ticket'}
                     onValueChange={async (value: 'qr_ticket' | 'confirmation_email') => {
                       try {
                         const { error } = await supabase
@@ -1420,6 +1420,66 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       <SelectItem value="confirmation_email">Email Confirmation Only</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+
+              {/* Checkout Mode */}
+              <div className="space-y-3 p-4 border rounded-lg">
+                <div className="space-y-2">
+                  <Label className="text-base font-medium">Checkout Experience</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Choose how customers will complete their purchase
+                  </p>
+                  <Select
+                    value={(eventData?.widget_customization as any)?.checkoutMode || 'onepage'}
+                    onValueChange={async (value: 'onepage' | 'multistep') => {
+                      try {
+                        const currentCustomization = (eventData?.widget_customization as any) || {};
+                        const { error } = await supabase
+                          .from("events")
+                          .update({ 
+                            widget_customization: {
+                              ...currentCustomization,
+                              checkoutMode: value
+                            }
+                          })
+                          .eq("id", eventId);
+
+                        if (error) throw error;
+
+                        setEventData(prev => prev ? ({
+                          ...prev,
+                          widget_customization: {
+                            ...currentCustomization,
+                            checkoutMode: value
+                          } as any
+                        }) : null);
+                        
+                        toast({
+                          title: "Success",
+                          description: "Checkout mode updated"
+                        });
+                      } catch (error) {
+                        console.error("Error updating checkout mode:", error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to update checkout mode",
+                          variant: "destructive"
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="onepage">One Page Checkout</SelectItem>
+                      <SelectItem value="multistep">Multi-Step Checkout</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Multi-step includes: ticket selection → add-ons → customer details → payment with order summary sidebar
+                  </p>
                 </div>
               </div>
 

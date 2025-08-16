@@ -23,6 +23,7 @@ import {
   WindcaveLink, 
   CustomQuestion
 } from "@/types/widget";
+import { MultiStepCheckout } from "@/components/checkout/MultiStepCheckout";
 
 // Extend the global Window interface to include WindcavePayments
 declare global {
@@ -129,6 +130,8 @@ const TicketWidget = () => {
   // State for custom question answers
   const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
   const [customErrors, setCustomErrors] = useState<Record<string, string>>({});
+  // State for checkout mode
+  const [checkoutMode, setCheckoutMode] = useState<'onepage' | 'multistep'>('onepage');
 
   useEffect(() => {
     if (eventId) {
@@ -218,6 +221,13 @@ const TicketWidget = () => {
       setLoading(false);
     }
   };
+
+  // Check if multi-step checkout should be used based on widget customization
+  useEffect(() => {
+    if (eventData?.widget_customization?.checkoutMode) {
+      setCheckoutMode(eventData.widget_customization.checkoutMode);
+    }
+  }, [eventData]);
 
   // Function to dynamically load Windcave scripts based on endpoint
   const loadWindcaveScripts = async (endpoint: string): Promise<void> => {
@@ -891,6 +901,17 @@ const TicketWidget = () => {
       setWindcaveDropIn(null);
     }
   };
+
+  // Render multi-step checkout if enabled
+  if (checkoutMode === 'multistep' && eventData) {
+    return (
+      <MultiStepCheckout
+        eventData={eventData}
+        ticketTypes={ticketTypes}
+        customQuestions={customQuestions}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
