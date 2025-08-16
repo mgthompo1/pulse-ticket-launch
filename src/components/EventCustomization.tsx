@@ -1435,13 +1435,19 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     onValueChange={async (value: 'onepage' | 'multistep') => {
                       try {
                         const currentCustomization = (eventData?.widget_customization as any) || {};
+                        console.log("Saving checkout mode:", value);
+                        console.log("Current customization:", currentCustomization);
+                        
+                        const updatedCustomization = {
+                          ...currentCustomization,
+                          checkoutMode: value
+                        };
+                        console.log("Updated customization:", updatedCustomization);
+                        
                         const { error } = await supabase
                           .from("events")
                           .update({ 
-                            widget_customization: {
-                              ...currentCustomization,
-                              checkoutMode: value
-                            }
+                            widget_customization: updatedCustomization
                           })
                           .eq("id", eventId);
 
@@ -1449,10 +1455,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
                         setEventData(prev => prev ? ({
                           ...prev,
-                          widget_customization: {
-                            ...currentCustomization,
-                            checkoutMode: value
-                          } as any
+                          widget_customization: updatedCustomization as any
                         }) : null);
                         
                         toast({
