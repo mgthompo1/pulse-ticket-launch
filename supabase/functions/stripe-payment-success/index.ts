@@ -84,26 +84,47 @@ serve(async (req) => {
     if (ticketsToCreate.length > 0) {
       console.log("Inserting", ticketsToCreate.length, "tickets");
       
-      // Use RPC call to bypass RLS for ticket creation
-      const { data: createdTickets, error: ticketError } = await supabaseClient
-        .rpc('create_tickets_bulk', { 
-          tickets_data: ticketsToCreate 
-        });
-
-      if (ticketError) {
-        console.log("Ticket creation error:", ticketError.message);
-        // Fallback to direct insert if RPC doesn't exist
-        const { data: fallbackTickets, error: fallbackError } = await supabaseClient
+      // Try direct insert first (should work with service role)
+      try {
+        const { data: createdTickets, error: ticketError } = await supabaseClient
           .from("tickets")
           .insert(ticketsToCreate)
           .select();
 
-        if (fallbackError) {
-          throw new Error(`Ticket creation failed: ${fallbackError.message}`);
+        if (ticketError) {
+          console.error("Direct insert failed:", ticketError);
+          throw new Error(`Ticket creation failed: ${ticketError.message}`);
         }
-        console.log("Successfully created", fallbackTickets?.length || 0, "tickets via fallback");
-      } else {
-        console.log("Successfully created", createdTickets?.length || 0, "tickets via RPC");
+        
+        console.log("Successfully created", createdTickets?.length || 0, "tickets via direct insert");
+      } catch (insertError) {
+        console.error("Ticket creation error:", insertError);
+        
+        // If direct insert fails, try creating tickets one by one
+        console.log("Trying individual ticket creation...");
+        let successCount = 0;
+        
+        for (const ticket of ticketsToCreate) {
+          try {
+            const { error: singleError } = await supabaseClient
+              .from("tickets")
+              .insert(ticket);
+            
+            if (!singleError) {
+              successCount++;
+            } else {
+              console.error("Failed to create individual ticket:", singleError);
+            }
+          } catch (singleTicketError) {
+            console.error("Individual ticket creation failed:", singleTicketError);
+          }
+        }
+        
+        if (successCount === 0) {
+          throw new Error(`Failed to create any tickets. Success: ${successCount}/${ticketsToCreate.length}`);
+        }
+        
+        console.log(`Created ${successCount}/${ticketsToCreate.length} tickets via individual insert`);
       }
     } else {
       console.log("No tickets to create (merchandise only order)");
