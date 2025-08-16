@@ -51,7 +51,7 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
                   </div>
                   <div className="text-right">
                     <div className="text-xl font-bold">${ticketType.price}</div>
-                    <Badge variant={isAvailable ? "default" : "secondary"}>
+                    <Badge variant={isAvailable ? "secondary" : "secondary"}>
                       {isAvailable 
                         ? `${ticketType.quantity_available - ticketType.quantity_sold} available`
                         : 'Sold out'
