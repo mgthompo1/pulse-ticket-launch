@@ -97,6 +97,7 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
           onClick={onNext} 
           disabled={!hasSelectedTickets}
           size="lg"
+          className="bg-neutral-900 hover:bg-neutral-800 text-white border-0"
         >
           Continue to Add-ons
         </Button>

@@ -298,7 +298,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             <Button type="button" variant="outline" onClick={onBack} size="lg">
               Back to Add-ons
             </Button>
-            <Button type="submit" size="lg">
+            <Button type="submit" size="lg" className="bg-neutral-900 hover:bg-neutral-800 text-white border-0">
               Continue to Payment
             </Button>
           </div>

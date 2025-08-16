@@ -34,7 +34,7 @@ export const AddOnsSelection: React.FC<AddOnsSelectionProps> = ({
         <Button variant="outline" onClick={onBack} size="lg">
           Back to Tickets
         </Button>
-        <Button onClick={onNext} size="lg">
+        <Button onClick={onNext} size="lg" className="bg-neutral-900 hover:bg-neutral-800 text-white border-0">
           Continue to Details
         </Button>
       </div>
