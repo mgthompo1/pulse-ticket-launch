@@ -85,6 +85,21 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
+        {/* Event Header */}
+        <div className="mb-8 text-center">
+          {eventData.logo_url && (
+            <img 
+              src={eventData.logo_url} 
+              alt={`${eventData.name} logo`}
+              className="h-16 w-auto mx-auto mb-4"
+            />
+          )}
+          <h1 className="text-3xl font-bold text-foreground">{eventData.name}</h1>
+          {eventData.venue && (
+            <p className="text-muted-foreground mt-2">{eventData.venue}</p>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">

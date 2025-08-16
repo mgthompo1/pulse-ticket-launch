@@ -70,7 +70,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 <FormMessage />
               </FormItem>
             )}
-            rules={{ required: question.required ? 'This field is required' : false }}
+            rules={{ required: question.required ? { value: true, message: 'This field is required' } : false }}
           />
         );
 
@@ -95,7 +95,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 <FormMessage />
               </FormItem>
             )}
-            rules={{ required: question.required ? 'This field is required' : false }}
+            rules={{ required: question.required ? { value: true, message: 'This field is required' } : false }}
           />
         );
 
@@ -128,7 +128,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 <FormMessage />
               </FormItem>
             )}
-            rules={{ required: question.required ? 'This field is required' : false }}
+            rules={{ required: question.required ? { value: true, message: 'This field is required' } : false }}
           />
         );
 
@@ -163,7 +163,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 <FormMessage />
               </FormItem>
             )}
-            rules={{ required: question.required ? 'This field is required' : false }}
+            rules={{ required: question.required ? { value: true, message: 'This field is required' } : false }}
           />
         );
 
@@ -190,7 +190,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 <FormMessage />
               </FormItem>
             )}
-            rules={{ required: question.required ? 'This field is required' : false }}
+            rules={{ required: question.required ? { value: true, message: 'This field is required' } : false }}
           />
         );
 
