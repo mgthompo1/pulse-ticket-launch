@@ -258,7 +258,7 @@ serve(async (req) => {
     });
 
     const emailResponse = await resend.emails.send({
-      from: "TicketFlo <noreply@ticketflo.com>",
+      from: "TicketFlo <onboarding@resend.dev>", // Using verified Resend domain
       to: [emailContent.to],
       subject: emailContent.subject,
       html: emailContent.html,

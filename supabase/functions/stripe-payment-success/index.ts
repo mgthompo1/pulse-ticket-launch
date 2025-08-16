@@ -71,9 +71,15 @@ serve(async (req) => {
     for (const item of orderItems) {
       if (item.item_type === 'ticket') {
         for (let i = 0; i < item.quantity; i++) {
+          // Generate proper ticket code using the database function
+          const ticketCode = await supabaseClient.rpc('generate_ticket_code').single();
+          if (ticketCode.error) {
+            throw new Error(`Ticket code generation failed: ${ticketCode.error.message}`);
+          }
+          
           ticketsToCreate.push({
             order_item_id: item.id,
-            ticket_code: `T${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            ticket_code: ticketCode.data,
             status: 'valid',
             checked_in: false
           });

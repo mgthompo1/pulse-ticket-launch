@@ -93,15 +93,24 @@ serve(async (req) => {
 
     console.log("Creating tickets for", orderItems.length, "order items");
     
-    // Create tickets for each order item
+    // Create tickets for each order item (only for ticket items, not merchandise)
     const ticketsToCreate = [];
     for (const item of orderItems) {
-      for (let i = 0; i < item.quantity; i++) {
-        ticketsToCreate.push({
-          order_item_id: item.id,
-          ticket_code: `T${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          status: 'valid'
-        });
+      if (item.item_type === 'ticket') {
+        for (let i = 0; i < item.quantity; i++) {
+          // Generate proper ticket code using the database function
+          const ticketCode = await supabaseClient.rpc('generate_ticket_code').single();
+          if (ticketCode.error) {
+            throw new Error(`Ticket code generation failed: ${ticketCode.error.message}`);
+          }
+          
+          ticketsToCreate.push({
+            order_item_id: item.id,
+            ticket_code: ticketCode.data,
+            status: 'valid',
+            checked_in: false
+          });
+        }
       }
     }
 
@@ -130,14 +139,7 @@ serve(async (req) => {
 
       if (!eventError && event) {
         await supabaseClient.functions.invoke('send-ticket-email', {
-          body: {
-            orderId: order.id,
-            customerEmail: order.customer_email,
-            customerName: order.customer_name,
-            eventName: event.name,
-            eventDate: event.event_date,
-            ticketCount: createdTickets?.length || 0
-          }
+          body: { orderId: order.id }
         });
         console.log("Ticket email sent successfully");
         
