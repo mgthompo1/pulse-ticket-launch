@@ -1467,7 +1467,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         
                         toast({
                           title: "Success",
-                          description: `Checkout mode updated to ${value}. Please refresh the widget to see changes.`
+                          description: `Checkout mode updated to ${value === 'onepage' ? 'One Page' : 'Multi-Step'}. Open your widget to see changes.`
                         });
                       } catch (error) {
                         console.error("Error updating checkout mode:", error);

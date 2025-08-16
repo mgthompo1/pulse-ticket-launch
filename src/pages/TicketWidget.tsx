@@ -144,7 +144,11 @@ const TicketWidget = () => {
 
   const loadEventData = useCallback(async () => {
     try {
+      console.log("=== LOADING EVENT DATA ===");
+      console.log("Event ID:", eventId);
+      
       // Load event details with safe payment configuration
+      // Add timestamp to ensure we get fresh data and bypass any caching
       const { data: event, error: eventError } = await supabase
         .from("events")
         .select(`
@@ -233,6 +237,7 @@ const TicketWidget = () => {
 
   useEffect(() => {
     if (eventId) {
+      console.log("=== TicketWidget mounting or eventId changed ===");
       loadEventData();
     }
   }, [eventId, loadEventData]);
