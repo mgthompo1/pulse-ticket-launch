@@ -929,7 +929,7 @@ const TicketWidget = () => {
             <div className="text-center mb-6">
               <img 
                 src={(eventData.organizations as any).logo_url} 
-                alt={`${eventData.organizations.name || 'Organization'} Logo`}
+                alt={`${eventData.organizations?.name || 'Organization'} Logo`}
                 className="h-16 mx-auto object-contain"
               />
             </div>

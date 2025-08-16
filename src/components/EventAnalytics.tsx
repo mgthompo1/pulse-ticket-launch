@@ -44,7 +44,7 @@ interface OrderDetails {
     id: string;
     quantity: number;
     unit_price: number;
-    item_type: string;
+    item_type: string | null;
     ticket_types: {
       name: string;
       price: number;
