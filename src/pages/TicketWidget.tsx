@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { createClient } from '@supabase/supabase-js';
@@ -89,21 +89,30 @@ interface WindcaveDropInInstance {
   close: () => void;
 }
 
+// Create an anonymous Supabase client for external users - moved outside component
+const createAnonymousSupabaseClient = () => createClient(
+  "https://yoxsewbpoqxscsutqlcb.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlveHNld2Jwb3F4c2NzdXRxbGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0MzU4NDgsImV4cCI6MjA2ODAxMTg0OH0.CrW53mnoXiatBWePensSroh0yfmVALpcWxX2dXYde5k",
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  }
+);
+
 const TicketWidget = () => {
   const { eventId } = useParams();
   const { toast } = useToast();
   
-  // Create an anonymous Supabase client for external users
-  const anonymousSupabase = createClient(
-    "https://yoxsewbpoqxscsutqlcb.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlveHNld2Jwb3F4c2NzdXRxbGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0MzU4NDgsImV4cCI6MjA2ODAxMTg0OH0.CrW53mnoXiatBWePensSroh0yfmVALpcWxX2dXYde5k",
-    {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false
-      }
-    }
-  );
+  // Use useMemo to ensure the client is only created once
+  const anonymousSupabase = useMemo(() => createAnonymousSupabaseClient(), []);
+  
+  // Add render counter for debugging
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+  
+  console.log(`TicketWidget render #${renderCount.current}`);
   
   const [eventData, setEventData] = useState<EventData | null>(null);
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
@@ -133,13 +142,7 @@ const TicketWidget = () => {
   // State for checkout mode
   const [checkoutMode, setCheckoutMode] = useState<'onepage' | 'multistep'>('onepage');
 
-  useEffect(() => {
-    if (eventId) {
-      loadEventData();
-    }
-  }, [eventId]);
-
-  const loadEventData = async () => {
+  const loadEventData = useCallback(async () => {
     try {
       // Load event details with safe payment configuration
       const { data: event, error: eventError } = await supabase
@@ -165,6 +168,12 @@ const TicketWidget = () => {
       if (!event) {
         throw new Error("Event not found or not published");
       }
+
+      console.log("=== LOADED EVENT DATA ===");
+      console.log("Full event object:", event);
+      console.log("Widget customization:", event.widget_customization);
+      console.log("Widget customization type:", typeof event.widget_customization);
+      console.log("Widget customization keys:", event.widget_customization ? Object.keys(event.widget_customization) : 'none');
 
       setEventData(event);
 
@@ -220,23 +229,33 @@ const TicketWidget = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [eventId, toast]);
+
+  useEffect(() => {
+    if (eventId) {
+      loadEventData();
+    }
+  }, [eventId, loadEventData]);
 
   // Check if multi-step checkout should be used based on widget customization
   useEffect(() => {
     console.log("=== TicketWidget useEffect ===");
     console.log("Event data:", eventData);
     console.log("Event data widget_customization:", eventData?.widget_customization);
+    console.log("Widget customization type:", typeof eventData?.widget_customization);
+    console.log("Widget customization keys:", eventData?.widget_customization ? Object.keys(eventData.widget_customization) : 'none');
     console.log("CheckoutMode from data:", eventData?.widget_customization?.checkoutMode);
     console.log("Current checkoutMode state:", checkoutMode);
     
     if (eventData?.widget_customization?.checkoutMode) {
       console.log("Setting checkout mode to:", eventData.widget_customization.checkoutMode);
       setCheckoutMode(eventData.widget_customization.checkoutMode);
-    } else {
-      console.log("No checkoutMode found in widget_customization, keeping default:", checkoutMode);
+    } else if (eventData && !eventData.widget_customization?.checkoutMode) {
+      // If no checkout mode is set, default to onepage
+      console.log("No checkoutMode found, defaulting to onepage");
+      setCheckoutMode('onepage');
     }
-  }, [eventData, checkoutMode]);
+  }, [eventData]); // Remove checkoutMode from dependencies to prevent infinite loop
 
   // Function to dynamically load Windcave scripts based on endpoint
   const loadWindcaveScripts = async (endpoint: string): Promise<void> => {
@@ -416,10 +435,22 @@ const TicketWidget = () => {
     return subtotal + processingFeeAmount;
   };
 
-  // Helper to get custom questions
-  const customQuestions = eventData?.widget_customization?.customQuestions?.enabled
-    ? eventData.widget_customization.customQuestions.questions || []
-    : [];
+  // Optimize custom questions with useMemo
+  const customQuestions = useMemo(() => {
+    const questions = eventData?.widget_customization?.customQuestions?.enabled
+      ? eventData.widget_customization.customQuestions.questions || []
+      : [];
+
+    // Only log once when questions change
+    if (questions.length > 0) {
+      console.log("=== CUSTOM QUESTIONS DEBUG ===");
+      console.log("Custom questions enabled:", eventData?.widget_customization?.customQuestions?.enabled);
+      console.log("Custom questions count:", questions.length);
+      console.log("First question:", questions[0]);
+    }
+
+    return questions;
+  }, [eventData?.widget_customization?.customQuestions]);
 
   // Validate custom questions before checkout
   const validateCustomQuestions = () => {
@@ -911,28 +942,27 @@ const TicketWidget = () => {
     }
   };
 
+  // Optimize checkout mode decision with useMemo
+  const shouldRenderMultiStep = useMemo(() => {
+    const isMultiStep = checkoutMode === 'multistep' && eventData;
+    
+    // Only log once when the decision changes
+    if (isMultiStep) {
+      console.log("✅ Rendering MultiStepCheckout component");
+    }
+    
+    return isMultiStep;
+  }, [checkoutMode, eventData]);
+
   // Render multi-step checkout if enabled
-  console.log("=== CHECKOUT MODE DECISION ===");
-  console.log("Current checkout mode:", checkoutMode);
-  console.log("Event data exists?", !!eventData);
-  console.log("Event ID:", eventId);
-  console.log("Widget customization:", eventData?.widget_customization);
-  console.log("Checkout mode from widget customization:", eventData?.widget_customization?.checkoutMode);
-  console.log("Should render multi-step?", checkoutMode === 'multistep' && eventData);
-  
-  if (checkoutMode === 'multistep' && eventData) {
-    console.log("✅ Rendering MultiStepCheckout component");
+  if (shouldRenderMultiStep && eventData) {
     return (
       <MultiStepCheckout
-        eventData={eventData}
+        eventData={eventData!}
         ticketTypes={ticketTypes}
         customQuestions={customQuestions}
       />
     );
-  } else {
-    console.log("❌ Rendering single-page checkout because:");
-    console.log("  - checkoutMode:", checkoutMode);
-    console.log("  - eventData exists:", !!eventData);
   }
 
   return (
