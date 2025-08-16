@@ -39,9 +39,11 @@ serve(async (req) => {
           event_date,
           venue,
           description,
+          email_customization,
           organizations!inner(
             name,
-            email
+            email,
+            logo_url
           )
         ),
         order_items!inner(
@@ -70,86 +72,175 @@ serve(async (req) => {
       eventName: order.events.name 
     });
 
-    // Generate tickets only for ticket items (not merchandise)
-    const ticketItems = order.order_items.filter((item: any) => item.item_type === 'ticket');
+    // Check delivery method from custom answers
+    const customAnswers = order.custom_answers as any;
+    const deliveryMethod = customAnswers?.deliveryMethod || 'qr_ticket';
     
-    const ticketPromises = ticketItems.map(async (item: any) => {
-      const tickets = [];
-      for (let i = 0; i < item.quantity; i++) {
-        const { data: ticket, error: ticketError } = await supabaseClient
-          .rpc("generate_ticket_code")
-          .single();
+    logStep("Processing delivery method", { deliveryMethod });
 
-        if (ticketError) throw ticketError;
+    // Generate tickets only for ticket items (not merchandise) and only if QR tickets are requested
+    const ticketItems = order.order_items.filter((item: any) => item.item_type === 'ticket');
+    let allTickets: any[] = [];
 
-        const { error: insertError } = await supabaseClient
-          .from("tickets")
-          .insert({
-            order_item_id: item.id,
-            ticket_code: ticket,
-            status: "valid"
+    if (deliveryMethod === 'qr_ticket') {
+      const ticketPromises = ticketItems.map(async (item: any) => {
+        const tickets = [];
+        for (let i = 0; i < item.quantity; i++) {
+          const { data: ticket, error: ticketError } = await supabaseClient
+            .rpc("generate_ticket_code")
+            .single();
+
+          if (ticketError) throw ticketError;
+
+          const { error: insertError } = await supabaseClient
+            .from("tickets")
+            .insert({
+              order_item_id: item.id,
+              ticket_code: ticket,
+              status: "valid"
+            });
+
+          if (insertError) throw insertError;
+
+          tickets.push({
+            code: ticket,
+            type: item.ticket_types?.name || 'General Admission',
+            price: item.unit_price
           });
+        }
+        return tickets;
+      });
 
-        if (insertError) throw insertError;
+      allTickets = (await Promise.all(ticketPromises)).flat();
+      logStep("Tickets generated", { count: allTickets.length });
+    } else {
+      logStep("Skipping ticket generation for confirmation email");
+    }
 
-        tickets.push({
-          code: ticket,
-          type: item.ticket_types?.name || 'General Admission',
-          price: item.unit_price
-        });
-      }
-      return tickets;
-    });
+    // Get email customization
+    const emailCustomization = order.events.email_customization as any;
+    const orgLogo = order.events.organizations.logo_url;
+    
+    // Create customized email content based on delivery method
+    let emailContent: any;
+    
+    if (deliveryMethod === 'qr_ticket') {
+      emailContent = {
+        to: order.customer_email,
+        subject: emailCustomization?.content?.subject || `Your tickets for ${order.events.name}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: ${emailCustomization?.template?.backgroundColor || '#ffffff'};">
+            ${orgLogo ? `<div style="text-align: center; padding: 20px 0;"><img src="${orgLogo}" alt="Organization Logo" style="max-width: 200px; height: auto;"></div>` : ''}
+            
+            <div style="padding: 20px;">
+              <h1 style="color: ${emailCustomization?.template?.headerColor || '#333'};">🎫 ${emailCustomization?.content?.headerText || 'Your Tickets Are Ready!'}</h1>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h2 style="margin-top: 0; color: #333;">${order.events.name}</h2>
+                <p><strong>📅 Date:</strong> ${new Date(order.events.event_date).toLocaleDateString()}</p>
+                <p><strong>📍 Venue:</strong> ${order.events.venue || 'TBA'}</p>
+                <p><strong>👤 Name:</strong> ${order.customer_name}</p>
+                <p><strong>📧 Email:</strong> ${order.customer_email}</p>
+              </div>
 
-    const allTickets = (await Promise.all(ticketPromises)).flat();
-    logStep("Tickets generated", { count: allTickets.length });
+              <h3 style="color: ${emailCustomization?.template?.textColor || '#000000'};">Your Tickets:</h3>
+              ${allTickets.map(ticket => `
+                <div style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                  <strong>${ticket.type}</strong><br>
+                  <code style="background: #f0f0f0; padding: 5px; font-size: 14px;">${ticket.code}</code><br>
+                  <small>Price: $${ticket.price}</small>
+                </div>
+              `).join('')}
 
-    // Create email content
-    const emailContent = {
-      to: order.customer_email,
-      subject: `Your tickets for ${order.events.name}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #333;">🎫 Your Tickets Are Ready!</h1>
-          
-          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h2 style="margin-top: 0; color: #333;">${order.events.name}</h2>
-            <p><strong>📅 Date:</strong> ${new Date(order.events.event_date).toLocaleDateString()}</p>
-            <p><strong>📍 Venue:</strong> ${order.events.venue || 'TBA'}</p>
-            <p><strong>👤 Name:</strong> ${order.customer_name}</p>
-            <p><strong>📧 Email:</strong> ${order.customer_email}</p>
-          </div>
+              <div style="background: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h4 style="margin-top: 0;">Important Information:</h4>
+                <ul>
+                  <li>Present your ticket codes at the event entrance</li>
+                  <li>Screenshots or printed versions are accepted</li>
+                  <li>Each ticket is valid for one person only</li>
+                  <li>Arrive early to avoid queues</li>
+                </ul>
+              </div>
 
-          <h3>Your Tickets:</h3>
-          ${allTickets.map(ticket => `
-            <div style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px;">
-              <strong>${ticket.type}</strong><br>
-              <code style="background: #f0f0f0; padding: 5px; font-size: 14px;">${ticket.code}</code><br>
-              <small>Price: $${ticket.price}</small>
+              <div style="color: ${emailCustomization?.template?.textColor || '#000000'}; padding: 15px; margin: 20px 0;">
+                ${emailCustomization?.content?.bodyText || 'We are excited to see you at the event!'}
+              </div>
+
+              <p style="color: #666; font-size: 14px;">
+                Questions? Contact the event organizer: ${order.events.organizations.email}
+              </p>
+              
+              <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+              <p style="color: #999; font-size: 12px; text-align: center;">
+                ${emailCustomization?.content?.footerText || 'Powered by TicketFlo Platform'}
+              </p>
             </div>
-          `).join('')}
-
-          <div style="background: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0;">
-            <h4 style="margin-top: 0;">Important Information:</h4>
-            <ul>
-              <li>Present your ticket codes at the event entrance</li>
-              <li>Screenshots or printed versions are accepted</li>
-              <li>Each ticket is valid for one person only</li>
-              <li>Arrive early to avoid queues</li>
-            </ul>
           </div>
+        `
+      };
+    } else {
+      // Confirmation email with detailed event information
+      emailContent = {
+        to: order.customer_email,
+        subject: emailCustomization?.content?.subject || `Event Confirmation: ${order.events.name}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: ${emailCustomization?.template?.backgroundColor || '#ffffff'};">
+            ${orgLogo ? `<div style="text-align: center; padding: 20px 0;"><img src="${orgLogo}" alt="Organization Logo" style="max-width: 200px; height: auto;"></div>` : ''}
+            
+            <div style="padding: 20px;">
+              <h1 style="color: ${emailCustomization?.template?.headerColor || '#333'};">✅ ${emailCustomization?.content?.headerText || 'Registration Confirmed!'}</h1>
+              
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h2 style="margin-top: 0; color: #333;">${order.events.name}</h2>
+                <p><strong>📅 Date & Time:</strong> ${new Date(order.events.event_date).toLocaleDateString()} at ${new Date(order.events.event_date).toLocaleTimeString()}</p>
+                <p><strong>📍 Venue:</strong> ${order.events.venue || 'TBA'}</p>
+                <p><strong>👤 Attendee:</strong> ${order.customer_name}</p>
+                <p><strong>📧 Email:</strong> ${order.customer_email}</p>
+                ${order.customer_phone ? `<p><strong>📞 Phone:</strong> ${order.customer_phone}</p>` : ''}
+              </div>
 
-          <p style="color: #666; font-size: 14px;">
-            Questions? Contact the event organizer: ${order.events.organizations.email}
-          </p>
-          
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-          <p style="color: #999; font-size: 12px; text-align: center;">
-            Powered by Ticket2 Platform
-          </p>
-        </div>
-      `
-    };
+              ${order.events.description ? `
+              <div style="background: #fff9e6; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f39c12;">
+                <h3 style="color: #333; margin-top: 0;">Event Details:</h3>
+                <p style="color: #333; line-height: 1.6;">${order.events.description}</p>
+              </div>
+              ` : ''}
+
+              <h3 style="color: ${emailCustomization?.template?.textColor || '#000000'};">Your Registration:</h3>
+              ${ticketItems.map(item => `
+                <div style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px;">
+                  <strong>${item.ticket_types?.name || 'General Admission'}</strong> - ${item.quantity} ${item.quantity === 1 ? 'person' : 'people'}<br>
+                  <small>Total: $${(item.unit_price * item.quantity).toFixed(2)}</small>
+                </div>
+              `).join('')}
+
+              <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <h4 style="margin-top: 0; color: #2e7d32;">What to Expect:</h4>
+                <ul style="color: #2e7d32;">
+                  <li>Arrive 15-30 minutes before the event starts</li>
+                  <li>Bring a valid ID for check-in</li>
+                  <li>Check your email for any last-minute updates</li>
+                  <li>Contact us if you have any questions</li>
+                </ul>
+              </div>
+
+              <div style="color: ${emailCustomization?.template?.textColor || '#000000'}; padding: 15px; margin: 20px 0;">
+                ${emailCustomization?.content?.bodyText || 'We look forward to seeing you at the event!'}
+              </div>
+
+              <p style="color: #666; font-size: 14px;">
+                Questions? Contact the event organizer: ${order.events.organizations.email}
+              </p>
+              
+              <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+              <p style="color: #999; font-size: 12px; text-align: center;">
+                ${emailCustomization?.content?.footerText || 'Powered by TicketFlo Platform'}
+              </p>
+            </div>
+          </div>
+        `
+      };
+    }
 
     // Send email using Resend
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
