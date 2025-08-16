@@ -226,10 +226,9 @@ const TicketWidget = () => {
   useEffect(() => {
     console.log("Event data widget_customization:", eventData?.widget_customization);
     console.log("CheckoutMode from data:", eventData?.widget_customization?.checkoutMode);
-    if (eventData?.widget_customization?.checkoutMode) {
-      console.log("Setting checkout mode to:", eventData.widget_customization.checkoutMode);
-      setCheckoutMode(eventData.widget_customization.checkoutMode);
-    }
+    const mode = eventData?.widget_customization?.checkoutMode || 'multistep'; // Default to multistep for testing
+    console.log("Setting checkout mode to:", mode);
+    setCheckoutMode(mode);
   }, [eventData]);
 
   // Function to dynamically load Windcave scripts based on endpoint
