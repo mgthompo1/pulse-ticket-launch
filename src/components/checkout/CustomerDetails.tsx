@@ -30,6 +30,8 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   onNext,
   onBack
 }) => {
+  console.log("=== CustomerDetails component rendering ===");
+  console.log("customQuestions:", customQuestions);
   const form = useForm<z.infer<typeof customerFormSchema>>({
     resolver: zodResolver(customerFormSchema),
     defaultValues: {
@@ -41,6 +43,8 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   });
 
   const onSubmit = (values: z.infer<typeof customerFormSchema>) => {
+    console.log("=== CustomerDetails form submission ===");
+    console.log("Form values:", values);
     onNext(values as CustomerInfo);
   };
 
