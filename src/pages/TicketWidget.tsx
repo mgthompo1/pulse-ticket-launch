@@ -224,7 +224,10 @@ const TicketWidget = () => {
 
   // Check if multi-step checkout should be used based on widget customization
   useEffect(() => {
+    console.log("Event data widget_customization:", eventData?.widget_customization);
+    console.log("CheckoutMode from data:", eventData?.widget_customization?.checkoutMode);
     if (eventData?.widget_customization?.checkoutMode) {
+      console.log("Setting checkout mode to:", eventData.widget_customization.checkoutMode);
       setCheckoutMode(eventData.widget_customization.checkoutMode);
     }
   }, [eventData]);
@@ -903,7 +906,10 @@ const TicketWidget = () => {
   };
 
   // Render multi-step checkout if enabled
+  console.log("Current checkout mode:", checkoutMode);
+  console.log("Should render multi-step?", checkoutMode === 'multistep' && eventData);
   if (checkoutMode === 'multistep' && eventData) {
+    console.log("Rendering MultiStepCheckout component");
     return (
       <MultiStepCheckout
         eventData={eventData}
