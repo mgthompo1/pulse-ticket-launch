@@ -248,14 +248,23 @@ const TicketWidget = () => {
     console.log("Current checkoutMode state:", checkoutMode);
     
     if (eventData?.widget_customization?.checkoutMode) {
-      console.log("Setting checkout mode to:", eventData.widget_customization.checkoutMode);
-      setCheckoutMode(eventData.widget_customization.checkoutMode);
+      const newMode = eventData.widget_customization.checkoutMode;
+      console.log("Setting checkout mode to:", newMode);
+      console.log("Previous checkout mode was:", checkoutMode);
+      if (checkoutMode !== newMode) {
+        console.log("🔄 CHECKOUT MODE CHANGING FROM", checkoutMode, "TO", newMode);
+      }
+      setCheckoutMode(newMode);
     } else if (eventData) {
       // If no checkout mode is explicitly set in widget customization, default to onepage
       console.log("No checkoutMode found in widget_customization, defaulting to onepage");
+      console.log("Previous checkout mode was:", checkoutMode);
+      if (checkoutMode !== 'onepage') {
+        console.log("🔄 CHECKOUT MODE CHANGING FROM", checkoutMode, "TO onepage (default)");
+      }
       setCheckoutMode('onepage');
     }
-  }, [eventData?.widget_customization?.checkoutMode]); // Only depend on the specific checkoutMode value
+  }, [eventData?.widget_customization?.checkoutMode, eventData?.id]); // Depend on checkoutMode value and event ID
 
   // Function to dynamically load Windcave scripts based on endpoint
   const loadWindcaveScripts = async (endpoint: string): Promise<void> => {

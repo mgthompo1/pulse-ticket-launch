@@ -1462,9 +1462,12 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                           widget_customization: updatedCustomization as any
                         }) : null);
                         
+                        // Force reload of customizations to ensure the change is reflected
+                        await loadCustomizations();
+                        
                         toast({
                           title: "Success",
-                          description: "Checkout mode updated"
+                          description: `Checkout mode updated to ${value}. Please refresh the widget to see changes.`
                         });
                       } catch (error) {
                         console.error("Error updating checkout mode:", error);
