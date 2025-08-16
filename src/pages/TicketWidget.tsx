@@ -946,9 +946,19 @@ const TicketWidget = () => {
   const shouldRenderMultiStep = useMemo(() => {
     const isMultiStep = checkoutMode === 'multistep' && eventData;
     
+    // Debug logging
+    console.log("=== CHECKOUT MODE DECISION DEBUG ===");
+    console.log("checkoutMode:", checkoutMode);
+    console.log("eventData exists:", !!eventData);
+    console.log("widget_customization:", eventData?.widget_customization);
+    console.log("checkoutMode from widget:", eventData?.widget_customization?.checkoutMode);
+    console.log("isMultiStep:", isMultiStep);
+    
     // Only log once when the decision changes
     if (isMultiStep) {
       console.log("✅ Rendering MultiStepCheckout component");
+    } else {
+      console.log("❌ Rendering single-page checkout");
     }
     
     return isMultiStep;
