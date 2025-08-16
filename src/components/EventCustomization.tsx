@@ -1451,8 +1451,12 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                           })
                           .eq("id", eventId);
 
-                        if (error) throw error;
+                        if (error) {
+                          console.error("Database error:", error);
+                          throw error;
+                        }
 
+                        console.log("Database update successful");
                         setEventData(prev => prev ? ({
                           ...prev,
                           widget_customization: updatedCustomization as any
