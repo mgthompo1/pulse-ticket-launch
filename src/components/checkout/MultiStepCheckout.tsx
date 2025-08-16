@@ -111,7 +111,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                     key={step.key}
                     className={`text-sm font-medium ${
                       currentStep === step.key 
-                        ? 'text-primary' 
+                        ? 'text-neutral-900' 
                         : steps.findIndex(s => s.key === currentStep) > steps.findIndex(s => s.key === step.key)
                           ? 'text-muted-foreground'
                           : 'text-muted-foreground/50'
@@ -121,7 +121,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                   </div>
                 ))}
               </div>
-              <Progress value={currentStepData?.progress || 0} className="h-2" />
+              <Progress value={currentStepData?.progress || 0} className="h-2 [&>div]:bg-neutral-900" />
             </div>
 
             {/* Step Content */}
