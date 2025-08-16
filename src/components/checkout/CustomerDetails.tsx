@@ -32,6 +32,12 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
 }) => {
   console.log("=== CustomerDetails component rendering ===");
   console.log("customQuestions:", customQuestions);
+  console.log("customQuestions type:", typeof customQuestions);
+  console.log("customQuestions is array:", Array.isArray(customQuestions));
+  
+  // Safety check - ensure customQuestions is always an array
+  const safeCustomQuestions = Array.isArray(customQuestions) ? customQuestions : [];
+  
   const form = useForm<z.infer<typeof customerFormSchema>>({
     resolver: zodResolver(customerFormSchema),
     defaultValues: {
@@ -49,6 +55,14 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   };
 
   const renderCustomQuestion = (question: CustomQuestion) => {
+    console.log("=== Rendering custom question ===");
+    console.log("Question:", question);
+    console.log("Question options:", question.options);
+    console.log("Options is array:", Array.isArray(question.options));
+    
+    // Safety check for options
+    const safeOptions = Array.isArray(question.options) ? question.options : [];
+    
     switch (question.type) {
       case 'text':
       case 'email':
@@ -121,12 +135,12 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                       <SelectValue placeholder={question.question} />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
-                    {question.options?.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {option}
-                      </SelectItem>
-                    ))}
+                   <SelectContent>
+                     {safeOptions.map((option) => (
+                       <SelectItem key={option} value={option}>
+                         {option}
+                       </SelectItem>
+                     ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -154,12 +168,12 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                     defaultValue={field.value}
                     className="flex flex-col space-y-1"
                   >
-                    {question.options?.map((option) => (
-                      <div key={option} className="flex items-center space-x-2">
-                        <RadioGroupItem value={option} id={option} />
-                        <label htmlFor={option} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                          {option}
-                        </label>
+                     {safeOptions.map((option) => (
+                       <div key={option} className="flex items-center space-x-2">
+                         <RadioGroupItem value={option} id={option} />
+                         <label htmlFor={option} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                           {option}
+                         </label>
                       </div>
                     ))}
                   </RadioGroup>
@@ -261,13 +275,13 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             </CardContent>
           </Card>
 
-          {customQuestions.length > 0 && (
+          {safeCustomQuestions.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle>Additional Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {customQuestions.map(renderCustomQuestion)}
+                {safeCustomQuestions.map(renderCustomQuestion)}
               </CardContent>
             </Card>
           )}
