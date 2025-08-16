@@ -158,7 +158,6 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                 cartItems={cartItems}
                 merchandiseCart={merchandiseCart}
                 customerInfo={customerInfo}
-                onBack={prevStep}
               />
             )}
           </div>
@@ -170,6 +169,9 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                 eventData={eventData}
                 cartItems={cartItems}
                 merchandiseCart={merchandiseCart}
+                currentStep={currentStep}
+                customerInfo={customerInfo}
+                onBack={prevStep}
               />
             </div>
           </div>

@@ -1,20 +1,34 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CartItem, MerchandiseCartItem, EventData } from '@/types/widget';
+import { Loader2, CreditCard } from 'lucide-react';
+import { CartItem, MerchandiseCartItem, EventData, CustomerInfo } from '@/types/widget';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
 
 interface OrderSummaryProps {
   eventData: EventData;
   cartItems: CartItem[];
   merchandiseCart: MerchandiseCartItem[];
+  currentStep?: string;
+  customerInfo?: CustomerInfo | null;
+  onBack?: () => void;
 }
 
 export const OrderSummary: React.FC<OrderSummaryProps> = ({
   eventData,
   cartItems,
-  merchandiseCart
+  merchandiseCart,
+  currentStep,
+  customerInfo,
+  onBack
 }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null);
+  const [showStripePayment, setShowStripePayment] = useState(false);
   const calculateTicketSubtotal = () => {
     return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
@@ -30,6 +44,118 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     : 0;
 
   const total = subtotal + processingFee;
+
+  // Load Stripe configuration when on payment step
+  useEffect(() => {
+    const loadStripeConfig = async () => {
+      if (currentStep === 'payment' && eventData.organizations?.payment_provider === 'stripe') {
+        try {
+          const { data: paymentConfig, error: configError } = await supabase
+            .rpc('get_organization_payment_config', { 
+              p_organization_id: eventData.organization_id 
+            });
+
+          if (!configError && paymentConfig && paymentConfig.length > 0) {
+            const config = paymentConfig[0];
+            if (config.stripe_publishable_key) {
+              setStripePublishableKey(config.stripe_publishable_key);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading Stripe config:', error);
+        }
+      }
+    };
+
+    loadStripeConfig();
+  }, [currentStep, eventData]);
+
+  const handlePayment = async () => {
+    if (!customerInfo) {
+      toast({
+        title: "Error",
+        description: "Customer information is required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (cartItems.length === 0 && merchandiseCart.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please add items to your cart first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!eventData.organizations?.payment_provider) {
+      toast({
+        title: "Payment Error",
+        description: "Payment provider not configured for this event.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // Prepare order items
+      const items = [
+        ...cartItems.map(item => ({
+          type: 'ticket' as const,
+          ticket_type_id: item.id,
+          quantity: item.quantity,
+          unit_price: item.price,
+        })),
+        ...merchandiseCart.map(item => ({
+          type: 'merchandise' as const,
+          merchandise_id: item.merchandise.id,
+          quantity: item.quantity,
+          unit_price: item.merchandise.price,
+          merchandise_options: {
+            size: item.selectedSize,
+            color: item.selectedColor,
+          },
+        })),
+      ];
+
+      if (eventData.organizations.payment_provider === 'windcave') {
+        const { data, error } = await supabase.functions.invoke('windcave-session', {
+          body: {
+            eventId: eventData.id,
+            items,
+            customerInfo,
+          },
+        });
+
+        if (error) throw error;
+
+        if (data.links) {
+          const redirectLink = data.links.find((link: any) => link.rel === 'redirect');
+          if (redirectLink) {
+            window.location.href = redirectLink.href;
+          }
+        }
+      } else if (eventData.organizations.payment_provider === 'stripe') {
+        if (!stripePublishableKey) {
+          throw new Error("Stripe publishable key not configured");
+        }
+        // Show Stripe payment form
+        setShowStripePayment(true);
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast({
+        title: "Payment Error",
+        description: "There was an error processing your payment. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   return (
     <Card className="w-full">
@@ -149,6 +275,71 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           <div className="text-center py-8 text-muted-foreground">
             <p className="text-sm">Your cart is empty</p>
             <p className="text-xs mt-1">Add tickets or merchandise to continue</p>
+          </div>
+        )}
+
+        {/* Payment Button - Only show on payment step */}
+        {currentStep === 'payment' && customerInfo && (cartItems.length > 0 || merchandiseCart.length > 0) && (
+          <div className="space-y-4">
+            <Separator />
+            <div className="space-y-3">
+              <Button 
+                onClick={handlePayment} 
+                size="lg" 
+                disabled={isProcessing}
+                className="w-full bg-neutral-900 hover:bg-neutral-800 text-white border-0"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Pay ${total.toFixed(2)}
+                  </>
+                )}
+              </Button>
+              
+              {onBack && (
+                <Button variant="outline" onClick={onBack} size="lg" className="w-full" disabled={isProcessing}>
+                  Back to Details
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Stripe Payment Form Modal */}
+        {showStripePayment && stripePublishableKey && customerInfo && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="w-full max-w-md">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Complete Payment</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <StripePaymentForm
+                    publishableKey={stripePublishableKey}
+                    eventId={eventData.id}
+                    cart={cartItems as any}
+                    merchandiseCart={merchandiseCart as any}
+                    customerInfo={customerInfo}
+                    total={total}
+                    onSuccess={() => {
+                      setShowStripePayment(false);
+                      toast({
+                        title: "Payment Successful",
+                        description: "Your payment has been processed successfully.",
+                      });
+                      window.location.href = '/payment-success';
+                    }}
+                    onCancel={() => setShowStripePayment(false)}
+                  />
+                </CardContent>
+              </Card>
+            </div>
           </div>
         )}
       </CardContent>
