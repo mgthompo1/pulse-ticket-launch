@@ -53,13 +53,41 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, onS
     setLoading(true);
 
     try {
+      // Prepare items array combining tickets and merchandise
+      const items = [
+        ...cart.map((ticket: any) => ({
+          type: 'ticket',
+          ticket_type_id: ticket.id || ticket.ticketTypeId,
+          quantity: ticket.quantity,
+          unit_price: ticket.price,
+        })),
+        ...merchandiseCart.map((item: any) => ({
+          type: 'merchandise',
+          merchandise_id: item.merchandise.id,
+          quantity: item.quantity,
+          unit_price: item.merchandise.price,
+          merchandise_options: {
+            size: item.selectedSize,
+            color: item.selectedColor,
+          },
+        })),
+      ];
+
+      console.log("=== STRIPE PAYMENT FORM DEBUG ===");
+      console.log("Sending to create-payment-intent:", {
+        eventId,
+        items,
+        customerInfo,
+        total
+      });
+
       // Create payment intent
       const { data, error } = await supabase.functions.invoke('create-payment-intent', {
         body: {
           eventId,
-          tickets: cart,
-          merchandise: merchandiseCart,
-          customerInfo
+          items,
+          customerInfo,
+          total
         }
       });
 
