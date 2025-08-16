@@ -8,8 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Minus, Plus, ShoppingCart, ArrowLeft, Calendar, Ticket, CreditCard, MapPin, HelpCircle, Mail, QrCode } from "lucide-react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Minus, Plus, ShoppingCart, ArrowLeft, Calendar, Ticket, CreditCard, MapPin, HelpCircle } from "lucide-react";
 import { GuestSeatSelector } from "@/components/GuestSeatSelector";
 import MerchandiseSelector from "@/components/MerchandiseSelector";
 import { Badge } from "@/components/ui/badge";
@@ -130,7 +129,6 @@ const TicketWidget = () => {
   // State for custom question answers
   const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
   const [customErrors, setCustomErrors] = useState<Record<string, string>>({});
-  const [deliveryMethod, setDeliveryMethod] = useState<'qr_ticket' | 'confirmation_email'>('qr_ticket');
 
   useEffect(() => {
     if (eventId) {
@@ -458,8 +456,8 @@ const TicketWidget = () => {
         }))
       ];
 
-      // Include customAnswers and deliveryMethod in customerInfo
-      const fullCustomerInfo = { ...customerInfo, customAnswers, deliveryMethod };
+      // Include customAnswers in customerInfo
+      const fullCustomerInfo = { ...customerInfo, customAnswers };
 
       if (paymentProvider === "windcave") {
         // Create Windcave session and initialize Drop-In
@@ -1009,34 +1007,6 @@ const TicketWidget = () => {
                         className="mt-1"
                       />
                     </div>
-                  </div>
-                  
-                  {/* Delivery Method Selection */}
-                  <div className="mt-6 pt-6 border-t">
-                    <Label className="text-base font-medium">Ticket Delivery Method *</Label>
-                    <p className="text-sm text-muted-foreground mb-4">Choose how you'd like to receive your tickets</p>
-                    <RadioGroup value={deliveryMethod} onValueChange={(value: 'qr_ticket' | 'confirmation_email') => setDeliveryMethod(value)}>
-                      <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/20 transition-colors">
-                        <RadioGroupItem value="qr_ticket" id="qr_ticket" />
-                        <div className="flex items-center gap-3 flex-1">
-                          <QrCode className="h-5 w-5 text-primary" />
-                          <div>
-                            <Label htmlFor="qr_ticket" className="font-medium cursor-pointer">Digital QR Code Tickets</Label>
-                            <p className="text-sm text-muted-foreground">Downloadable tickets with QR codes for entry</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-muted/20 transition-colors">
-                        <RadioGroupItem value="confirmation_email" id="confirmation_email" />
-                        <div className="flex items-center gap-3 flex-1">
-                          <Mail className="h-5 w-5 text-primary" />
-                          <div>
-                            <Label htmlFor="confirmation_email" className="font-medium cursor-pointer">Email Confirmation</Label>
-                            <p className="text-sm text-muted-foreground">Detailed event information and instructions via email</p>
-                          </div>
-                        </div>
-                      </div>
-                    </RadioGroup>
                   </div>
                 </CardContent>
               </Card>
