@@ -20,8 +20,14 @@ serve(async (req) => {
     );
 
     const { eventId, items, customerInfo } = await req.json();
+    
+    console.log("=== RECEIVED REQUEST DATA ===");
+    console.log("eventId:", eventId);
+    console.log("items:", JSON.stringify(items, null, 2));
+    console.log("customerInfo:", JSON.stringify(customerInfo, null, 2));
 
     if (!eventId || !items || !Array.isArray(items) || items.length === 0) {
+      console.error("Missing required parameters:", { eventId, items: items ? items.length : 'null', isArray: Array.isArray(items) });
       throw new Error("Missing required parameters: eventId, items");
     }
 
@@ -62,13 +68,36 @@ serve(async (req) => {
     }
 
     // Calculate total amount - handle both 'price' and 'unit_price' property names
+    console.log("=== CALCULATING TOTAL AMOUNT ===");
     const totalAmount = items.reduce((sum: number, item: any) => {
       const price = item.price || item.unit_price || 0;
       const quantity = item.quantity || 0;
+      
+      console.log(`Item debug:`, {
+        type: item.type,
+        id: item.id || item.ticket_type_id || item.merchandise_id,
+        price: price,
+        quantity: quantity,
+        rawItem: item
+      });
+      
       const itemTotal = parseFloat(price.toString()) * parseInt(quantity.toString());
       console.log(`Item: ${item.type || 'ticket'}, Price: ${price}, Quantity: ${quantity}, Total: ${itemTotal}`);
+      
+      if (isNaN(itemTotal)) {
+        console.error("Invalid item total calculation:", { price, quantity, itemTotal, item });
+        throw new Error(`Invalid item data: price=${price}, quantity=${quantity}`);
+      }
+      
       return sum + itemTotal;
     }, 0);
+    
+    console.log("Final total amount:", totalAmount);
+    
+    if (isNaN(totalAmount) || totalAmount <= 0) {
+      console.error("Invalid total amount:", totalAmount);
+      throw new Error(`Invalid total amount: ${totalAmount}`);
+    }
 
     // Windcave API endpoint
     const windcaveEndpoint = credentials.windcave_endpoint === "SEC" 
