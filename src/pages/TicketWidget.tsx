@@ -224,13 +224,19 @@ const TicketWidget = () => {
 
   // Check if multi-step checkout should be used based on widget customization
   useEffect(() => {
+    console.log("=== TicketWidget useEffect ===");
+    console.log("Event data:", eventData);
     console.log("Event data widget_customization:", eventData?.widget_customization);
     console.log("CheckoutMode from data:", eventData?.widget_customization?.checkoutMode);
+    console.log("Current checkoutMode state:", checkoutMode);
+    
     if (eventData?.widget_customization?.checkoutMode) {
       console.log("Setting checkout mode to:", eventData.widget_customization.checkoutMode);
       setCheckoutMode(eventData.widget_customization.checkoutMode);
+    } else {
+      console.log("No checkoutMode found in widget_customization, keeping default:", checkoutMode);
     }
-  }, [eventData]);
+  }, [eventData, checkoutMode]);
 
   // Function to dynamically load Windcave scripts based on endpoint
   const loadWindcaveScripts = async (endpoint: string): Promise<void> => {
@@ -906,10 +912,16 @@ const TicketWidget = () => {
   };
 
   // Render multi-step checkout if enabled
+  console.log("=== CHECKOUT MODE DECISION ===");
   console.log("Current checkout mode:", checkoutMode);
+  console.log("Event data exists?", !!eventData);
+  console.log("Event ID:", eventId);
+  console.log("Widget customization:", eventData?.widget_customization);
+  console.log("Checkout mode from widget customization:", eventData?.widget_customization?.checkoutMode);
   console.log("Should render multi-step?", checkoutMode === 'multistep' && eventData);
+  
   if (checkoutMode === 'multistep' && eventData) {
-    console.log("Rendering MultiStepCheckout component");
+    console.log("✅ Rendering MultiStepCheckout component");
     return (
       <MultiStepCheckout
         eventData={eventData}
@@ -917,6 +929,10 @@ const TicketWidget = () => {
         customQuestions={customQuestions}
       />
     );
+  } else {
+    console.log("❌ Rendering single-page checkout because:");
+    console.log("  - checkoutMode:", checkoutMode);
+    console.log("  - eventData exists:", !!eventData);
   }
 
   return (
