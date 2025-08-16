@@ -76,5 +76,5 @@ export interface CustomQuestion {
   label: string;
   type: 'text' | 'select' | 'textarea' | 'radio' | 'checkbox' | 'email' | 'phone';
   required: boolean;
-  options?: string[];
+  options?: string[] | string;
 }

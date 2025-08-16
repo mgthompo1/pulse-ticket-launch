@@ -60,8 +60,16 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
     console.log("Question options:", question.options);
     console.log("Options is array:", Array.isArray(question.options));
     
-    // Safety check for options
-    const safeOptions = Array.isArray(question.options) ? question.options : [];
+    // Safety check for options - handle both array and string formats
+    let safeOptions: string[] = [];
+    if (Array.isArray(question.options)) {
+      safeOptions = question.options;
+    } else if (typeof question.options === 'string' && question.options.trim()) {
+      // Split by newlines and filter out empty strings
+      safeOptions = question.options.split('\n').map((opt: string) => opt.trim()).filter((opt: string) => opt.length > 0);
+    }
+    
+    console.log("Safe options:", safeOptions);
     
     switch (question.type) {
       case 'text':
