@@ -61,9 +61,13 @@ serve(async (req) => {
       throw new Error("Windcave credentials not configured");
     }
 
-    // Calculate total amount
+    // Calculate total amount - handle both 'price' and 'unit_price' property names
     const totalAmount = items.reduce((sum: number, item: any) => {
-      return sum + (parseFloat(item.price) * parseInt(item.quantity));
+      const price = item.price || item.unit_price || 0;
+      const quantity = item.quantity || 0;
+      const itemTotal = parseFloat(price.toString()) * parseInt(quantity.toString());
+      console.log(`Item: ${item.type || 'ticket'}, Price: ${price}, Quantity: ${quantity}, Total: ${itemTotal}`);
+      return sum + itemTotal;
     }, 0);
 
     // Windcave API endpoint
@@ -155,14 +159,16 @@ serve(async (req) => {
     const orderItems = [];
     
     for (const item of items) {
+      const price = item.price || item.unit_price || 0;
+      
       if (item.type === 'merchandise') {
         // Merchandise item
         orderItems.push({
           order_id: order.id,
-          merchandise_id: item.id,
+          merchandise_id: item.merchandise_id || item.id,
           item_type: 'merchandise',
           quantity: parseInt(item.quantity),
-          unit_price: parseFloat(item.price),
+          unit_price: parseFloat(price.toString()),
           merchandise_options: {
             selectedSize: item.selectedSize,
             selectedColor: item.selectedColor
@@ -172,10 +178,10 @@ serve(async (req) => {
         // Ticket item (default/legacy)
         orderItems.push({
           order_id: order.id,
-          ticket_type_id: item.id,
+          ticket_type_id: item.ticket_type_id || item.id,
           item_type: 'ticket',
           quantity: parseInt(item.quantity),
-          unit_price: parseFloat(item.price)
+          unit_price: parseFloat(price.toString())
         });
       }
     }
