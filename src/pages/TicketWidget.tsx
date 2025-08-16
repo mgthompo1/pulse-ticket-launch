@@ -924,33 +924,32 @@ const TicketWidget = () => {
             </div>
           )}
 
-          {/* Header Section with Logo and Event Title */}
+          {/* Header Section with Logos and Event Title */}
           <div className="relative mb-8">
-            {/* Organization Logo - Top Right */}
-            {eventData.widget_customization?.branding?.showOrgLogo && (eventData.organizations as any)?.logo_url && (
-              <div className="absolute top-0 right-0">
+            {/* Top Right Corner Logos */}
+            <div className="absolute top-0 right-0 flex flex-col items-end gap-3">
+              {/* Organization Logo */}
+              {eventData.widget_customization?.branding?.showOrgLogo && (eventData.organizations as any)?.logo_url && (
                 <img 
                   src={(eventData.organizations as any).logo_url} 
                   alt={`${eventData.organizations?.name || 'Organization'} Logo`}
                   className="h-16 object-contain"
                 />
-              </div>
-            )}
-
-            {/* Event Logo - Centered above title if no org logo, or left-aligned if org logo exists */}
-            {eventData.widget_customization?.layout?.showEventImage && (eventData as any).logo_url && (
-              <div className={`mb-6 ${(eventData.widget_customization?.branding?.showOrgLogo && (eventData.organizations as any)?.logo_url) ? 'text-left' : 'text-center'}`}>
+              )}
+              
+              {/* Event Logo */}
+              {eventData.widget_customization?.layout?.showEventImage && (eventData as any).logo_url && (
                 <img 
                   src={(eventData as any).logo_url} 
                   alt={`${eventData.name} Logo`}
-                  className="h-20 object-contain rounded-lg inline-block"
+                  className="h-20 object-contain rounded-lg"
                 />
-              </div>
-            )}
+              )}
+            </div>
             
-            {/* Event Title - Aligned with logo placement */}
-            <div className="text-left">
-              <h1 className="text-3xl font-bold mb-2 pr-20">{eventData.name}</h1>
+            {/* Event Title - Left aligned with right padding to avoid logo overlap */}
+            <div className="text-left pr-32">
+              <h1 className="text-3xl font-bold mb-2">{eventData.name}</h1>
               <div className="flex items-center gap-6 text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
