@@ -395,6 +395,7 @@ export type Database = {
           status: string
           test_mode: boolean
           ticket_customization: Json | null
+          ticket_delivery_method: string | null
           updated_at: string
           venue: string | null
           widget_customization: Json | null
@@ -414,6 +415,7 @@ export type Database = {
           status?: string
           test_mode?: boolean
           ticket_customization?: Json | null
+          ticket_delivery_method?: string | null
           updated_at?: string
           venue?: string | null
           widget_customization?: Json | null
@@ -433,6 +435,7 @@ export type Database = {
           status?: string
           test_mode?: boolean
           ticket_customization?: Json | null
+          ticket_delivery_method?: string | null
           updated_at?: string
           venue?: string | null
           widget_customization?: Json | null
