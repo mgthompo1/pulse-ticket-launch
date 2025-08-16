@@ -1378,6 +1378,51 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 </div>
               )}
 
+              {/* Ticket Delivery Method */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-base font-medium">Default Ticket Delivery Method</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Choose how tickets will be delivered to customers by default
+                  </p>
+                  <Select
+                    value={eventData?.ticket_delivery_method || 'qr_ticket'}
+                    onValueChange={async (value: 'qr_ticket' | 'confirmation_email') => {
+                      try {
+                        const { error } = await supabase
+                          .from("events")
+                          .update({ ticket_delivery_method: value })
+                          .eq("id", eventId);
+
+                        if (error) throw error;
+
+                        setEventData(prev => prev ? ({ ...prev, ticket_delivery_method: value }) : null);
+                        
+                        toast({
+                          title: "Success",
+                          description: "Ticket delivery method updated"
+                        });
+                      } catch (error) {
+                        console.error("Error updating delivery method:", error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to update delivery method",
+                          variant: "destructive"
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="qr_ticket">Digital QR Code Tickets</SelectItem>
+                      <SelectItem value="confirmation_email">Email Confirmation Only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               {/* Test Mode */}
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="space-y-1">
