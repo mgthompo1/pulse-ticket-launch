@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CreditCard } from 'lucide-react';
+import { Loader2, CreditCard, Minus, Plus, Trash2 } from 'lucide-react';
 import { CartItem, MerchandiseCartItem, EventData, CustomerInfo } from '@/types/widget';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -15,6 +15,7 @@ interface OrderSummaryProps {
   merchandiseCart: MerchandiseCartItem[];
   currentStep?: string;
   customerInfo?: CustomerInfo | null;
+  onUpdateTicketQuantity?: (ticketTypeId: string, quantity: number) => void;
   onBack?: () => void;
 }
 
@@ -24,6 +25,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   merchandiseCart,
   currentStep,
   customerInfo,
+  onUpdateTicketQuantity,
   onBack
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -188,21 +190,61 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           <div className="space-y-3">
             <h4 className="font-medium text-sm">Tickets</h4>
             {cartItems.map((item) => (
-              <div key={item.id} className="flex justify-between items-start">
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{item.name}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="secondary" className="text-xs">
-                      Qty: {item.quantity}
-                    </Badge>
+              <div key={item.id} className="space-y-2">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{item.name}</p>
                     <span className="text-xs text-muted-foreground">
                       ${item.price.toFixed(2)} each
                     </span>
                   </div>
+                  <p className="font-medium text-sm">
+                    ${(item.price * item.quantity).toFixed(2)}
+                  </p>
                 </div>
-                <p className="font-medium text-sm">
-                  ${(item.price * item.quantity).toFixed(2)}
-                </p>
+                
+                {/* Quantity Controls - Only show if onUpdateTicketQuantity is provided */}
+                {onUpdateTicketQuantity && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onUpdateTicketQuantity(item.id, Math.max(0, item.quantity - 1))}
+                        disabled={item.quantity <= 1}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <Badge variant="secondary" className="text-xs min-w-[3rem] text-center">
+                        Qty: {item.quantity}
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onUpdateTicketQuantity(item.id, item.quantity + 1)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onUpdateTicketQuantity(item.id, 0)}
+                      className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+                
+                {/* Static quantity display when no update function */}
+                {!onUpdateTicketQuantity && (
+                  <Badge variant="secondary" className="text-xs">
+                    Qty: {item.quantity}
+                  </Badge>
+                )}
               </div>
             ))}
           </div>

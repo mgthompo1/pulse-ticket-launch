@@ -2,27 +2,22 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Minus, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { TicketType, CartItem } from '@/types/widget';
 
 interface TicketSelectionProps {
   ticketTypes: TicketType[];
   cartItems: CartItem[];
-  onUpdateQuantity: (ticketTypeId: string, quantity: number) => void;
+  onAddToCart: (ticketType: TicketType) => void;
   onNext: () => void;
 }
 
 export const TicketSelection: React.FC<TicketSelectionProps> = ({
   ticketTypes,
   cartItems,
-  onUpdateQuantity,
+  onAddToCart,
   onNext
 }) => {
-  const getCartQuantity = (ticketTypeId: string) => {
-    const item = cartItems.find(item => item.id === ticketTypeId);
-    return item?.quantity || 0;
-  };
-
   const hasSelectedTickets = cartItems.some(item => item.quantity > 0);
 
   return (
@@ -34,7 +29,6 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
 
       <div className="space-y-4">
         {ticketTypes.map((ticketType) => {
-          const quantity = getCartQuantity(ticketType.id);
           const isAvailable = ticketType.quantity_available > ticketType.quantity_sold;
           
           return (
@@ -63,27 +57,16 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
               
               {isAvailable && (
                 <CardContent>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Quantity</span>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onUpdateQuantity(ticketType.id, Math.max(0, quantity - 1))}
-                        disabled={quantity === 0}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      <span className="w-8 text-center">{quantity}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onUpdateQuantity(ticketType.id, quantity + 1)}
-                        disabled={quantity >= (ticketType.quantity_available - ticketType.quantity_sold)}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
+                  <div className="flex justify-end">
+                    <Button 
+                      onClick={() => onAddToCart(ticketType)}
+                      variant="secondary"
+                      className="bg-neutral-900 hover:bg-neutral-800 text-white border-0"
+                      disabled={ticketType.quantity_available - ticketType.quantity_sold <= 0}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add to Cart
+                    </Button>
                   </div>
                 </CardContent>
               )}

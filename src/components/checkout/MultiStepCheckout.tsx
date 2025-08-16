@@ -35,29 +35,34 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
 
   const currentStepData = steps.find(step => step.key === currentStep);
 
-  const updateTicketQuantity = (ticketTypeId: string, quantity: number) => {
-    const ticketType = ticketTypes.find(t => t.id === ticketTypeId);
-    if (!ticketType) return;
-
+  const addToCart = (ticketType: TicketType) => {
     setCartItems(prev => {
-      const existingItem = prev.find(item => item.id === ticketTypeId);
-      
-      if (quantity === 0) {
-        return prev.filter(item => item.id !== ticketTypeId);
-      }
+      const existingItem = prev.find(item => item.id === ticketType.id);
       
       if (existingItem) {
         return prev.map(item =>
-          item.id === ticketTypeId ? { ...item, quantity } : item
+          item.id === ticketType.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
       
       return [...prev, {
         ...ticketType,
-        quantity,
+        quantity: 1,
         type: 'ticket' as const,
         selectedSeats: []
       }];
+    });
+  };
+
+  const updateTicketQuantity = (ticketTypeId: string, quantity: number) => {
+    setCartItems(prev => {
+      if (quantity === 0) {
+        return prev.filter(item => item.id !== ticketTypeId);
+      }
+      
+      return prev.map(item =>
+        item.id === ticketTypeId ? { ...item, quantity } : item
+      );
     });
   };
 
@@ -86,18 +91,22 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         {/* Event Header */}
-        <div className="mb-8 text-center">
-          {eventData.logo_url && (
-            <img 
-              src={eventData.logo_url} 
-              alt={`${eventData.name} logo`}
-              className="h-16 w-auto mx-auto mb-4"
-            />
-          )}
-          <h1 className="text-3xl font-bold text-foreground">{eventData.name}</h1>
-          {eventData.venue && (
-            <p className="text-muted-foreground mt-2">{eventData.venue}</p>
-          )}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">{eventData.name}</h1>
+              {eventData.venue && (
+                <p className="text-muted-foreground mt-2">{eventData.venue}</p>
+              )}
+            </div>
+            {eventData.logo_url && (
+              <img 
+                src={eventData.logo_url} 
+                alt={`${eventData.name} logo`}
+                className="h-16 w-auto"
+              />
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -129,7 +138,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
               <TicketSelection
                 ticketTypes={ticketTypes}
                 cartItems={cartItems}
-                onUpdateQuantity={updateTicketQuantity}
+                onAddToCart={addToCart}
                 onNext={nextStep}
               />
             )}
@@ -171,6 +180,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                 merchandiseCart={merchandiseCart}
                 currentStep={currentStep}
                 customerInfo={customerInfo}
+                onUpdateTicketQuantity={updateTicketQuantity}
                 onBack={prevStep}
               />
             </div>
