@@ -30,11 +30,6 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   onNext,
   onBack
 }) => {
-  console.log("=== CustomerDetails component rendering ===");
-  console.log("customQuestions:", customQuestions);
-  console.log("customQuestions type:", typeof customQuestions);
-  console.log("customQuestions is array:", Array.isArray(customQuestions));
-  
   // Safety check - ensure customQuestions is always an array
   const safeCustomQuestions = Array.isArray(customQuestions) ? customQuestions : [];
   
@@ -49,17 +44,10 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   });
 
   const onSubmit = (values: z.infer<typeof customerFormSchema>) => {
-    console.log("=== CustomerDetails form submission ===");
-    console.log("Form values:", values);
     onNext(values as CustomerInfo);
   };
 
   const renderCustomQuestion = (question: CustomQuestion) => {
-    console.log("=== Rendering custom question ===");
-    console.log("Question:", question);
-    console.log("Question options:", question.options);
-    console.log("Options is array:", Array.isArray(question.options));
-    
     // Safety check for options - handle both array and string formats
     let safeOptions: string[] = [];
     if (Array.isArray(question.options)) {
@@ -68,8 +56,6 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
       // Split by newlines and filter out empty strings
       safeOptions = question.options.split('\n').map((opt: string) => opt.trim()).filter((opt: string) => opt.length > 0);
     }
-    
-    console.log("Safe options:", safeOptions);
     
     switch (question.type) {
       case 'text':

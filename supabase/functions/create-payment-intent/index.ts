@@ -13,6 +13,17 @@ serve(async (req) => {
   }
 
   try {
+    const { eventId, items, customerInfo, total } = await req.json();
+    
+    console.log("=== RECEIVED PARAMETERS ===");
+    console.log("eventId:", eventId);
+    console.log("items:", items);
+    console.log("total:", total);
+    
+    if (!eventId || !items) {
+      throw new Error("Missing required parameters: eventId, items");
+    }
+
     const Stripe = await import("https://esm.sh/stripe@14.21.0");
     const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.45.0");
     
@@ -23,43 +34,69 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Get organization first
-    const { data: org } = await supabaseClient
-      .from("organizations")
-      .select("id")
-      .eq("name", "Mitchs Ticket Company")
+    // Get event and organization info
+    const { data: event, error: eventError } = await supabaseClient
+      .from("events")
+      .select(`
+        id,
+        name,
+        organization_id,
+        organizations (
+          id,
+          name,
+          currency
+        )
+      `)
+      .eq("id", eventId)
       .single();
 
-    if (!org) {
-      throw new Error("Organization not found");
+    if (eventError || !event) {
+      throw new Error("Event not found");
     }
 
-    // Get payment credentials
-    const { data: credentials } = await supabaseClient
-      .from("payment_credentials")
-      .select("stripe_secret_key")
-      .eq("organization_id", org.id)
-      .single();
+    console.log("=== EVENT FOUND ===", event.name);
 
-    if (!credentials?.stripe_secret_key) {
-      throw new Error("No Stripe secret key found");
+    // Get payment credentials for the organization
+    const { data: credentials, error: credError } = await supabaseClient
+      .rpc('get_payment_credentials_for_processing', { 
+        p_organization_id: event.organization_id 
+      });
+
+    if (credError || !credentials || credentials.length === 0) {
+      console.error("Credentials error:", credError);
+      throw new Error("Payment credentials not found");
     }
 
-    console.log("=== TESTING STRIPE KEY ===");
-    const stripe = new Stripe.default(credentials.stripe_secret_key, {
+    const creds = credentials[0];
+    if (!creds.stripe_secret_key) {
+      throw new Error("Stripe secret key not configured");
+    }
+
+    console.log("=== INITIALIZING STRIPE ===");
+    const stripe = new Stripe.default(creds.stripe_secret_key, {
       apiVersion: "2023-10-16",
     });
 
-    console.log("=== CREATING SIMPLE PAYMENT INTENT ===");
+    // Calculate amount in cents
+    const amountInCents = Math.round((total || 0) * 100);
+    const currency = event.organizations?.currency || "usd";
+
+    console.log("=== CREATING PAYMENT INTENT ===");
+    console.log("Amount:", amountInCents, "cents");
+    console.log("Currency:", currency);
+
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: 1000, // $10.00
-      currency: "usd",
+      amount: amountInCents,
+      currency: currency.toLowerCase(),
       metadata: {
-        test: "simple_payment"
+        eventId: eventId,
+        customerName: customerInfo?.name || "Unknown",
+        customerEmail: customerInfo?.email || "unknown@example.com",
+        itemCount: items?.length || 0,
       },
     });
 
-    console.log("Payment intent created:", paymentIntent.id);
+    console.log("=== PAYMENT INTENT CREATED ===", paymentIntent.id);
 
     return new Response(JSON.stringify({
       success: true,
@@ -73,6 +110,7 @@ serve(async (req) => {
     console.error("=== ERROR ===");
     console.error("Error message:", error.message);
     console.error("Error type:", error.constructor.name);
+    console.error("Error stack:", error.stack);
     
     return new Response(JSON.stringify({ 
       error: error.message,
