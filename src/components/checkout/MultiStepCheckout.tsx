@@ -109,30 +109,30 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
           </div>
         </div>
 
+        {/* Progress Bar - Full Width */}
+        <div className="mb-8">
+          <div className="flex justify-between mb-2">
+            {steps.map((step) => (
+              <div
+                key={step.key}
+                className={`text-sm font-medium ${
+                  currentStep === step.key 
+                    ? 'text-neutral-900' 
+                    : steps.findIndex(s => s.key === currentStep) > steps.findIndex(s => s.key === step.key)
+                      ? 'text-muted-foreground'
+                      : 'text-muted-foreground/50'
+                }`}
+              >
+                {step.label}
+              </div>
+            ))}
+          </div>
+          <Progress value={currentStepData?.progress || 0} className="h-2 [&>div]:bg-neutral-900" />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">
-            {/* Progress Bar */}
-            <div className="mb-8">
-              <div className="flex justify-between mb-2">
-                {steps.map((step) => (
-                  <div
-                    key={step.key}
-                    className={`text-sm font-medium ${
-                      currentStep === step.key 
-                        ? 'text-neutral-900' 
-                        : steps.findIndex(s => s.key === currentStep) > steps.findIndex(s => s.key === step.key)
-                          ? 'text-muted-foreground'
-                          : 'text-muted-foreground/50'
-                    }`}
-                  >
-                    {step.label}
-                  </div>
-                ))}
-              </div>
-              <Progress value={currentStepData?.progress || 0} className="h-2 [&>div]:bg-neutral-900" />
-            </div>
-
             {/* Step Content */}
             {currentStep === 'tickets' && (
               <TicketSelection
