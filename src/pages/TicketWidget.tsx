@@ -924,41 +924,45 @@ const TicketWidget = () => {
             </div>
           )}
 
-          {/* Organization Logo */}
-          {eventData.widget_customization?.branding?.showOrgLogo && (eventData.organizations as any)?.logo_url && (
-            <div className="text-center mb-6">
-              <img 
-                src={(eventData.organizations as any).logo_url} 
-                alt={`${eventData.organizations?.name || 'Organization'} Logo`}
-                className="h-16 mx-auto object-contain"
-              />
-            </div>
-          )}
-
-          {/* Event Logo */}
-          {eventData.widget_customization?.layout?.showEventImage && (eventData as any).logo_url && (
-            <div className="text-center mb-6">
-              <img 
-                src={(eventData as any).logo_url} 
-                alt={`${eventData.name} Logo`}
-                className="h-20 mx-auto object-contain rounded-lg"
-              />
-            </div>
-          )}
-          {/* Event Header */}
-          <div className="text-left mb-8">
-            <h1 className="text-3xl font-bold mb-2">{eventData.name}</h1>
-            <div className="flex items-center gap-6 text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                <span>{new Date(eventData.event_date).toLocaleDateString()}</span>
+          {/* Header Section with Logo and Event Title */}
+          <div className="relative mb-8">
+            {/* Organization Logo - Top Right */}
+            {eventData.widget_customization?.branding?.showOrgLogo && (eventData.organizations as any)?.logo_url && (
+              <div className="absolute top-0 right-0">
+                <img 
+                  src={(eventData.organizations as any).logo_url} 
+                  alt={`${eventData.organizations?.name || 'Organization'} Logo`}
+                  className="h-16 object-contain"
+                />
               </div>
-              {eventData.venue && (
+            )}
+
+            {/* Event Logo - Centered above title if no org logo, or left-aligned if org logo exists */}
+            {eventData.widget_customization?.layout?.showEventImage && (eventData as any).logo_url && (
+              <div className={`mb-6 ${(eventData.widget_customization?.branding?.showOrgLogo && (eventData.organizations as any)?.logo_url) ? 'text-left' : 'text-center'}`}>
+                <img 
+                  src={(eventData as any).logo_url} 
+                  alt={`${eventData.name} Logo`}
+                  className="h-20 object-contain rounded-lg inline-block"
+                />
+              </div>
+            )}
+            
+            {/* Event Title - Aligned with logo placement */}
+            <div className="text-left">
+              <h1 className="text-3xl font-bold mb-2 pr-20">{eventData.name}</h1>
+              <div className="flex items-center gap-6 text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  <span>{eventData.venue}</span>
+                  <Calendar className="h-5 w-5" />
+                  <span>{new Date(eventData.event_date).toLocaleDateString()}</span>
                 </div>
-              )}
+                {eventData.venue && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-5 w-5" />
+                    <span>{eventData.venue}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
