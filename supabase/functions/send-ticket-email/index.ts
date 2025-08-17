@@ -77,41 +77,66 @@ Deno.serve(async (req) => {
     
     logStep("Processing delivery method", { deliveryMethod });
 
-    // Generate tickets only for ticket items (not merchandise) and only if QR tickets are requested
+    // Get existing tickets or generate new ones if none exist
     const ticketItems = order.order_items.filter((item: any) => item.item_type === 'ticket');
     let allTickets: any[] = [];
 
     if (deliveryMethod === 'qr_ticket') {
-      const ticketPromises = ticketItems.map(async (item: any) => {
-        const tickets = [];
-        for (let i = 0; i < item.quantity; i++) {
-          const { data: ticket, error: ticketError } = await supabaseClient
-            .rpc("generate_ticket_code")
-            .single();
+      // First, check if tickets already exist for this order
+      const { data: existingTickets } = await supabaseClient
+        .from("tickets")
+        .select(`
+          id,
+          ticket_code,
+          status,
+          order_item_id
+        `)
+        .in('order_item_id', ticketItems.map((item: any) => item.id));
 
-          if (ticketError) throw ticketError;
+      if (existingTickets && existingTickets.length > 0) {
+        // Use existing tickets - match them with their order items
+        allTickets = existingTickets.map((ticket: any) => {
+          const orderItem = ticketItems.find((item: any) => item.id === ticket.order_item_id);
+          return {
+            code: ticket.ticket_code,
+            type: orderItem?.ticket_types?.name || 'General Admission',
+            price: orderItem?.unit_price || 0
+          };
+        });
+        logStep("Using existing tickets", { count: allTickets.length });
+      } else {
+        // Generate new tickets only if none exist
+        const ticketPromises = ticketItems.map(async (item: any) => {
+          const tickets = [];
+          for (let i = 0; i < item.quantity; i++) {
+            const { data: ticket, error: ticketError } = await supabaseClient
+              .rpc("generate_ticket_code")
+              .single();
 
-          const { error: insertError } = await supabaseClient
-            .from("tickets")
-            .insert({
-              order_item_id: item.id,
-              ticket_code: ticket,
-              status: "valid"
+            if (ticketError) throw ticketError;
+
+            const { error: insertError } = await supabaseClient
+              .from("tickets")
+              .insert({
+                order_item_id: item.id,
+                ticket_code: ticket,
+                status: "valid"
+              });
+
+            if (insertError) throw insertError;
+
+            tickets.push({
+              code: ticket,
+              type: item.ticket_types?.name || 'General Admission',
+              price: item.unit_price
             });
+          }
+          return tickets;
+        });
 
-          if (insertError) throw insertError;
-
-          tickets.push({
-            code: ticket,
-            type: item.ticket_types?.name || 'General Admission',
-            price: item.unit_price
-          });
-        }
-        return tickets;
-      });
-
-      allTickets = (await Promise.all(ticketPromises)).flat();
-      logStep("Tickets generated", { count: allTickets.length });
+        allTickets = (await Promise.all(ticketPromises)).flat();
+        logStep("Tickets generated", { count: allTickets.length });
+      }
     } else {
       logStep("Skipping ticket generation for confirmation email");
     }
