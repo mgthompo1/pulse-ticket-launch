@@ -266,6 +266,31 @@ Deno.serve(async (req) => {
       };
     }
 
+    // Generate PDF tickets if delivery method is QR tickets
+    let pdfAttachment = null;
+    if (deliveryMethod === 'qr_ticket' && allTickets.length > 0) {
+      try {
+        logStep("Generating PDF tickets");
+        const pdfResponse = await supabaseClient.functions.invoke('generate-ticket-pdf', {
+          body: { orderId: orderId }
+        });
+
+        if (pdfResponse.error) {
+          logStep("PDF generation failed", { error: pdfResponse.error });
+        } else if (pdfResponse.data?.pdf) {
+          pdfAttachment = {
+            filename: pdfResponse.data.filename || 'tickets.pdf',
+            content: pdfResponse.data.pdf,
+            content_type: 'application/pdf'
+          };
+          logStep("PDF generated successfully", { filename: pdfAttachment.filename });
+        }
+      } catch (pdfError) {
+        logStep("PDF generation error", { error: pdfError });
+        // Continue with email sending even if PDF fails
+      }
+    }
+
     // Send email using Resend
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) {
@@ -278,15 +303,26 @@ Deno.serve(async (req) => {
       recipient: emailContent.to,
       subject: emailContent.subject,
       ticketCount: allTickets.length,
-      hasApiKey: !!resendApiKey
+      hasApiKey: !!resendApiKey,
+      hasPdfAttachment: !!pdfAttachment
     });
 
-    const emailResponse = await resend.emails.send({
+    const emailOptions: any = {
       from: "TicketFlo <onboarding@resend.dev>", // Using verified Resend domain
       to: [emailContent.to],
       subject: emailContent.subject,
       html: emailContent.html,
-    });
+    };
+
+    // Add PDF attachment if available
+    if (pdfAttachment) {
+      emailOptions.attachments = [{
+        filename: pdfAttachment.filename,
+        content: pdfAttachment.content
+      }];
+    }
+
+    const emailResponse = await resend.emails.send(emailOptions);
 
     logStep("Resend API response", { 
       response: emailResponse,

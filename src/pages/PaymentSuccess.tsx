@@ -17,6 +17,7 @@ const PaymentSuccess = () => {
   const [tickets, setTickets] = useState<any[]>([]);
   const [showTickets, setShowTickets] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isDownloadingOfficialPDF, setIsDownloadingOfficialPDF] = useState(false);
 
   const loadTickets = async () => {
     if (!orderDetails) return;
@@ -145,6 +146,45 @@ const PaymentSuccess = () => {
     // This would typically integrate with Apple Wallet or Google Pay
     // For now, we'll show an alert with instructions
     alert('To add tickets to your mobile wallet:\n\n1. Take a screenshot of your tickets\n2. Save the QR codes to your photos\n3. Show the QR codes at the event entrance\n\nWallet integration coming soon!');
+  };
+
+  const downloadOfficialPDF = async () => {
+    if (!orderDetails?.id) return;
+    
+    setIsDownloadingOfficialPDF(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-ticket-pdf', {
+        body: { orderId: orderDetails.id }
+      });
+
+      if (error || !data?.pdf) {
+        throw new Error(error?.message || 'Failed to generate PDF');
+      }
+
+      // Convert base64 to blob and download
+      const base64Data = data.pdf;
+      const byteCharacters = atob(base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/pdf' });
+      
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = data.filename || 'tickets.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Failed to download PDF. Please try again.');
+    } finally {
+      setIsDownloadingOfficialPDF(false);
+    }
   };
 
   useEffect(() => {
@@ -284,6 +324,15 @@ const PaymentSuccess = () => {
           <div className="space-y-2">
             <Button className="w-full" onClick={() => navigate('/')}>
               Return to Home
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={downloadOfficialPDF}
+              disabled={isDownloadingOfficialPDF}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {isDownloadingOfficialPDF ? 'Generating PDF...' : 'Download Official PDF Tickets'}
             </Button>
             <Dialog open={showTickets} onOpenChange={setShowTickets}>
               <DialogTrigger asChild>
