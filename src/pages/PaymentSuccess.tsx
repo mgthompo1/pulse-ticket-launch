@@ -17,7 +17,6 @@ const PaymentSuccess = () => {
   const [tickets, setTickets] = useState<any[]>([]);
   const [showTickets, setShowTickets] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
 
   const loadTickets = async () => {
     if (!orderDetails) return;
@@ -139,47 +138,6 @@ const PaymentSuccess = () => {
       console.error('Error generating PDF:', error);
     } finally {
       setIsGeneratingPDF(false);
-    }
-  };
-
-  const downloadOfficialPDF = async () => {
-    if (!orderDetails) return;
-    
-    setIsDownloadingPDF(true);
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://yoxsewbpoqxscsutqlcb.supabase.co'}/functions/v1/generate-ticket-pdf`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlveHNld2Jwb3F4c2NzdXRxbGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0MzU4NDgsImV4cCI6MjA2ODAxMTg0OH0.CrW53mnoXiatBWePensSroh0yfmVALpcWxX2dXYde5k'}`
-        },
-        body: JSON.stringify({ 
-          orderId: orderDetails.id,
-          download: true
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate PDF');
-      }
-
-      // Get the PDF blob
-      const blob = await response.blob();
-      
-      // Create download link
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `tickets-${orderDetails.id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
-    } finally {
-      setIsDownloadingPDF(false);
     }
   };
 
@@ -390,39 +348,26 @@ const PaymentSuccess = () => {
                       />
                     </div>
                   ))}
-                   
-                   <div className="flex flex-col gap-2 pt-4">
-                     {/* Official PDF Download */}
-                     <Button 
-                       onClick={downloadOfficialPDF} 
-                       className="w-full"
-                       disabled={isDownloadingPDF}
-                     >
-                       <Download className="h-4 w-4 mr-2" />
-                       {isDownloadingPDF ? 'Generating PDF...' : 'Download Official PDF Tickets'}
-                     </Button>
-                     
-                     {/* Alternative options */}
-                     <div className="flex flex-col sm:flex-row gap-2">
-                       <Button onClick={printTickets} variant="outline" className="flex-1">
-                         <Printer className="h-4 w-4 mr-2" />
-                         Print Tickets
-                       </Button>
-                       <Button 
-                         onClick={generatePDF} 
-                         variant="outline" 
-                         className="flex-1"
-                         disabled={isGeneratingPDF}
-                       >
-                         <FileText className="h-4 w-4 mr-2" />
-                         {isGeneratingPDF ? 'Generating...' : 'Custom PDF'}
-                       </Button>
-                       <Button onClick={addToWallet} variant="outline" className="flex-1">
-                         <Download className="h-4 w-4 mr-2" />
-                         Add to Wallet
-                       </Button>
-                     </div>
-                   </div>
+                  
+                  <div className="flex flex-col sm:flex-row gap-2 pt-4">
+                    <Button onClick={printTickets} variant="outline" className="flex-1">
+                      <Printer className="h-4 w-4 mr-2" />
+                      Print Tickets
+                    </Button>
+                    <Button 
+                      onClick={generatePDF} 
+                      variant="outline" 
+                      className="flex-1"
+                      disabled={isGeneratingPDF}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      {isGeneratingPDF ? 'Generating...' : 'Save as PDF'}
+                    </Button>
+                    <Button onClick={addToWallet} variant="outline" className="flex-1">
+                      <Download className="h-4 w-4 mr-2" />
+                      Add to Wallet
+                    </Button>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
