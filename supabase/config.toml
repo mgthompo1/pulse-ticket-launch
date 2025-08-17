@@ -77,3 +77,12 @@ verify_jwt = false
 
 [functions.send-organiser-notification]
 verify_jwt = false
+
+[functions.send-ticket-email]
+verify_jwt = false
+
+[functions.send-receipt-email]
+verify_jwt = false
+
+[functions.send-invitation-email]
+verify_jwt = false

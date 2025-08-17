@@ -147,7 +147,6 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           
           // Use the same approach as the working one-page checkout
           const links = data.links;
-          const totalAmount = data.totalAmount;
 
           // Create the drop-in using the exact same approach from TicketWidget
           window.windcaveDropIn = window.WindcavePayments?.DropIn.create({
