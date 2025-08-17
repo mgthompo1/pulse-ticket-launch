@@ -273,6 +273,7 @@ if (orgs) {
           created_at,
           total_amount,
           status,
+          test_mode,
           events!inner(
             organization_id,
             name
@@ -287,7 +288,6 @@ if (orgs) {
         `)
         .eq("events.organization_id", orgId)
         .eq("test_mode", currentTestMode)
-        .in("status", ["completed", "paid"])
         .gte("created_at", new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000).toISOString());
 
       console.log("Detailed orders data:", ordersData);
