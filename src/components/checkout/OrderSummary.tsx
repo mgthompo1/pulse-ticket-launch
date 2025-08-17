@@ -104,10 +104,10 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
 
     try {
       if (eventData.organizations?.payment_provider === 'windcave') {
-        // For Windcave, let the Payment component handle the flow
+        // For Windcave, the Payment component handles everything automatically
         toast({
-          title: "Please use the payment form",
-          description: "Complete your payment using the form on the main page",
+          title: "Complete your payment",
+          description: "Please use the payment form below to complete your order",
         });
         return;
       } else if (eventData.organizations?.payment_provider === 'stripe') {

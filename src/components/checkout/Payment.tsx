@@ -1,6 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CustomerInfo, CartItem, MerchandiseCartItem, EventData } from '@/types/widget';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Loader2, CreditCard } from 'lucide-react';
+import { CartItem, MerchandiseCartItem, EventData, CustomerInfo } from '@/types/widget';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
+import { WindcaveHostedFields } from '@/components/payment/WindcaveHostedFields';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface PaymentProps {
   eventData: EventData;
@@ -13,88 +22,350 @@ export const Payment: React.FC<PaymentProps> = ({
   eventData,
   cartItems,
   merchandiseCart,
-  customerInfo
+  customerInfo,
 }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null);
+  const [showStripePayment, setShowStripePayment] = useState(false);
+  const [windcaveSessionData, setWindcaveSessionData] = useState<any>(null);
+  const [showWindcavePayment, setShowWindcavePayment] = useState(false);
 
-  const calculateTotal = () => {
-    const ticketTotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const merchandiseTotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
-    return ticketTotal + merchandiseTotal;
+  // Calculate totals
+  const calculateTotal = (): number => {
+    const ticketSubtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const merchandiseSubtotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
+    return ticketSubtotal + merchandiseSubtotal;
   };
 
+  const subtotal = calculateTotal();
   const processingFee = eventData.organizations?.credit_card_processing_fee_percentage 
-    ? (calculateTotal() * (eventData.organizations.credit_card_processing_fee_percentage / 100))
+    ? subtotal * (eventData.organizations.credit_card_processing_fee_percentage / 100)
     : 0;
+  const total = subtotal + processingFee;
 
-  const finalTotal = calculateTotal() + processingFee;
+  // Auto-initialize Windcave payment when component loads
+  useEffect(() => {
+    const initializePayment = async () => {
+      if (eventData.organizations?.payment_provider === 'windcave' && !windcaveSessionData) {
+        console.log("Auto-initializing Windcave payment...");
+        
+        setIsProcessing(true);
+        
+        try {
+          // Prepare order items
+          const items = [
+            ...cartItems.map(item => ({
+              type: 'ticket' as const,
+              ticket_type_id: item.id,
+              quantity: item.quantity,
+              unit_price: item.price,
+            })),
+            ...merchandiseCart.map(item => ({
+              type: 'merchandise' as const,
+              merchandise_id: item.merchandise.id,
+              quantity: item.quantity,
+              unit_price: item.merchandise.price,
+              merchandise_options: {
+                size: item.selectedSize,
+                color: item.selectedColor,
+              },
+            })),
+          ];
+
+          const { data, error } = await supabase.functions.invoke('windcave-session', {
+            body: {
+              eventId: eventData.id,
+              items,
+              customerInfo,
+            },
+          });
+
+          if (error) throw error;
+
+          console.log("Windcave session response:", data);
+          
+          if (data.links) {
+            setWindcaveSessionData(data);
+            setShowWindcavePayment(true);
+          }
+        } catch (error: any) {
+          console.error('Auto-initialization error:', error);
+          toast({
+            title: "Payment Error",
+            description: error.message || "Failed to initialize payment",
+            variant: "destructive"
+          });
+        } finally {
+          setIsProcessing(false);
+        }
+      }
+    };
+
+    // Only auto-initialize for Windcave
+    if (eventData.organizations?.payment_provider === 'windcave') {
+      initializePayment();
+    }
+  }, [eventData, customerInfo, cartItems, merchandiseCart, windcaveSessionData]);
+
+  // Load Stripe configuration when needed
+  useEffect(() => {
+    const loadStripeConfig = async () => {
+      if (eventData.organizations?.payment_provider === 'stripe') {
+        try {
+          const { data, error } = await supabase
+            .rpc('get_organization_payment_config', { 
+              p_organization_id: eventData.organization_id 
+            });
+
+          if (error) throw error;
+
+          if (data && data.length > 0) {
+            setStripePublishableKey(data[0].stripe_publishable_key);
+          }
+        } catch (error) {
+          console.error('Error loading Stripe config:', error);
+        }
+      }
+    };
+
+    loadStripeConfig();
+  }, [eventData.organizations?.payment_provider, eventData.organization_id]);
+
+  const handlePayment = async () => {
+    // This function is now only for Stripe payments
+    if (eventData.organizations?.payment_provider === 'stripe') {
+      setShowStripePayment(true);
+      return;
+    }
+
+    // For Windcave, the payment should already be initialized automatically
+    toast({
+      title: "Payment already initialized",
+      description: "Please use the payment form below",
+    });
+  };
+
+  const handleWindcaveSuccess = async (sessionId: string) => {
+    try {
+      toast({
+        title: "Payment Successful!",
+        description: "Finalizing your order...",
+      });
+      
+      const { error } = await supabase.functions.invoke('windcave-dropin-success', {
+        body: { 
+          sessionId: sessionId,
+          eventId: eventData.id
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Order Complete!",
+        description: "Your tickets have been confirmed. Check your email for details.",
+      });
+      
+      setTimeout(() => {
+        window.location.href = '/payment-success';
+      }, 1500);
+      
+    } catch (error: any) {
+      console.error("Error finalizing order:", error);
+      toast({
+        title: "Payment Processed",
+        description: "Payment successful but there was an issue finalizing your order. Please contact support.",
+        variant: "destructive"
+      });
+    } finally {
+      setShowWindcavePayment(false);
+      setIsProcessing(false);
+    }
+  };
+
+  const handleWindcaveError = (error: string) => {
+    console.error("Windcave payment error:", error);
+    toast({
+      title: "Payment Failed",
+      description: error,
+      variant: "destructive"
+    });
+    setShowWindcavePayment(false);
+    setIsProcessing(false);
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold mb-2">Payment</h2>
-        <p className="text-muted-foreground">Your payment will be processed using the order summary on the right</p>
-      </div>
+      {/* Customer Information Display */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Customer Information</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <p className="text-sm font-medium">Name</p>
+            <p className="text-sm text-muted-foreground">{customerInfo.name}</p>
+          </div>
+          <div>
+            <p className="text-sm font-medium">Email</p>
+            <p className="text-sm text-muted-foreground">{customerInfo.email}</p>
+          </div>
+          {customerInfo.phone && (
+            <div>
+              <p className="text-sm font-medium">Phone</p>
+              <p className="text-sm text-muted-foreground">{customerInfo.phone}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
+      {/* Order Summary */}
       <Card>
         <CardHeader>
           <CardTitle>Order Summary</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {cartItems.map((item) => (
-            <div key={item.id} className="flex justify-between items-center">
-              <div>
-                <p className="font-medium">{item.name}</p>
-                <p className="text-sm text-muted-foreground">Quantity: {item.quantity}</p>
-              </div>
-              <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
+          {/* Ticket Items */}
+          {cartItems.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="font-medium text-sm">Tickets</h4>
+              {cartItems.map((item) => (
+                <div key={item.id} className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium text-sm">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">Qty: {item.quantity} × ${item.price.toFixed(2)}</p>
+                  </div>
+                  <p className="font-medium text-sm">${(item.price * item.quantity).toFixed(2)}</p>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
 
-          {merchandiseCart.map((item, index) => (
-            <div key={index} className="flex justify-between items-center">
-              <div>
-                <p className="font-medium">{item.merchandise.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  Quantity: {item.quantity}
-                  {item.selectedSize && ` • Size: ${item.selectedSize}`}
-                  {item.selectedColor && ` • Color: ${item.selectedColor}`}
-                </p>
-              </div>
-              <p className="font-medium">${(item.merchandise.price * item.quantity).toFixed(2)}</p>
+          {/* Merchandise Items */}
+          {merchandiseCart.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="font-medium text-sm">Merchandise</h4>
+              {merchandiseCart.map((item, index) => (
+                <div key={index} className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{item.merchandise.name}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="secondary" className="text-xs">Qty: {item.quantity}</Badge>
+                      {item.selectedSize && (
+                        <Badge variant="outline" className="text-xs">{item.selectedSize}</Badge>
+                      )}
+                      {item.selectedColor && (
+                        <Badge variant="outline" className="text-xs">{item.selectedColor}</Badge>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      ${item.merchandise.price.toFixed(2)} each
+                    </span>
+                  </div>
+                  <p className="font-medium text-sm">
+                    ${(item.merchandise.price * item.quantity).toFixed(2)}
+                  </p>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
 
-          <div className="border-t pt-4">
-            <div className="flex justify-between">
-              <p>Subtotal</p>
-              <p>${calculateTotal().toFixed(2)}</p>
+          <Separator />
+
+          {/* Totals */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Subtotal</span>
+              <span>${subtotal.toFixed(2)}</span>
             </div>
+            
             {processingFee > 0 && (
               <div className="flex justify-between text-sm text-muted-foreground">
-                <p>Processing Fee ({eventData.organizations?.credit_card_processing_fee_percentage}%)</p>
-                <p>${processingFee.toFixed(2)}</p>
+                <span>Processing Fee ({eventData.organizations?.credit_card_processing_fee_percentage}%)</span>
+                <span>${processingFee.toFixed(2)}</span>
               </div>
             )}
-            <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
-              <p>Total</p>
-              <p>${finalTotal.toFixed(2)}</p>
+            
+            <Separator />
+            
+            <div className="flex justify-between font-semibold">
+              <span>Total</span>
+              <span>${total.toFixed(2)}</span>
             </div>
           </div>
+
+          {/* Payment Button - Only show for Stripe payments */}
+          {eventData.organizations?.payment_provider === 'stripe' && !showStripePayment && (
+            <div className="pt-4">
+              <Button 
+                onClick={handlePayment}
+                size="lg"
+                disabled={isProcessing}
+                className="w-full"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Pay ${total.toFixed(2)}
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+
+          {/* Loading state for Windcave */}
+          {eventData.organizations?.payment_provider === 'windcave' && !showWindcavePayment && (
+            <div className="pt-4 text-center">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Initializing payment form...</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Customer Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <p><span className="font-medium">Name:</span> {customerInfo.name}</p>
-            <p><span className="font-medium">Email:</span> {customerInfo.email}</p>
-            {customerInfo.phone && <p><span className="font-medium">Phone:</span> {customerInfo.phone}</p>}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Windcave Hosted Fields - Full width separate card */}
+      {showWindcavePayment && windcaveSessionData && (
+        <WindcaveHostedFields
+          sessionData={windcaveSessionData}
+          onSuccess={handleWindcaveSuccess}
+          onError={handleWindcaveError}
+          isProcessing={isProcessing}
+          eventData={eventData}
+        />
+      )}
+
+      {/* Stripe Payment Form Modal */}
+      {showStripePayment && stripePublishableKey && (
+        <Dialog open={showStripePayment} onOpenChange={setShowStripePayment}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Complete Payment</DialogTitle>
+            </DialogHeader>
+            <StripePaymentForm
+              publishableKey={stripePublishableKey}
+              eventId={eventData.id}
+              cart={cartItems as any}
+              merchandiseCart={merchandiseCart as any}
+              customerInfo={customerInfo}
+              total={total}
+              onSuccess={() => {
+                setShowStripePayment(false);
+                toast({
+                  title: "Payment Successful",
+                  description: "Your payment has been processed successfully.",
+                });
+                window.location.href = '/payment-success';
+              }}
+              onCancel={() => setShowStripePayment(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
