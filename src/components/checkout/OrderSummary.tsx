@@ -326,6 +326,16 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           </div>
         )}
 
+        {/* Back Button for Windcave - Only show back button when using Windcave */}
+        {currentStep === 'payment' && customerInfo && (cartItems.length > 0 || merchandiseCart.length > 0) && eventData.organizations?.payment_provider === 'windcave' && onBack && (
+          <div className="space-y-4">
+            <Separator />
+            <Button variant="outline" onClick={onBack} size="lg" className="w-full" disabled={isProcessing}>
+              Back to Details
+            </Button>
+          </div>
+        )}
+
         {/* Stripe Payment Form Modal */}
         {showStripePayment && stripePublishableKey && customerInfo && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
