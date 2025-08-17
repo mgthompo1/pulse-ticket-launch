@@ -143,61 +143,160 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             throw new Error("Windcave payment system not ready");
           }
 
-          // Create drop-in container element
-          let dropInContainer = document.getElementById('windcave-dropin-container');
-          if (!dropInContainer) {
-            dropInContainer = document.createElement('div');
-            dropInContainer.id = 'windcave-dropin-container';
-            dropInContainer.style.position = 'fixed';
-            dropInContainer.style.top = '0';
-            dropInContainer.style.left = '0';
-            dropInContainer.style.width = '100vw';
-            dropInContainer.style.height = '100vh';
-            dropInContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-            dropInContainer.style.zIndex = '9999';
-            dropInContainer.style.display = 'flex';
-            dropInContainer.style.alignItems = 'center';
-            dropInContainer.style.justifyContent = 'center';
-            document.body.appendChild(dropInContainer);
-          }
-
-          console.log("Creating Windcave drop-in with session data:", data);
+          console.log("Initializing Windcave Drop-In with data:", data);
           
-          // Create the drop-in using Windcave's DropIn.create method
-          window.windcaveDropIn = window.WindcavePayments.DropIn.create({
+          // Use the same approach as the working one-page checkout
+          const links = data.links;
+          const totalAmount = data.totalAmount;
+
+          // Create the drop-in using the exact same approach from TicketWidget
+          window.windcaveDropIn = window.WindcavePayments?.DropIn.create({
             ...data,
-            container: '#windcave-dropin-container',
-            onSuccess: (result: any) => {
-              console.log("Windcave payment successful:", result);
-              // Clean up container
-              const container = document.getElementById('windcave-dropin-container');
-              if (container) {
-                document.body.removeChild(container);
-              }
-              window.location.href = '/payment-success';
+            // Add the same configurations as the working implementation
+            card: {
+              hideCardholderName: true,
+              supportedCards: ["visa", "mastercard", "amex"],
+              disableCardAutoComplete: false,
+              cardImagePlacement: "right",
+              sideIcons: ["visa", "mastercard", "amex"],
+              enableCardValidation: true,
+              enableCardFormatting: true
             },
-            onCancel: () => {
-              console.log("Windcave payment cancelled");
-              // Clean up container
-              const container = document.getElementById('windcave-dropin-container');
-              if (container) {
-                document.body.removeChild(container);
+            security: {
+              enableAutoComplete: true,
+              enableSecureForm: true,
+              enableFormValidation: true
+            },
+            // General onSuccess callback (for non-Apple Pay payments)
+            onSuccess: async (status: string, data?: any) => {
+              console.log("=== WINDCAVE SUCCESS CALLBACK ===");
+              console.log("Success status:", status);
+              console.log("Success data:", data);
+              
+              // Critical: Handle 3DSecure authentication flow
+              if (status == "3DSecure") {
+                console.log("3DSecure authentication in progress...");
+                return;
+              }
+              
+              console.log("Transaction finished");
+              
+              // Close the drop-in widget
+              if (window.windcaveDropIn) {
+                window.windcaveDropIn.close();
+                window.windcaveDropIn = null;
+              }
+              
+              // Extract session ID from links for completion
+              const sessionId = links[0]?.href?.split('/').pop();
+              console.log("=== DEBUG INFO ===");
+              console.log("Full link:", links[0]?.href);
+              console.log("Extracted sessionId:", sessionId);
+              console.log("Event ID:", eventData?.id);
+              
+              if (sessionId && eventData) {
+                toast({
+                  title: "Payment Successful!",
+                  description: "Finalizing your order...",
+                });
+                
+                try {
+                  console.log("=== CALLING WINDCAVE DROPIN SUCCESS ===");
+                  console.log("About to call function with:", {
+                    sessionId: sessionId,
+                    eventId: eventData.id
+                  });
+                  
+                  // Call the Drop In success function to finalize the order
+                  const { data, error } = await supabase.functions.invoke('windcave-dropin-success', {
+                    body: { 
+                      sessionId: sessionId,
+                      eventId: eventData.id
+                    }
+                  });
+
+                  console.log("=== FUNCTION RESPONSE ===");
+                  console.log("Data:", data);
+                  console.log("Error:", error);
+
+                  if (error) {
+                    console.error("=== WINDCAVE DROPIN SUCCESS ERROR ===");
+                    console.error("Full error object:", error);
+                    console.error("Error message:", error.message);
+                    console.error("Error details:", error.details);
+                    throw error;
+                  }
+
+                  console.log("=== WINDCAVE DROPIN SUCCESS DATA ===");
+                  console.log("Response data:", data);
+
+                  toast({
+                    title: "Order Complete!",
+                    description: `Your tickets have been confirmed. Check your email for details.`,
+                  });
+                  
+                  // Redirect to success page
+                  setTimeout(() => {
+                    window.location.href = '/payment-success';
+                  }, 1500);
+                  
+                } catch (error: any) {
+                  console.error("=== COMPLETE ERROR DETAILS ===");
+                  console.error("Error finalizing order:", error);
+                  console.error("Error type:", typeof error);
+                  console.error("Error constructor:", error?.constructor?.name);
+                  console.error("Error stack:", error?.stack);
+                  toast({
+                    title: "Payment Processed",
+                    description: "Payment successful but there was an issue finalizing your order. Please contact support.",
+                    variant: "destructive"
+                  });
+                }
+              } else {
+                toast({
+                  title: "Payment Complete",
+                  description: "Your payment has been processed successfully!",
+                });
+                
+                // Redirect to success page
+                setTimeout(() => {
+                  window.location.href = '/payment-success';
+                }, 1500);
               }
             },
+            // General onError callback (for non-Apple Pay payments)
             onError: (error: any) => {
-              console.error("Windcave payment error:", error);
-              // Clean up container
-              const container = document.getElementById('windcave-dropin-container');
-              if (container) {
-                document.body.removeChild(container);
+              console.error("=== WINDCAVE ERROR CALLBACK ===");
+              console.error("Transaction failed:", error);
+              
+              // Close the drop-in widget
+              if (window.windcaveDropIn) {
+                window.windcaveDropIn.close();
+                window.windcaveDropIn = null;
               }
+              
+              let errorMessage = "Payment failed. Please try again.";
+              if (typeof error === 'string') {
+                errorMessage = error;
+              } else if (error?.message) {
+                errorMessage = error.message;
+              }
+              
               toast({
-                title: "Payment Error",
-                description: "There was an error processing your payment. Please try again.",
-                variant: "destructive",
+                title: "Payment Failed",
+                description: errorMessage,
+                variant: "destructive"
               });
+            },
+            // Additional configuration to ensure proper security
+            options: {
+              enableAutoComplete: true,
+              enableSecureForm: true,
+              enableFormValidation: true,
+              enableCardValidation: true,
+              enableCardFormatting: true
             }
-          });
+          } as any);
         }
       } else if (eventData.organizations?.payment_provider === 'stripe') {
         if (!stripePublishableKey) {
