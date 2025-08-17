@@ -8,7 +8,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Calendar, Users, Settings, BarChart3, Mail, Palette, CreditCard, TrendingUp, Link, Shield } from "lucide-react";
+import { Calendar, Users, Settings, BarChart3, Mail, CreditCard, TrendingUp, Link, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,7 +32,6 @@ const sidebarItems = [
   { id: "event-details", title: "Event Details", icon: Users, requiresEvent: true },
   { id: "analytics", title: "Analytics", icon: TrendingUp },
   { id: "payments", title: "Payments", icon: CreditCard },
-  { id: "design", title: "Design", icon: Palette },
   { id: "marketing", title: "Marketing", icon: Mail },
   { id: "billing", title: "Billing", icon: CreditCard },
   { id: "integrations", title: "Apps", icon: Link },

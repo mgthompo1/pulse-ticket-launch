@@ -668,21 +668,6 @@ if (orgs) {
               <PaymentConfiguration organizationId={organizationId} />
             </TabsContent>
 
-            <TabsContent value="design" className="space-y-6">
-              {selectedEvent ? (
-                <SeatMapDesigner
-                  eventId={selectedEvent.id}
-                  eventName={selectedEvent.name}
-                  onClose={() => setShowSeatMapDesigner(false)}
-                />
-              ) : (
-                <Card>
-                  <CardContent className="p-6">
-                    <p className="text-muted-foreground text-center">Select an event to design its seat map and layout</p>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
 
             <TabsContent value="marketing" className="space-y-6">
 <MarketingTools selectedEvent={selectedEvent ? { id: selectedEvent.id, name: selectedEvent.name, status: selectedEvent.status, event_date: selectedEvent.date, description: (selectedEvent.description ?? undefined) } : undefined} />
