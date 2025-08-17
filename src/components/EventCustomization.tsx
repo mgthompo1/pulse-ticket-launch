@@ -67,6 +67,9 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     customQuestions: {
       enabled: false,
       questions: []
+    },
+    payment: {
+      successUrl: ""
     }
   });
 
@@ -1546,44 +1549,9 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     id="successUrl"
                     type="url"
                     placeholder="https://yourwebsite.com/thank-you"
-                    value={(eventData?.widget_customization as any)?.payment?.successUrl || ''}
-                    onChange={async (e) => {
-                      try {
-                        const currentCustomization = (eventData?.widget_customization as any) || {};
-                        const updatedCustomization = {
-                          ...currentCustomization,
-                          payment: {
-                            ...(currentCustomization.payment || {}),
-                            successUrl: e.target.value
-                          }
-                        };
-                        
-                        const { error } = await supabase
-                          .from("events")
-                          .update({ 
-                            widget_customization: updatedCustomization
-                          })
-                          .eq("id", eventId);
-
-                        if (error) throw error;
-
-                        setEventData(prev => prev ? ({
-                          ...prev,
-                          widget_customization: updatedCustomization as any
-                        }) : null);
-                        
-                        toast({
-                          title: "Success",
-                          description: "Payment success URL updated"
-                        });
-                      } catch (error) {
-                        console.error("Error updating success URL:", error);
-                        toast({
-                          title: "Error",
-                          description: "Failed to update success URL",
-                          variant: "destructive"
-                        });
-                      }
+                    value={widgetCustomization.payment?.successUrl || ''}
+                    onChange={(e) => {
+                      updateWidgetCustomization(['payment', 'successUrl'], e.target.value);
                     }}
                   />
                   <p className="text-xs text-muted-foreground">
