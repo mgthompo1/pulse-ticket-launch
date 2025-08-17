@@ -266,6 +266,30 @@ Deno.serve(async (req) => {
       };
     }
 
+    // Generate PDF attachment for QR tickets
+    let pdfAttachment = null;
+    if (deliveryMethod === 'qr_ticket' && allTickets.length > 0) {
+      try {
+        logStep("Generating PDF attachment");
+        const pdfResponse = await supabaseClient.functions.invoke('generate-ticket-pdf', {
+          body: { orderId, download: false }
+        });
+        
+        if (pdfResponse.data && pdfResponse.data.pdfData) {
+          pdfAttachment = {
+            filename: pdfResponse.data.filename,
+            content: pdfResponse.data.pdfData,
+            type: 'application/pdf',
+            disposition: 'attachment'
+          };
+          logStep("PDF attachment generated successfully");
+        }
+      } catch (pdfError) {
+        logStep("Error generating PDF attachment", { error: pdfError });
+        // Continue without attachment if PDF generation fails
+      }
+    }
+
     // Send email using Resend
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) {
@@ -278,15 +302,23 @@ Deno.serve(async (req) => {
       recipient: emailContent.to,
       subject: emailContent.subject,
       ticketCount: allTickets.length,
-      hasApiKey: !!resendApiKey
+      hasApiKey: !!resendApiKey,
+      hasPdfAttachment: !!pdfAttachment
     });
 
-    const emailResponse = await resend.emails.send({
+    const emailParams: any = {
       from: "TicketFlo <onboarding@resend.dev>", // Using verified Resend domain
       to: [emailContent.to],
       subject: emailContent.subject,
       html: emailContent.html,
-    });
+    };
+
+    // Add PDF attachment if available
+    if (pdfAttachment) {
+      emailParams.attachments = [pdfAttachment];
+    }
+
+    const emailResponse = await resend.emails.send(emailParams);
 
     logStep("Resend API response", { 
       response: emailResponse,
