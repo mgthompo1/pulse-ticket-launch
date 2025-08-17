@@ -35,7 +35,7 @@ export const Hero = () => {
 
           {/* Main headline */}
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-semibold tracking-tight text-foreground mb-6 leading-[1.05]">
-            A modern ticket platform for all events
+            A modern ticketing platform for all your events
           </h1>
 
           {/* Subheadline */}
