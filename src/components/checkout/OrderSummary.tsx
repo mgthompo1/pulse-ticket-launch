@@ -293,8 +293,8 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           </div>
         )}
 
-        {/* Payment Button - Only show on payment step and NOT for Windcave hosted fields */}
-        {currentStep === 'payment' && customerInfo && (cartItems.length > 0 || merchandiseCart.length > 0) && eventData.organizations?.payment_provider !== 'windcave' && (
+        {/* Payment Button - Only show on payment step when NOT using multistep checkout and NOT for Windcave */}
+        {currentStep === 'payment' && !onBack && customerInfo && (cartItems.length > 0 || merchandiseCart.length > 0) && eventData.organizations?.payment_provider !== 'windcave' && (
           <div className="space-y-4">
             <Separator />
             <div className="space-y-3">
@@ -316,18 +316,12 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                   </>
                 )}
               </Button>
-              
-              {onBack && (
-                <Button variant="outline" onClick={onBack} size="lg" className="w-full" disabled={isProcessing}>
-                  Back to Details
-                </Button>
-              )}
             </div>
           </div>
         )}
 
-        {/* Back Button for Windcave - Only show back button when using Windcave */}
-        {currentStep === 'payment' && customerInfo && (cartItems.length > 0 || merchandiseCart.length > 0) && eventData.organizations?.payment_provider === 'windcave' && onBack && (
+        {/* Back Button for Multistep Checkout - Show back button when onBack prop is provided */}
+        {currentStep === 'payment' && onBack && customerInfo && (cartItems.length > 0 || merchandiseCart.length > 0) && (
           <div className="space-y-4">
             <Separator />
             <Button variant="outline" onClick={onBack} size="lg" className="w-full" disabled={isProcessing}>
