@@ -148,10 +148,31 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           // Use the same approach as the working one-page checkout
           const links = data.links;
 
+          // Ensure we have the container in the DOM
+          let container = document.getElementById('windcave-drop-in-multistep');
+          if (!container) {
+            // Create the container if it doesn't exist
+            container = document.createElement('div');
+            container.id = 'windcave-drop-in-multistep';
+            container.style.position = 'fixed';
+            container.style.top = '0';
+            container.style.left = '0';
+            container.style.width = '100vw';
+            container.style.height = '100vh';
+            container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            container.style.zIndex = '9999';
+            container.style.display = 'flex';
+            container.style.alignItems = 'center';
+            container.style.justifyContent = 'center';
+            container.style.padding = '20px';
+            document.body.appendChild(container);
+          }
+
           // Create the drop-in using the exact same approach from TicketWidget
-          window.windcaveDropIn = window.WindcavePayments?.DropIn.create({
-            ...data,
-            // Add the same configurations as the working implementation
+          const dropInConfig = {
+            container: "windcave-drop-in-multistep",
+            links: links,
+            totalValue: data.totalAmount.toString(),
             card: {
               hideCardholderName: true,
               supportedCards: ["visa", "mastercard", "amex"],
@@ -165,6 +186,113 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
               enableAutoComplete: true,
               enableSecureForm: true,
               enableFormValidation: true
+            },
+            // Mobile payments configuration if Apple Pay is enabled
+            mobilePayments: eventData?.organizations?.apple_pay_merchant_id ? {
+              buttonType: "plain",
+              buttonStyle: "black", 
+              buttonLocale: "en-US",
+              merchantName: eventData.organizations.name || "Event Tickets",
+              countryCode: "NZ",
+              currencyCode: "NZD",
+              supportedNetworks: ["visa", "mastercard", "amex"],
+              isTest: eventData.organizations.windcave_endpoint !== "SEC",
+              applePay: {
+                merchantId: eventData.organizations.apple_pay_merchant_id,
+                onSuccess: function(status: string) {
+                  console.log("=== APPLE PAY SUCCESS CALLBACK ===");
+                  console.log("Apple Pay status:", status);
+                  
+                  if (status === "done") {
+                    console.log("Apple Pay transaction finished");
+                    if (window.windcaveDropIn) {
+                      window.windcaveDropIn.close();
+                      window.windcaveDropIn = null;
+                    }
+                    // Clean up container
+                    const containerEl = document.getElementById('windcave-drop-in-multistep');
+                    if (containerEl) {
+                      document.body.removeChild(containerEl);
+                    }
+                    return;
+                  }
+                  
+                  // Return Promise for non-done status
+                  return new Promise(async (resolve) => {
+                    try {
+                      console.log("Processing Apple Pay transaction...");
+                      
+                      const sessionId = links[0]?.href?.split('/').pop();
+                      
+                      if (sessionId && eventData) {
+                        toast({
+                          title: "Apple Pay Successful!",
+                          description: "Finalizing your order...",
+                        });
+                        
+                        const { error } = await supabase.functions.invoke('windcave-dropin-success', {
+                          body: { 
+                            sessionId: sessionId,
+                            eventId: eventData.id
+                          }
+                        });
+
+                        if (error) {
+                          console.error("Apple Pay finalization error:", error);
+                          resolve(false);
+                          return;
+                        }
+
+                        toast({
+                          title: "Order Complete!",
+                          description: "Your tickets have been confirmed via Apple Pay.",
+                        });
+                        
+                        resolve(true);
+                        
+                        setTimeout(() => {
+                          window.location.href = '/payment-success';
+                        }, 2000);
+                        
+                      } else {
+                        resolve(false);
+                      }
+                    } catch (error) {
+                      console.error("Apple Pay order finalization error:", error);
+                      resolve(false);
+                    }
+                  });
+                },
+                onError: function(stage: any, error: any) {
+                  console.error("=== APPLE PAY ERROR CALLBACK ===");
+                  console.error("Stage:", stage, "Error:", error);
+                  
+                  if (stage === "submit" || stage === "transaction") {
+                    console.log("Apple Pay transaction failed");
+                    if (window.windcaveDropIn) {
+                      window.windcaveDropIn.close();
+                      window.windcaveDropIn = null;
+                    }
+                    // Clean up container
+                    const containerEl = document.getElementById('windcave-drop-in-multistep');
+                    if (containerEl) {
+                      document.body.removeChild(containerEl);
+                    }
+                  }
+                  
+                  toast({
+                    title: "Apple Pay Failed",
+                    description: `Payment failed at ${stage} stage`,
+                    variant: "destructive"
+                  });
+                }
+              }
+            } : undefined,
+            // Optional callback triggered when payment starts
+            onPaymentStart: (paymentMethod: string, next: () => void) => {
+              console.log("=== PAYMENT START CALLBACK ===");
+              console.log("Payment method selected:", paymentMethod);
+              next();
             },
             // General onSuccess callback (for non-Apple Pay payments)
             onSuccess: async (status: string, data?: any) => {
@@ -184,6 +312,12 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
               if (window.windcaveDropIn) {
                 window.windcaveDropIn.close();
                 window.windcaveDropIn = null;
+              }
+              
+              // Clean up container
+              const containerEl = document.getElementById('windcave-drop-in-multistep');
+              if (containerEl) {
+                document.body.removeChild(containerEl);
               }
               
               // Extract session ID from links for completion
@@ -274,6 +408,12 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                 window.windcaveDropIn = null;
               }
               
+              // Clean up container
+              const containerEl = document.getElementById('windcave-drop-in-multistep');
+              if (containerEl) {
+                document.body.removeChild(containerEl);
+              }
+              
               let errorMessage = "Payment failed. Please try again.";
               if (typeof error === 'string') {
                 errorMessage = error;
@@ -295,7 +435,11 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
               enableCardValidation: true,
               enableCardFormatting: true
             }
-          } as any);
+          };
+
+          console.log("Creating Windcave drop-in with config:", dropInConfig);
+          
+          window.windcaveDropIn = window.WindcavePayments?.DropIn.create(dropInConfig as any);
         }
       } else if (eventData.organizations?.payment_provider === 'stripe') {
         if (!stripePublishableKey) {
