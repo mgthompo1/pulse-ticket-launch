@@ -216,7 +216,9 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   };
 
   return (
-    <Card className="w-full max-w-sm">
+    <>
+      {/* Order Summary Card */}
+      <Card className="w-full max-w-sm">
       <CardHeader className="pb-4">
         <CardTitle className="text-lg">Order Summary</CardTitle>
       </CardHeader>
@@ -377,7 +379,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
         )}
 
         {/* Payment Button - Only show on payment step */}
-        {currentStep === 'payment' && customerInfo && (cartItems.length > 0 || merchandiseCart.length > 0) && (
+        {currentStep === 'payment' && customerInfo && (cartItems.length > 0 || merchandiseCart.length > 0) && !showWindcavePayment && (
           <div className="space-y-4">
             <Separator />
             <div className="space-y-3">
@@ -440,20 +442,21 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             </div>
           </div>
         )}
-
-        {/* Windcave Hosted Fields */}
-        {showWindcavePayment && windcaveSessionData && (
-          <div className="mt-6">
-            <WindcaveHostedFields
-              sessionData={windcaveSessionData}
-              onSuccess={handleWindcaveSuccess}
-              onError={handleWindcaveError}
-              isProcessing={isProcessing}
-              eventData={eventData}
-            />
-          </div>
-        )}
       </CardContent>
     </Card>
+
+    {/* Windcave Hosted Fields as separate card */}
+    {showWindcavePayment && windcaveSessionData && (
+      <div className="mt-6 w-full">
+        <WindcaveHostedFields
+          sessionData={windcaveSessionData}
+          onSuccess={handleWindcaveSuccess}
+          onError={handleWindcaveError}
+          isProcessing={isProcessing}
+          eventData={eventData}
+        />
+      </div>
+    )}
+    </>
   );
 };
