@@ -285,51 +285,52 @@ export const WindcaveHostedFields: React.FC<WindcaveHostedFieldsProps> = ({
   }
 
   return (
-    <Card>
+    <Card className="w-full">
       <CardHeader>
         <CardTitle>Payment Details</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Payment fields in a single row for mobile-like layout */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Card Number</label>
+      <CardContent className="space-y-6">
+        {/* Single row payment fields */}
+        <div className="flex flex-col sm:flex-row gap-3 w-full">
+          <div className="flex-1 min-w-0">
+            <label className="text-sm font-medium mb-1 block">Card Number</label>
             <div 
               id="windcave-card-number"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all"
             />
           </div>
           
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Expiry Date</label>
+          <div className="w-full sm:w-24">
+            <label className="text-sm font-medium mb-1 block">Expiry</label>
             <div 
               id="windcave-expiry"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all"
             />
           </div>
           
-          <div className="space-y-2">
-            <label className="text-sm font-medium">CVV</label>
+          <div className="w-full sm:w-20">
+            <label className="text-sm font-medium mb-1 block">CVV</label>
             <div 
               id="windcave-cvv"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all"
             />
           </div>
           
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Postal Code</label>
+          <div className="w-full sm:w-28">
+            <label className="text-sm font-medium mb-1 block">Postal Code</label>
             <div 
               id="windcave-postal"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all"
             />
           </div>
         </div>
 
-        <div className="pt-4">
+        <div className="w-full">
           <Button 
             onClick={handleSubmit}
             disabled={!isReady || isSubmitting || isProcessing}
-            className="w-full"
+            className="w-full h-12 text-base font-medium"
+            size="lg"
           >
             {isSubmitting ? (
               <>
