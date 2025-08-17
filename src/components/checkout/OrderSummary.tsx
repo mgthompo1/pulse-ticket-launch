@@ -134,11 +134,70 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
 
         if (error) throw error;
 
+        console.log("Windcave session response:", data);
+        
         if (data.links) {
-          const redirectLink = data.links.find((link: any) => link.rel === 'redirect');
-          if (redirectLink) {
-            window.location.href = redirectLink.href;
+          // Check if WindcavePayments is available
+          if (!window.WindcavePayments?.DropIn) {
+            console.error("WindcavePayments.DropIn not available");
+            throw new Error("Windcave payment system not ready");
           }
+
+          // Create drop-in container element
+          let dropInContainer = document.getElementById('windcave-dropin-container');
+          if (!dropInContainer) {
+            dropInContainer = document.createElement('div');
+            dropInContainer.id = 'windcave-dropin-container';
+            dropInContainer.style.position = 'fixed';
+            dropInContainer.style.top = '0';
+            dropInContainer.style.left = '0';
+            dropInContainer.style.width = '100vw';
+            dropInContainer.style.height = '100vh';
+            dropInContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            dropInContainer.style.zIndex = '9999';
+            dropInContainer.style.display = 'flex';
+            dropInContainer.style.alignItems = 'center';
+            dropInContainer.style.justifyContent = 'center';
+            document.body.appendChild(dropInContainer);
+          }
+
+          console.log("Creating Windcave drop-in with session data:", data);
+          
+          // Create the drop-in using Windcave's DropIn.create method
+          window.windcaveDropIn = window.WindcavePayments.DropIn.create({
+            ...data,
+            container: '#windcave-dropin-container',
+            onSuccess: (result: any) => {
+              console.log("Windcave payment successful:", result);
+              // Clean up container
+              const container = document.getElementById('windcave-dropin-container');
+              if (container) {
+                document.body.removeChild(container);
+              }
+              window.location.href = '/payment-success';
+            },
+            onCancel: () => {
+              console.log("Windcave payment cancelled");
+              // Clean up container
+              const container = document.getElementById('windcave-dropin-container');
+              if (container) {
+                document.body.removeChild(container);
+              }
+            },
+            onError: (error: any) => {
+              console.error("Windcave payment error:", error);
+              // Clean up container
+              const container = document.getElementById('windcave-dropin-container');
+              if (container) {
+                document.body.removeChild(container);
+              }
+              toast({
+                title: "Payment Error",
+                description: "There was an error processing your payment. Please try again.",
+                variant: "destructive",
+              });
+            }
+          });
         }
       } else if (eventData.organizations?.payment_provider === 'stripe') {
         if (!stripePublishableKey) {
