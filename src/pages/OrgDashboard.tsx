@@ -227,7 +227,34 @@ if (orgs) {
     setAnalyticsData(prev => ({ ...prev, isLoading: true }));
     
     try {
-      // Load orders data with proper joins
+      // First, let's check what orders exist for this organization
+      const { data: allOrders, error: allOrdersError } = await supabase
+        .from("orders")
+        .select(`
+          id,
+          created_at,
+          total_amount,
+          status,
+          test_mode,
+          events!inner(
+            id,
+            organization_id,
+            name
+          )
+        `)
+        .eq("events.organization_id", orgId)
+        .eq("test_mode", currentTestMode);
+
+      console.log("All orders for org:", allOrders);
+      console.log("Orders query error:", allOrdersError);
+
+      if (allOrdersError) {
+        console.error("Error loading orders:", allOrdersError);
+        setAnalyticsData(prev => ({ ...prev, isLoading: false }));
+        return;
+      }
+
+      // Load orders with order items for more detailed analytics
       const { data: ordersData, error: ordersError } = await supabase
         .from("orders")
         .select(`
@@ -239,50 +266,71 @@ if (orgs) {
             organization_id,
             name
           ),
-          order_items!inner(
+          order_items(
+            id,
             quantity,
             item_type,
+            unit_price,
             ticket_types(name)
           )
         `)
         .eq("events.organization_id", orgId)
         .eq("test_mode", currentTestMode)
-        .eq("status", "completed")
+        .in("status", ["completed", "paid"])
         .gte("created_at", new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000).toISOString());
 
+      console.log("Detailed orders data:", ordersData);
+      console.log("Detailed orders error:", ordersError);
+
       if (ordersError) {
-        console.error("Error loading orders data:", ordersError);
-        setAnalyticsData(prev => ({ ...prev, isLoading: false }));
-        return;
+        console.error("Error loading detailed orders data:", ordersError);
       }
 
-      console.log("Loaded orders data:", ordersData);
-
       // Process data for charts
-      if (ordersData && ordersData.length > 0) {
-        // Generate monthly sales data
-        const monthlyStats = ordersData.reduce((acc, order) => {
+      if (allOrders && allOrders.length > 0) {
+        console.log("Processing real data from", allOrders.length, "orders");
+        
+        // Generate monthly sales data from all orders (not just completed ones)
+        const monthlyStats = allOrders.reduce((acc, order) => {
           const month = new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
           if (!acc[month]) {
-            acc[month] = { sales: 0, tickets: 0 };
+            acc[month] = { sales: 0, tickets: 0, orders: 0 };
           }
-          acc[month].sales += Number(order.total_amount);
-          acc[month].tickets += order.order_items.reduce((sum: number, item: any) => sum + item.quantity, 0);
+          acc[month].sales += Number(order.total_amount || 0);
+          acc[month].orders += 1;
+          // For tickets, we'll use order count as approximation if no detailed data
+          acc[month].tickets += 1; // Will be updated with real ticket data if available
           return acc;
-        }, {} as Record<string, { sales: number; tickets: number }>);
+        }, {} as Record<string, { sales: number; tickets: number; orders: number }>);
 
-        const salesData = Object.entries(monthlyStats).map(([month, data]) => ({
-          month,
-          sales: data.sales,
-          tickets: data.tickets
-        }));
+        // If we have detailed order data, update ticket counts
+        if (ordersData && ordersData.length > 0) {
+          ordersData.forEach(order => {
+            const month = new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+            if (monthlyStats[month] && order.order_items) {
+              // Reset tickets count and calculate from actual data
+              monthlyStats[month].tickets = order.order_items.reduce((sum, item) => {
+                return sum + (item.item_type === 'ticket' ? item.quantity : 0);
+              }, 0);
+            }
+          });
+        }
 
-        // Generate event type data (simplified for now)
-        const eventTypes = ordersData.reduce((acc, order) => {
-          const eventName = order.events.name || 'Unknown';
+        const salesData = Object.entries(monthlyStats)
+          .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
+          .map(([month, data]) => ({
+            month,
+            sales: Math.round(data.sales * 100) / 100, // Round to 2 decimal places
+            tickets: data.tickets
+          }));
+
+        // Generate event type data based on event names
+        const eventTypes = allOrders.reduce((acc, order) => {
+          const eventName = order.events?.name || 'Unknown';
           const eventType = eventName.toLowerCase().includes('concert') ? 'Concerts' :
                            eventName.toLowerCase().includes('conference') ? 'Conferences' :
-                           eventName.toLowerCase().includes('workshop') ? 'Workshops' : 'Other';
+                           eventName.toLowerCase().includes('workshop') ? 'Workshops' :
+                           eventName.toLowerCase().includes('meetup') ? 'Meetups' : 'Other Events';
           
           if (!acc[eventType]) {
             acc[eventType] = 0;
@@ -294,7 +342,7 @@ if (orgs) {
         const eventTypeData = Object.entries(eventTypes).map(([name, value], index) => ({
           name,
           value,
-          color: ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1'][index % 5]
+          color: ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'][index % 6]
         }));
 
         // Generate daily revenue data for the last 7 days
@@ -306,16 +354,16 @@ if (orgs) {
 
         const dailyRevenue = last7Days.map(date => {
           const dayStr = date.toLocaleDateString('en-US', { weekday: 'short' });
-          const dayRevenue = ordersData
+          const dayRevenue = allOrders
             .filter(order => {
               const orderDate = new Date(order.created_at);
               return orderDate.toDateString() === date.toDateString();
             })
-            .reduce((sum, order) => sum + Number(order.total_amount), 0);
+            .reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
           
           return {
             day: dayStr,
-            revenue: dayRevenue
+            revenue: Math.round(dayRevenue * 100) / 100
           };
         });
 
@@ -326,7 +374,8 @@ if (orgs) {
           isLoading: false
         });
 
-        console.log("Analytics data processed:", { salesData, eventTypeData, revenueData: dailyRevenue });
+        console.log("Real analytics data set:", { salesData, eventTypeData, revenueData: dailyRevenue });
+        
       } else {
         // No data - set sample data to show how charts would look
         console.log("No orders data found, setting sample data");
