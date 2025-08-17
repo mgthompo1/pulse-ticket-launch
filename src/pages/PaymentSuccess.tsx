@@ -322,8 +322,21 @@ const PaymentSuccess = () => {
           )}
           
           <div className="space-y-2">
-            <Button className="w-full" onClick={() => navigate('/')}>
-              Return to Home
+            <Button 
+              className="w-full" 
+              onClick={() => {
+                // Check if event has custom success URL
+                if (orderDetails?.events?.widget_customization?.payment?.successUrl) {
+                  window.location.href = orderDetails.events.widget_customization.payment.successUrl;
+                } else {
+                  navigate('/');
+                }
+              }}
+            >
+              {orderDetails?.events?.widget_customization?.payment?.successUrl 
+                ? 'Return to Site' 
+                : 'Return to Home'
+              }
             </Button>
             <Button 
               variant="outline" 

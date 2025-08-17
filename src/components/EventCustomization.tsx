@@ -1534,6 +1534,63 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   }}
                 />
               </div>
+
+              {/* Payment Success URL */}
+              <div className="space-y-3 p-4 border rounded-lg">
+                <div className="space-y-2">
+                  <Label htmlFor="successUrl" className="text-base font-medium">Payment Success URL</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Custom URL to redirect customers after successful payment. Leave empty to use default.
+                  </p>
+                  <Input
+                    id="successUrl"
+                    type="url"
+                    placeholder="https://yourwebsite.com/thank-you"
+                    value={(eventData?.widget_customization as any)?.payment?.successUrl || ''}
+                    onChange={async (e) => {
+                      try {
+                        const currentCustomization = (eventData?.widget_customization as any) || {};
+                        const updatedCustomization = {
+                          ...currentCustomization,
+                          payment: {
+                            ...(currentCustomization.payment || {}),
+                            successUrl: e.target.value
+                          }
+                        };
+                        
+                        const { error } = await supabase
+                          .from("events")
+                          .update({ 
+                            widget_customization: updatedCustomization
+                          })
+                          .eq("id", eventId);
+
+                        if (error) throw error;
+
+                        setEventData(prev => prev ? ({
+                          ...prev,
+                          widget_customization: updatedCustomization as any
+                        }) : null);
+                        
+                        toast({
+                          title: "Success",
+                          description: "Payment success URL updated"
+                        });
+                      } catch (error) {
+                        console.error("Error updating success URL:", error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to update success URL",
+                          variant: "destructive"
+                        });
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Perfect for embedded widgets - redirect customers back to your site after purchase
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
