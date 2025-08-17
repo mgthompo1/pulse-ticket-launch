@@ -67,7 +67,10 @@ export const WindcaveHostedFields: React.FC<WindcaveHostedFieldsProps> = ({
 
         scriptsLoadedRef.current = true;
         setIsLoading(false);
-        initializeHostedFields();
+        // Wait a bit for the DOM to be ready, then initialize
+        setTimeout(() => {
+          initializeHostedFields();
+        }, 100);
       } catch (error) {
         console.error('Failed to load Windcave scripts:', error);
         onError('Failed to load payment system');
@@ -78,13 +81,59 @@ export const WindcaveHostedFields: React.FC<WindcaveHostedFieldsProps> = ({
     loadScripts();
   }, []);
 
-  const initializeHostedFields = () => {
+  const waitForDOMElements = (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      let attempts = 0;
+      const maxAttempts = 50; // 5 seconds max wait
+      
+      const checkElements = () => {
+        const elements = [
+          document.getElementById("windcave-card-number"),
+          document.getElementById("windcave-expiry"),
+          document.getElementById("windcave-cvv"),
+          document.getElementById("windcave-postal")
+        ];
+        
+        const allExist = elements.every(el => el !== null);
+        
+        if (allExist) {
+          console.log("All Windcave container elements found!");
+          resolve();
+        } else if (attempts >= maxAttempts) {
+          console.error("Timeout waiting for DOM elements:", {
+            'windcave-card-number': !!document.getElementById("windcave-card-number"),
+            'windcave-expiry': !!document.getElementById("windcave-expiry"),
+            'windcave-cvv': !!document.getElementById("windcave-cvv"),
+            'windcave-postal': !!document.getElementById("windcave-postal")
+          });
+          reject(new Error("DOM elements not found after timeout"));
+        } else {
+          attempts++;
+          setTimeout(checkElements, 100);
+        }
+      };
+      
+      checkElements();
+    });
+  };
+
+  const initializeHostedFields = async () => {
     if (!(window as any).WindcavePayments?.HostedFields) {
       console.error('WindcavePayments.HostedFields not available');
       onError('Payment system not ready');
       return;
     }
 
+    try {
+      // Wait for DOM elements to be ready
+      await waitForDOMElements();
+    } catch (error) {
+      console.error('DOM elements not ready:', error);
+      onError('Payment form not ready');
+      return;
+    }
+
+    console.log("Initializing Windcave Hosted Fields...");
     const environment = eventData?.organizations?.windcave_endpoint === 'UAT' ? 'uat' : 'sec';
 
     const options = {
