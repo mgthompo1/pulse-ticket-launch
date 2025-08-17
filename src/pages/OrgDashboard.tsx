@@ -225,6 +225,7 @@ if (orgs) {
     console.log("=== ANALYTICS DEBUG ===");
     console.log("Loading analytics data for org:", orgId, "test_mode:", currentTestMode);
     console.log("User organization ID:", organizationId);
+    console.log("Current testMode state:", testMode);
     
     setAnalyticsData(prev => ({ ...prev, isLoading: true }));
     
