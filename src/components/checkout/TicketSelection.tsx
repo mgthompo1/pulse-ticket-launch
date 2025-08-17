@@ -27,18 +27,6 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
         <p className="text-muted-foreground">Choose the tickets you'd like to purchase</p>
       </div>
 
-      {/* Navigation Button Above Content */}
-      <div className="flex justify-end">
-        <Button 
-          onClick={onNext} 
-          disabled={!hasSelectedTickets}
-          size="lg"
-          className="bg-neutral-900 hover:bg-neutral-800 text-white border-0"
-        >
-          Continue to Add-ons
-        </Button>
-      </div>
-
       <div className="space-y-4">
         {ticketTypes.map((ticketType) => {
           const isAvailable = ticketType.quantity_available > ticketType.quantity_sold;
@@ -85,6 +73,18 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
             </Card>
           );
         })}
+      </div>
+
+      {/* Navigation Button Below Content */}
+      <div className="flex justify-end pt-6">
+        <Button 
+          onClick={onNext} 
+          disabled={!hasSelectedTickets}
+          size="lg"
+          className="bg-neutral-900 hover:bg-neutral-800 text-white border-0"
+        >
+          Continue to Add-ons
+        </Button>
       </div>
     </div>
   );

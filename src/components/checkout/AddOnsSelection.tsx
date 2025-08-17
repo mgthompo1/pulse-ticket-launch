@@ -25,8 +25,13 @@ export const AddOnsSelection: React.FC<AddOnsSelectionProps> = ({
         <p className="text-muted-foreground">Enhance your experience with additional items</p>
       </div>
 
-      {/* Navigation Buttons Above Content */}
-      <div className="flex justify-between">
+      <MerchandiseSelector 
+        eventId={eventId}
+        onCartUpdate={onMerchandiseCartUpdate}
+      />
+
+      {/* Navigation Buttons Below Content */}
+      <div className="flex justify-between pt-6">
         <Button variant="outline" onClick={onBack} size="lg">
           Back to Tickets
         </Button>
@@ -34,11 +39,6 @@ export const AddOnsSelection: React.FC<AddOnsSelectionProps> = ({
           Continue to Details
         </Button>
       </div>
-
-      <MerchandiseSelector 
-        eventId={eventId}
-        onCartUpdate={onMerchandiseCartUpdate}
-      />
     </div>
   );
 };

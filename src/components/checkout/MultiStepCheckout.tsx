@@ -171,11 +171,9 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
             )}
           </div>
 
-          {/* Order Summary Sidebar - Better alignment approach */}
+          {/* Order Summary Sidebar */}
           <div className="lg:col-span-1">
             <div className="sticky top-8">
-              {/* Use CSS Grid to align with the main content */}
-              <div className={currentStep === 'tickets' ? 'mt-14' : ''}>
                 <OrderSummary
                   eventData={eventData}
                   cartItems={cartItems}
@@ -185,7 +183,6 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                   onUpdateTicketQuantity={updateTicketQuantity}
                   onBack={prevStep}
                 />
-              </div>
             </div>
           </div>
         </div>
