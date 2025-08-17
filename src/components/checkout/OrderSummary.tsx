@@ -293,8 +293,8 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           </div>
         )}
 
-        {/* Payment Button - Only show on payment step */}
-        {currentStep === 'payment' && customerInfo && (cartItems.length > 0 || merchandiseCart.length > 0) && (
+        {/* Payment Button - Only show on payment step and NOT for Windcave hosted fields */}
+        {currentStep === 'payment' && customerInfo && (cartItems.length > 0 || merchandiseCart.length > 0) && eventData.organizations?.payment_provider !== 'windcave' && (
           <div className="space-y-4">
             <Separator />
             <div className="space-y-3">

@@ -312,7 +312,7 @@ export const WindcaveHostedFields: React.FC<WindcaveHostedFieldsProps> = ({
           <Button 
             onClick={handleSubmit}
             disabled={!isReady || isSubmitting || isProcessing}
-            className="w-full h-12 text-base font-medium"
+            className="w-full h-12 text-base font-medium bg-primary hover:bg-primary/90 text-primary-foreground"
             size="lg"
           >
             {isSubmitting ? (
