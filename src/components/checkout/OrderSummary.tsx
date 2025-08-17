@@ -8,6 +8,7 @@ import { CartItem, MerchandiseCartItem, EventData, CustomerInfo } from '@/types/
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
+import { WindcaveHostedFields } from '@/components/payment/WindcaveHostedFields';
 
 interface OrderSummaryProps {
   eventData: EventData;
@@ -31,6 +32,8 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null);
   const [showStripePayment, setShowStripePayment] = useState(false);
+  const [windcaveSessionData, setWindcaveSessionData] = useState<any>(null);
+  const [showWindcavePayment, setShowWindcavePayment] = useState(false);
   const calculateTicketSubtotal = () => {
     return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
@@ -137,309 +140,12 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
         console.log("Windcave session response:", data);
         
         if (data.links) {
-          // Check if WindcavePayments is available
-          if (!window.WindcavePayments?.DropIn) {
-            console.error("WindcavePayments.DropIn not available");
-            throw new Error("Windcave payment system not ready");
-          }
+          // Store session data and show hosted fields
+          setWindcaveSessionData(data);
+          setShowWindcavePayment(true);
+          setIsProcessing(false);
+          return;
 
-          console.log("Initializing Windcave Drop-In with data:", data);
-          
-          // Use the same approach as the working one-page checkout
-          const links = data.links;
-
-          // Ensure we have the container in the DOM
-          let container = document.getElementById('windcave-drop-in-multistep');
-          if (!container) {
-            // Create the container if it doesn't exist
-            container = document.createElement('div');
-            container.id = 'windcave-drop-in-multistep';
-            container.style.position = 'fixed';
-            container.style.top = '0';
-            container.style.left = '0';
-            container.style.width = '100vw';
-            container.style.height = '100vh';
-            container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-            container.style.zIndex = '9999';
-            container.style.display = 'flex';
-            container.style.alignItems = 'center';
-            container.style.justifyContent = 'center';
-            container.style.padding = '20px';
-            document.body.appendChild(container);
-          }
-
-          // Create the drop-in using the exact same approach from TicketWidget
-          const dropInConfig = {
-            container: "windcave-drop-in-multistep",
-            links: links,
-            totalValue: data.totalAmount.toString(),
-            card: {
-              hideCardholderName: true,
-              supportedCards: ["visa", "mastercard", "amex"],
-              disableCardAutoComplete: false,
-              cardImagePlacement: "right",
-              sideIcons: ["visa", "mastercard", "amex"],
-              enableCardValidation: true,
-              enableCardFormatting: true
-            },
-            security: {
-              enableAutoComplete: true,
-              enableSecureForm: true,
-              enableFormValidation: true
-            },
-            // Mobile payments configuration if Apple Pay is enabled
-            mobilePayments: eventData?.organizations?.apple_pay_merchant_id ? {
-              buttonType: "plain",
-              buttonStyle: "black", 
-              buttonLocale: "en-US",
-              merchantName: eventData.organizations.name || "Event Tickets",
-              countryCode: "NZ",
-              currencyCode: "NZD",
-              supportedNetworks: ["visa", "mastercard", "amex"],
-              isTest: eventData.organizations.windcave_endpoint !== "SEC",
-              applePay: {
-                merchantId: eventData.organizations.apple_pay_merchant_id,
-                onSuccess: function(status: string) {
-                  console.log("=== APPLE PAY SUCCESS CALLBACK ===");
-                  console.log("Apple Pay status:", status);
-                  
-                  if (status === "done") {
-                    console.log("Apple Pay transaction finished");
-                    if (window.windcaveDropIn) {
-                      window.windcaveDropIn.close();
-                      window.windcaveDropIn = null;
-                    }
-                    // Clean up container
-                    const containerEl = document.getElementById('windcave-drop-in-multistep');
-                    if (containerEl) {
-                      document.body.removeChild(containerEl);
-                    }
-                    return;
-                  }
-                  
-                  // Return Promise for non-done status
-                  return new Promise(async (resolve) => {
-                    try {
-                      console.log("Processing Apple Pay transaction...");
-                      
-                      const sessionId = links[0]?.href?.split('/').pop();
-                      
-                      if (sessionId && eventData) {
-                        toast({
-                          title: "Apple Pay Successful!",
-                          description: "Finalizing your order...",
-                        });
-                        
-                        const { error } = await supabase.functions.invoke('windcave-dropin-success', {
-                          body: { 
-                            sessionId: sessionId,
-                            eventId: eventData.id
-                          }
-                        });
-
-                        if (error) {
-                          console.error("Apple Pay finalization error:", error);
-                          resolve(false);
-                          return;
-                        }
-
-                        toast({
-                          title: "Order Complete!",
-                          description: "Your tickets have been confirmed via Apple Pay.",
-                        });
-                        
-                        resolve(true);
-                        
-                        setTimeout(() => {
-                          window.location.href = '/payment-success';
-                        }, 2000);
-                        
-                      } else {
-                        resolve(false);
-                      }
-                    } catch (error) {
-                      console.error("Apple Pay order finalization error:", error);
-                      resolve(false);
-                    }
-                  });
-                },
-                onError: function(stage: any, error: any) {
-                  console.error("=== APPLE PAY ERROR CALLBACK ===");
-                  console.error("Stage:", stage, "Error:", error);
-                  
-                  if (stage === "submit" || stage === "transaction") {
-                    console.log("Apple Pay transaction failed");
-                    if (window.windcaveDropIn) {
-                      window.windcaveDropIn.close();
-                      window.windcaveDropIn = null;
-                    }
-                    // Clean up container
-                    const containerEl = document.getElementById('windcave-drop-in-multistep');
-                    if (containerEl) {
-                      document.body.removeChild(containerEl);
-                    }
-                  }
-                  
-                  toast({
-                    title: "Apple Pay Failed",
-                    description: `Payment failed at ${stage} stage`,
-                    variant: "destructive"
-                  });
-                }
-              }
-            } : undefined,
-            // Optional callback triggered when payment starts
-            onPaymentStart: (paymentMethod: string, next: () => void) => {
-              console.log("=== PAYMENT START CALLBACK ===");
-              console.log("Payment method selected:", paymentMethod);
-              next();
-            },
-            // General onSuccess callback (for non-Apple Pay payments)
-            onSuccess: async (status: string, data?: any) => {
-              console.log("=== WINDCAVE SUCCESS CALLBACK ===");
-              console.log("Success status:", status);
-              console.log("Success data:", data);
-              
-              // Critical: Handle 3DSecure authentication flow
-              if (status == "3DSecure") {
-                console.log("3DSecure authentication in progress...");
-                return;
-              }
-              
-              console.log("Transaction finished");
-              
-              // Close the drop-in widget
-              if (window.windcaveDropIn) {
-                window.windcaveDropIn.close();
-                window.windcaveDropIn = null;
-              }
-              
-              // Clean up container
-              const containerEl = document.getElementById('windcave-drop-in-multistep');
-              if (containerEl) {
-                document.body.removeChild(containerEl);
-              }
-              
-              // Extract session ID from links for completion
-              const sessionId = links[0]?.href?.split('/').pop();
-              console.log("=== DEBUG INFO ===");
-              console.log("Full link:", links[0]?.href);
-              console.log("Extracted sessionId:", sessionId);
-              console.log("Event ID:", eventData?.id);
-              
-              if (sessionId && eventData) {
-                toast({
-                  title: "Payment Successful!",
-                  description: "Finalizing your order...",
-                });
-                
-                try {
-                  console.log("=== CALLING WINDCAVE DROPIN SUCCESS ===");
-                  console.log("About to call function with:", {
-                    sessionId: sessionId,
-                    eventId: eventData.id
-                  });
-                  
-                  // Call the Drop In success function to finalize the order
-                  const { data, error } = await supabase.functions.invoke('windcave-dropin-success', {
-                    body: { 
-                      sessionId: sessionId,
-                      eventId: eventData.id
-                    }
-                  });
-
-                  console.log("=== FUNCTION RESPONSE ===");
-                  console.log("Data:", data);
-                  console.log("Error:", error);
-
-                  if (error) {
-                    console.error("=== WINDCAVE DROPIN SUCCESS ERROR ===");
-                    console.error("Full error object:", error);
-                    console.error("Error message:", error.message);
-                    console.error("Error details:", error.details);
-                    throw error;
-                  }
-
-                  console.log("=== WINDCAVE DROPIN SUCCESS DATA ===");
-                  console.log("Response data:", data);
-
-                  toast({
-                    title: "Order Complete!",
-                    description: `Your tickets have been confirmed. Check your email for details.`,
-                  });
-                  
-                  // Redirect to success page
-                  setTimeout(() => {
-                    window.location.href = '/payment-success';
-                  }, 1500);
-                  
-                } catch (error: any) {
-                  console.error("=== COMPLETE ERROR DETAILS ===");
-                  console.error("Error finalizing order:", error);
-                  console.error("Error type:", typeof error);
-                  console.error("Error constructor:", error?.constructor?.name);
-                  console.error("Error stack:", error?.stack);
-                  toast({
-                    title: "Payment Processed",
-                    description: "Payment successful but there was an issue finalizing your order. Please contact support.",
-                    variant: "destructive"
-                  });
-                }
-              } else {
-                toast({
-                  title: "Payment Complete",
-                  description: "Your payment has been processed successfully!",
-                });
-                
-                // Redirect to success page
-                setTimeout(() => {
-                  window.location.href = '/payment-success';
-                }, 1500);
-              }
-            },
-            // General onError callback (for non-Apple Pay payments)
-            onError: (error: any) => {
-              console.error("=== WINDCAVE ERROR CALLBACK ===");
-              console.error("Transaction failed:", error);
-              
-              // Close the drop-in widget
-              if (window.windcaveDropIn) {
-                window.windcaveDropIn.close();
-                window.windcaveDropIn = null;
-              }
-              
-              // Clean up container
-              const containerEl = document.getElementById('windcave-drop-in-multistep');
-              if (containerEl) {
-                document.body.removeChild(containerEl);
-              }
-              
-              let errorMessage = "Payment failed. Please try again.";
-              if (typeof error === 'string') {
-                errorMessage = error;
-              } else if (error?.message) {
-                errorMessage = error.message;
-              }
-              
-              toast({
-                title: "Payment Failed",
-                description: errorMessage,
-                variant: "destructive"
-              });
-            },
-            // Additional configuration to ensure proper security
-            options: {
-              enableAutoComplete: true,
-              enableSecureForm: true,
-              enableFormValidation: true,
-              enableCardValidation: true,
-              enableCardFormatting: true
-            }
-          };
-
-          console.log("Creating Windcave drop-in with config:", dropInConfig);
-          
-          window.windcaveDropIn = window.WindcavePayments?.DropIn.create(dropInConfig as any);
         }
       } else if (eventData.organizations?.payment_provider === 'stripe') {
         if (!stripePublishableKey) {
@@ -458,6 +164,55 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleWindcaveSuccess = async (sessionId: string) => {
+    try {
+      toast({
+        title: "Payment Successful!",
+        description: "Finalizing your order...",
+      });
+      
+      const { error } = await supabase.functions.invoke('windcave-dropin-success', {
+        body: { 
+          sessionId: sessionId,
+          eventId: eventData.id
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Order Complete!",
+        description: "Your tickets have been confirmed. Check your email for details.",
+      });
+      
+      setTimeout(() => {
+        window.location.href = '/payment-success';
+      }, 1500);
+      
+    } catch (error: any) {
+      console.error("Error finalizing order:", error);
+      toast({
+        title: "Payment Processed",
+        description: "Payment successful but there was an issue finalizing your order. Please contact support.",
+        variant: "destructive"
+      });
+    } finally {
+      setShowWindcavePayment(false);
+      setIsProcessing(false);
+    }
+  };
+
+  const handleWindcaveError = (error: string) => {
+    console.error("Windcave payment error:", error);
+    toast({
+      title: "Payment Failed",
+      description: error,
+      variant: "destructive"
+    });
+    setShowWindcavePayment(false);
+    setIsProcessing(false);
   };
 
   return (
@@ -683,6 +438,19 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                 </CardContent>
               </Card>
             </div>
+          </div>
+        )}
+
+        {/* Windcave Hosted Fields */}
+        {showWindcavePayment && windcaveSessionData && (
+          <div className="mt-6">
+            <WindcaveHostedFields
+              sessionData={windcaveSessionData}
+              onSuccess={handleWindcaveSuccess}
+              onError={handleWindcaveError}
+              isProcessing={isProcessing}
+              eventData={eventData}
+            />
           </div>
         )}
       </CardContent>
