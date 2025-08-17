@@ -161,23 +161,6 @@ export const WindcaveHostedFields: React.FC<WindcaveHostedFieldsProps> = ({
           tabOrder: 4,
           placeholder: "0000"
         }
-      },
-      styles: {
-        input: {
-          color: "hsl(var(--foreground))",
-          fontSize: "14px",
-          fontFamily: "inherit",
-          padding: "8px 12px",
-          backgroundColor: "transparent",
-          border: "none",
-          outline: "none"
-        },
-        "input-valid": {
-          color: "hsl(var(--foreground))"
-        },
-        "input-invalid": {
-          color: "hsl(var(--destructive))"
-        }
       }
     };
 

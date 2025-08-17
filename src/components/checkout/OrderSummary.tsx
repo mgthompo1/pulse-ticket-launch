@@ -8,7 +8,6 @@ import { CartItem, MerchandiseCartItem, EventData, CustomerInfo } from '@/types/
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
-import { WindcaveHostedFields } from '@/components/payment/WindcaveHostedFields';
 
 interface OrderSummaryProps {
   eventData: EventData;
@@ -32,8 +31,6 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null);
   const [showStripePayment, setShowStripePayment] = useState(false);
-  const [windcaveSessionData, setWindcaveSessionData] = useState<any>(null);
-  const [showWindcavePayment, setShowWindcavePayment] = useState(false);
   const calculateTicketSubtotal = () => {
     return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
@@ -106,47 +103,13 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     setIsProcessing(true);
 
     try {
-      // Prepare order items
-      const items = [
-        ...cartItems.map(item => ({
-          type: 'ticket' as const,
-          ticket_type_id: item.id,
-          quantity: item.quantity,
-          unit_price: item.price,
-        })),
-        ...merchandiseCart.map(item => ({
-          type: 'merchandise' as const,
-          merchandise_id: item.merchandise.id,
-          quantity: item.quantity,
-          unit_price: item.merchandise.price,
-          merchandise_options: {
-            size: item.selectedSize,
-            color: item.selectedColor,
-          },
-        })),
-      ];
-
       if (eventData.organizations?.payment_provider === 'windcave') {
-        const { data, error } = await supabase.functions.invoke('windcave-session', {
-          body: {
-            eventId: eventData.id,
-            items,
-            customerInfo,
-          },
+        // For Windcave, let the Payment component handle the flow
+        toast({
+          title: "Please use the payment form",
+          description: "Complete your payment using the form on the main page",
         });
-
-        if (error) throw error;
-
-        console.log("Windcave session response:", data);
-        
-        if (data.links) {
-          // Store session data and show hosted fields
-          setWindcaveSessionData(data);
-          setShowWindcavePayment(true);
-          setIsProcessing(false);
-          return;
-
-        }
+        return;
       } else if (eventData.organizations?.payment_provider === 'stripe') {
         if (!stripePublishableKey) {
           throw new Error("Stripe publishable key not configured");
@@ -166,54 +129,6 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     }
   };
 
-  const handleWindcaveSuccess = async (sessionId: string) => {
-    try {
-      toast({
-        title: "Payment Successful!",
-        description: "Finalizing your order...",
-      });
-      
-      const { error } = await supabase.functions.invoke('windcave-dropin-success', {
-        body: { 
-          sessionId: sessionId,
-          eventId: eventData.id
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Order Complete!",
-        description: "Your tickets have been confirmed. Check your email for details.",
-      });
-      
-      setTimeout(() => {
-        window.location.href = '/payment-success';
-      }, 1500);
-      
-    } catch (error: any) {
-      console.error("Error finalizing order:", error);
-      toast({
-        title: "Payment Processed",
-        description: "Payment successful but there was an issue finalizing your order. Please contact support.",
-        variant: "destructive"
-      });
-    } finally {
-      setShowWindcavePayment(false);
-      setIsProcessing(false);
-    }
-  };
-
-  const handleWindcaveError = (error: string) => {
-    console.error("Windcave payment error:", error);
-    toast({
-      title: "Payment Failed",
-      description: error,
-      variant: "destructive"
-    });
-    setShowWindcavePayment(false);
-    setIsProcessing(false);
-  };
 
   return (
     <>
@@ -379,7 +294,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
         )}
 
         {/* Payment Button - Only show on payment step */}
-        {currentStep === 'payment' && customerInfo && (cartItems.length > 0 || merchandiseCart.length > 0) && !showWindcavePayment && (
+        {currentStep === 'payment' && customerInfo && (cartItems.length > 0 || merchandiseCart.length > 0) && (
           <div className="space-y-4">
             <Separator />
             <div className="space-y-3">
@@ -444,19 +359,6 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
         )}
       </CardContent>
     </Card>
-
-    {/* Windcave Hosted Fields as separate card */}
-    {showWindcavePayment && windcaveSessionData && (
-      <div className="mt-6 w-full">
-        <WindcaveHostedFields
-          sessionData={windcaveSessionData}
-          onSuccess={handleWindcaveSuccess}
-          onError={handleWindcaveError}
-          isProcessing={isProcessing}
-          eventData={eventData}
-        />
-      </div>
-    )}
     </>
   );
 };
