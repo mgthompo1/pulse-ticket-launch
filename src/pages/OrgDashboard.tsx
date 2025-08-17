@@ -222,7 +222,9 @@ if (orgs) {
 
   const loadAnalyticsData = useCallback(async (orgId: string, mode?: boolean) => {
     const currentTestMode = mode !== undefined ? mode : testMode;
+    console.log("=== ANALYTICS DEBUG ===");
     console.log("Loading analytics data for org:", orgId, "test_mode:", currentTestMode);
+    console.log("User organization ID:", organizationId);
     
     setAnalyticsData(prev => ({ ...prev, isLoading: true }));
     
@@ -245,8 +247,16 @@ if (orgs) {
         .eq("events.organization_id", orgId)
         .eq("test_mode", currentTestMode);
 
+      console.log("Query for orders with org ID:", orgId, "test_mode:", currentTestMode);
       console.log("All orders for org:", allOrders);
       console.log("Orders query error:", allOrdersError);
+      
+      // Debug: Let's also check ALL orders regardless of organization
+      const { data: debugOrders } = await supabase
+        .from("orders")
+        .select("id, status, test_mode, events(organization_id, name)")
+        .limit(5);
+      console.log("Debug - Sample orders from database:", debugOrders);
 
       if (allOrdersError) {
         console.error("Error loading orders:", allOrdersError);
