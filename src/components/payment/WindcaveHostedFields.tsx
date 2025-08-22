@@ -37,6 +37,7 @@ export const WindcaveHostedFields: React.FC<WindcaveHostedFieldsProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [detectedCardType, setDetectedCardType] = useState<string | null>(null);
   const controllerRef = useRef<any>(null);
   const scriptsLoadedRef = useRef(false);
 
@@ -144,7 +145,12 @@ export const WindcaveHostedFields: React.FC<WindcaveHostedFieldsProps> = ({
           tabOrder: 1,
           placeholder: "4111 1111 1111 1111",
           supportedCards: ["visa", "masterCard", "amex"],
-          cardSchemaImagePlacement: "right"
+          cardSchemaImagePlacement: "right",
+          // Card validation rules based on type
+          validation: {
+            enabled: true,
+            cardNumberFormat: true
+          }
         },
         ExpirationDate: {
           container: "windcave-expiry",
@@ -161,6 +167,18 @@ export const WindcaveHostedFields: React.FC<WindcaveHostedFieldsProps> = ({
           tabOrder: 4,
           placeholder: "0000"
         }
+      },
+      // Event callbacks for card type detection
+      callbacks: {
+        onCardTypeDetected: (cardType: string) => {
+          console.log('Card type detected:', cardType);
+          setDetectedCardType(cardType);
+          updateCardValidation(cardType);
+        },
+        onFieldChanged: (fieldName: string, fieldData: any) => {
+          console.log('Field changed:', fieldName, fieldData);
+          // Additional validation logic can be added here
+        }
       }
     };
 
@@ -171,6 +189,7 @@ export const WindcaveHostedFields: React.FC<WindcaveHostedFieldsProps> = ({
         () => {
           console.log("Windcave Hosted Fields created successfully");
           setIsReady(true);
+          setupCardTypeDetection();
         },
         (error: string) => {
           console.error("Hosted Fields creation failed:", error);
@@ -180,6 +199,70 @@ export const WindcaveHostedFields: React.FC<WindcaveHostedFieldsProps> = ({
     } catch (error) {
       console.error("Error creating hosted fields:", error);
       onError('Failed to initialize payment form');
+    }
+  };
+
+  // Function to update card validation based on detected card type
+  const updateCardValidation = (cardType: string) => {
+    const cardTypeInfo = getCardTypeInfo(cardType);
+    
+    // Update the UI to show card type info
+    const cardNumberContainer = document.getElementById("windcave-card-number");
+    if (cardNumberContainer) {
+      const existingInfo = cardNumberContainer.querySelector('.card-type-info');
+      if (existingInfo) {
+        existingInfo.remove();
+      }
+      
+      // Add card type indicator
+      const cardInfo = document.createElement('div');
+      cardInfo.className = 'card-type-info text-xs text-muted-foreground mt-1';
+      cardInfo.textContent = `${cardTypeInfo.displayName} - ${cardTypeInfo.length} digits required`;
+      cardNumberContainer.parentElement?.appendChild(cardInfo);
+    }
+
+    // Update CVV placeholder based on card type
+    // Note: Windcave hosted fields handle card type validation internally
+    // The actual length validation happens server-side within Windcave
+    console.log(`Card type ${cardType} detected - CVV length: ${cardTypeInfo.cvvLength}, Card length: ${cardTypeInfo.length}`);
+  };
+
+  // Function to get card type information
+  const getCardTypeInfo = (cardType: string) => {
+    const cardTypes: Record<string, { displayName: string; length: number; cvvLength: number }> = {
+      'visa': { displayName: 'Visa', length: 16, cvvLength: 3 },
+      'mastercard': { displayName: 'Mastercard', length: 16, cvvLength: 3 },
+      'masterCard': { displayName: 'Mastercard', length: 16, cvvLength: 3 }, // Windcave uses this format
+      'amex': { displayName: 'American Express', length: 15, cvvLength: 4 },
+      'discover': { displayName: 'Discover', length: 16, cvvLength: 3 },
+      'diners': { displayName: 'Diners Club', length: 14, cvvLength: 3 }
+    };
+    
+    return cardTypes[cardType.toLowerCase()] || { displayName: 'Unknown', length: 16, cvvLength: 3 };
+  };
+
+  // Setup additional event listeners for card type detection
+  const setupCardTypeDetection = () => {
+    if (!controllerRef.current) return;
+
+    try {
+      // Listen for card type changes if the API supports it
+      if (controllerRef.current.on) {
+        controllerRef.current.on('cardTypeChanged', (event: any) => {
+          console.log('Card type changed event:', event);
+          if (event.cardType) {
+            setDetectedCardType(event.cardType);
+            updateCardValidation(event.cardType);
+          }
+        });
+
+        controllerRef.current.on('fieldChanged', (event: any) => {
+          console.log('Field changed event:', event);
+          // Additional field change handling
+        });
+      }
+    } catch (error) {
+      console.log('Event listeners not supported by this Windcave version:', error);
     }
   };
 
@@ -276,7 +359,14 @@ export const WindcaveHostedFields: React.FC<WindcaveHostedFieldsProps> = ({
         {/* Single row payment fields */}
         <div className="flex flex-col sm:flex-row gap-3 w-full">
           <div className="flex-1 min-w-0">
-            <label className="text-sm font-medium mb-1 block">Card Number</label>
+            <label className="text-sm font-medium mb-1 block">
+              Card Number
+              {detectedCardType && (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  ({getCardTypeInfo(detectedCardType).displayName})
+                </span>
+              )}
+            </label>
             <div 
               id="windcave-card-number"
               className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all"
@@ -292,7 +382,14 @@ export const WindcaveHostedFields: React.FC<WindcaveHostedFieldsProps> = ({
           </div>
           
           <div className="w-full sm:w-20">
-            <label className="text-sm font-medium mb-1 block">CVV</label>
+            <label className="text-sm font-medium mb-1 block">
+              CVV
+              {detectedCardType && (
+                <span className="ml-1 text-xs text-muted-foreground">
+                  ({getCardTypeInfo(detectedCardType).cvvLength} digits)
+                </span>
+              )}
+            </label>
             <div 
               id="windcave-cvv"
               className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 transition-all"
