@@ -297,32 +297,46 @@ if (orgs) {
         console.error("Error loading detailed orders data:", ordersError);
       }
 
-      // Process data for charts
-      if (allOrders && allOrders.length > 0) {
-        console.log("Processing real data from", allOrders.length, "orders");
+      // Process data for charts - include paid and completed orders
+      const validOrders = allOrders.filter(order => 
+        order.status === 'paid' || order.status === 'completed'
+      );
+      
+      if (validOrders && validOrders.length > 0) {
+        console.log("Processing real data from", validOrders.length, "paid/completed orders");
         
-        // Generate monthly sales data from all orders (not just completed ones)
-        const monthlyStats = allOrders.reduce((acc, order) => {
+        // Generate monthly sales data from valid orders
+        const monthlyStats = validOrders.reduce((acc, order) => {
           const month = new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
           if (!acc[month]) {
             acc[month] = { sales: 0, tickets: 0, orders: 0 };
           }
           acc[month].sales += Number(order.total_amount || 0);
           acc[month].orders += 1;
-          // For tickets, we'll use order count as approximation if no detailed data
-          acc[month].tickets += 1; // Will be updated with real ticket data if available
+          // Estimate 1 ticket per order for now - will be updated with real ticket data if available
+          acc[month].tickets += 1;
           return acc;
         }, {} as Record<string, { sales: number; tickets: number; orders: number }>);
 
-        // If we have detailed order data, update ticket counts
+        // If we have detailed order data, update ticket counts properly
         if (ordersData && ordersData.length > 0) {
-          ordersData.forEach(order => {
+          const validOrdersData = ordersData.filter(order => 
+            order.status === 'paid' || order.status === 'completed'
+          );
+          
+          // Reset monthly stats tickets to 0 and recalculate
+          Object.keys(monthlyStats).forEach(month => {
+            monthlyStats[month].tickets = 0;
+          });
+          
+          validOrdersData.forEach(order => {
             const month = new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
             if (monthlyStats[month] && order.order_items) {
-              // Reset tickets count and calculate from actual data
-              monthlyStats[month].tickets = order.order_items.reduce((sum, item) => {
+              // Add tickets from this order
+              const ticketCount = order.order_items.reduce((sum, item) => {
                 return sum + (item.item_type === 'ticket' ? item.quantity : 0);
               }, 0);
+              monthlyStats[month].tickets += ticketCount;
             }
           });
         }
@@ -335,8 +349,8 @@ if (orgs) {
             tickets: data.tickets
           }));
 
-        // Generate event type data based on event names
-        const eventTypes = allOrders.reduce((acc, order) => {
+        // Generate event type data based on event names from valid orders
+        const eventTypes = validOrders.reduce((acc, order) => {
           const eventName = order.events?.name || 'Unknown';
           const eventType = eventName.toLowerCase().includes('concert') ? 'Concerts' :
                            eventName.toLowerCase().includes('conference') ? 'Conferences' :
@@ -365,7 +379,7 @@ if (orgs) {
 
         const dailyRevenue = last7Days.map(date => {
           const dayStr = date.toLocaleDateString('en-US', { weekday: 'short' });
-          const dayRevenue = allOrders
+          const dayRevenue = validOrders
             .filter(order => {
               const orderDate = new Date(order.created_at);
               return orderDate.toDateString() === date.toDateString();
