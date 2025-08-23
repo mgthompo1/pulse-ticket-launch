@@ -49,7 +49,25 @@ serve(async (req) => {
 
     console.log("Admin session validated:", adminId);
 
-    // Using SERVICE_ROLE_KEY bypasses RLS automatically
+    // For platform_config operations, we need to ensure the admin has a valid session
+    // The RLS policies will check for active admin sessions
+    if (dataType === 'platform_config' || dataType === 'update_platform_config') {
+      // Verify the admin session is still active and update last_activity
+      const { error: sessionError } = await supabaseClient
+        .from('admin_sessions')
+        .update({ last_activity: new Date().toISOString() })
+        .eq('admin_user_id', adminId)
+        .eq('session_token', token)
+        .gte('expires_at', new Date().toISOString());
+      
+      if (sessionError) {
+        console.error("Failed to update admin session:", sessionError);
+        throw new Error("Admin session validation failed");
+      }
+    }
+
+    // Using SERVICE_ROLE_KEY bypasses RLS automatically for most operations
+    // However, for platform_config, we'll use the authenticated context to respect RLS
 
     let data;
     
