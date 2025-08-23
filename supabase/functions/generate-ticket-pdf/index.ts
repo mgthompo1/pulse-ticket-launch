@@ -5,18 +5,39 @@ import QRCode from "npm:qrcode@1.5.3";
 // Helper function to download and convert image to base64
 async function downloadAndConvertImage(url: string): Promise<string | null> {
   try {
+    console.log(`Attempting to download image from: ${url}`);
+    
     const response = await fetch(url);
     if (!response.ok) {
       console.log(`Failed to fetch image: ${response.status} ${response.statusText}`);
       return null;
     }
     
+    const contentType = response.headers.get('content-type');
+    console.log(`Image content type: ${contentType}`);
+    
     const arrayBuffer = await response.arrayBuffer();
     const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
     
     // Determine image type from response headers or URL
-    const contentType = response.headers.get('content-type') || 'image/png';
-    const dataUrl = `data:${contentType};base64,${base64}`;
+    let finalContentType = contentType || 'image/png';
+    
+    // Ensure we have a valid image content type
+    if (!finalContentType.startsWith('image/')) {
+      // Try to guess from URL extension
+      if (url.toLowerCase().includes('.jpg') || url.toLowerCase().includes('.jpeg')) {
+        finalContentType = 'image/jpeg';
+      } else if (url.toLowerCase().includes('.png')) {
+        finalContentType = 'image/png';
+      } else if (url.toLowerCase().includes('.webp')) {
+        finalContentType = 'image/webp';
+      } else {
+        finalContentType = 'image/png'; // Default fallback
+      }
+    }
+    
+    const dataUrl = `data:${finalContentType};base64,${base64}`;
+    console.log(`Successfully converted image to base64. Content type: ${finalContentType}, Data URL length: ${dataUrl.length}`);
     
     return dataUrl;
   } catch (error) {
@@ -179,18 +200,22 @@ Deno.serve(async (req) => {
       logStep("Logo URL check", { 
         eventLogoUrl: order.events.logo_url,
         orgLogoUrl: order.events.organizations?.logo_url,
-        selectedLogoUrl: logoUrl
+        selectedLogoUrl: logoUrl,
+        hasEventLogo: !!order.events.logo_url,
+        hasOrgLogo: !!order.events.organizations?.logo_url,
+        eventLogoType: typeof order.events.logo_url,
+        orgLogoType: typeof order.events.organizations?.logo_url
       });
       
-      if (logoUrl) {
+      if (logoUrl && logoUrl !== 'placeholder.svg' && logoUrl !== '/placeholder.svg' && !logoUrl.includes('windcave')) {
         logStep("Downloading logo", { logoUrl });
         logoDataUrl = await downloadAndConvertImage(logoUrl);
         
         if (logoDataUrl) {
-          // For PDF, we'll use standard logo dimensions
-          // Most logos work well with these dimensions
-          logoHeight = 20; // 20mm height
-          logoWidth = 20;  // 20mm width (square aspect ratio)
+          // For PDF, we'll use better logo dimensions
+          // Larger logo for better visibility and professional appearance
+          logoHeight = 25; // 25mm height
+          logoWidth = 25;  // 25mm width (square aspect ratio)
           
           logStep("Logo prepared successfully", { 
             width: logoWidth, 
@@ -263,24 +288,42 @@ Deno.serve(async (req) => {
       // Display logo if available
       let eventNameX = margin + 8;
       
-      if (logoDataUrl && logoWidth > 0 && logoHeight > 0) {
+      if (logoDataUrl && logoWidth > 0 && logoHeight > 0 && logoDataUrl.length > 100) {
         try {
-          // Add logo to the left of the event name
+          // Add logo to the left of the event name with better positioning
           const logoX = margin + 8;
-          const logoY = currentY - logoHeight + 2;
+          const logoY = currentY - logoHeight + 4; // Better vertical alignment
           
-          // Try to add the logo image to the PDF
-          pdf.addImage(logoDataUrl, 'PNG', logoX, logoY, logoWidth, logoHeight);
+          // Try to add the logo image to the PDF with proper format detection
+          let imageFormat = 'PNG'; // Default format
           
-          // Move event name to the right of the logo
-          eventNameX = logoX + logoWidth + 8;
+          // Try to detect format from data URL
+          if (logoDataUrl.includes('data:image/jpeg')) {
+            imageFormat = 'JPEG';
+          } else if (logoDataUrl.includes('data:image/png')) {
+            imageFormat = 'PNG';
+          } else if (logoDataUrl.includes('data:image/webp')) {
+            imageFormat = 'PNG'; // Convert WebP to PNG for PDF compatibility
+          }
           
-          logStep("Logo added to PDF", { 
-            logoX, 
-            logoY, 
-            logoWidth, 
-            logoHeight 
-          });
+          // Validate that we have a proper data URL
+          if (logoDataUrl.startsWith('data:image/')) {
+            pdf.addImage(logoDataUrl, imageFormat, logoX, logoY, logoWidth, logoHeight);
+            
+            // Move event name to the right of the logo with better spacing
+            eventNameX = logoX + logoWidth + 12; // Increased spacing
+            
+            logStep("Logo added to PDF", { 
+              logoX, 
+              logoY, 
+              logoWidth, 
+              logoHeight,
+              format: imageFormat
+            });
+          } else {
+            logStep("Invalid logo data URL format", { logoDataUrl: logoDataUrl.substring(0, 50) + '...' });
+            eventNameX = margin + 8;
+          }
         } catch (logoError) {
           logStep("Failed to add logo to PDF", { error: logoError });
           // Fallback to no logo if there's an error
@@ -290,8 +333,10 @@ Deno.serve(async (req) => {
         logStep("No logo available for PDF", { 
           hasLogoData: !!logoDataUrl,
           logoWidth,
-          logoHeight
+          logoHeight,
+          logoDataUrlLength: logoDataUrl?.length || 0
         });
+        eventNameX = margin + 8;
       }
       
       // Event name with better typography

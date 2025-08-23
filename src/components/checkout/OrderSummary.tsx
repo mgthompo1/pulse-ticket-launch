@@ -170,6 +170,15 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                     <span className="text-xs text-muted-foreground">
                       ${item.price.toFixed(2)} each
                     </span>
+                    {/* Display selected seats if available */}
+                    {item.selectedSeats && item.selectedSeats.length > 0 && (
+                      <div className="mt-1">
+                        <span className="text-xs text-muted-foreground">Seats: </span>
+                        <span className="text-xs font-medium text-blue-600">
+                          {item.selectedSeats.join(', ')}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <p className="font-medium text-sm">
                     ${(item.price * item.quantity).toFixed(2)}

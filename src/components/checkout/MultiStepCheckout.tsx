@@ -35,7 +35,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
 
   const currentStepData = steps.find(step => step.key === currentStep);
 
-  const addToCart = (ticketType: TicketType) => {
+  const addToCart = (ticketType: TicketType & { selectedSeats?: string[] }) => {
     setCartItems(prev => {
       const existingItem = prev.find(item => item.id === ticketType.id);
       
@@ -49,7 +49,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
         ...ticketType,
         quantity: 1,
         type: 'ticket' as const,
-        selectedSeats: []
+        selectedSeats: ticketType.selectedSeats || []
       }];
     });
   };

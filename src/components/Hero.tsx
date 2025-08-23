@@ -19,10 +19,10 @@ export const Hero = () => {
       
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
-          {/* Badge */}
+          {/* Badge - Hidden but spacing preserved */}
           <div className="flex justify-center mb-6">
-            <Badge variant="secondary" className="px-3 py-1.5 text-xs font-medium bg-[#ff4d00]/20 text-white border-[#ff4d00]/30 rounded-full font-manrope">
-              {getContentByKey('hero', 'badge_text') || '🎉 Trusted by 10,000+ event organizers worldwide'}
+            <Badge variant="secondary" className="px-3 py-1.5 text-xs font-medium bg-[#ff4d00]/20 text-white border-[#ff4d00]/30 rounded-full font-manrope opacity-0">
+              &nbsp;
             </Badge>
           </div>
 

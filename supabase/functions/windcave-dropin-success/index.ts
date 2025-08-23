@@ -143,6 +143,73 @@ serve(async (req) => {
         });
         console.log("Ticket email sent successfully");
         
+        // Send organizer notification if enabled
+        console.log("Checking for organizer notifications...");
+        try {
+          const { data: eventWithCustomization } = await supabaseClient
+            .from("events")
+            .select("email_customization")
+            .eq("id", eventId)
+            .single();
+          
+          if (eventWithCustomization?.email_customization?.notifications?.organiserNotifications) {
+            console.log("Organizer notifications enabled, sending notification...");
+            
+            // Get order data for notification
+            const { data: orderWithItems } = await supabaseClient
+              .from("orders")
+              .select(`
+                *,
+                order_items (
+                  *,
+                  ticket_types (
+                    name,
+                    price
+                  ),
+                  merchandise (
+                    name,
+                    price
+                  )
+                )
+              `)
+              .eq("id", order.id)
+              .single();
+            
+            if (orderWithItems) {
+              // Format order data for notification
+              const orderData = orderWithItems.order_items.map((item: any) => ({
+                type: item.item_type,
+                name: item.item_type === 'ticket' ? item.ticket_types?.name : item.merchandise?.name,
+                price: item.item_type === 'ticket' ? item.ticket_types?.price : item.merchandise?.price,
+                quantity: item.quantity,
+                selectedSeats: item.selected_seats || [],
+                selectedSize: item.selected_size,
+                selectedColor: item.selected_color
+              }));
+              
+              // Get customer info from order
+              const customerInfo = {
+                name: orderWithItems.customer_name,
+                email: orderWithItems.customer_email,
+                phone: orderWithItems.customer_phone,
+                customAnswers: orderWithItems.custom_answers || {}
+              };
+              
+              await supabaseClient.functions.invoke('send-organiser-notification', {
+                body: { 
+                  eventId,
+                  orderData,
+                  customerInfo
+                }
+              });
+              console.log("Organizer notification sent successfully");
+            }
+          }
+        } catch (notificationError) {
+          console.log("Organizer notification failed:", notificationError);
+          // Don't fail the whole process for notification issues
+        }
+        
         // Try to create Xero invoice if auto-sync is enabled
         console.log("Checking for Xero auto-invoice creation...");
         const { data: xeroConnection } = await supabaseClient
