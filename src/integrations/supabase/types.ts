@@ -1287,6 +1287,18 @@ export type Database = {
         }
         Returns: string
       }
+      create_tickets_bulk: {
+        Args: { tickets_data: Json }
+        Returns: {
+          checked_in: boolean | null
+          created_at: string
+          id: string
+          order_item_id: string
+          status: string
+          ticket_code: string
+          used_at: string | null
+        }[]
+      }
       generate_ticket_code: {
         Args: Record<PropertyKey, never>
         Returns: string
