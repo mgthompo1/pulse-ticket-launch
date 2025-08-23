@@ -1008,17 +1008,6 @@ const TicketWidget = () => {
         </div>
       ) : (
         <div className="max-w-7xl mx-auto px-4 py-8">
-          {/* Custom Header Text */}
-          {eventData.widget_customization?.branding?.customHeaderText && (
-            <div className="text-center mb-6">
-              <div 
-                className="text-lg font-medium"
-                style={{ color: eventData.widget_customization?.theme?.textColor }}
-                dangerouslySetInnerHTML={{ __html: eventData.widget_customization.branding.customHeaderText }}
-              />
-            </div>
-          )}
-
           {/* Header Section with Logos and Event Title */}
           <div className="relative mb-8">
             {/* Top Right Corner Logos */}
@@ -1057,6 +1046,17 @@ const TicketWidget = () => {
                   </div>
                 )}
               </div>
+              
+              {/* Custom Header Text - Now positioned under the date/location */}
+              {eventData.widget_customization?.branding?.customHeaderText && (
+                <div className="mt-4">
+                  <div 
+                    className="text-lg font-medium"
+                    style={{ color: eventData.widget_customization?.theme?.textColor }}
+                    dangerouslySetInnerHTML={{ __html: eventData.widget_customization.branding.customHeaderText }}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
