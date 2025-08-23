@@ -233,7 +233,7 @@ const Auth = () => {
 
         <Card className="gradient-card">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            <CardTitle className="text-2xl font-bold text-foreground">
               Welcome to TicketFlo
             </CardTitle>
             <CardDescription>
