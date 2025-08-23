@@ -72,6 +72,14 @@ const MasterAdmin = () => {
     activeEvents: 0
   });
   const [contactEnquiries, setContactEnquiries] = useState<any[]>([]);
+  const [platformConfig, setPlatformConfig] = useState({
+    platform_fee_percentage: 1.0,
+    platform_fee_fixed: 0.50,
+    stripe_platform_publishable_key: '',
+    stripe_platform_secret_key: '',
+    loading: true
+  });
+  const [savingPlatformConfig, setSavingPlatformConfig] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -218,6 +226,38 @@ const MasterAdmin = () => {
       }
     };
     fetchAnalytics();
+  }, []);
+
+  // Fetch platform configuration
+  useEffect(() => {
+    const fetchPlatformConfig = async () => {
+      const adminToken = sessionStorage.getItem('adminToken');
+      if (!adminToken) return;
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: {
+            token: adminToken,
+            dataType: 'platform_config'
+          }
+        });
+        
+        if (error) throw error;
+        
+        if (data.success && data.data) {
+          setPlatformConfig({
+            ...data.data,
+            loading: false
+          });
+        } else {
+          setPlatformConfig(prev => ({ ...prev, loading: false }));
+        }
+      } catch (error) {
+        console.error("Error loading platform config:", error);
+        setPlatformConfig(prev => ({ ...prev, loading: false }));
+      }
+    };
+    fetchPlatformConfig();
   }, []);
 
   // Show loading while checking auth
@@ -410,6 +450,46 @@ const MasterAdmin = () => {
         description: "Failed to send invitation email. Please try again.",
         variant: "destructive"
       });
+    }
+  };
+
+  const handlePlatformConfigSave = async () => {
+    setSavingPlatformConfig(true);
+    const adminToken = sessionStorage.getItem('adminToken');
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-data', {
+        body: {
+          token: adminToken,
+          dataType: 'update_platform_config',
+          configData: {
+            platform_fee_percentage: platformConfig.platform_fee_percentage,
+            platform_fee_fixed: platformConfig.platform_fee_fixed,
+            stripe_platform_publishable_key: platformConfig.stripe_platform_publishable_key,
+            stripe_platform_secret_key: platformConfig.stripe_platform_secret_key
+          }
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data.success) {
+        toast({
+          title: "Configuration Updated",
+          description: "Platform configuration has been successfully updated",
+        });
+      } else {
+        throw new Error(data.error || 'Update failed');
+      }
+    } catch (error) {
+      console.error("Error updating platform config:", error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update platform configuration. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingPlatformConfig(false);
     }
   };
 
@@ -984,34 +1064,137 @@ const MasterAdmin = () => {
 
           {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Master Admin Settings</CardTitle>
-                <CardDescription>Platform-wide configuration settings</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Platform Name</Label>
-                    <Input defaultValue="TicketFlo" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Support Email</Label>
-                    <Input defaultValue="support@ticketflo.com" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Maintenance Mode</Label>
-                    <div className="flex items-center space-x-2">
-                      <input type="checkbox" id="maintenance" />
-                      <label htmlFor="maintenance" className="text-sm">
-                        Enable maintenance mode
-                      </label>
+            <div className="grid gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Stripe Platform Configuration</CardTitle>
+                  <CardDescription>Manage platform-wide Stripe settings</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {platformConfig.loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <span className="ml-2">Loading platform configuration...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>Platform Fee Percentage (%)</Label>
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            value={platformConfig.platform_fee_percentage}
+                            onChange={(e) => setPlatformConfig(prev => ({
+                              ...prev,
+                              platform_fee_percentage: parseFloat(e.target.value) || 0
+                            }))}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Percentage fee charged on each transaction
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Platform Fixed Fee ($)</Label>
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            value={platformConfig.platform_fee_fixed}
+                            onChange={(e) => setPlatformConfig(prev => ({
+                              ...prev,
+                              platform_fee_fixed: parseFloat(e.target.value) || 0
+                            }))}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Fixed fee charged per transaction
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Stripe Platform Publishable Key</Label>
+                          <Input 
+                            type="text"
+                            value={platformConfig.stripe_platform_publishable_key}
+                            onChange={(e) => setPlatformConfig(prev => ({
+                              ...prev,
+                              stripe_platform_publishable_key: e.target.value
+                            }))}
+                            placeholder="pk_..."
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Your Stripe platform publishable key (safe to expose)
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Stripe Platform Secret Key</Label>
+                          <Input 
+                            type="password"
+                            value={platformConfig.stripe_platform_secret_key}
+                            onChange={(e) => setPlatformConfig(prev => ({
+                              ...prev,
+                              stripe_platform_secret_key: e.target.value
+                            }))}
+                            placeholder="sk_..."
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Your Stripe platform secret key (kept secure)
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        onClick={handlePlatformConfigSave}
+                        disabled={savingPlatformConfig}
+                        className="w-full"
+                      >
+                        {savingPlatformConfig ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Saving Configuration...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-2" />
+                            Save Platform Configuration
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>General Settings</CardTitle>
+                  <CardDescription>Platform-wide general settings</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Platform Name</Label>
+                      <Input defaultValue="TicketFlo" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Support Email</Label>
+                      <Input defaultValue="support@ticketflo.com" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Maintenance Mode</Label>
+                      <div className="flex items-center space-x-2">
+                        <input type="checkbox" id="maintenance" />
+                        <label htmlFor="maintenance" className="text-sm">
+                          Enable maintenance mode
+                        </label>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <Button>Save Settings</Button>
-              </CardContent>
-            </Card>
+                  <Button>Save General Settings</Button>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
