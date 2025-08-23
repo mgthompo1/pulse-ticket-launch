@@ -1263,6 +1263,17 @@ export type Database = {
         }
         Returns: string
       }
+      create_order_secure: {
+        Args: {
+          p_custom_answers?: Json
+          p_customer_email: string
+          p_customer_name: string
+          p_customer_phone: string
+          p_event_id: string
+          p_total_amount: number
+        }
+        Returns: string
+      }
       create_tickets_bulk: {
         Args: { tickets_data: Json }
         Returns: {
