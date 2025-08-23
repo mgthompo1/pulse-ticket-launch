@@ -138,9 +138,7 @@ const loadGuests = async () => {
   if (!eventId) return;
   try {
     const { data, error } = await supabase
-      .from("guest_status_view")
-      .select("*")
-      .eq("event_id", eventId);
+      .rpc("get_guest_status_for_event", { p_event_id: eventId });
 
       if (error) throw error;
       setGuests((data || []).map((g: any) => ({

@@ -71,12 +71,9 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
     try {
       setLoading(true);
       
-      // Load attendee data from the guest_status_view
+      // Load attendee data using the secure function instead of the old view
       const { data, error } = await supabase
-        .from("guest_status_view")
-        .select("*")
-        .eq("event_id", eventId)
-        .order("order_date", { ascending: false });
+        .rpc("get_guest_status_for_event", { p_event_id: eventId });
 
       if (error) throw error;
 

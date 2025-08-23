@@ -573,13 +573,6 @@ export type Database = {
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "merchandise_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "guest_status_view"
-            referencedColumns: ["event_id"]
-          },
         ]
       }
       order_items: {
@@ -690,13 +683,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "guest_status_view"
-            referencedColumns: ["event_id"]
           },
         ]
       }
@@ -912,13 +898,6 @@ export type Database = {
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "seat_maps_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "guest_status_view"
-            referencedColumns: ["event_id"]
-          },
         ]
       }
       seats: {
@@ -1051,13 +1030,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "ticket_types_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "guest_status_view"
-            referencedColumns: ["event_id"]
           },
         ]
       }
@@ -1258,28 +1230,7 @@ export type Database = {
       }
     }
     Views: {
-      guest_status_view: {
-        Row: {
-          check_in_notes: string | null
-          checked_in: boolean | null
-          checked_in_at: string | null
-          checked_in_by: string | null
-          customer_email: string | null
-          customer_name: string | null
-          customer_phone: string | null
-          event_id: string | null
-          event_name: string | null
-          lanyard_printed: boolean | null
-          order_date: string | null
-          price: number | null
-          quantity: number | null
-          ticket_code: string | null
-          ticket_id: string | null
-          ticket_status: string | null
-          ticket_type: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       calculate_platform_fee: {
@@ -1332,6 +1283,28 @@ export type Database = {
       generate_ticket_code: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_guest_status_for_event: {
+        Args: { p_event_id: string }
+        Returns: {
+          check_in_notes: string
+          checked_in: boolean
+          checked_in_at: string
+          checked_in_by: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          event_id: string
+          event_name: string
+          lanyard_printed: boolean
+          order_date: string
+          price: number
+          quantity: number
+          ticket_code: string
+          ticket_id: string
+          ticket_status: string
+          ticket_type: string
+        }[]
       }
       get_organization_payment_config: {
         Args: { p_organization_id: string }
