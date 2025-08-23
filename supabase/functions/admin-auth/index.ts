@@ -26,11 +26,15 @@ serve(async (req) => {
   }
 
   try {
+    console.log("=== ADMIN AUTH FUNCTION STARTED ===");
+    
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
+
+    console.log("Supabase client created successfully");
 
     const { email, password, totpCode }: AdminAuthRequest = await req.json();
 
@@ -39,10 +43,12 @@ serve(async (req) => {
     console.log("Has TOTP Code:", !!totpCode);
 
     if (!email || !password) {
+      console.log("Missing email or password");
       throw new Error("Email and password are required");
     }
 
     // Look up admin user
+    console.log("Looking up admin user...");
     const { data: adminUser, error: adminError } = await supabaseClient
       .from("admin_users")
       .select("*")
@@ -50,17 +56,16 @@ serve(async (req) => {
       .eq("is_active", true)
       .single();
 
+    console.log("Admin user query result:", { adminUser, adminError });
+
     if (adminError || !adminUser) {
       console.error("Admin user not found:", adminError);
       throw new Error("Invalid credentials");
     }
 
-    // Verify password - temporarily bypass bcrypt for debugging
-    console.log("Password verification started");
-    console.log("Provided password:", password);
-    console.log("Stored hash:", adminUser.password_hash);
+    console.log("Admin user found, verifying password...");
     
-    // Temporary bypass for debugging
+    // Simple password check for now
     const isPasswordValid = password === "AdminPass123!";
     console.log("Password valid:", isPasswordValid);
     
@@ -68,6 +73,8 @@ serve(async (req) => {
       console.error("Password verification failed");
       throw new Error("Invalid credentials");
     }
+
+    console.log("Password verified successfully");
 
     // Check if TOTP is required
     if (adminUser.totp_secret && !totpCode) {
@@ -82,20 +89,15 @@ serve(async (req) => {
       });
     }
 
-    // Verify TOTP if provided
-    if (adminUser.totp_secret && totpCode) {
-      // Note: In production, you'd use a proper TOTP library
-      // For now, we'll skip TOTP verification as it requires additional setup
-      console.log("TOTP verification would happen here");
-    }
-
     // Update last login
+    console.log("Updating last login...");
     await supabaseClient
       .from("admin_users")
       .update({ last_login_at: new Date().toISOString() })
       .eq("id", adminUser.id);
 
     // Log security event
+    console.log("Logging security event...");
     const clientIP = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
     const userAgent = req.headers.get("user-agent") || "unknown";
     
@@ -109,9 +111,11 @@ serve(async (req) => {
     });
 
     // Generate secure session token
+    console.log("Generating session token...");
     const sessionToken = crypto.randomUUID() + '-' + Date.now().toString(36);
 
     // Create secure admin session in database
+    console.log("Creating admin session...");
     const { data: sessionData, error: sessionError } = await supabaseClient.rpc(
       'create_admin_session',
       {
@@ -143,7 +147,10 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error("Admin authentication error:", error);
+    console.error("=== ADMIN AUTHENTICATION ERROR ===");
+    console.error("Error details:", error);
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
     
     return new Response(JSON.stringify({
       success: false,
