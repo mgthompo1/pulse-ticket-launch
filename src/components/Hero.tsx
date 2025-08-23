@@ -12,7 +12,6 @@ export const Hero = () => {
     navigate('/auth');
   };
 
-
   return (
     <section className="relative pt-24 pb-20 overflow-hidden">
       {/* Background gradient refined */}
