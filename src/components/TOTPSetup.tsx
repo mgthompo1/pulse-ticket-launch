@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import QRCode from 'qrcode';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -15,7 +16,7 @@ interface TOTPSetupProps {
 
 export const TOTPSetup = ({ onSetupComplete }: TOTPSetupProps) => {
   const [totpSecret, setTotpSecret] = useState<string>('');
-  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [verificationCode, setVerificationCode] = useState<string>('');
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -53,7 +54,22 @@ export const TOTPSetup = ({ onSetupComplete }: TOTPSetupProps) => {
       if (error) throw error;
 
       setTotpSecret(data.totp.secret);
-      setQrCodeUrl(data.totp.uri);
+      
+      // Generate QR code from the URI
+      try {
+        const qrDataUrl = await QRCode.toDataURL(data.totp.uri, {
+          width: 200,
+          margin: 2,
+        });
+        setQrCodeDataUrl(qrDataUrl);
+      } catch (qrError) {
+        console.error('Error generating QR code:', qrError);
+        toast({
+          title: "QR Code Error",
+          description: "Failed to generate QR code. You can still use the manual secret.",
+          variant: "destructive",
+        });
+      }
       
       toast({
         title: "TOTP Enrollment Started",
@@ -123,7 +139,7 @@ export const TOTPSetup = ({ onSetupComplete }: TOTPSetupProps) => {
 
       setTotpEnabled(false);
       setTotpSecret('');
-      setQrCodeUrl('');
+      setQrCodeDataUrl('');
       setVerificationCode('');
       
       toast({
@@ -208,15 +224,23 @@ export const TOTPSetup = ({ onSetupComplete }: TOTPSetupProps) => {
           <div className="space-y-4">
             <div className="text-center space-y-4">
               <h4 className="font-medium">Step 1: Scan QR Code</h4>
-              {qrCodeUrl && (
+              {qrCodeDataUrl ? (
                 <div className="flex justify-center">
                   <img 
-                    src={qrCodeUrl} 
+                    src={qrCodeDataUrl} 
                     alt="TOTP QR Code" 
                     className="border rounded-lg"
                     width={200}
                     height={200}
                   />
+                </div>
+              ) : (
+                <div className="flex justify-center p-8">
+                  <div className="text-center text-muted-foreground">
+                    <div className="w-48 h-48 border-2 border-dashed border-muted-foreground/30 rounded-lg flex items-center justify-center">
+                      Generating QR Code...
+                    </div>
+                  </div>
                 </div>
               )}
               
