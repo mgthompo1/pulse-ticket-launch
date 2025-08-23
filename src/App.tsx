@@ -21,6 +21,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import XeroCallback from "./pages/XeroCallback";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/payment-failed" element={<PaymentFailed />} />
             <Route path="/payment-cancelled" element={<PaymentCancelled />} />
             <Route path="/xero-callback" element={<XeroCallback />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             
             {/* Authenticated routes - WITH theme context */}
             <Route path="/dashboard" element={
