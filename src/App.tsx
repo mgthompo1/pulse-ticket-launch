@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import OrgDashboard from "./pages/OrgDashboard";
@@ -26,8 +27,9 @@ const queryClient = new QueryClient();
 
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
+  <HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -68,6 +70,7 @@ const App = () => (
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
+  </HelmetProvider>
 );
 
 export default App;
