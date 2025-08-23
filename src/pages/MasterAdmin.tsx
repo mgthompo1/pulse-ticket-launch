@@ -79,17 +79,29 @@ const MasterAdmin = () => {
     }
   }, [isAdminAuthenticated, authLoading, navigate]);
 
-  // Fetch organizations
+  // Fetch organizations using admin endpoint
   useEffect(() => {
     const fetchOrganizations = async () => {
-      const { data, error } = await supabase
-        .from("organizations")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) {
+      const adminToken = sessionStorage.getItem('adminToken');
+      if (!adminToken) return;
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: {
+            token: adminToken,
+            dataType: 'organizations'
+          }
+        });
+        
+        if (error) throw error;
+        
+        if (data.success) {
+          setOrganizations(data.data || []);
+        } else {
+          console.error("Error loading organizations:", data.error);
+        }
+      } catch (error) {
         console.error("Error loading organizations:", error);
-      } else {
-        setOrganizations(data || []);
       }
     };
     fetchOrganizations();
@@ -97,24 +109,34 @@ const MasterAdmin = () => {
 
   useEffect(() => {
     const fetchMetrics = async () => {
+      const adminToken = sessionStorage.getItem('adminToken');
+      if (!adminToken) return;
+      
       setMetrics(m => ({ ...m, loading: true }));
-      // Fetch organizations count
-      const { count: orgCount } = await supabase.from("organizations").select("*", { count: "exact", head: true });
-      // Fetch events count (active events: status = 'active')
-      const { count: eventCount } = await supabase.from("events").select("*", { count: "exact", head: true }).eq("status", "active");
-      // Fetch total tickets sold
-      const { data: ticketTypes } = await supabase.from("ticket_types").select("quantity_sold");
-      const totalTickets = ticketTypes?.reduce((sum, t) => sum + (t.quantity_sold || 0), 0) || 0;
-      // Fetch platform fee revenue (sum of total_platform_fee from usage_records)
-      const { data: usageRecords } = await supabase.from("usage_records").select("total_platform_fee");
-      const platformRevenue = usageRecords?.reduce((sum, u) => sum + (u.total_platform_fee || 0), 0) || 0;
-      setMetrics({
-        organizations: orgCount || 0,
-        events: eventCount || 0,
-        tickets: totalTickets,
-        platformRevenue,
-        loading: false
-      });
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: {
+            token: adminToken,
+            dataType: 'metrics'
+          }
+        });
+        
+        if (error) throw error;
+        
+        if (data.success) {
+          setMetrics({
+            ...data.data,
+            loading: false
+          });
+        } else {
+          console.error("Error loading metrics:", data.error);
+          setMetrics(m => ({ ...m, loading: false }));
+        }
+      } catch (error) {
+        console.error("Error loading metrics:", error);
+        setMetrics(m => ({ ...m, loading: false }));
+      }
     };
     fetchMetrics();
   }, []);
@@ -151,25 +173,34 @@ const MasterAdmin = () => {
 
   useEffect(() => {
     const fetchAnalytics = async () => {
+      const adminToken = sessionStorage.getItem('adminToken');
+      if (!adminToken) return;
+      
       setAnalytics(a => ({ ...a, loading: true }));
-      // Transaction Fees & Platform Revenue (sum of total_platform_fee from usage_records)
-      const { data: usageRecords } = await supabase.from("usage_records").select("total_platform_fee");
-      const transactionFees = usageRecords?.reduce((sum, u) => sum + (u.total_platform_fee || 0), 0) || 0;
-      // Tickets Sold (sum of quantity_sold from ticket_types)
-      const { data: ticketTypes } = await supabase.from("ticket_types").select("quantity_sold");
-      const ticketsSold = ticketTypes?.reduce((sum, t) => sum + (t.quantity_sold || 0), 0) || 0;
-      // Active Events (count of events with status = 'active')
-      const { count: activeEvents } = await supabase.from("events").select("*", { count: "exact", head: true }).eq("status", "active");
-      // Daily Active Users - not available (no activity log/users table), set to 0 for now
-      const dailyActiveUsers = 0;
-      setAnalytics({
-        loading: false,
-        transactionFees,
-        dailyActiveUsers,
-        ticketsSold,
-        platformRevenue: transactionFees, // If you have a different definition, change this
-        activeEvents: activeEvents || 0
-      });
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: {
+            token: adminToken,
+            dataType: 'analytics'
+          }
+        });
+        
+        if (error) throw error;
+        
+        if (data.success) {
+          setAnalytics({
+            ...data.data,
+            loading: false
+          });
+        } else {
+          console.error("Error loading analytics:", data.error);
+          setAnalytics(a => ({ ...a, loading: false }));
+        }
+      } catch (error) {
+        console.error("Error loading analytics:", error);
+        setAnalytics(a => ({ ...a, loading: false }));
+      }
     };
     fetchAnalytics();
   }, []);
