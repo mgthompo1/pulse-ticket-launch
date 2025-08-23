@@ -820,6 +820,36 @@ export type Database = {
           },
         ]
       }
+      platform_config: {
+        Row: {
+          created_at: string
+          id: string
+          platform_fee_fixed: number
+          platform_fee_percentage: number
+          stripe_platform_publishable_key: string | null
+          stripe_platform_secret_key: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          platform_fee_fixed?: number
+          platform_fee_percentage?: number
+          stripe_platform_publishable_key?: string | null
+          stripe_platform_secret_key?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          platform_fee_fixed?: number
+          platform_fee_percentage?: number
+          stripe_platform_publishable_key?: string | null
+          stripe_platform_secret_key?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pos_transactions: {
         Row: {
           created_at: string
