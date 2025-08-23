@@ -175,6 +175,8 @@ const TicketWidget = () => {
 
       console.log("=== LOADED EVENT DATA ===");
       console.log("Full event object:", event);
+      console.log("Event status:", event.status);
+      console.log("Event published?", event.status === 'published');
       console.log("Widget customization:", event.widget_customization);
       console.log("Widget customization type:", typeof event.widget_customization);
       console.log("Widget customization keys:", event.widget_customization ? Object.keys(event.widget_customization) : 'none');
@@ -347,15 +349,25 @@ const TicketWidget = () => {
   };
 
   const addToCart = async (ticketType: TicketType) => {
+    console.log("=== ADD TO CART DEBUG ===");
+    console.log("Event ID:", eventId);
+    console.log("Ticket Type:", ticketType);
+    
     // Check if event has seat maps available
-    const { data: seatMaps } = await supabase
+    console.log("Checking for seat maps...");
+    
+    const { data: seatMaps, error: seatMapError } = await anonymousSupabase
       .from('seat_maps')
-      .select('id')
-      .eq('event_id', eventId as string)
-      .limit(1);
+      .select('id, name, total_seats')
+      .eq('event_id', eventId as string);
+
+    console.log("Seat maps query result:", seatMaps);
+    console.log("Seat maps query error:", seatMapError);
+    console.log("Number of seat maps found:", seatMaps?.length || 0);
 
     if (seatMaps && seatMaps.length > 0) {
       // Event has seating - show seat selector
+      console.log("🎫 Found seat maps, showing seat selection");
       setPendingSeatSelection({
         id: ticketType.id,
         name: ticketType.name,
@@ -367,10 +379,12 @@ const TicketWidget = () => {
         event_id: eventId as string,
         type: 'ticket'
       });
+      console.log("Setting showSeatSelection to true");
       setShowSeatSelection(true);
       return;
     }
 
+    console.log("❌ No seat maps found, adding directly to cart");
     // No seating - add directly to cart
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.id === ticketType.id);
@@ -1589,9 +1603,19 @@ const TicketWidget = () => {
           )}
 
           {/* Seat Selection Modal */}
+          {(() => {
+            console.log("=== SEAT SELECTION MODAL RENDER CHECK ===");
+            console.log("showSeatSelection:", showSeatSelection);
+            console.log("pendingSeatSelection:", pendingSeatSelection);
+            return null;
+          })()}
           {showSeatSelection && pendingSeatSelection && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
               <div className="w-full max-w-6xl max-h-[90vh] overflow-hidden">
+                {(() => {
+                  console.log("🎪 Rendering GuestSeatSelector component");
+                  return null;
+                })()}
                 <GuestSeatSelector
                   eventId={eventId!}
                   ticketTypeId={pendingSeatSelection.id}
