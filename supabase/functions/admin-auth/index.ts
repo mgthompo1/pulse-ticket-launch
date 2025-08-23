@@ -98,17 +98,29 @@ serve(async (req) => {
 
     // Log security event
     console.log("Logging security event...");
-    const clientIP = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown";
+    const clientIP = req.headers.get("x-forwarded-for")?.split(',')[0]?.trim() || 
+                     req.headers.get("x-real-ip") || 
+                     "127.0.0.1";
     const userAgent = req.headers.get("user-agent") || "unknown";
     
-    await supabaseClient.rpc("log_security_event", {
-      p_user_id: null,
-      p_admin_user_id: adminUser.id,
-      p_event_type: "admin_login",
-      p_event_data: { email, success: true },
-      p_ip_address: clientIP,
-      p_user_agent: userAgent
-    });
+    console.log("Client IP:", clientIP);
+    console.log("User Agent:", userAgent);
+
+    
+    try {
+      await supabaseClient.rpc("log_security_event", {
+        p_user_id: null,
+        p_admin_user_id: adminUser.id,
+        p_event_type: "admin_login",
+        p_event_data: { email, success: true },
+        p_ip_address: clientIP,
+        p_user_agent: userAgent
+      });
+      console.log("Security event logged successfully");
+    } catch (logError) {
+      console.error("Failed to log security event:", logError);
+      // Don't fail the whole authentication for logging issues
+    }
 
     // Generate secure session token
     console.log("Generating session token...");
