@@ -8,7 +8,13 @@ const corsHeaders = {
 
 interface AdminDataRequest {
   token: string;
-  dataType: 'organizations' | 'events' | 'orders' | 'metrics' | 'analytics' | 'contact_enquiries';
+  dataType: 'organizations' | 'events' | 'orders' | 'metrics' | 'analytics' | 'contact_enquiries' | 'platform_config' | 'update_platform_config';
+  configData?: {
+    platform_fee_percentage: number;
+    platform_fee_fixed: number;
+    stripe_platform_publishable_key: string;
+    stripe_platform_secret_key: string;
+  };
 }
 
 serve(async (req) => {
@@ -23,7 +29,7 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { token, dataType }: AdminDataRequest = await req.json();
+    const { token, dataType, configData }: AdminDataRequest = await req.json();
 
     console.log("=== ADMIN DATA REQUEST ===");
     console.log("Data Type:", dataType);
@@ -149,6 +155,51 @@ serve(async (req) => {
         
         console.log('Contact enquiries fetched:', enquiries?.length || 0);
         data = enquiries || [];
+        break;
+        
+      case 'platform_config':
+        console.log('Fetching platform configuration...');
+        
+        const { data: platformConfig, error: configError } = await supabaseClient
+          .from('platform_config')
+          .select('*')
+          .single();
+        
+        if (configError && configError.code !== 'PGRST116') { // PGRST116 is "no rows found"
+          console.error('Platform config fetch error:', configError);
+          throw configError;
+        }
+        
+        // If no config exists, return default values
+        data = platformConfig || {
+          platform_fee_percentage: 1.0,
+          platform_fee_fixed: 0.50,
+          stripe_platform_publishable_key: '',
+          stripe_platform_secret_key: ''
+        };
+        console.log('Platform config fetched successfully');
+        break;
+        
+      case 'update_platform_config':
+        console.log('Updating platform configuration...');
+        
+        if (!configData) {
+          throw new Error('Configuration data is required for update');
+        }
+        
+        const { data: updatedConfig, error: updateError } = await supabaseClient
+          .from('platform_config')
+          .upsert(configData)
+          .select()
+          .single();
+        
+        if (updateError) {
+          console.error('Platform config update error:', updateError);
+          throw updateError;
+        }
+        
+        console.log('Platform config updated successfully');
+        data = updatedConfig;
         break;
         
       default:
