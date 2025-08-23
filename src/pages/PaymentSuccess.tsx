@@ -252,7 +252,7 @@ const PaymentSuccess = () => {
             setOrderDetails(order);
             console.log('Order details set:', order);
             console.log('Widget customization data:', order.events?.widget_customization);
-            console.log('Success URL:', order.events?.widget_customization?.payment?.successUrl);
+            console.log('Success URL:', (order.events?.widget_customization as any)?.payment?.successUrl);
           } else {
             console.error('No order found');
           }
