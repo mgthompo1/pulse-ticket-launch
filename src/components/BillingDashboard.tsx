@@ -19,8 +19,7 @@ import {
 import { BillingManagement } from "./BillingManagement";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// Initialize Stripe with a test publishable key (you can add your real key later)
-const stripePromise = loadStripe("pk_live_51RkWYvIkAZJOEIBEU4kM4sZ1jv3Jkdhfcr953tdGveqHA83bUo6pDA3KBSUUe9QbWbgTnT9uvXWSUO65PEFqlZ06009YvC3tjO");
+// Stripe will be initialized dynamically when needed
 
 interface BillingDashboardProps {
   organizationId: string;
@@ -277,7 +276,7 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
           </AlertDescription>
         </Alert>
 
-        <Elements stripe={stripePromise}>
+        <Elements stripe={loadStripe("pk_live_51RkWYvIkAZJOEIBEU4kM4sZ1jv3Jkdhfcr953tdGveqHA83bUo6pDA3KBSUUe9QbWbgTnT9uvXWSUO65PEFqlZ06009YvC3tjO")}>
           <PaymentMethodSetup 
             organizationId={organizationId} 
             onSuccess={handleSetupComplete}

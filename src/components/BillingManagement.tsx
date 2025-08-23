@@ -30,7 +30,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const stripePromise = loadStripe("pk_live_51RkWYvIkAZJOEIBEU4kM4sZ1jv3Jkdhfcr953tdGveqHA83bUo6pDA3KBSUUe9QbWbgTnT9uvXWSUO65PEFqlZ06009YvC3tjO");
+// Stripe will be initialized dynamically when needed
 
 interface BillingManagementProps {
   organizationId: string;
@@ -365,7 +365,7 @@ export const BillingManagement: React.FC<BillingManagementProps> = ({ organizati
             <CardTitle>Update Payment Method</CardTitle>
           </CardHeader>
           <CardContent>
-            <Elements stripe={stripePromise}>
+            <Elements stripe={loadStripe("pk_live_51RkWYvIkAZJOEIBEU4kM4sZ1jv3Jkdhfcr953tdGveqHA83bUo6pDA3KBSUUe9QbWbgTnT9uvXWSUO65PEFqlZ06009YvC3tjO")}>
               <UpdatePaymentMethod 
                 organizationId={organizationId} 
                 onSuccess={handleUpdateComplete}
