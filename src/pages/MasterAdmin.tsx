@@ -91,16 +91,21 @@ const MasterAdmin = () => {
   // Fetch organizations using admin endpoint
   useEffect(() => {
     const fetchOrganizations = async () => {
-      const adminToken = sessionStorage.getItem('adminToken');
+      console.log('fetchOrganizations called');
+      const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+      console.log('Admin token exists:', !!adminToken);
       if (!adminToken) return;
       
       try {
+        console.log('Calling admin-data for organizations...');
         const { data, error } = await supabase.functions.invoke('admin-data', {
           body: {
             token: adminToken,
             dataType: 'organizations'
           }
         });
+        
+        console.log('Organizations response:', { data, error });
         
         if (error) throw error;
         
@@ -132,18 +137,23 @@ const MasterAdmin = () => {
 
   useEffect(() => {
     const fetchMetrics = async () => {
-      const adminToken = sessionStorage.getItem('adminToken');
+      console.log('fetchMetrics called');
+      const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+      console.log('Admin token for metrics exists:', !!adminToken);
       if (!adminToken) return;
       
       setMetrics(m => ({ ...m, loading: true }));
       
       try {
+        console.log('Calling admin-data for metrics...');
         const { data, error } = await supabase.functions.invoke('admin-data', {
           body: {
             token: adminToken,
             dataType: 'metrics'
           }
         });
+        
+        console.log('Metrics response:', { data, error });
         
         if (error) throw error;
         
@@ -196,7 +206,7 @@ const MasterAdmin = () => {
 
   useEffect(() => {
     const fetchAnalytics = async () => {
-      const adminToken = sessionStorage.getItem('adminToken');
+      const adminToken = sessionStorage.getItem('ticketflo_admin_token');
       if (!adminToken) return;
       
       setAnalytics(a => ({ ...a, loading: true }));
@@ -231,7 +241,9 @@ const MasterAdmin = () => {
   // Fetch platform configuration
   useEffect(() => {
     const fetchPlatformConfig = async () => {
-      const adminToken = sessionStorage.getItem('adminToken');
+      console.log('fetchPlatformConfig called');
+      const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+      console.log('Admin token for platform config exists:', !!adminToken);
       if (!adminToken) return;
       
       try {
@@ -455,7 +467,7 @@ const MasterAdmin = () => {
 
   const handlePlatformConfigSave = async () => {
     setSavingPlatformConfig(true);
-    const adminToken = sessionStorage.getItem('adminToken');
+    const adminToken = sessionStorage.getItem('ticketflo_admin_token');
     
     try {
       const { data, error } = await supabase.functions.invoke('admin-data', {
