@@ -393,7 +393,6 @@ export type Database = {
           organization_id: string
           requires_approval: boolean | null
           status: string
-          test_mode: boolean
           ticket_customization: Json | null
           ticket_delivery_method: string | null
           updated_at: string
@@ -413,7 +412,6 @@ export type Database = {
           organization_id: string
           requires_approval?: boolean | null
           status?: string
-          test_mode?: boolean
           ticket_customization?: Json | null
           ticket_delivery_method?: string | null
           updated_at?: string
@@ -433,7 +431,6 @@ export type Database = {
           organization_id?: string
           requires_approval?: boolean | null
           status?: string
-          test_mode?: boolean
           ticket_customization?: Json | null
           ticket_delivery_method?: string | null
           updated_at?: string
@@ -615,7 +612,6 @@ export type Database = {
           id: string
           status: string
           stripe_session_id: string | null
-          test_mode: boolean
           total_amount: number
           updated_at: string
           windcave_session_id: string | null
@@ -630,7 +626,6 @@ export type Database = {
           id?: string
           status?: string
           stripe_session_id?: string | null
-          test_mode?: boolean
           total_amount: number
           updated_at?: string
           windcave_session_id?: string | null
@@ -645,7 +640,6 @@ export type Database = {
           id?: string
           status?: string
           stripe_session_id?: string | null
-          test_mode?: boolean
           total_amount?: number
           updated_at?: string
           windcave_session_id?: string | null
@@ -686,7 +680,6 @@ export type Database = {
           payment_provider: string | null
           phone: string | null
           postal_code: string | null
-          test_mode: boolean
           updated_at: string
           user_id: string
           website: string | null
@@ -709,7 +702,6 @@ export type Database = {
           payment_provider?: string | null
           phone?: string | null
           postal_code?: string | null
-          test_mode?: boolean
           updated_at?: string
           user_id: string
           website?: string | null
@@ -732,7 +724,6 @@ export type Database = {
           payment_provider?: string | null
           phone?: string | null
           postal_code?: string | null
-          test_mode?: boolean
           updated_at?: string
           user_id?: string
           website?: string | null
@@ -1250,25 +1241,6 @@ export type Database = {
         }
         Relationships: []
       }
-      test_mode_analytics: {
-        Row: {
-          estimated_platform_fees: number | null
-          organization_id: string | null
-          test_mode: boolean | null
-          total_events: number | null
-          total_orders: number | null
-          total_revenue: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "events_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Functions: {
       calculate_platform_fee: {
@@ -1277,6 +1249,10 @@ export type Database = {
           | { order_id: number }
           | { transaction_amount: number }
         Returns: number
+      }
+      check_billing_setup: {
+        Args: { p_organization_id: string }
+        Returns: boolean
       }
       create_admin_session: {
         Args: {
