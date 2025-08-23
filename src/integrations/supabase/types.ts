@@ -1289,6 +1289,10 @@ export type Database = {
           | { transaction_amount: number }
         Returns: number
       }
+      can_access_guest_data: {
+        Args: { p_event_id: string }
+        Returns: boolean
+      }
       check_billing_setup: {
         Args: { p_organization_id: string }
         Returns: boolean
