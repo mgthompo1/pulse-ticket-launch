@@ -47,7 +47,7 @@ export const Hero = () => {
           {/* Social proof stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-2xl mx-auto">
             <div className="text-center">
-              <div className="flex items-center justify-center mb-2">
+              <div className="flex items-center justify-center mb-2 h-8">
                 <Star className="h-5 w-5 text-yellow-500 fill-current" />
                 <Star className="h-5 w-5 text-yellow-500 fill-current" />
                 <Star className="h-5 w-5 text-yellow-500 fill-current" />
