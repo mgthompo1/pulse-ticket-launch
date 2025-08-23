@@ -1499,46 +1499,77 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 </div>
               </div>
 
-              {/* Test Mode */}
+              {/* Publish Event */}
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="space-y-1">
-                  <Label className="text-base font-medium">Test Mode</Label>
+                  <Label className="text-base font-medium">Publish Event</Label>
                   <p className="text-sm text-muted-foreground">
-                    {eventData?.test_mode 
-                      ? 'Event is in test mode - no real payments will be processed' 
-                      : 'Event is in live mode - real payments will be processed'
+                    {eventData?.status === 'published' 
+                      ? 'Event is published and accepting ticket sales' 
+                      : 'Event is in draft mode - publish to start selling tickets'
                     }
                   </p>
                 </div>
-                <Switch
-                  checked={eventData?.test_mode || false}
-                  onCheckedChange={async (checked) => {
-                    try {
+                <Button
+                  variant={eventData?.status === 'published' ? "secondary" : "default"}
+                  size="sm"
+                  onClick={async () => {
+                    if (eventData?.status === 'published') {
+                      // Unpublish
                       const { error } = await supabase
                         .from("events")
-                        .update({ test_mode: checked })
+                        .update({ status: 'draft' })
                         .eq("id", eventId);
-
-                      if (error) throw error;
-
-                      setEventData(prev => prev ? ({ ...prev, test_mode: checked }) : null);
                       
-                      toast({
-                        title: "Success",
-                        description: checked 
-                          ? "Event switched to test mode" 
-                          : "Event switched to live mode"
-                      });
-                    } catch (error) {
-                      console.error("Error updating test mode:", error);
-                      toast({
-                        title: "Error",
-                        description: "Failed to update test mode",
-                        variant: "destructive"
-                      });
+                      if (!error) {
+                        setEventData(prev => prev ? ({ ...prev, status: 'draft' }) : null);
+                        toast({
+                          title: "Event unpublished",
+                          description: "Event is now in draft mode"
+                        });
+                      }
+                    } else {
+                      // Check billing setup first
+                      try {
+                        const { data: billingData } = await supabase.rpc('check_billing_setup', {
+                          p_organization_id: organizationId
+                        });
+                        
+                        if (!billingData) {
+                          toast({
+                            title: "Billing Setup Required",
+                            description: "Please set up billing and add a payment method before publishing events",
+                            variant: "destructive"
+                          });
+                          return;
+                        }
+                        
+                        // Publish
+                        const { error } = await supabase
+                          .from("events")
+                          .update({ status: 'published' })
+                          .eq("id", eventId);
+                        
+                        if (!error) {
+                          setEventData(prev => prev ? ({ ...prev, status: 'published' }) : null);
+                          toast({
+                            title: "Event published!",
+                            description: "Your event is now live and accepting ticket sales"
+                          });
+                        }
+                      } catch (error) {
+                        console.error('Error checking billing:', error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to verify billing setup",
+                          variant: "destructive"
+                        });
+                      }
                     }
                   }}
-                />
+                >
+                  {eventData?.status === 'published' ? 'Unpublish' : 'Publish Event'}
+                </Button>
               </div>
 
               {/* Payment Success URL */}
