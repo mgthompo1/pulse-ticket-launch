@@ -25,21 +25,25 @@ export const Navigation = () => {
   };
 
   const navItems = [
+    { name: "Home", href: "/" },
     { name: "Features", id: "features" },
     { name: "Pricing", id: "pricing" },
     { name: "Contact", href: "/contact" },
   ];
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-background/70 backdrop-blur-xl border-b border-border/50">
+    <nav className="fixed top-0 w-full z-50 bg-black border-b border-gray-800/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center space-x-2">
-            <div className="p-2 rounded-lg border border-border/60 shadow-sm">
-              <Ticket className="h-6 w-6 text-primary" />
+          <div 
+            className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => navigate('/')}
+          >
+            <div className="p-2 rounded-lg border border-gray-600/60 shadow-sm">
+              <Ticket className="h-6 w-6 text-[#ff4d00]" />
             </div>
-            <span className="text-lg font-semibold tracking-tight text-foreground">TicketFlo</span>
+            <span className="text-lg font-semibold tracking-tight text-white font-dm-sans">TicketFlo</span>
           </div>
 
           {/* Desktop Navigation */}
@@ -49,7 +53,7 @@ export const Navigation = () => {
                 <button
                   key={item.name}
                   onClick={() => item.href ? window.location.href = item.href : handleScrollTo(item.id!)}
-                  className="text-muted-foreground hover:text-foreground px-3 py-2 rounded-md text-sm font-medium transition-smooth hover:bg-accent/50"
+                  className="text-white hover:text-[#ff4d00] px-3 py-2 rounded-md text-sm font-medium transition-smooth hover:bg-gray-800/50 font-manrope"
                 >
                   {item.name}
                 </button>
@@ -59,10 +63,10 @@ export const Navigation = () => {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center space-x-2">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={handleSignIn}>
+            <Button variant="ghost" size="sm" className="text-white hover:text-[#ff4d00] hover:bg-gray-800/50 font-manrope" onClick={handleSignIn}>
               Sign In
             </Button>
-            <Button variant="default" size="sm" onClick={handleStartTrial}>
+            <Button variant="default" size="sm" className="bg-[#ff4d00] hover:bg-[#e64400] text-white border-0 font-manrope font-medium" onClick={handleStartTrial}>
               Sign Up Now
             </Button>
           </div>
@@ -81,22 +85,22 @@ export const Navigation = () => {
 
       {/* Mobile Navigation */}
       <div className={cn("md:hidden", isOpen ? "block" : "hidden")}>
-        <div className="px-2 pt-2 pb-3 space-y-1 bg-background/95 backdrop-blur-lg border-b border-border/50">
+        <div className="px-2 pt-2 pb-3 space-y-1 bg-black border-b border-gray-800/50">
           {navItems.map((item) => (
             <button
               key={item.name}
               onClick={() => item.href ? window.location.href = item.href : handleScrollTo(item.id!)}
-              className="text-muted-foreground hover:text-foreground block px-3 py-2 rounded-md text-base font-medium transition-smooth hover:bg-accent/50 w-full text-left"
+              className="text-white hover:text-[#ff4d00] block px-3 py-2 rounded-md text-base font-medium transition-smooth hover:bg-gray-800/50 w-full text-left font-manrope"
             >
               {item.name}
             </button>
           ))}
-          <div className="border-t border-border/50 pt-4 pb-3">
+          <div className="border-t border-gray-800/50 pt-4 pb-3">
             <div className="flex flex-col space-y-3 px-3">
-              <Button variant="ghost" size="sm" className="justify-start" onClick={handleSignIn}>
+              <Button variant="ghost" size="sm" className="justify-start text-white hover:text-[#ff4d00] hover:bg-gray-800/50 font-manrope" onClick={handleSignIn}>
                 Sign In
               </Button>
-              <Button variant="gradient" size="sm" onClick={handleStartTrial}>
+              <Button variant="default" size="sm" className="bg-[#ff4d00] hover:bg-[#e64400] text-white border-0 font-manrope font-medium" onClick={handleStartTrial}>
                 Sign Up Now
               </Button>
             </div>

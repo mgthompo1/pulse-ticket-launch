@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail, Phone, MapPin, MessageSquare, Users, Headphones } from "lucide-react";
+import { Mail, Phone, MapPin, MessageSquare, Users, Headphones, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Contact = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -20,6 +21,7 @@ const Contact = () => {
     message: ""
   });
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,9 +93,22 @@ const Contact = () => {
       />
       <div className="min-h-screen bg-background">
         <Navigation />
-        <main className="container mx-auto px-4 py-12">
+        <main className="container mx-auto px-4 pt-24 pb-12">
           <div className="max-w-6xl mx-auto">
             <header className="text-center mb-12">
+              {/* Back button */}
+              <div className="flex justify-start mb-6">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/')}
+                  className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-manrope"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Home
+                </Button>
+              </div>
+              
               <h1 className="text-4xl font-bold text-foreground mb-4">Contact Us</h1>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                 Have a question or need help? We'd love to hear from you. Send us a message and we'll respond as soon as possible.

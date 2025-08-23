@@ -47,6 +47,7 @@ All colors MUST be HSL.
   .font-quicksand { font-family: 'Quicksand', sans-serif; }
   .font-josefin-sans { font-family: 'Josefin Sans', sans-serif; }
   .font-dm-sans { font-family: 'DM Sans', sans-serif; }
+  .font-manrope { font-family: 'Manrope', sans-serif; }
   .font-outfit { font-family: 'Outfit', sans-serif; }
   .font-plus-jakarta-sans { font-family: 'Plus Jakarta Sans', sans-serif; }
   .font-albert-sans { font-family: 'Albert Sans', sans-serif; }
@@ -233,6 +234,39 @@ All colors MUST be HSL.
     --accent-foreground: 210 40% 98%;
     --border: 222 47% 30%;
   }
+
+  /* New Dark Theme with Black Background and Orange Accent */
+  .theme-dark-orange {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 16 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 16 100% 60%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 8%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 16 100% 50%;
+    --radius: 0.75rem;
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 16 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 16 100% 50%;
+  }
 }
 
 @layer base {
@@ -253,7 +287,7 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
+    font-family: 'Manrope', 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
   }
 
   /* Fix for dashboard layout issues */

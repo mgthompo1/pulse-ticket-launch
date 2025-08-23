@@ -1601,8 +1601,8 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       {/* Seat Map Designer Modal */}
       {showSeatMapDesigner && (
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-lg max-w-6xl w-full h-[90vh] flex flex-col shadow-xl border">
-            <div className="p-4 border-b flex items-center justify-between bg-white dark:bg-gray-900">
+                  <div className="bg-white dark:bg-gray-900 rounded-lg max-w-6xl w-full h-[90vh] flex flex-col shadow-xl border">
+          <div className="p-4 border-b flex items-center justify-between bg-white dark:bg-gray-900">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Seat Map Designer - {eventData?.name || 'Loading...'}
               </h2>

@@ -1,8 +1,12 @@
 import { SEOHead } from "@/components/SEOHead";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const PrivacyPolicy = () => {
+  const navigate = useNavigate();
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "WebPage",
@@ -21,9 +25,22 @@ const PrivacyPolicy = () => {
       />
       <div className="min-h-screen bg-background">
         <Navigation />
-        <main className="container mx-auto px-4 py-12 max-w-4xl">
+        <main className="container mx-auto px-4 pt-24 pb-12 max-w-4xl">
           <article>
             <header className="mb-8">
+              {/* Back button */}
+              <div className="flex justify-start mb-6">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/')}
+                  className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-manrope"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Home
+                </Button>
+              </div>
+              
               <h1 className="text-4xl font-bold text-foreground mb-4">Privacy Policy</h1>
               <p className="text-lg text-muted-foreground">
                 Last updated: {new Date().toLocaleDateString()}

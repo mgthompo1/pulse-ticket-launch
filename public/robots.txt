@@ -1,16 +1,39 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
 User-agent: *
 Allow: /
 
+# Sitemap location
 Sitemap: https://www.ticketflo.org/sitemap.xml
+
+# Crawl delay (optional - helps with server load)
+Crawl-delay: 1
+
+# Allow all important pages
+Allow: /contact
+Allow: /privacy-policy
+Allow: /support
+Allow: /auth
+Allow: /ticket-widget
+
+# Allow CSS, JS, and images for proper rendering
+Allow: /*.css
+Allow: /*.js
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.gif
+Allow: /*.svg
+Allow: /*.ico
+
+# Disallow admin and private areas
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /org-dashboard
+Disallow: /master-admin
+Disallow: /api/
+Disallow: /supabase/
+
+# Disallow temporary and development files
+Disallow: /temp/
+Disallow: /dev/
+Disallow: /*.log
+Disallow: /*.tmp

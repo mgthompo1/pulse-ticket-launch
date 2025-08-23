@@ -207,7 +207,7 @@ const PaymentSuccess = () => {
           if (orderId) {
             const { data: orderById, error: orderError } = await supabase
               .from('orders')
-              .select('*, events(name, event_date, venue, logo_url, description, organization_id, ticket_customization, organizations(logo_url, name))')
+              .select('*, events(name, event_date, venue, logo_url, description, organization_id, ticket_customization, widget_customization, organizations(logo_url, name))')
               .eq('id', orderId)
               .single();
 
@@ -221,7 +221,7 @@ const PaymentSuccess = () => {
           if (sessionId) {
             const { data: orderBySession, error: sessionError } = await supabase
               .from('orders')
-              .select('*, events(name, event_date, venue, logo_url, description, organization_id, ticket_customization, organizations(logo_url, name))')
+              .select('*, events(name, event_date, venue, logo_url, description, organization_id, ticket_customization, widget_customization, organizations(logo_url, name))')
               .eq('windcave_session_id', sessionId)
               .single();
 
@@ -236,7 +236,7 @@ const PaymentSuccess = () => {
             console.log('Trying to find most recent completed order...');
             const { data: recentOrder, error: recentError } = await supabase
               .from('orders')
-              .select('*, events(name, event_date, venue, logo_url, description, organization_id, ticket_customization, organizations(logo_url, name))')
+              .select('*, events(name, event_date, venue, logo_url, description, organization_id, ticket_customization, widget_customization, organizations(logo_url, name))')
               .in('status', ['completed', 'paid'])
               .order('created_at', { ascending: false })
               .limit(1)
@@ -251,6 +251,8 @@ const PaymentSuccess = () => {
           if (order) {
             setOrderDetails(order);
             console.log('Order details set:', order);
+            console.log('Widget customization data:', order.events?.widget_customization);
+            console.log('Success URL:', order.events?.widget_customization?.payment?.successUrl);
           } else {
             console.error('No order found');
           }
@@ -259,7 +261,7 @@ const PaymentSuccess = () => {
           // If no URL params, show the most recent completed order
           const { data: recentOrder, error: recentError } = await supabase
             .from('orders')
-            .select('*, events(name, event_date, venue, logo_url, description, organization_id, ticket_customization, organizations(logo_url, name))')
+            .select('*, events(name, event_date, venue, logo_url, description, organization_id, ticket_customization, widget_customization, organizations(logo_url, name))')
             .in('status', ['completed', 'paid'])
             .order('created_at', { ascending: false })
             .limit(1)
@@ -323,12 +325,24 @@ const PaymentSuccess = () => {
           
           <div className="space-y-2">
             <Button 
-              className="w-full" 
+              variant="outline"
+              className="w-full bg-black text-white border-black hover:bg-gray-800 hover:text-white hover:border-gray-800" 
               onClick={() => {
                 // Check if event has custom success URL
+                console.log('Success URL check:', {
+                  hasOrderDetails: !!orderDetails,
+                  hasEvents: !!orderDetails?.events,
+                  hasWidgetCustomization: !!orderDetails?.events?.widget_customization,
+                  hasPayment: !!orderDetails?.events?.widget_customization?.payment,
+                  successUrl: orderDetails?.events?.widget_customization?.payment?.successUrl
+                });
+                
                 if (orderDetails?.events?.widget_customization?.payment?.successUrl) {
-                  window.location.href = orderDetails.events.widget_customization.payment.successUrl;
+                  const successUrl = orderDetails.events.widget_customization.payment.successUrl;
+                  console.log('Redirecting to custom success URL:', successUrl);
+                  window.location.href = successUrl;
                 } else {
+                  console.log('No custom success URL, navigating to home');
                   navigate('/');
                 }
               }}

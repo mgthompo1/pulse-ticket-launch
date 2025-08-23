@@ -94,20 +94,20 @@ const features = [
 export const Features = () => {
   const { getContentByKey } = useLandingPageContent();
   return (
-    <section id="features" className="py-20 bg-gradient-secondary">
+    <section id="features" className="pt-20 pb-16 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <div className="text-center mb-16">
-          <Badge variant="secondary" className="mb-4 px-4 py-2 text-sm font-medium bg-primary/10 text-primary border-primary/20">
+          <Badge variant="secondary" className="mb-4 px-4 py-2 text-sm font-medium bg-[#ff4d00]/20 text-[#ff4d00] border-[#ff4d00]/30 font-manrope">
             {getContentByKey('features', 'badge_text') || '✨ Powerful Features'}
           </Badge>
-          <h2 className="text-3xl md:text-5xl font-bold text-foreground mb-6">
+          <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6 font-dm-sans">
             {getContentByKey('features', 'title') || 'Everything You Need to'}
-            <span className="block bg-gradient-primary bg-clip-text text-transparent">
+            <span className="block text-[#ff4d00]">
               {getContentByKey('features', 'title_accent') || 'Sell More Tickets'}
             </span>
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto font-manrope">
             {getContentByKey('features', 'description') || 'From simple events to complex productions, our platform adapts to your needs with professional-grade tools and stunning design.'}
           </p>
         </div>
@@ -117,23 +117,23 @@ export const Features = () => {
           {features.map((feature, index) => (
             <Card 
               key={index} 
-              className="group hover:shadow-card transition-all duration-300 hover:-translate-y-2 border-border/50 bg-card/50 backdrop-blur-sm"
+              className="group hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border-gray-200 bg-white backdrop-blur-sm"
             >
               <CardHeader className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="bg-gradient-primary/10 p-3 rounded-lg group-hover:bg-gradient-primary/20 transition-colors">
-                    <feature.icon className="h-6 w-6 text-primary" />
+                  <div className="bg-[#ff4d00]/10 p-3 rounded-lg group-hover:bg-[#ff4d00]/20 transition-colors">
+                    <feature.icon className="h-6 w-6 text-[#ff4d00]" />
                   </div>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs text-black border-gray-600 font-manrope">
                     {feature.badge}
                   </Badge>
                 </div>
-                <CardTitle className="text-xl group-hover:text-primary transition-colors">
+                <CardTitle className="text-xl group-hover:text-[#ff4d00] transition-colors text-gray-900 font-dm-sans">
                   {feature.title}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <CardDescription className="text-muted-foreground leading-relaxed">
+                <CardDescription className="text-gray-600 leading-relaxed font-manrope">
                   {feature.description}
                 </CardDescription>
               </CardContent>
@@ -141,17 +141,7 @@ export const Features = () => {
           ))}
         </div>
 
-        {/* Bottom CTA */}
-        <div className="text-center mt-16">
-          <p className="text-lg text-muted-foreground mb-6">
-            {getContentByKey('features', 'bottom_cta_text') || 'Ready to transform your event ticketing experience?'}
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Badge variant="secondary" className="px-4 py-2 text-sm font-medium bg-green-500/10 text-green-600 border-green-500/20">
-              {getContentByKey('features', 'bottom_badge_text') || '💳 No setup fees • Free 14-day trial'}
-            </Badge>
-          </div>
-        </div>
+
       </div>
     </section>
   );

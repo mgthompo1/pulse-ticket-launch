@@ -2,6 +2,29 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { jsPDF } from "npm:jspdf@2.5.1";
 import QRCode from "npm:qrcode@1.5.3";
 
+// Helper function to download and convert image to base64
+async function downloadAndConvertImage(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.log(`Failed to fetch image: ${response.status} ${response.statusText}`);
+      return null;
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    
+    // Determine image type from response headers or URL
+    const contentType = response.headers.get('content-type') || 'image/png';
+    const dataUrl = `data:${contentType};base64,${base64}`;
+    
+    return dataUrl;
+  } catch (error) {
+    console.log(`Error downloading image: ${error}`);
+    return null;
+  }
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -79,9 +102,41 @@ Deno.serve(async (req) => {
       throw new Error(`Order not found: ${orderError?.message}`);
     }
 
+    // Sanitize and validate text data to prevent encoding issues
+    const sanitizeText = (text: string): string => {
+      if (!text) return '';
+      // Normalize unicode and remove problematic characters
+      let cleaned = text.normalize('NFD');
+      // Remove any non-ASCII characters and control characters
+      cleaned = cleaned.replace(/[^\x20-\x7E]/g, '');
+      // Remove extra whitespace and trim
+      cleaned = cleaned.replace(/\s+/g, ' ').trim();
+      // Ensure it's not empty after cleaning
+      return cleaned || 'Unknown';
+    };
+
+    // Sanitize order data
+    order.customer_name = sanitizeText(order.customer_name);
+    order.events.name = sanitizeText(order.events.name);
+    if (order.events.venue) {
+      order.events.venue = sanitizeText(order.events.venue);
+    }
+    if (order.events.organizations?.name) {
+      order.events.organizations.name = sanitizeText(order.events.organizations.name);
+    }
+
     logStep("Order details retrieved", { 
       customerName: order.customer_name,
-      eventName: order.events.name 
+      customerNameOriginal: order.customer_name,
+      eventName: order.events.name,
+      eventNameOriginal: order.events.name,
+      orgName: order.events.organizations?.name,
+      venue: order.events.venue,
+      orderData: {
+        customer_name: order.customer_name,
+        customer_email: order.customer_email,
+        customer_phone: order.customer_phone
+      }
     });
 
     // Get all tickets from ticket items
@@ -91,8 +146,8 @@ Deno.serve(async (req) => {
     for (const item of ticketItems) {
       for (const ticket of item.tickets || []) {
         allTickets.push({
-          ticket_code: ticket.ticket_code,
-          ticket_type_name: item.ticket_types?.name || 'General Admission',
+          ticket_code: sanitizeText(ticket.ticket_code),
+          ticket_type_name: sanitizeText(item.ticket_types?.name || 'General Admission'),
           customer_name: order.customer_name,
           event_name: order.events.name,
           event_date: order.events.event_date,
@@ -107,7 +162,52 @@ Deno.serve(async (req) => {
       throw new Error("No tickets found for this order");
     }
 
-    logStep("Tickets to process", { count: allTickets.length });
+    logStep("Tickets to process", { 
+      count: allTickets.length,
+      sampleTicket: allTickets[0] 
+    });
+
+        // Download and prepare logo for PDF
+    let logoDataUrl: string | null = null;
+    let logoWidth = 0;
+    let logoHeight = 0;
+    
+    try {
+      // Try to get event logo first, then organization logo as fallback
+      const logoUrl = order.events.logo_url || order.events.organizations?.logo_url;
+      
+      logStep("Logo URL check", { 
+        eventLogoUrl: order.events.logo_url,
+        orgLogoUrl: order.events.organizations?.logo_url,
+        selectedLogoUrl: logoUrl
+      });
+      
+      if (logoUrl) {
+        logStep("Downloading logo", { logoUrl });
+        logoDataUrl = await downloadAndConvertImage(logoUrl);
+        
+        if (logoDataUrl) {
+          // For PDF, we'll use standard logo dimensions
+          // Most logos work well with these dimensions
+          logoHeight = 20; // 20mm height
+          logoWidth = 20;  // 20mm width (square aspect ratio)
+          
+          logStep("Logo prepared successfully", { 
+            width: logoWidth, 
+            height: logoHeight,
+            logoUrl,
+            dataUrlLength: logoDataUrl.length
+          });
+        } else {
+          logStep("Logo download failed", { logoUrl });
+        }
+      } else {
+        logStep("No logo URL available");
+      }
+    } catch (logoError) {
+      logStep("Logo processing failed", { error: logoError });
+      // Continue without logo if there's an error
+    }
 
     // Create PDF with better styling to match browser UI
     const pdf = new jsPDF({
@@ -160,22 +260,75 @@ Deno.serve(async (req) => {
       // Header section with event name
       let currentY = ticketY + 12;
       
-      // Organization/Event logo placeholder
-      if (order.events.logo_url || order.events.organizations?.logo_url) {
-        // Logo placeholder (since we can't easily load external images in jsPDF)
-        pdf.setFillColor(240, 240, 240);
-        pdf.circle(margin + 15, currentY - 3, 6, 'F');
-        pdf.setFontSize(8);
-        pdf.setTextColor(100, 100, 100);
-        pdf.text('LOGO', margin + 11, currentY);
+      // Display logo if available
+      let eventNameX = margin + 8;
+      
+      if (logoDataUrl && logoWidth > 0 && logoHeight > 0) {
+        try {
+          // Add logo to the left of the event name
+          const logoX = margin + 8;
+          const logoY = currentY - logoHeight + 2;
+          
+          // Try to add the logo image to the PDF
+          pdf.addImage(logoDataUrl, 'PNG', logoX, logoY, logoWidth, logoHeight);
+          
+          // Move event name to the right of the logo
+          eventNameX = logoX + logoWidth + 8;
+          
+          logStep("Logo added to PDF", { 
+            logoX, 
+            logoY, 
+            logoWidth, 
+            logoHeight 
+          });
+        } catch (logoError) {
+          logStep("Failed to add logo to PDF", { error: logoError });
+          // Fallback to no logo if there's an error
+          eventNameX = margin + 8;
+        }
+      } else {
+        logStep("No logo available for PDF", { 
+          hasLogoData: !!logoDataUrl,
+          logoWidth,
+          logoHeight
+        });
       }
       
       // Event name with better typography
       pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(15, 23, 42); // Dark slate
-      const eventNameX = order.events.logo_url || order.events.organizations?.logo_url ? margin + 30 : margin + 8;
-      pdf.text(ticket.event_name, eventNameX, currentY);
+      
+      // Ensure event name is valid text before rendering
+      let safeEventName = ticket.event_name || 'Event';
+      
+      // Additional sanitization for event name
+      safeEventName = safeEventName
+        .replace(/[^\w\s.-]/g, '') // Keep only alphanumeric, spaces, dots, and dashes
+        .replace(/\s+/g, ' ')      // Normalize whitespace
+        .trim();
+      
+      if (!safeEventName || safeEventName.length === 0) {
+        safeEventName = 'Event';
+      }
+      
+      logStep("Rendering event name", { 
+        original: ticket.event_name,
+        sanitized: safeEventName 
+      });
+      
+      try {
+        pdf.text(safeEventName, eventNameX, currentY);
+      } catch (textError) {
+        logStep("Text rendering error for event name", { 
+          error: textError, 
+          eventName: safeEventName,
+          x: eventNameX,
+          y: currentY
+        });
+        // Fallback to safe text
+        pdf.text('Event', eventNameX, currentY);
+      }
       
       // Venue with location icon effect
       if (ticket.venue) {
@@ -183,7 +336,21 @@ Deno.serve(async (req) => {
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(100, 116, 139); // Muted text
-        pdf.text('📍 ' + ticket.venue, eventNameX, currentY);
+        
+        // Ensure venue is valid text before rendering
+        const safeVenue = ticket.venue || 'TBA';
+        try {
+          pdf.text('Venue: ' + safeVenue, eventNameX, currentY);
+        } catch (textError) {
+          logStep("Text rendering error for venue", { 
+            error: textError, 
+            venue: safeVenue,
+            x: eventNameX,
+            y: currentY
+          });
+          // Fallback to safe text
+          pdf.text('Venue: TBA', eventNameX, currentY);
+        }
       }
       
       // Separator line
@@ -244,7 +411,37 @@ Deno.serve(async (req) => {
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(15, 23, 42);
-      pdf.text(ticket.customer_name, leftColumnX + 8, currentY);
+      
+      // Ensure customer name is valid text before rendering
+      let safeCustomerName = ticket.customer_name || 'Attendee';
+      
+      // Additional sanitization for customer name to prevent corruption
+      safeCustomerName = safeCustomerName
+        .replace(/[^\w\s.-]/g, '') // Keep only alphanumeric, spaces, dots, and dashes
+        .replace(/\s+/g, ' ')      // Normalize whitespace
+        .trim();
+      
+      if (!safeCustomerName || safeCustomerName.length === 0) {
+        safeCustomerName = 'Attendee';
+      }
+      
+      logStep("Rendering customer name", { 
+        original: ticket.customer_name,
+        sanitized: safeCustomerName 
+      });
+      
+      try {
+        pdf.text(safeCustomerName, leftColumnX + 8, currentY);
+      } catch (textError) {
+        logStep("Text rendering error for customer name", { 
+          error: textError, 
+          customerName: safeCustomerName,
+          x: leftColumnX + 8,
+          y: currentY
+        });
+        // Fallback to safe text
+        pdf.text('Attendee', leftColumnX + 8, currentY);
+      }
       currentY += 6;
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
