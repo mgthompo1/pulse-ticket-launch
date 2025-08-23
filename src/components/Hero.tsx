@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Play, Star, Users, Calendar, CreditCard } from "lucide-react";
+import { ArrowRight, Star, Users, Calendar, CreditCard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLandingPageContent } from "@/hooks/useLandingPageContent";
 
@@ -12,13 +12,6 @@ export const Hero = () => {
     navigate('/auth');
   };
 
-  const handleWatchDemo = () => {
-    // Scroll to features section for demo
-    const featuresSection = document.getElementById('features');
-    if (featuresSection) {
-      featuresSection.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
   return (
     <section className="relative pt-24 pb-20 overflow-hidden">
@@ -44,15 +37,11 @@ export const Hero = () => {
             Create manage and sell tickets - beautifully. Built for simplicity, ease of use and conversion.
           </p>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-12">
+          {/* CTA Button */}
+          <div className="flex justify-center mb-12">
             <Button variant="default" size="xl" className="group" onClick={handleStartTrial}>
               {getContentByKey('hero', 'cta_primary') || 'Get started'}
               <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
-            <Button variant="outline" size="xl" className="group" onClick={handleWatchDemo}>
-              <Play className="mr-2 h-5 w-5" />
-              {getContentByKey('hero', 'cta_secondary') || 'View demo'}
             </Button>
           </div>
 
@@ -70,17 +59,23 @@ export const Hero = () => {
               <div className="text-sm text-muted-foreground">{getContentByKey('hero_stats', 'rating_label') || 'User Rating'}</div>
             </div>
             <div className="text-center">
-              <Users className="h-8 w-8 mx-auto mb-2 text-primary" />
+              <div className="flex items-center justify-center mb-2">
+                <Users className="h-8 w-8 text-primary" />
+              </div>
               <div className="text-2xl font-semibold text-foreground">{getContentByKey('hero_stats', 'organizers_value') || '10K+'}</div>
               <div className="text-sm text-muted-foreground">{getContentByKey('hero_stats', 'organizers_label') || 'Organizers'}</div>
             </div>
             <div className="text-center">
-              <Calendar className="h-8 w-8 mx-auto mb-2 text-primary" />
+              <div className="flex items-center justify-center mb-2">
+                <Calendar className="h-8 w-8 text-primary" />
+              </div>
               <div className="text-2xl font-semibold text-foreground">{getContentByKey('hero_stats', 'events_value') || '50K+'}</div>
               <div className="text-sm text-muted-foreground">{getContentByKey('hero_stats', 'events_label') || 'Events Created'}</div>
             </div>
             <div className="text-center">
-              <CreditCard className="h-8 w-8 mx-auto mb-2 text-primary" />
+              <div className="flex items-center justify-center mb-2">
+                <CreditCard className="h-8 w-8 text-primary" />
+              </div>
               <div className="text-2xl font-semibold text-foreground">{getContentByKey('hero_stats', 'tickets_value') || '$2M+'}</div>
               <div className="text-sm text-muted-foreground">{getContentByKey('hero_stats', 'tickets_label') || 'Tickets Sold'}</div>
             </div>
