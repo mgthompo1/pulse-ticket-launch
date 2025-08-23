@@ -40,13 +40,16 @@ serve(async (req) => {
     }
 
     // Validate admin session
-    const adminId = await supabaseClient.rpc('validate_admin_session', { token });
+    const { data: adminId, error: validationError } = await supabaseClient.rpc('validate_admin_session', { token });
     
-    if (!adminId) {
+    if (validationError || !adminId) {
+      console.error("Admin session validation failed:", validationError);
       throw new Error("Invalid admin session");
     }
 
     console.log("Admin session validated:", adminId);
+
+    // Using SERVICE_ROLE_KEY bypasses RLS automatically
 
     let data;
     

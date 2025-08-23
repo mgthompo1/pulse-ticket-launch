@@ -83,7 +83,9 @@ const MasterAdmin = () => {
 
   // Redirect if not authenticated
   useEffect(() => {
+    console.log('Auth status check:', { authLoading, isAdminAuthenticated });
     if (!authLoading && !isAdminAuthenticated) {
+      console.log('Redirecting to admin auth');
       navigate("/secure-admin-auth");
     }
   }, [isAdminAuthenticated, authLoading, navigate]);
