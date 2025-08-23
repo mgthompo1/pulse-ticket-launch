@@ -25,11 +25,13 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [showSeatMapDesigner, setShowSeatMapDesigner] = useState(false);
+  const [organizationId, setOrganizationId] = useState<string>("");
+  
+  // Remove any remaining test_mode references and add publish button
   const [eventData, setEventData] = useState<{
     id: string;
     name: string;
     status: string;
-    test_mode: boolean;
     logo_url: string | null;
     venue: string | null;
     widget_customization?: Record<string, unknown>;
@@ -122,16 +124,17 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     try {
       const { data, error } = await supabase
         .from("events")
-        .select("widget_customization, ticket_customization, email_customization, name, status, test_mode, logo_url, venue")
+        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, organization_id")
         .eq("id", eventId)
         .single();
 
       if (error) throw error;
+      
+      setOrganizationId(data.organization_id);
       setEventData({ 
         id: eventId,
         name: data.name,
         status: data.status,
-        test_mode: data.test_mode,
         logo_url: data.logo_url,
         venue: data.venue,
         widget_customization: data.widget_customization as Record<string, unknown>,

@@ -13,12 +13,11 @@ interface EventAnalyticsProps {
   events: Array<{
     id: string;
     name: string;
-    date: string;
+    event_date: string;
     venue: string | null;
     capacity: number;
     status: string;
   }>;
-  testMode: boolean;
 }
 
 interface EventDetails {
@@ -72,7 +71,7 @@ interface AnalyticsSummary {
   conversionRate: number;
 }
 
-export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events, testMode }) => {
+export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [eventDetails, setEventDetails] = useState<EventDetails | null>(null);
   const [orders, setOrders] = useState<OrderDetails[]>([]);
@@ -192,7 +191,7 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events, testMode
     if (selectedEventId) {
       loadEventAnalytics(selectedEventId);
     }
-  }, [selectedEventId, testMode]);
+  }, [selectedEventId]);
 
   return (
     <div className="space-y-6">
@@ -216,7 +215,7 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events, testMode
             <SelectContent>
               {events.map((event) => (
                 <SelectItem key={event.id} value={event.id}>
-                  {event.name} - {format(new Date(event.date), 'MMM d, yyyy')}
+                  {event.name} - {format(new Date(event.event_date), 'MMM d, yyyy')}
                 </SelectItem>
               ))}
             </SelectContent>

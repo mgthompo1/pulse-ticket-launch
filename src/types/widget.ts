@@ -12,7 +12,7 @@ export interface EventData {
   widget_customization?: any;
   ticket_customization?: any;
   email_customization?: any;
-  test_mode: boolean;
+  
   organizations?: {
     name: string;
     payment_provider?: string | null;
