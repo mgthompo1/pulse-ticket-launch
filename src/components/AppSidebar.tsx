@@ -35,6 +35,7 @@ const sidebarItems = [
   { id: "marketing", title: "Marketing", icon: Mail },
   { id: "billing", title: "Billing", icon: CreditCard },
   { id: "integrations", title: "Apps", icon: Link },
+  { id: "support", title: "Support", icon: Mail },
   { id: "security", title: "Security", icon: Shield },
   { id: "settings", title: "Settings", icon: Settings },
 ];

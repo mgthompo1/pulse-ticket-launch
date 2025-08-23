@@ -8,7 +8,7 @@ const corsHeaders = {
 
 interface AdminDataRequest {
   token: string;
-  dataType: 'organizations' | 'events' | 'orders' | 'metrics' | 'analytics';
+  dataType: 'organizations' | 'events' | 'orders' | 'metrics' | 'analytics' | 'contact_enquiries';
 }
 
 serve(async (req) => {
@@ -132,6 +132,23 @@ serve(async (req) => {
           platformRevenue: transactionFees,
           activeEvents: activeEventsCount || 0
         };
+        break;
+        
+      case 'contact_enquiries':
+        console.log('Fetching contact enquiries...');
+        
+        const { data: enquiries, error: enquiriesError } = await supabaseClient
+          .from('contact_enquiries')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (enquiriesError) {
+          console.error('Contact enquiries fetch error:', enquiriesError);
+          throw enquiriesError;
+        }
+        
+        console.log('Contact enquiries fetched:', enquiries?.length || 0);
+        data = enquiries || [];
         break;
         
       default:

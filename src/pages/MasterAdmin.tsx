@@ -71,6 +71,7 @@ const MasterAdmin = () => {
     platformRevenue: 0,
     activeEvents: 0
   });
+  const [contactEnquiries, setContactEnquiries] = useState<any[]>([]);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -98,7 +99,21 @@ const MasterAdmin = () => {
         if (data.success) {
           setOrganizations(data.data || []);
         } else {
-          console.error("Error loading organizations:", data.error);
+          console.error('Failed to fetch organizations:', data.error);
+        }
+        
+        // Also fetch contact enquiries
+        const { data: enquiriesData, error: enquiriesError } = await supabase.functions.invoke('admin-data', {
+          body: {
+            token: adminToken,
+            dataType: 'contact_enquiries'
+          }
+        });
+        
+        if (enquiriesError) throw enquiriesError;
+        
+        if (enquiriesData.success) {
+          setContactEnquiries(enquiriesData.data || []);
         }
       } catch (error) {
         console.error("Error loading organizations:", error);
@@ -427,9 +442,10 @@ const MasterAdmin = () => {
 
       <div className="container mx-auto p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="organizations">Organizations</TabsTrigger>
+            <TabsTrigger value="enquiries">Contact Enquiries</TabsTrigger>
             <TabsTrigger value="content">Content</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="system">System</TabsTrigger>
@@ -648,6 +664,75 @@ const MasterAdmin = () => {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Contact Enquiries Tab */}
+          <TabsContent value="enquiries" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="w-5 h-5" />
+                  Contact Enquiries
+                </CardTitle>
+                <CardDescription>
+                  Manage contact enquiries and support tickets from users
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {contactEnquiries.length === 0 ? (
+                  <div className="text-muted-foreground text-center py-8">No contact enquiries found.</div>
+                ) : (
+                  <div className="space-y-4">
+                    {contactEnquiries.map((enquiry) => (
+                      <div key={enquiry.id} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${
+                              enquiry.status === 'open' ? 'bg-yellow-500' :
+                              enquiry.status === 'in_progress' ? 'bg-blue-500' :
+                              'bg-green-500'
+                            }`}></div>
+                            <span className="font-medium">{enquiry.name}</span>
+                            <span className="text-sm text-muted-foreground">({enquiry.email})</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              enquiry.enquiry_type === 'support' 
+                                ? 'bg-blue-100 text-blue-800' 
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {enquiry.enquiry_type === 'support' ? 'Support Ticket' : 'General Enquiry'}
+                            </span>
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              enquiry.status === 'open' ? 'bg-yellow-100 text-yellow-800' :
+                              enquiry.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {enquiry.status.replace('_', ' ')}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {enquiry.phone && (
+                          <p className="text-sm text-muted-foreground">Phone: {enquiry.phone}</p>
+                        )}
+                        
+                        <div className="bg-muted/50 p-3 rounded text-sm">
+                          {enquiry.message}
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Created: {new Date(enquiry.created_at).toLocaleString()}</span>
+                          {enquiry.updated_at !== enquiry.created_at && (
+                            <span>Updated: {new Date(enquiry.updated_at).toLocaleString()}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>

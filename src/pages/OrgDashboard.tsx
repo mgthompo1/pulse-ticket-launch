@@ -26,6 +26,7 @@ import OrganizationOnboarding from "@/components/OrganizationOnboarding";
 import { SecurityDashboard } from "@/components/SecurityDashboard";
 import { MarketingTools } from "@/components/MarketingTools";
 import { AnalyticsCharts } from "@/components/AnalyticsCharts";
+import Support from "@/pages/Support";
 import { useNavigate } from "react-router-dom";
 
 // Types
@@ -703,6 +704,10 @@ const OrgDashboard = () => {
 
                 <TabsContent value="billing" className="space-y-6">
                   <BillingDashboard organizationId={organizationId} isLoading={false} />
+                </TabsContent>
+
+                <TabsContent value="support" className="space-y-6">
+                  <Support />
                 </TabsContent>
 
                 <TabsContent value="integrations" className="space-y-6">

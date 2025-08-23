@@ -27,7 +27,7 @@ export const Navigation = () => {
   const navItems = [
     { name: "Features", id: "features" },
     { name: "Pricing", id: "pricing" },
-    { name: "Support", id: "support" },
+    { name: "Contact", href: "/contact" },
   ];
 
   return (
@@ -48,7 +48,7 @@ export const Navigation = () => {
               {navItems.map((item) => (
                 <button
                   key={item.name}
-                  onClick={() => handleScrollTo(item.id)}
+                  onClick={() => item.href ? window.location.href = item.href : handleScrollTo(item.id!)}
                   className="text-muted-foreground hover:text-foreground px-3 py-2 rounded-md text-sm font-medium transition-smooth hover:bg-accent/50"
                 >
                   {item.name}
@@ -85,7 +85,7 @@ export const Navigation = () => {
           {navItems.map((item) => (
             <button
               key={item.name}
-              onClick={() => handleScrollTo(item.id)}
+              onClick={() => item.href ? window.location.href = item.href : handleScrollTo(item.id!)}
               className="text-muted-foreground hover:text-foreground block px-3 py-2 rounded-md text-base font-medium transition-smooth hover:bg-accent/50 w-full text-left"
             >
               {item.name}

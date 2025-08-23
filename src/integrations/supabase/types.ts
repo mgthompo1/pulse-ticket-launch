@@ -341,6 +341,45 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_enquiries: {
+        Row: {
+          created_at: string
+          email: string
+          enquiry_type: string
+          id: string
+          message: string
+          name: string
+          organization_id: string | null
+          phone: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          enquiry_type?: string
+          id?: string
+          message: string
+          name: string
+          organization_id?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          enquiry_type?: string
+          id?: string
+          message?: string
+          name?: string
+          organization_id?: string | null
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_notifications: {
         Row: {
           email_type: string
