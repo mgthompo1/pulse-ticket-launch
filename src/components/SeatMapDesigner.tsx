@@ -460,6 +460,10 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
                       <Trash2 className="w-4 h-4 mr-2" />
                       Clear All Seats
                     </Button>
+                    <Button onClick={saveSeatMap} className="w-full">
+                      <Save className="w-4 h-4 mr-2" />
+                      Save Seat Map
+                    </Button>
                   </div>
                 </TabsContent>
                 
@@ -492,11 +496,6 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
                       })}
                     </div>
                   </div>
-
-                  <Button onClick={saveSeatMap} className="w-full">
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Seat Map
-                  </Button>
                 </TabsContent>
               </Tabs>
             </div>
