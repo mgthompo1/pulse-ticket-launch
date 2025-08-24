@@ -46,7 +46,7 @@ export const Pricing = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <div className="text-center mb-16">
-          <Badge variant="secondary" className="mb-4 px-4 py-2 text-sm font-medium bg-[#ff4d00]/20 text-[#ff4d00] border-[#ff4d00]/30 font-manrope">
+          <Badge variant="secondary" className="mb-4 px-4 py-2 text-sm font-medium bg-[#ff4d00]/20 text-[#ff4d00] border-[#ff4d00]/30 font-manrope opacity-0">
             {getContentByKey('pricing', 'badge_text') || '💎 Simple Pricing'}
           </Badge>
           <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6 font-dm-sans">
