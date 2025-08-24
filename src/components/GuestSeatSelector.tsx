@@ -42,6 +42,7 @@ export const GuestSeatSelector = ({
     name: string;
     layout_data: Json;
     total_seats: number;
+    show_entrance?: boolean;
   } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,6 +56,16 @@ export const GuestSeatSelector = ({
   useEffect(() => {
     loadSeatMap();
   }, [eventId]);
+
+  // Handle window resize for responsive canvas
+  useEffect(() => {
+    const handleResize = () => {
+      drawCanvas();
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     drawCanvas();
@@ -143,16 +154,45 @@ export const GuestSeatSelector = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Set up high DPI rendering
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    
+    // Set the actual size in memory (scaled up for high DPI)
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    
+    // Scale the drawing context so everything draws at the correct size
+    ctx.scale(dpr, dpr);
+    
+    // Set the CSS size
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+
+    // Improve rendering quality
+    ctx.imageSmoothingEnabled = false; // Disable anti-aliasing for crisp edges
+    ctx.textRenderingOptimization = 'optimizeSpeed';
+
     // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, rect.width, rect.height);
 
     // Draw stage
     ctx.fillStyle = '#1f2937';
-    ctx.fillRect(canvas.width / 2 - 100, 20, 200, 40);
+    ctx.fillRect(rect.width / 2 - 100, 20, 200, 40);
     ctx.fillStyle = '#ffffff';
     ctx.font = '14px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('STAGE', canvas.width / 2, 45);
+    ctx.fillText('STAGE', rect.width / 2, 45);
+
+    // Draw entrance (if enabled in seat map settings)
+    if (seatMap?.show_entrance !== false) {
+      ctx.fillStyle = '#10b981';
+      ctx.fillRect(rect.width / 2 - 60, rect.height - 60, 120, 30);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('ENTRANCE', rect.width / 2, rect.height - 40);
+    }
 
     // Draw seats
     seats.forEach(seat => {
@@ -191,7 +231,7 @@ export const GuestSeatSelector = ({
     });
 
     // Draw legend
-    const legendY = canvas.height - 80;
+    const legendY = rect.height - 120;
     const legendItems = [
       { label: 'Available', color: '#3b82f6' },
       { label: 'Selected', color: '#22c55e' },
@@ -199,6 +239,11 @@ export const GuestSeatSelector = ({
       { label: 'Premium', color: '#f59e0b' },
       { label: 'VIP', color: '#ef4444' }
     ];
+
+    // Add entrance to legend only if it's enabled
+    if (seatMap?.show_entrance !== false) {
+      legendItems.push({ label: 'Entrance', color: '#10b981' });
+    }
 
     legendItems.forEach((item, index) => {
       const x = 20 + (index * 100);
@@ -344,7 +389,8 @@ export const GuestSeatSelector = ({
             ref={canvasRef}
             width={800}
             height={600}
-            className="border border-gray-300 cursor-pointer bg-white rounded"
+            className="border border-gray-300 cursor-pointer bg-white rounded w-full max-w-none"
+            style={{ imageRendering: 'crisp-edges' }}
             onClick={handleCanvasClick}
           />
         </div>

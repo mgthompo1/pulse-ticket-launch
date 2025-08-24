@@ -246,10 +246,25 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           <h2 className="text-2xl font-bold">Event Customization</h2>
           <p className="text-muted-foreground">Customize your event widget, tickets, and emails</p>
         </div>
-        <Button onClick={saveCustomizations} disabled={loading}>
-          <Save className="mr-2 h-4 w-4" />
-          {loading ? "Saving..." : "Save Changes"}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => {
+              // Open help in parent dashboard
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('openDashboardHelp', { detail: { tab: 'event-details' } }));
+              }
+            }}
+          >
+            <HelpCircle className="w-4 w-4 mr-2" />
+            Help
+          </Button>
+          <Button onClick={saveCustomizations} disabled={loading}>
+            <Save className="mr-2 h-4 w-4" />
+            {loading ? "Saving..." : "Save Changes"}
+          </Button>
+        </div>
       </div>
 
       {/* Seat Map Designer Modal */}
@@ -776,9 +791,21 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               {/* Enable/Disable Seat Maps */}
               <div className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="space-y-1">
-                  <Label htmlFor="enableSeatMaps" className="text-base font-medium">
-                    Enable Seat Maps
-                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="enableSeatMaps" className="text-base font-medium">
+                      Enable Seat Maps
+                    </Label>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('openDashboardHelp', { detail: { tab: 'event-details' } }));
+                      }}
+                    >
+                      <HelpCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     Allow guests to select specific seats when purchasing tickets
                   </p>

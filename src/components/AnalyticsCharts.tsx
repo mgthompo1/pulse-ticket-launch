@@ -18,6 +18,30 @@ import {
   Legend
 } from "recharts";
 
+// Custom label component for pie chart
+const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, value }: any) => {
+  if (percent < 0.05) return null; // Don't show labels for small segments
+  
+  const RADIAN = Math.PI / 180;
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  
+  return (
+    <text 
+      x={x} 
+      y={y} 
+      fill="white" 
+      textAnchor="middle" 
+      dominantBaseline="central"
+      fontSize="12"
+      fontWeight="600"
+    >
+      {`$${(value / 1000).toFixed(1)}k`}
+    </text>
+  );
+};
+
 interface AnalyticsChartsProps {
   className?: string;
   salesData: Array<{ month: string; sales: number; tickets: number }>;
@@ -47,24 +71,28 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
 
   return (
     <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${className}`}>
-      {/* Sales Trend Chart */}
+      {/* Monthly Revenue by Event Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Sales Trend</CardTitle>
-          <CardDescription>Monthly sales and ticket sales over time</CardDescription>
+          <CardTitle>Monthly Revenue by Event</CardTitle>
+          <CardDescription>Monthly revenue by event (last 30 days)</CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={salesData}>
+            <BarChart data={salesData}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis 
                 dataKey="month" 
                 stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
+                angle={-45}
+                textAnchor="end"
+                height={80}
               />
               <YAxis 
                 stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
+                tickFormatter={(value) => `$${(value / 1000).toFixed(1)}k`}
               />
               <Tooltip
                 contentStyle={{
@@ -72,33 +100,24 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
                   border: "1px solid hsl(var(--border))",
                   borderRadius: "6px",
                 }}
+                formatter={(value: any) => [`$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Revenue']}
+                labelFormatter={(label) => `Event: ${label}`}
               />
-              <Area 
-                type="monotone" 
-                dataKey="sales" 
-                stackId="1"
-                stroke="hsl(var(--primary))" 
-                fill="hsl(var(--primary) / 0.1)"
-                strokeWidth={2}
+              <Bar 
+                dataKey="revenue" 
+                fill="hsl(var(--primary))"
+                radius={[4, 4, 0, 0]}
               />
-              <Area 
-                type="monotone" 
-                dataKey="tickets" 
-                stackId="2"
-                stroke="hsl(var(--secondary))" 
-                fill="hsl(var(--secondary) / 0.1)"
-                strokeWidth={2}
-              />
-            </AreaChart>
+            </BarChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      {/* Event Types Distribution */}
+      {/* Total Revenue by Event */}
       <Card>
         <CardHeader>
-          <CardTitle>Event Types</CardTitle>
-          <CardDescription>Distribution of events by category</CardDescription>
+          <CardTitle>Total Revenue by Event</CardTitle>
+          <CardDescription>All-time revenue distribution across events</CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -111,6 +130,8 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
                 outerRadius={120}
                 paddingAngle={5}
                 dataKey="value"
+                label={<CustomPieLabel />}
+                labelLine={false}
               >
                 {eventTypeData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
@@ -122,6 +143,8 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
                   border: "1px solid hsl(var(--border))",
                   borderRadius: "6px",
                 }}
+                formatter={(value: any) => [`$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Revenue']}
+                labelFormatter={(label) => `Event: ${label}`}
               />
               <Legend />
             </PieChart>
@@ -129,11 +152,11 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
         </CardContent>
       </Card>
 
-      {/* Weekly Revenue */}
+      {/* Weekly Revenue by Event */}
       <Card>
         <CardHeader>
-          <CardTitle>Weekly Revenue</CardTitle>
-          <CardDescription>Daily revenue for the current week</CardDescription>
+          <CardTitle>Weekly Revenue by Event</CardTitle>
+          <CardDescription>Revenue by event for the last 7 days</CardDescription>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -143,10 +166,14 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
                 dataKey="day" 
                 stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
+                angle={-45}
+                textAnchor="end"
+                height={80}
               />
               <YAxis 
                 stroke="hsl(var(--muted-foreground))"
                 fontSize={12}
+                tickFormatter={(value) => `$${(value / 1000).toFixed(1)}k`}
               />
               <Tooltip
                 contentStyle={{
@@ -154,10 +181,12 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
                   border: "1px solid hsl(var(--border))",
                   borderRadius: "6px",
                 }}
+                formatter={(value: any) => [`$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Revenue']}
+                labelFormatter={(label) => `Event: ${label}`}
               />
               <Bar 
                 dataKey="revenue" 
-                fill="hsl(var(--primary))"
+                fill="hsl(var(--secondary))"
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
@@ -165,44 +194,7 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
         </CardContent>
       </Card>
 
-      {/* Performance Trend */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Performance Trend</CardTitle>
-          <CardDescription>Ticket sales performance over the last 6 months</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={salesData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis 
-                dataKey="month" 
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
-              />
-              <YAxis 
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "6px",
-                }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="tickets" 
-                stroke="hsl(var(--primary))" 
-                strokeWidth={3}
-                dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, stroke: "hsl(var(--primary))", strokeWidth: 2 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+
     </div>
   );
 };

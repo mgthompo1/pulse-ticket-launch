@@ -237,6 +237,97 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
     loadBillingData();
   };
 
+  const generateInvoice = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-invoice', {
+        body: { 
+          organization_id: organizationId,
+          billing_period: new Date().toISOString().slice(0, 7) // YYYY-MM format
+        }
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Success",
+        description: "Invoice generated successfully!"
+      });
+      
+      // Reload billing data to show new invoice
+      loadBillingData();
+    } catch (error) {
+      console.error('Error generating invoice:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate invoice",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const downloadInvoice = async (invoiceId?: string) => {
+    try {
+      const id = invoiceId || 'current';
+      const { data, error } = await supabase.functions.invoke('download-invoice', {
+        body: { 
+          invoice_id: id,
+          organization_id: organizationId
+        }
+      });
+      
+      if (error) throw error;
+      
+      // Create download link for PDF
+      if (data.pdf_url) {
+        const link = document.createElement('a');
+        link.href = data.pdf_url;
+        link.download = `invoice-${id}-${new Date().toISOString().slice(0, 10)}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      
+      toast({
+        title: "Success",
+        description: "Invoice downloaded successfully!"
+      });
+    } catch (error) {
+      console.error('Error downloading invoice:', error);
+      toast({
+        title: "Error",
+        description: "Failed to download invoice",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const viewInvoice = async (invoiceId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-invoice-details', {
+        body: { 
+          invoice_id: invoiceId,
+          organization_id: organizationId
+        }
+      });
+      
+      if (error) throw error;
+      
+      // For now, just show a toast with basic info
+      // In the future, this could open a modal with detailed invoice view
+      toast({
+        title: "Invoice Details",
+        description: `Invoice #${data.invoice_number} - $${data.total_platform_fees.toFixed(2)}`,
+      });
+    } catch (error) {
+      console.error('Error viewing invoice:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load invoice details",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (isLoading || loading) {
     return (
       <div className="space-y-6">
@@ -295,8 +386,9 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
         </p>
       </div>
 
-      <TabsList className="grid w-full grid-cols-2">
+      <TabsList className="grid w-full grid-cols-3">
         <TabsTrigger value="overview">Overview</TabsTrigger>
+        <TabsTrigger value="invoicing">Invoicing</TabsTrigger>
         <TabsTrigger value="management">Billing Management</TabsTrigger>
       </TabsList>
 
@@ -354,9 +446,69 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
               <p className="text-xs text-muted-foreground">
                 Fees this month
               </p>
+              <div className="mt-2 text-xs text-muted-foreground">
+                <div>1.00% + $0.50 per transaction</div>
+                <div className="mt-1">
+                  {currentMonthUsage.transactions > 0 && (
+                    <>
+                      <span className="text-primary">
+                        ${(currentMonthUsage.volume * 0.01).toFixed(2)}
+                      </span> + <span className="text-primary">
+                        ${(currentMonthUsage.transactions * 0.50).toFixed(2)}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Quick Actions</span>
+              <Button 
+                onClick={generateInvoice}
+                disabled={currentMonthUsage.transactions === 0}
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Receipt className="h-4 w-4" />
+                Generate Invoice
+              </Button>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Generate invoices and manage your billing
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-4 border rounded-lg">
+                <Receipt className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <h4 className="font-medium">Current Month</h4>
+                <p className="text-sm text-muted-foreground">
+                  ${currentMonthUsage.fees.toFixed(2)} in fees
+                </p>
+              </div>
+              <div className="text-center p-4 border rounded-lg">
+                <TrendingUp className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <h4 className="font-medium">Transactions</h4>
+                <p className="text-sm text-muted-foreground">
+                  {currentMonthUsage.transactions} this month
+                </p>
+              </div>
+              <div className="text-center p-4 border rounded-lg">
+                <DollarSign className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <h4 className="font-medium">Volume</h4>
+                <p className="text-sm text-muted-foreground">
+                  ${currentMonthUsage.volume.toFixed(2)} processed
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Recent Usage */}
         <Card>
@@ -416,6 +568,164 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
                       <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'}>
                         {invoice.status}
                       </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="invoicing" className="space-y-6">
+        {/* Current Month Invoice Preview */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5" />
+              Current Month Invoice Preview
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Preview of your upcoming invoice for {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <h4 className="font-medium">Transaction Summary</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Total Transactions:</span>
+                    <span className="font-medium">{currentMonthUsage.transactions}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Transaction Volume:</span>
+                    <span className="font-medium">${currentMonthUsage.volume.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Platform Fee Rate:</span>
+                    <span className="font-medium">1.00% + $0.50 per transaction</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <h4 className="font-medium">Fee Breakdown</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Percentage Fee (1.00%):</span>
+                    <span className="font-medium">${(currentMonthUsage.volume * 0.01).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Fixed Fee ({currentMonthUsage.transactions} × $0.50):</span>
+                    <span className="font-medium">${(currentMonthUsage.transactions * 0.50).toFixed(2)}</span>
+                  </div>
+                  <div className="border-t pt-2">
+                    <div className="flex justify-between font-semibold">
+                      <span>Total Platform Fees:</span>
+                      <span className="text-lg">${currentMonthUsage.fees.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 pt-4">
+              <Button 
+                onClick={generateInvoice}
+                disabled={currentMonthUsage.transactions === 0}
+                className="flex items-center gap-2"
+              >
+                <Receipt className="h-4 w-4" />
+                Generate Invoice
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={downloadInvoice}
+                disabled={currentMonthUsage.transactions === 0}
+              >
+                Download PDF
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Invoice History with Enhanced Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Invoice History</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              View and download previous invoices
+            </p>
+          </CardHeader>
+          <CardContent>
+            {invoiceData.length === 0 ? (
+              <div className="text-center py-8">
+                <Receipt className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                <p className="text-muted-foreground">No invoices generated yet</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Invoices are generated monthly based on your platform usage
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {invoiceData.map((invoice) => (
+                  <div key={invoice.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h4 className="font-medium">
+                          Invoice #{invoice.invoice_number || invoice.id.slice(-8)}
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          {invoice.billing_period_start} - {invoice.billing_period_end}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold">${invoice.total_platform_fees.toFixed(2)}</div>
+                        <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'}>
+                          {invoice.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Transactions:</span>
+                        <div className="font-medium">{invoice.total_transactions}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Volume:</span>
+                        <div className="font-medium">${invoice.total_volume?.toFixed(2) || '0.00'}</div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Due Date:</span>
+                        <div className="font-medium">
+                          {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Generated:</span>
+                        <div className="font-medium">
+                          {new Date(invoice.created_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2 mt-3 pt-3 border-t">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => downloadInvoice(invoice.id)}
+                      >
+                        Download
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => viewInvoice(invoice.id)}
+                      >
+                        View Details
+                      </Button>
                     </div>
                   </div>
                 ))}

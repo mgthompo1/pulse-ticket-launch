@@ -19,7 +19,7 @@ import EventCustomization from "@/components/EventCustomization";
 import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, BarChart3, Edit, Monitor, LogOut, Menu } from "lucide-react";
+import { Calendar, Users, Ticket, BarChart3, Edit, Monitor, LogOut, Menu, HelpCircle } from "lucide-react";
 import OrganizationSettings from "@/components/OrganizationSettings";
 import OrganizationOnboarding from "@/components/OrganizationOnboarding";
 
@@ -27,6 +27,7 @@ import { SecurityDashboard } from "@/components/SecurityDashboard";
 import { MarketingTools } from "@/components/MarketingTools";
 import { AnalyticsCharts } from "@/components/AnalyticsCharts";
 import Support from "@/pages/Support";
+import { DashboardHelp } from "@/components/DashboardHelp";
 import { useNavigate } from "react-router-dom";
 
 // Types
@@ -42,9 +43,9 @@ type DashboardEvent = {
   event_date: string;
 };
 
-type SalesPoint = { month: string; sales: number; tickets: number };
-type EventTypeDatum = { name: string; value: number; color: string };
-type RevenuePoint = { day: string; revenue: number };
+type SalesPoint = { month: string; revenue: number }; // Monthly revenue by event
+type EventTypeDatum = { name: string; value: number; color: string }; // Total revenue by event
+type RevenuePoint = { day: string; revenue: number }; // Weekly revenue by event
 
 type AnalyticsState = {
   totalTickets: number;
@@ -84,6 +85,7 @@ const OrgDashboard = () => {
   const [organizationId, setOrganizationId] = useState<string>("");
   
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [analytics, setAnalytics] = useState({
     totalEvents: 0,
     totalOrders: 0,
@@ -98,6 +100,21 @@ const OrgDashboard = () => {
     eventTypesData: [],
     revenueData: []
   });
+
+  // Listen for help requests from child components
+  React.useEffect(() => {
+    const handleHelpRequest = (event: CustomEvent) => {
+      if (event.detail?.tab) {
+        setActiveTab(event.detail.tab);
+        setShowHelp(true);
+      }
+    };
+
+    window.addEventListener('openDashboardHelp', handleHelpRequest as EventListener);
+    return () => {
+      window.removeEventListener('openDashboardHelp', handleHelpRequest as EventListener);
+    };
+  }, []);
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -265,12 +282,14 @@ const OrgDashboard = () => {
         created_at, 
         event_id,
         status,
+        events(name),
         order_items(
           quantity,
           ticket_types(name)
         )
       `)
-      .in("event_id", eventIds);
+      .in("event_id", eventIds)
+      .in("status", ["paid", "completed"]);
     
     console.log("Orders found:", orderData?.length || 0);
     console.log("Sample order data:", orderData?.[0]);
@@ -290,64 +309,99 @@ const OrgDashboard = () => {
     // Process the data for analytics
     const totalTickets = ticketData?.length || 0;
     
-    // Process sales data by month (last 6 months)
-    const salesByMonth = new Map<string, number>();
-    const revenueByMonth = new Map<string, number>();
+    // 1. Weekly Revenue by Event (last 7 days)
+    const weeklyRevenueByEvent = new Map<string, number>();
+    const last7Days = new Date();
+    last7Days.setDate(last7Days.getDate() - 7);
     
     if (orderData) {
       orderData.forEach(order => {
-        if (order.status === 'completed' || order.status === 'paid') {
-          const date = new Date(order.created_at);
-          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-          
-          // Sum up quantities from order items
-          const totalQuantity = order.order_items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
-          
-          salesByMonth.set(monthKey, (salesByMonth.get(monthKey) || 0) + totalQuantity);
-          revenueByMonth.set(monthKey, (revenueByMonth.get(monthKey) || 0) + (Number(order.total_amount) || 0));
+        const orderDate = new Date(order.created_at);
+        if (orderDate >= last7Days) {
+          const eventName = order.events?.name || 'Unknown Event';
+          const currentRevenue = weeklyRevenueByEvent.get(eventName) || 0;
+          weeklyRevenueByEvent.set(eventName, currentRevenue + (Number(order.total_amount) || 0));
         }
       });
     }
     
-    // Convert to array format for charts
-    const salesData: SalesPoint[] = Array.from(salesByMonth.entries()).map(([month, tickets]) => ({
-      month,
-      sales: tickets,
-      tickets
-    }));
+    // Convert weekly revenue to array format and sort by revenue
+    const weeklyRevenueData = Array.from(weeklyRevenueByEvent.entries())
+      .map(([eventName, revenue]) => ({
+        day: eventName,
+        revenue
+      }))
+      .sort((a, b) => b.revenue - a.revenue); // Sort by revenue descending
     
-    const revenueData: RevenuePoint[] = Array.from(revenueByMonth.entries()).map(([month, revenue]) => ({
-      day: month,
-      revenue
-    }));
+    // 2. Monthly Revenue by Event (last 30 days)
+    const monthlyRevenueByEvent = new Map<string, number>();
+    const last30Days = new Date();
+    last30Days.setDate(last30Days.getDate() - 30);
     
-    // Process event types data
-    const eventTypeCount = new Map<string, number>();
-    if (eventData) {
-      eventData.forEach(event => {
-        const status = event.status || 'draft';
-        eventTypeCount.set(status, (eventTypeCount.get(status) || 0) + 1);
+    if (orderData) {
+      orderData.forEach(order => {
+        const orderDate = new Date(order.created_at);
+        if (orderDate >= last30Days) {
+          const eventName = order.events?.name || 'Unknown Event';
+          const currentRevenue = monthlyRevenueByEvent.get(eventName) || 0;
+          monthlyRevenueByEvent.set(eventName, currentRevenue + (Number(order.total_amount) || 0));
+        }
       });
     }
     
-    const eventTypesData: EventTypeDatum[] = Array.from(eventTypeCount.entries()).map(([name, value]) => ({
-      name,
-      value,
-      color: name === 'published' ? '#22c55e' : '#6b7280'
-    }));
+    // Convert monthly revenue to array format and sort by revenue
+    const monthlyRevenueData = Array.from(monthlyRevenueByEvent.entries())
+      .map(([eventName, revenue]) => ({
+        month: eventName,
+        revenue
+      }))
+      .sort((a, b) => b.revenue - a.revenue); // Sort by revenue descending
+    
+    // 3. Total Revenue by Event (all time)
+    const totalRevenueByEvent = new Map<string, number>();
+    
+    if (orderData) {
+      orderData.forEach(order => {
+        const eventName = order.events?.name || 'Unknown Event';
+        const currentRevenue = totalRevenueByEvent.get(eventName) || 0;
+        totalRevenueByEvent.set(eventName, currentRevenue + (Number(order.total_amount) || 0));
+      });
+    }
+    
+    // Convert total revenue to array format for pie chart
+    const colors = [
+      '#3b82f6', // Blue
+      '#ef4444', // Red
+      '#10b981', // Green
+      '#f59e0b', // Yellow
+      '#8b5cf6', // Purple
+      '#f97316', // Orange
+      '#06b6d4', // Cyan
+      '#84cc16', // Lime
+      '#ec4899', // Pink
+      '#6366f1'  // Indigo
+    ];
+    
+    const eventTypesData: EventTypeDatum[] = Array.from(totalRevenueByEvent.entries())
+      .map(([eventName, revenue], index) => ({
+        name: eventName,
+        value: revenue,
+        color: colors[index % colors.length] // Use consistent colors
+      }))
+      .sort((a, b) => b.value - a.value); // Sort by revenue descending
     
     console.log("Final analytics data:", {
       totalTickets,
-      salesData: salesData.length,
-      eventTypesData: eventTypesData.length,
-      revenueData: revenueData.length
+      weeklyRevenueData: weeklyRevenueData.length,
+      monthlyRevenueData: monthlyRevenueData.length,
+      eventTypesData: eventTypesData.length
     });
     
     setAnalyticsData({
       totalTickets,
-      salesData,
+      salesData: monthlyRevenueData, // Use monthly revenue data for performance trend
       eventTypesData,
-      revenueData
+      revenueData: weeklyRevenueData // Use weekly revenue data for weekly revenue chart
     });
   }, []);
 
@@ -434,6 +488,14 @@ const OrgDashboard = () => {
               </div>
               
               <div className="flex items-center gap-4 ml-auto">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowHelp(true)}
+                >
+                  <HelpCircle className="w-4 w-4 mr-2" />
+                  Help
+                </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -738,6 +800,9 @@ const OrgDashboard = () => {
           </main>
         </div>
       </div>
+
+      {/* Help Modal */}
+      <DashboardHelp isOpen={showHelp} onClose={() => setShowHelp(false)} />
     </SidebarProvider>
   );
 };

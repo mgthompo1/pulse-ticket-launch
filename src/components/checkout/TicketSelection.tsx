@@ -43,26 +43,48 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
     console.log("Ticket Type:", ticketType);
     console.log("Event ID:", ticketType.event_id);
     
-    // Check if event has seat maps available
-    const { data: seatMaps, error: seatMapError } = await anonymousSupabase
-      .from('seat_maps')
-      .select('id, name, total_seats')
-      .eq('event_id', ticketType.event_id);
+    // First check if seat maps are enabled in event customization
+    // We need to get the event data to check this
+    const { data: eventData, error: eventError } = await anonymousSupabase
+      .from('events')
+      .select('widget_customization')
+      .eq('id', ticketType.event_id)
+      .single();
 
-    console.log("Seat maps query result:", seatMaps);
-    console.log("Seat maps query error:", seatMapError);
-    console.log("Number of seat maps found:", seatMaps?.length || 0);
-
-    if (seatMaps && seatMaps.length > 0) {
-      // Event has seating - show seat selector
-      console.log("🎫 Found seat maps, showing seat selection");
-      setPendingSeatSelection(ticketType);
-      setShowSeatSelection(true);
+    if (eventError) {
+      console.error("Error fetching event data:", eventError);
+      // Fallback: add directly to cart
+      onAddToCart(ticketType);
       return;
     }
 
-    console.log("❌ No seat maps found, adding directly to cart");
-    // No seating - add directly to cart
+    const seatMapsEnabled = eventData?.widget_customization?.seatMaps?.enabled;
+    console.log("Seat maps enabled in customization:", seatMapsEnabled);
+    
+    // Only check for seat maps if they're enabled in customization
+    if (seatMapsEnabled) {
+      console.log("Checking for seat maps in database...");
+      
+      const { data: seatMaps, error: seatMapError } = await anonymousSupabase
+        .from('seat_maps')
+        .select('id, name, total_seats')
+        .eq('event_id', ticketType.event_id);
+
+      console.log("Seat maps query result:", seatMaps);
+      console.log("Seat maps query error:", seatMapError);
+      console.log("Number of seat maps found:", seatMaps?.length || 0);
+
+      if (seatMaps && seatMaps.length > 0) {
+        // Event has seating - show seat selector
+        console.log("🎫 Found seat maps, showing seat selection");
+        setPendingSeatSelection(ticketType);
+        setShowSeatSelection(true);
+        return;
+      }
+    }
+
+    console.log("❌ Seat maps disabled or not found, adding directly to cart");
+    // No seating or seat maps disabled - add directly to cart
     onAddToCart(ticketType);
   };
 

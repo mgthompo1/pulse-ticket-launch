@@ -353,39 +353,45 @@ const TicketWidget = () => {
     console.log("Event ID:", eventId);
     console.log("Ticket Type:", ticketType);
     
-    // Check if event has seat maps available
-    console.log("Checking for seat maps...");
+    // First check if seat maps are enabled in event customization
+    const seatMapsEnabled = eventData?.widget_customization?.seatMaps?.enabled;
+    console.log("Seat maps enabled in customization:", seatMapsEnabled);
     
-    const { data: seatMaps, error: seatMapError } = await anonymousSupabase
-      .from('seat_maps')
-      .select('id, name, total_seats')
-      .eq('event_id', eventId as string);
+    // Only check for seat maps if they're enabled in customization
+    if (seatMapsEnabled) {
+      console.log("Checking for seat maps in database...");
+      
+      const { data: seatMaps, error: seatMapError } = await anonymousSupabase
+        .from('seat_maps')
+        .select('id, name, total_seats')
+        .eq('event_id', eventId as string);
 
-    console.log("Seat maps query result:", seatMaps);
-    console.log("Seat maps query error:", seatMapError);
-    console.log("Number of seat maps found:", seatMaps?.length || 0);
+      console.log("Seat maps query result:", seatMaps);
+      console.log("Seat maps query error:", seatMapError);
+      console.log("Number of seat maps found:", seatMaps?.length || 0);
 
-    if (seatMaps && seatMaps.length > 0) {
-      // Event has seating - show seat selector
-      console.log("🎫 Found seat maps, showing seat selection");
-      setPendingSeatSelection({
-        id: ticketType.id,
-        name: ticketType.name,
-        price: ticketType.price,
-        quantity: 1,
-        quantity_available: ticketType.quantity_available,
-        quantity_sold: ticketType.quantity_sold,
-        description: ticketType.description,
-        event_id: eventId as string,
-        type: 'ticket'
-      });
-      console.log("Setting showSeatSelection to true");
-      setShowSeatSelection(true);
-      return;
+      if (seatMaps && seatMaps.length > 0) {
+        // Event has seating - show seat selector
+        console.log("🎫 Found seat maps, showing seat selection");
+        setPendingSeatSelection({
+          id: ticketType.id,
+          name: ticketType.name,
+          price: ticketType.price,
+          quantity: 1,
+          quantity_available: ticketType.quantity_available,
+          quantity_sold: ticketType.quantity_sold,
+          description: ticketType.description,
+          event_id: eventId as string,
+          type: 'ticket'
+        });
+        console.log("Setting showSeatSelection to true");
+        setShowSeatSelection(true);
+        return;
+      }
     }
 
-    console.log("❌ No seat maps found, adding directly to cart");
-    // No seating - add directly to cart
+    console.log("❌ Seat maps disabled or not found, adding directly to cart");
+    // No seating or seat maps disabled - add directly to cart
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.id === ticketType.id);
       if (existingItem) {
@@ -1277,8 +1283,8 @@ const TicketWidget = () => {
                 onCartUpdate={setMerchandiseCart}
               />
 
-              {/* Seat Selection - Fourth (only if seats are in cart) */}
-              {cart.some(item => item.selectedSeats) && (
+              {/* Seat Selection - Fourth (only if seats are in cart and seat maps are enabled) */}
+              {eventData?.widget_customization?.seatMaps?.enabled && cart.some(item => item.selectedSeats) && (
                 <Card className="animate-in fade-in-0">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -1332,7 +1338,7 @@ const TicketWidget = () => {
                           <div className="flex-1">
                             <p className="font-medium">{item.name}</p>
                             <p className="text-sm text-muted-foreground">${item.price} each</p>
-                            {item.selectedSeats && item.selectedSeats.length > 0 && (
+                            {eventData?.widget_customization?.seatMaps?.enabled && item.selectedSeats && item.selectedSeats.length > 0 && (
                               <p className="text-xs text-neutral-700 flex items-center gap-1 mt-1">
                                 <MapPin className="h-3 w-3" />
                                 Seats selected: {item.selectedSeats.length} seat(s)

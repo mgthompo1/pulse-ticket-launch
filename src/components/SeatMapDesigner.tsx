@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -48,6 +48,7 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [seatsPerRow, setSeatsPerRow] = useState(10);
   const [rowSpacing, setRowSpacing] = useState(40);
+  const [showEntrance, setShowEntrance] = useState(true);
 
   const seatColors = {
     standard: '#3b82f6',
@@ -58,7 +59,47 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
 
   useEffect(() => {
     drawCanvas();
-  }, [seats, isPreviewMode]);
+  }, [seats, isPreviewMode, showEntrance]);
+
+  // Load existing seat map data when component mounts
+  useEffect(() => {
+    const loadExistingSeatMap = async () => {
+      try {
+        const { data: existingSeatMap, error } = await supabase
+          .from('seat_maps')
+          .select('*')
+          .eq('event_id', eventId)
+          .single();
+
+        if (!error && existingSeatMap) {
+          // Load existing seat map data
+          if (existingSeatMap.layout_data?.seats) {
+            setSeats(existingSeatMap.layout_data.seats);
+          }
+          if (existingSeatMap.layout_data?.show_entrance !== undefined) {
+            setShowEntrance(existingSeatMap.layout_data.show_entrance);
+          }
+          if (existingSeatMap.name) {
+            setSeatMapName(existingSeatMap.name);
+          }
+        }
+      } catch (error) {
+        console.log('No existing seat map found or error loading:', error);
+      }
+    };
+
+    loadExistingSeatMap();
+  }, [eventId]);
+
+  // Handle window resize for responsive canvas
+  useEffect(() => {
+    const handleResize = () => {
+      drawCanvas();
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const drawCanvas = () => {
     const canvas = canvasRef.current;
@@ -67,8 +108,27 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Set up high DPI rendering
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    
+    // Set the actual size in memory (scaled up for high DPI)
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    
+    // Scale the drawing context so everything draws at the correct size
+    ctx.scale(dpr, dpr);
+    
+    // Set the CSS size
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+
+    // Improve rendering quality
+    ctx.imageSmoothingEnabled = false; // Disable anti-aliasing for crisp edges
+    ctx.textRenderingOptimization = 'optimizeSpeed';
+
     // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, rect.width, rect.height);
 
     // Draw grid in design mode
     if (!isPreviewMode) {
@@ -76,29 +136,39 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
       ctx.lineWidth = 1;
       
       // Vertical lines
-      for (let x = 0; x <= canvas.width; x += 20) {
+      for (let x = 0; x <= rect.width; x += 20) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
+        ctx.lineTo(x, rect.height);
         ctx.stroke();
       }
       
       // Horizontal lines  
-      for (let y = 0; y <= canvas.height; y += 20) {
+      for (let y = 0; y <= rect.height; y += 20) {
         ctx.beginPath();
         ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
+        ctx.lineTo(rect.width, y);
         ctx.stroke();
       }
     }
 
     // Draw stage
     ctx.fillStyle = '#1f2937';
-    ctx.fillRect(canvas.width / 2 - 100, 20, 200, 40);
+    ctx.fillRect(rect.width / 2 - 100, 20, 200, 40);
     ctx.fillStyle = '#ffffff';
     ctx.font = '14px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('STAGE', canvas.width / 2, 45);
+    ctx.fillText('STAGE', rect.width / 2, 45);
+
+    // Draw entrance (if enabled)
+    if (showEntrance) {
+      ctx.fillStyle = '#10b981';
+      ctx.fillRect(rect.width / 2 - 60, rect.height - 60, 120, 30);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('ENTRANCE', rect.width / 2, rect.height - 40);
+    }
 
     // Draw seats
     seats.forEach(seat => {
@@ -255,6 +325,7 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
           isOccupied: seat.isOccupied || false
         })),
         canvasSize: canvasSize,
+        show_entrance: showEntrance,
         metadata: {
           name: seatMapName,
           totalSeats: seats.length,
@@ -478,6 +549,19 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
                     />
                   </div>
 
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">Show Entrance</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Display entrance marker on the seat map. The entrance will appear at the bottom center.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={showEntrance}
+                      onCheckedChange={setShowEntrance}
+                    />
+                  </div>
+
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Statistics</Label>
                     <div className="space-y-1">
@@ -507,7 +591,8 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
               ref={canvasRef}
               width={canvasSize.width}
               height={canvasSize.height}
-              className="border border-gray-300 cursor-crosshair bg-gray-50"
+              className="border border-gray-300 cursor-crosshair bg-gray-50 w-full max-w-none"
+              style={{ imageRendering: 'crisp-edges' }}
               onClick={handleCanvasClick}
               onMouseDown={handleCanvasMouseDown}
               onMouseMove={handleCanvasMouseMove}
