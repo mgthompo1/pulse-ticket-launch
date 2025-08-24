@@ -362,7 +362,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             <div className="w-full max-w-md">
               <Card>
                 <CardHeader>
-                  <CardTitle style={{ color: theme.textColor }}>Complete Payment</CardTitle>
+                  <CardTitle style={{ color: theme.headerTextColor }}>Complete Payment</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <StripePaymentForm

@@ -19,7 +19,7 @@ import EventCustomization from "@/components/EventCustomization";
 import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, BarChart3, Edit, Monitor, LogOut, Menu, HelpCircle, TrendingUp, CreditCard, Mail, Link, Shield, Settings } from "lucide-react";
+import { Calendar, Users, Ticket, BarChart3, Monitor, LogOut, Menu, HelpCircle } from "lucide-react";
 import OrganizationSettings from "@/components/OrganizationSettings";
 import OrganizationOnboarding from "@/components/OrganizationOnboarding";
 
@@ -602,7 +602,7 @@ const OrgDashboard = () => {
 
                   {/* Add Analytics Charts */}
                   <AnalyticsCharts 
-                    salesData={analyticsData.salesData}
+                    salesData={analyticsData.salesData.map(item => ({ month: item.month, revenue: item.sales }))}
                     eventTypeData={analyticsData.eventTypesData}
                     revenueData={analyticsData.revenueData}
                     isLoading={false}
