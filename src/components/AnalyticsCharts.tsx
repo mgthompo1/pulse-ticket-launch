@@ -76,7 +76,7 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
               />
               <Bar 
                 dataKey="revenue" 
-                fill="hsl(var(--primary))"
+                fill="#ff4d00"
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
@@ -108,7 +108,7 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
                     <p className="font-manrope text-sm text-gray-600 mt-0.5">Total Revenue</p>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold text-lg text-primary">
+                    <div className="font-bold text-lg" style={{ color: '#ff4d00' }}>
                       ${(event.value / 1000).toFixed(1)}k
                     </div>
                     <div className="font-manrope text-sm text-gray-600">
@@ -157,7 +157,7 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
               />
               <Bar 
                 dataKey="revenue" 
-                fill="hsl(var(--primary))"
+                fill="#ff4d00"
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
