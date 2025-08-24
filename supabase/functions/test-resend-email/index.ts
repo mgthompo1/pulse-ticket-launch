@@ -89,9 +89,9 @@ serve(async (req) => {
 
     // Try different sender options
     const senderOptions = [
-      "Ticket2 Platform <onboarding@resend.dev>",
-      "noreply@ticket2.com",
-      "support@ticket2.com"
+      "TicketFlo <hello@ticketflo.org>",
+      "TicketFlo Support <support@ticketflo.org>",
+      "TicketFlo <noreply@ticketflo.org>"
     ];
 
     let emailResponse;

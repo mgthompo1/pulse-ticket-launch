@@ -73,11 +73,12 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
 
         if (!error && existingSeatMap) {
           // Load existing seat map data
-          if (existingSeatMap.layout_data?.seats) {
-            setSeats(existingSeatMap.layout_data.seats);
+          const layoutData = existingSeatMap.layout_data as any;
+          if (layoutData?.seats) {
+            setSeats(layoutData.seats);
           }
-          if (existingSeatMap.layout_data?.show_entrance !== undefined) {
-            setShowEntrance(existingSeatMap.layout_data.show_entrance);
+          if (layoutData?.show_entrance !== undefined) {
+            setShowEntrance(layoutData.show_entrance);
           }
           if (existingSeatMap.name) {
             setSeatMapName(existingSeatMap.name);
@@ -125,7 +126,6 @@ export const SeatMapDesigner = ({ eventId, eventName, onClose }: SeatMapDesigner
 
     // Improve rendering quality
     ctx.imageSmoothingEnabled = false; // Disable anti-aliasing for crisp edges
-    ctx.textRenderingOptimization = 'optimizeSpeed';
 
     // Clear canvas
     ctx.clearRect(0, 0, rect.width, rect.height);

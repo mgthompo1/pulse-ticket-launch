@@ -43,13 +43,12 @@ type DashboardEvent = {
   event_date: string;
 };
 
-type SalesPoint = { month: string; revenue: number }; // Monthly revenue by event
 type EventTypeDatum = { name: string; value: number; color: string }; // Total revenue by event
 type RevenuePoint = { day: string; revenue: number }; // Weekly revenue by event
 
 type AnalyticsState = {
   totalTickets: number;
-  salesData: SalesPoint[];
+  salesData: { month: string; sales: number; tickets: number }[];
   eventTypesData: EventTypeDatum[];
   revenueData: RevenuePoint[];
 };
@@ -370,9 +369,10 @@ const OrgDashboard = () => {
     const monthlyRevenueData = Array.from(monthlyRevenueByEvent.entries())
       .map(([eventName, revenue]) => ({
         month: eventName,
-        revenue
+        sales: revenue,
+        tickets: 0 // placeholder for tickets count
       }))
-      .sort((a, b) => b.revenue - a.revenue); // Sort by revenue descending
+      .sort((a, b) => b.sales - a.sales); // Sort by revenue descending
     
     // 3. Total Revenue by Event (all time)
     const totalRevenueByEvent = new Map<string, number>();

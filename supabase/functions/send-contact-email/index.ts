@@ -90,7 +90,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email notification
     const emailResponse = await resend.emails.send({
-      from: "TicketFlo Contact <onboarding@resend.dev>",
+      from: "TicketFlo Contact <hello@ticketflo.org>",
       to: ["mgthompo@gmail.com"],
       subject: subject,
       html: emailContent,
@@ -100,7 +100,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send confirmation email to the user
     const confirmationResponse = await resend.emails.send({
-      from: "TicketFlo <onboarding@resend.dev>",
+      from: "TicketFlo <hello@ticketflo.org>",
       to: [email],
       subject: `Thank you for contacting TicketFlo - ${isSupport ? 'Support Ticket' : 'Enquiry'} Received`,
       html: `

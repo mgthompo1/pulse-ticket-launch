@@ -239,7 +239,7 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
 
   const generateInvoice = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('generate-invoice', {
+      const { error } = await supabase.functions.invoke('generate-invoice', {
         body: { 
           organization_id: organizationId,
           billing_period: new Date().toISOString().slice(0, 7) // YYYY-MM format
@@ -641,7 +641,7 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
               </Button>
               <Button 
                 variant="outline"
-                onClick={downloadInvoice}
+                onClick={() => downloadInvoice()}
                 disabled={currentMonthUsage.transactions === 0}
               >
                 Download PDF
@@ -674,7 +674,7 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <h4 className="font-medium">
-                          Invoice #{invoice.invoice_number || invoice.id.slice(-8)}
+                          Invoice #{invoice.id.slice(-8)}
                         </h4>
                         <p className="text-sm text-muted-foreground">
                           {invoice.billing_period_start} - {invoice.billing_period_end}
@@ -695,12 +695,12 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
                       </div>
                       <div>
                         <span className="text-muted-foreground">Volume:</span>
-                        <div className="font-medium">${invoice.total_volume?.toFixed(2) || '0.00'}</div>
+                        <div className="font-medium">${invoice.total_transaction_volume?.toFixed(2) || '0.00'}</div>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Due Date:</span>
                         <div className="font-medium">
-                          {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : 'N/A'}
+                          {new Date(invoice.billing_period_end).toLocaleDateString()}
                         </div>
                       </div>
                       <div>

@@ -1,47 +1,16 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
-  AreaChart, 
-  Area, 
   BarChart, 
   Bar, 
-  LineChart, 
-  Line, 
-  PieChart, 
-  Pie, 
-  Cell, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer,
-  Legend
+  ResponsiveContainer
 } from "recharts";
 import { Receipt } from "lucide-react";
 
-// Custom label component for pie chart
-const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, value }: any) => {
-  if (percent < 0.05) return null; // Don't show labels for small segments
-  
-  const RADIAN = Math.PI / 180;
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-  
-  return (
-    <text 
-      x={x} 
-      y={y} 
-      fill="#1a1a1a" 
-      textAnchor="middle" 
-      dominantBaseline="central"
-      fontSize="12"
-      fontWeight="600"
-    >
-      {`$${(value / 1000).toFixed(1)}k`}
-    </text>
-  );
-};
 
 interface AnalyticsChartsProps {
   className?: string;
@@ -98,16 +67,16 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
               <Tooltip
                 contentStyle={{
                   backgroundColor: "hsl(var(--card))",
-                  border: "2px solid #ff4d00",
+                  border: "2px solid hsl(var(--primary))",
                   borderRadius: "6px",
-                  boxShadow: "0 4px 12px rgba(255, 77, 0, 0.15)"
+                  boxShadow: "0 4px 12px hsl(var(--primary) / 0.15)"
                 }}
                 formatter={(value: any) => [`$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Revenue']}
                 labelFormatter={(label) => `Event: ${label}`}
               />
               <Bar 
                 dataKey="revenue" 
-                fill="#ff4d00"
+                fill="hsl(var(--primary))"
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
@@ -139,7 +108,7 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
                     <p className="font-manrope text-sm text-gray-600 mt-0.5">Total Revenue</p>
                   </div>
                   <div className="text-right">
-                    <div className="font-manrope font-bold text-lg text-[#ff4d00]">
+                    <div className="font-bold text-lg text-primary">
                       ${(event.value / 1000).toFixed(1)}k
                     </div>
                     <div className="font-manrope text-sm text-gray-600">
@@ -179,16 +148,16 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
               <Tooltip
                 contentStyle={{
                   backgroundColor: "hsl(var(--card))",
-                  border: "2px solid #ff4d00",
+                  border: "2px solid hsl(var(--primary))",
                   borderRadius: "6px",
-                  boxShadow: "0 4px 12px rgba(255, 77, 0, 0.15)"
+                  boxShadow: "0 4px 12px hsl(var(--primary) / 0.15)"
                 }}
                 formatter={(value: any) => [`$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Revenue']}
                 labelFormatter={(label) => `Event: ${label}`}
               />
               <Bar 
                 dataKey="revenue" 
-                fill="#ff4d00"
+                fill="hsl(var(--primary))"
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
