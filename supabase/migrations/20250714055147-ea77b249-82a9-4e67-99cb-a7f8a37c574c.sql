@@ -1,10 +1,10 @@
 -- Add event customization fields
 ALTER TABLE events ADD COLUMN widget_customization JSONB DEFAULT '{
   "theme": {
-    "primaryColor": "#000000",
+    "primaryColor": "#f97316",
     "secondaryColor": "#ffffff", 
     "backgroundColor": "#ffffff",
-    "textColor": "#000000",
+    "textColor": "#111827",
     "fontFamily": "Inter"
   },
   "layout": {

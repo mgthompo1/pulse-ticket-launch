@@ -8,6 +8,7 @@ import { CartItem, MerchandiseCartItem, EventData, CustomerInfo } from '@/types/
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
+import { Theme } from '@/types/theme';
 
 interface OrderSummaryProps {
   eventData: EventData;
@@ -17,6 +18,7 @@ interface OrderSummaryProps {
   customerInfo?: CustomerInfo | null;
   onUpdateTicketQuantity?: (ticketTypeId: string, quantity: number) => void;
   onBack?: () => void;
+  theme: Theme;
 }
 
 export const OrderSummary: React.FC<OrderSummaryProps> = ({
@@ -26,7 +28,8 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   currentStep,
   customerInfo,
   onUpdateTicketQuantity,
-  onBack
+  onBack,
+  theme
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null);
@@ -135,16 +138,16 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
       {/* Order Summary Card */}
       <Card className="w-full max-w-sm">
       <CardHeader className="pb-4">
-        <CardTitle className="text-lg">Order Summary</CardTitle>
+        <CardTitle className="text-lg" style={{ color: theme.headerTextColor }}>Order Summary</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Event Info */}
         <div className="space-y-2">
-          <h3 className="font-semibold text-sm">{eventData.name}</h3>
+                      <h3 className="font-semibold text-sm" style={{ color: theme.headerTextColor }}>{eventData.name}</h3>
           {eventData.venue && (
-            <p className="text-sm text-muted-foreground">{eventData.venue}</p>
+            <p className="text-sm" style={{ color: theme.bodyTextColor }}>{eventData.venue}</p>
           )}
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm" style={{ color: theme.bodyTextColor }}>
             {new Date(eventData.event_date).toLocaleDateString('en-US', {
               weekday: 'long',
               year: 'numeric',
@@ -161,26 +164,26 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
         {/* Ticket Items */}
         {cartItems.length > 0 && (
           <div className="space-y-3">
-            <h4 className="font-medium text-sm">Tickets</h4>
+            <h4 className="font-medium text-sm" style={{ color: theme.headerTextColor }}>Tickets</h4>
             {cartItems.map((item) => (
               <div key={item.id} className="space-y-2">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <p className="font-medium text-sm">{item.name}</p>
-                    <span className="text-xs text-muted-foreground">
+                    <p className="font-medium text-sm" style={{ color: theme.textColor }}>{item.name}</p>
+                    <span className="text-xs text-muted-foreground" style={{ color: theme.textColor }}>
                       ${item.price.toFixed(2)} each
                     </span>
                     {/* Display selected seats if available and seat maps are enabled */}
                     {eventData?.widget_customization?.seatMaps?.enabled && item.selectedSeats && item.selectedSeats.length > 0 && (
                       <div className="mt-1">
-                        <span className="text-xs text-muted-foreground">Seats: </span>
-                        <span className="text-xs font-medium text-blue-600">
+                        <span className="text-xs text-muted-foreground" style={{ color: theme.textColor }}>Seats: </span>
+                        <span className="text-xs font-medium" style={{ color: theme.textColor }}>
                           {item.selectedSeats.join(', ')}
                         </span>
                       </div>
                     )}
                   </div>
-                  <p className="font-medium text-sm">
+                  <p className="font-medium text-sm" style={{ color: theme.textColor }}>
                     ${(item.price * item.quantity).toFixed(2)}
                   </p>
                 </div>
@@ -235,11 +238,11 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
         {/* Merchandise Items */}
         {merchandiseCart.length > 0 && (
           <div className="space-y-3">
-            <h4 className="font-medium text-sm">Merchandise</h4>
+            <h4 className="font-medium text-sm" style={{ color: theme.headerTextColor }}>Merchandise</h4>
             {merchandiseCart.map((item, index) => (
               <div key={index} className="flex justify-between items-start">
                 <div className="flex-1">
-                  <p className="font-medium text-sm">{item.merchandise.name}</p>
+                                      <p className="font-medium text-sm" style={{ color: theme.textColor }}>{item.merchandise.name}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <Badge variant="secondary" className="text-xs">
                       Qty: {item.quantity}
@@ -255,11 +258,11 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                       </Badge>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground" style={{ color: theme.textColor }}>
                     ${item.merchandise.price.toFixed(2)} each
                   </span>
                 </div>
-                <p className="font-medium text-sm">
+                <p className="font-medium text-sm" style={{ color: theme.textColor }}>
                   ${(item.merchandise.price * item.quantity).toFixed(2)}
                 </p>
               </div>
@@ -274,22 +277,22 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             {/* Totals */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span>Subtotal</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span style={{ color: theme.textColor }}>Subtotal</span>
+                <span style={{ color: theme.textColor }}>${subtotal.toFixed(2)}</span>
               </div>
               
               {processingFee > 0 && (
                 <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Processing Fee ({eventData.organizations?.credit_card_processing_fee_percentage}%)</span>
-                  <span>${processingFee.toFixed(2)}</span>
+                  <span style={{ color: theme.textColor }}>Processing Fee ({eventData.organizations?.credit_card_processing_fee_percentage}%)</span>
+                  <span style={{ color: theme.textColor }}>${processingFee.toFixed(2)}</span>
                 </div>
               )}
               
               <Separator />
               
               <div className="flex justify-between font-semibold">
-                <span>Total</span>
-                <span>${total.toFixed(2)}</span>
+                <span style={{ color: theme.textColor }}>Total</span>
+                <span style={{ color: theme.textColor }}>${total.toFixed(2)}</span>
               </div>
             </div>
           </>
@@ -297,8 +300,8 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
 
         {cartItems.length === 0 && merchandiseCart.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
-            <p className="text-sm">Your cart is empty</p>
-            <p className="text-xs mt-1">Add tickets or merchandise to continue</p>
+            <p className="text-sm" style={{ color: theme.textColor }}>Your cart is empty</p>
+            <p className="text-xs mt-1" style={{ color: theme.textColor }}>Add tickets or merchandise to continue</p>
           </div>
         )}
 
@@ -311,7 +314,11 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                 onClick={handlePayment} 
                 size="lg" 
                 disabled={isProcessing}
-                className="w-full bg-neutral-900 hover:bg-neutral-800 text-white border-0"
+                className="w-full border-0"
+                style={{ 
+                  backgroundColor: theme.primaryColor,
+                                      color: theme.buttonTextColor
+                }}
               >
                 {isProcessing ? (
                   <>
@@ -333,7 +340,17 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
         {currentStep === 'payment' && onBack && customerInfo && (cartItems.length > 0 || merchandiseCart.length > 0) && (
           <div className="space-y-4">
             <Separator />
-            <Button variant="outline" onClick={onBack} size="lg" className="w-full" disabled={isProcessing}>
+            <Button 
+              variant="outline" 
+              onClick={onBack} 
+              size="lg" 
+              className="w-full" 
+              disabled={isProcessing}
+              style={{ 
+                borderColor: theme.primaryColor,
+                color: theme.primaryColor
+              }}
+            >
               Back to Details
             </Button>
           </div>
@@ -345,7 +362,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             <div className="w-full max-w-md">
               <Card>
                 <CardHeader>
-                  <CardTitle>Complete Payment</CardTitle>
+                  <CardTitle style={{ color: theme.textColor }}>Complete Payment</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <StripePaymentForm

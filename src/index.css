@@ -290,19 +290,6 @@ All colors MUST be HSL.
     font-family: 'Manrope', 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
   }
 
-  /* Fix for dashboard layout issues */
-  .dashboard-layout {
-    width: 100%;
-    max-width: 100vw;
-    overflow-x: hidden;
-  }
-
-  .dashboard-content {
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-  }
-
   /* Accessibility enhancements */
   .high-contrast {
     --primary: 0 0% 0%;

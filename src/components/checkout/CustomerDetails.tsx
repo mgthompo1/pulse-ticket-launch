@@ -11,11 +11,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { CustomerInfo, CustomQuestion } from '@/types/widget';
+import { Theme } from '@/types/theme';
 
 interface CustomerDetailsProps {
   customQuestions: CustomQuestion[];
   onNext: (customerInfo: CustomerInfo) => void;
   onBack: () => void;
+  theme: Theme;
 }
 
 const customerFormSchema = z.object({
@@ -28,7 +30,8 @@ const customerFormSchema = z.object({
 export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   customQuestions,
   onNext,
-  onBack
+  onBack,
+  theme
 }) => {
   // Safety check - ensure customQuestions is always an array
   const safeCustomQuestions = Array.isArray(customQuestions) ? customQuestions : [];
@@ -68,7 +71,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             name={`customAnswers.${question.id}`}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>
+                <FormLabel style={{ color: theme.textColor }}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
@@ -94,7 +97,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             name={`customAnswers.${question.id}`}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>
+                <FormLabel style={{ color: theme.textColor }}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
@@ -119,7 +122,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             name={`customAnswers.${question.id}`}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>
+                <FormLabel style={{ color: theme.textColor }}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
@@ -152,7 +155,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             name={`customAnswers.${question.id}`}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>
+                <FormLabel style={{ color: theme.textColor }}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
@@ -165,7 +168,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                      {safeOptions.map((option) => (
                        <div key={option} className="flex items-center space-x-2">
                          <RadioGroupItem value={option} id={option} />
-                         <label htmlFor={option} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                         <label htmlFor={option} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" style={{ color: theme.textColor }}>
                            {option}
                          </label>
                       </div>
@@ -194,7 +197,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                   />
                 </FormControl>
                 <div className="space-y-1 leading-none">
-                  <FormLabel>
+                  <FormLabel style={{ color: theme.textColor }}>
                     {question.label}
                     {question.required && <span className="text-destructive ml-1">*</span>}
                   </FormLabel>
@@ -214,15 +217,15 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold mb-2">Your Details</h2>
-        <p className="text-muted-foreground">Please provide your information to complete the purchase</p>
+        <h2 className="text-2xl font-bold mb-2" style={{ color: theme.headerTextColor }}>Your Details</h2>
+        <p style={{ color: theme.bodyTextColor }}>Please provide your information to complete the purchase</p>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Contact Information</CardTitle>
+              <CardTitle style={{ color: theme.headerTextColor }}>Contact Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField
@@ -230,7 +233,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name *</FormLabel>
+                    <FormLabel style={{ color: theme.bodyTextColor }}>Full Name *</FormLabel>
                     <FormControl>
                       <Input placeholder="Enter your full name" {...field} />
                     </FormControl>
@@ -244,7 +247,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email Address *</FormLabel>
+                    <FormLabel style={{ color: theme.bodyTextColor }}>Email Address *</FormLabel>
                     <FormControl>
                       <Input type="email" placeholder="Enter your email" {...field} />
                     </FormControl>
@@ -258,7 +261,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
+                    <FormLabel style={{ color: theme.bodyTextColor }}>Phone Number</FormLabel>
                     <FormControl>
                       <Input type="tel" placeholder="Enter your phone number" {...field} />
                     </FormControl>
@@ -271,9 +274,9 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
 
           {safeCustomQuestions.length > 0 && (
             <Card>
-              <CardHeader>
-                <CardTitle>Additional Information</CardTitle>
-              </CardHeader>
+                          <CardHeader>
+              <CardTitle style={{ color: theme.headerTextColor }}>Additional Information</CardTitle>
+            </CardHeader>
               <CardContent className="space-y-4">
                 {safeCustomQuestions.map(renderCustomQuestion)}
               </CardContent>
@@ -282,10 +285,27 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
 
           {/* Navigation Buttons Below Content */}
           <div className="flex justify-between pt-6">
-            <Button type="button" variant="outline" onClick={onBack} size="lg">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onBack} 
+              size="lg"
+              style={{ 
+                borderColor: theme.primaryColor,
+                color: theme.primaryColor
+              }}
+            >
               Back to Add-ons
             </Button>
-            <Button type="submit" size="lg" className="bg-neutral-900 hover:bg-neutral-800 text-white border-0">
+            <Button 
+              type="submit" 
+              size="lg" 
+              className="border-0"
+              style={{ 
+                backgroundColor: theme.primaryColor,
+                                    color: theme.buttonTextColor
+              }}
+            >
               Continue to Payment
             </Button>
           </div>

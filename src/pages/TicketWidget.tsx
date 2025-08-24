@@ -115,6 +115,49 @@ const TicketWidget = () => {
   console.log(`TicketWidget render #${renderCount.current}`);
   
   const [eventData, setEventData] = useState<EventData | null>(null);
+  
+  // Get theme colors and apply them consistently - use useMemo to recalculate when eventData changes
+  const theme = useMemo(() => {
+    const themeData = eventData?.widget_customization?.theme || {};
+    const isEnabled = themeData.enabled === true;
+    
+    let newTheme;
+    if (!isEnabled) {
+      // Use default theme when customization is disabled
+      newTheme = {
+        enabled: false,
+        primaryColor: '#000000', // Default black for buttons and progress bars (matching live project)
+        buttonTextColor: '#ffffff', // White for button text
+        secondaryColor: '#ffffff', // White for borders and secondary elements
+        backgroundColor: '#ffffff', // White background
+        headerTextColor: '#111827', // Dark gray for headers
+        bodyTextColor: '#6b7280', // Lighter gray for body text (matching GitHub)
+        fontFamily: 'Manrope' // Default to Manrope
+      };
+    } else {
+      // Use custom theme when enabled
+      newTheme = {
+        enabled: true,
+        primaryColor: themeData.primaryColor || '#ff4d00', // Orange for buttons
+        buttonTextColor: themeData.buttonTextColor || '#ffffff', // White for button text
+        secondaryColor: themeData.secondaryColor || '#ffffff', // White for borders and secondary elements
+        backgroundColor: themeData.backgroundColor || '#ffffff', // White background
+        headerTextColor: themeData.headerTextColor || '#111827', // Dark gray for headers
+        bodyTextColor: themeData.bodyTextColor || '#6b7280', // Lighter gray for body text (matching GitHub)
+        fontFamily: themeData.fontFamily || 'Manrope'
+      };
+    }
+    
+    console.log("🎨 Theme recalculated:", newTheme);
+    console.log("🎨 Event data widget_customization:", eventData?.widget_customization);
+    console.log("🎨 Raw theme data:", themeData);
+    console.log("🎨 Theme customization enabled:", isEnabled);
+    
+    return newTheme;
+  }, [eventData?.widget_customization?.theme]);
+
+  // Destructure theme colors for easier use
+        const { primaryColor, buttonTextColor, secondaryColor, backgroundColor, headerTextColor, bodyTextColor, fontFamily } = theme;
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [merchandiseCart, setMerchandiseCart] = useState<MerchandiseCartItem[]>([]);
@@ -149,6 +192,9 @@ const TicketWidget = () => {
       
       // Load event details with safe payment configuration
       // Add timestamp to ensure we get fresh data and bypass any caching
+      const timestamp = Date.now();
+      console.log("🔄 Loading event data with timestamp:", timestamp);
+      
       const { data: event, error: eventError } = await supabase
         .from("events")
         .select(`
@@ -180,6 +226,9 @@ const TicketWidget = () => {
       console.log("Widget customization:", event.widget_customization);
       console.log("Widget customization type:", typeof event.widget_customization);
       console.log("Widget customization keys:", event.widget_customization ? Object.keys(event.widget_customization) : 'none');
+      const widgetCustomization = event.widget_customization as any;
+      console.log("Widget customization theme:", widgetCustomization?.theme);
+      console.log("Widget customization theme keys:", widgetCustomization?.theme ? Object.keys(widgetCustomization.theme) : 'none');
 
       setEventData(event);
 
@@ -243,6 +292,12 @@ const TicketWidget = () => {
       loadEventData();
     }
   }, [eventId, loadEventData]);
+
+  // Debug effect to log theme changes
+  useEffect(() => {
+    console.log("🎨 Theme effect triggered - Current theme:", theme);
+    console.log("🎨 Event data widget_customization:", eventData?.widget_customization);
+  }, [theme, eventData?.widget_customization]);
 
   // Check if multi-step checkout should be used based on widget customization
   useEffect(() => {
@@ -1009,21 +1064,56 @@ const TicketWidget = () => {
     );
   }
 
+  // Don't render the main content until we have both eventData and theme data
+  const isReady = eventData && 
+                 eventData.widget_customization?.theme && 
+                 // Check if theme customization is enabled, if so require all properties
+                 // If disabled, just check that we have the basic theme object
+                 (eventData.widget_customization.theme.enabled === false || 
+                  (eventData.widget_customization.theme.primaryColor &&
+                   eventData.widget_customization.theme.secondaryColor &&
+                   eventData.widget_customization.theme.backgroundColor &&
+                   (eventData.widget_customization.theme.headerTextColor || eventData.widget_customization.theme.textColor)));
+                 
+  // Debug logging for theme readiness
+  console.log("🎯 Theme readiness check:", {
+    hasEventData: !!eventData,
+    hasWidgetCustomization: !!eventData?.widget_customization,
+    hasTheme: !!eventData?.widget_customization?.theme,
+    themeEnabled: eventData?.widget_customization?.theme?.enabled,
+    hasPrimaryColor: !!eventData?.widget_customization?.theme?.primaryColor,
+    hasSecondaryColor: !!eventData?.widget_customization?.theme?.secondaryColor,
+    hasBackgroundColor: !!eventData?.widget_customization?.theme?.backgroundColor,
+    hasHeaderTextColor: !!eventData?.widget_customization?.theme?.headerTextColor,
+    hasOldTextColor: !!eventData?.widget_customization?.theme?.textColor,
+    isReady: isReady
+  });
+  
   return (
-    <div className="min-h-screen bg-background">
-      {loading ? (
+    <div 
+      className="min-h-screen"
+      style={{ 
+        backgroundColor: backgroundColor,
+        fontFamily: fontFamily,
+        color: headerTextColor
+      }}
+    >
+      {loading || !isReady ? (
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading event...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: primaryColor }}></div>
+            <p style={{ color: headerTextColor }}>Loading event...</p>
+            {!isReady && eventData && (
+              <p className="mt-2 text-sm" style={{ color: headerTextColor }}>Loading theme customization...</p>
+            )}
           </div>
         </div>
       ) : !eventData ? (
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <Ticket className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h1 className="text-2xl font-bold mb-2">Event Not Found</h1>
-            <p className="text-muted-foreground">The event you're looking for doesn't exist or isn't published.</p>
+                        <Ticket className="h-12 w-12 mx-auto mb-4" style={{ color: headerTextColor }} />
+            <h1 className="text-2xl font-bold mb-2" style={{ color: headerTextColor }}>Event Not Found</h1>
+            <p style={{ color: headerTextColor }}>The event you're looking for doesn't exist or isn't published.</p>
           </div>
         </div>
       ) : (
@@ -1053,8 +1143,10 @@ const TicketWidget = () => {
             
             {/* Event Title - Left aligned with right padding to avoid logo overlap */}
             <div className="text-left pr-32">
-              <h1 className="text-3xl font-bold mb-2">{eventData.name}</h1>
-              <div className="flex items-center gap-6 text-muted-foreground">
+              <div className="flex items-center justify-between mb-2">
+                <h1 className="text-3xl font-bold" style={{ color: headerTextColor }}>{eventData.name}</h1>
+              </div>
+              <div className="flex items-center gap-6" style={{ color: bodyTextColor }}>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
                   <span>{new Date(eventData.event_date).toLocaleDateString()}</span>
@@ -1072,11 +1164,13 @@ const TicketWidget = () => {
                 <div className="mt-4">
                   <div 
                     className="text-lg font-medium"
-                    style={{ color: eventData.widget_customization?.theme?.textColor }}
+                    style={{ color: eventData.widget_customization?.theme?.headerTextColor }}
                     dangerouslySetInnerHTML={{ __html: eventData.widget_customization.branding.customHeaderText }}
                   />
                 </div>
               )}
+              
+
             </div>
           </div>
 
@@ -1086,7 +1180,7 @@ const TicketWidget = () => {
               {/* Customer Information - First */}
               <Card className="animate-in fade-in-0">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2" style={{ color: headerTextColor }}>
                     <Ticket className="h-5 w-5" />
                     Your Information
                   </CardTitle>
@@ -1094,7 +1188,7 @@ const TicketWidget = () => {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="name">Full Name *</Label>
+                      <Label htmlFor="name" style={{ color: bodyTextColor }}>Full Name *</Label>
                       <Input
                         id="name"
                         value={customerInfo.name}
@@ -1104,7 +1198,7 @@ const TicketWidget = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="email">Email Address *</Label>
+                      <Label htmlFor="email" style={{ color: bodyTextColor }}>Email Address *</Label>
                       <Input
                         id="email"
                         type="email"
@@ -1115,7 +1209,7 @@ const TicketWidget = () => {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <Label htmlFor="phone">Phone Number</Label>
+                      <Label htmlFor="phone" style={{ color: bodyTextColor }}>Phone Number</Label>
                       <Input
                         id="phone"
                         value={customerInfo.phone}
@@ -1132,11 +1226,11 @@ const TicketWidget = () => {
               {customQuestions.length > 0 && (
                 <Card className="animate-in fade-in-0">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2" style={{ color: headerTextColor }}>
                       <HelpCircle className="h-5 w-5" />
                       Required Information
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm" style={{ color: bodyTextColor }}>
                       Please provide the following information before selecting your tickets.
                     </p>
                   </CardHeader>
@@ -1232,7 +1326,7 @@ const TicketWidget = () => {
               {/* Ticket Selection */}
               <Card className="animate-in fade-in-0">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2" style={{ color: headerTextColor }}>
                     <Ticket className="h-5 w-5" />
                     Select Your Tickets
                   </CardTitle>
@@ -1240,8 +1334,8 @@ const TicketWidget = () => {
                 <CardContent>
                   {ticketTypes.length === 0 ? (
                     <div className="text-center py-8">
-                      <Ticket className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                      <p className="text-muted-foreground">No ticket types available for this event.</p>
+                      <Ticket className="h-12 w-12 mx-auto mb-4" style={{ color: headerTextColor }} />
+                      <p style={{ color: headerTextColor }}>No ticket types available for this event.</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -1249,13 +1343,13 @@ const TicketWidget = () => {
                         <div key={ticketType.id} className="border rounded-lg p-4 hover:shadow-md transition-all duration-200 hover-lift animate-in fade-in-0">
                           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                             <div className="flex-1">
-                              <h3 className="font-semibold text-lg">{ticketType.name}</h3>
+                              <h3 className="font-semibold text-lg" style={{ color: headerTextColor }}>{ticketType.name}</h3>
                               {ticketType.description && (
-                                <p className="text-sm text-muted-foreground mt-1">{ticketType.description}</p>
+                                <p className="text-sm mt-1" style={{ color: bodyTextColor }}>{ticketType.description}</p>
                               )}
                               <div className="flex items-center gap-4 mt-2">
-                                <span className="text-2xl font-bold text-neutral-900">${ticketType.price}</span>
-                                <span className="text-sm text-muted-foreground">
+                                <span className="text-2xl font-bold" style={{ color: headerTextColor }}>${ticketType.price}</span>
+                                <span className="text-sm" style={{ color: bodyTextColor }}>
                                   {ticketType.quantity_available - ticketType.quantity_sold} available
                                 </span>
                               </div>
@@ -1263,8 +1357,12 @@ const TicketWidget = () => {
                             <Button 
                               onClick={() => addToCart(ticketType)}
                               variant="secondary"
-                              className="sm:w-auto w-full hover-scale bg-neutral-900 hover:bg-neutral-800 text-white border-0"
+                              className="sm:w-auto w-full hover-scale border-0"
                               disabled={ticketType.quantity_available - ticketType.quantity_sold <= 0}
+                              style={{ 
+                                backgroundColor: primaryColor,
+                                color: buttonTextColor
+                              }}
                             >
                               <Plus className="h-4 w-4 mr-2" />
                               Add to Cart
@@ -1281,6 +1379,7 @@ const TicketWidget = () => {
               <MerchandiseSelector 
                 eventId={eventId!} 
                 onCartUpdate={setMerchandiseCart}
+                theme={theme}
               />
 
               {/* Seat Selection - Fourth (only if seats are in cart and seat maps are enabled) */}
@@ -1313,7 +1412,7 @@ const TicketWidget = () => {
               {/* Cart Summary */}
               <Card className="animate-in fade-in-0">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2" style={{ color: headerTextColor }}>
                     <ShoppingCart className="h-5 w-5" />
                     Order Summary
                     {(cart.length > 0 || merchandiseCart.length > 0) && (
@@ -1326,9 +1425,9 @@ const TicketWidget = () => {
                 <CardContent>
                   {cart.length === 0 && merchandiseCart.length === 0 ? (
                     <div className="text-center py-6">
-                      <ShoppingCart className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-                      <p className="text-muted-foreground">Your cart is empty</p>
-                      <p className="text-sm text-muted-foreground mt-1">Add tickets or merchandise to get started</p>
+                      <ShoppingCart className="h-12 w-12 mx-auto mb-3" style={{ color: headerTextColor }} />
+                      <p style={{ color: headerTextColor }}>Your cart is empty</p>
+                      <p className="text-sm mt-1" style={{ color: bodyTextColor }}>Add tickets or merchandise to get started</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -1336,10 +1435,10 @@ const TicketWidget = () => {
                       {cart.map((item) => (
                         <div key={item.id} className="flex justify-between items-start gap-3 p-3 bg-secondary/50 rounded-lg">
                           <div className="flex-1">
-                            <p className="font-medium">{item.name}</p>
-                            <p className="text-sm text-muted-foreground">${item.price} each</p>
+                            <p className="font-medium" style={{ color: headerTextColor }}>{item.name}</p>
+                            <p className="text-sm" style={{ color: bodyTextColor }}>${item.price} each</p>
                             {eventData?.widget_customization?.seatMaps?.enabled && item.selectedSeats && item.selectedSeats.length > 0 && (
-                              <p className="text-xs text-neutral-700 flex items-center gap-1 mt-1">
+                              <p className="text-xs flex items-center gap-1 mt-1" style={{ color: bodyTextColor }}>
                                 <MapPin className="h-3 w-3" />
                                 Seats selected: {item.selectedSeats.length} seat(s)
                               </p>
@@ -1351,15 +1450,23 @@ const TicketWidget = () => {
                               size="sm"
                               onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
                               className="h-8 w-8 p-0 hover-scale"
+                              style={{ 
+                                borderColor: primaryColor,
+                                color: primaryColor
+                              }}
                             >
                               <Minus className="h-3 w-3" />
                             </Button>
-                            <span className="w-8 text-center font-medium">{item.quantity}</span>
+                            <span className="w-8 text-center font-medium" style={{ color: headerTextColor }}>{item.quantity}</span>
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
                               className="h-8 w-8 p-0 hover-scale"
+                              style={{ 
+                                borderColor: primaryColor,
+                                color: primaryColor
+                              }}
                             >
                               <Plus className="h-3 w-3" />
                             </Button>
@@ -1371,16 +1478,16 @@ const TicketWidget = () => {
                       {merchandiseCart.map((item, index) => (
                         <div key={`merch-${index}`} className="flex justify-between items-start gap-3 p-3 bg-primary/5 rounded-lg">
                           <div className="flex-1">
-                            <p className="font-medium">{item.merchandise.name}</p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="font-medium" style={{ color: headerTextColor }}>{item.merchandise.name}</p>
+                            <p className="text-sm" style={{ color: bodyTextColor }}>
                               ${item.merchandise.price} each
                               {(item as any).selectedSize && ` • Size: ${(item as any).selectedSize}`}
                               {(item as any).selectedColor && ` • Color: ${(item as any).selectedColor}`}
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="w-8 text-center font-medium">{item.quantity}</span>
-                            <span className="text-sm font-medium">
+                            <span className="w-8 text-center font-medium" style={{ color: headerTextColor }}>{item.quantity}</span>
+                            <span className="text-sm font-medium" style={{ color: headerTextColor }}>
                               ${(item.merchandise.price * item.quantity).toFixed(2)}
                             </span>
                           </div>
@@ -1418,7 +1525,7 @@ const TicketWidget = () => {
                          
                         <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
                           <span>Total:</span>
-                          <span className="text-neutral-900">${getTotalAmount().toFixed(2)}</span>
+                                                      <span style={{ color: headerTextColor }}>${getTotalAmount().toFixed(2)}</span>
                         </div>
                       </div>
                        
@@ -1431,9 +1538,13 @@ const TicketWidget = () => {
                           }
                         }}
                         variant="secondary"
-                        className="w-full mt-4 hover-scale bg-neutral-900 hover:bg-neutral-800 text-white border-0"
+                        className="w-full mt-4 hover-scale border-0"
                         size="lg"
                         disabled={!customerInfo.name || !customerInfo.email || (cart.length === 0 && merchandiseCart.length === 0)}
+                        style={{ 
+                          backgroundColor: primaryColor,
+                          color: buttonTextColor
+                        }}
                       >
                         <CreditCard className="h-4 w-4 mr-2" />
                         Proceed to Payment
@@ -1570,10 +1681,28 @@ const TicketWidget = () => {
                       />
                     ) : (
                       <div className="flex gap-3">
-                        <Button type="button" variant="outline" onClick={() => setShowPayment(false)} className="flex-1">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => setShowPayment(false)} 
+                          className="flex-1"
+                          style={{ 
+                            borderColor: primaryColor,
+                            color: primaryColor
+                          }}
+                        >
                           Back
                         </Button>
-                        <Button onClick={handleCheckout} disabled={loading} variant="secondary" className="flex-1 bg-neutral-900 hover:bg-neutral-800 text-white border-0">
+                        <Button 
+                          onClick={handleCheckout} 
+                          disabled={loading} 
+                          variant="secondary" 
+                          className="flex-1 border-0"
+                          style={{ 
+                            backgroundColor: primaryColor,
+                            color: buttonTextColor
+                          }}
+                        >
                           {loading ? "Processing..." : "Proceed to Payment"}
                         </Button>
                       </div>
@@ -1599,7 +1728,15 @@ const TicketWidget = () => {
                     <p className="text-muted-foreground mb-6">
                       Your tickets have been purchased successfully. Check your email for confirmation details.
                     </p>
-                    <Button onClick={() => setShowSuccess(false)} variant="secondary" className="w-full bg-neutral-900 hover:bg-neutral-800 text-white border-0">
+                    <Button 
+                      onClick={() => setShowSuccess(false)} 
+                      variant="secondary" 
+                      className="w-full border-0"
+                      style={{ 
+                        backgroundColor: primaryColor,
+                        color: buttonTextColor
+                      }}
+                    >
                       Continue
                     </Button>
                   </CardContent>

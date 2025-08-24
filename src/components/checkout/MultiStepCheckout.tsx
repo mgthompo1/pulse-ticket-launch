@@ -6,6 +6,7 @@ import { CustomerDetails } from './CustomerDetails';
 import { Payment } from './Payment';
 import { OrderSummary } from './OrderSummary';
 import { TicketType, CartItem, MerchandiseCartItem, CustomerInfo, EventData, CustomQuestion } from '@/types/widget';
+import { Theme } from '@/types/theme';
 
 interface MultiStepCheckoutProps {
   eventData: EventData;
@@ -13,6 +14,8 @@ interface MultiStepCheckoutProps {
   customQuestions: CustomQuestion[];
   onClose?: () => void;
 }
+
+
 
 type CheckoutStep = 'tickets' | 'addons' | 'details' | 'payment';
 
@@ -25,6 +28,21 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [merchandiseCart, setMerchandiseCart] = useState<MerchandiseCartItem[]>([]);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
+
+  // Extract theme colors from event data
+            const themeData = eventData.widget_customization?.theme;
+      const isEnabled = themeData?.enabled === true;
+      
+      const theme: Theme = {
+        enabled: isEnabled,
+        primaryColor: isEnabled ? (themeData?.primaryColor || '#ff4d00') : '#000000',
+        buttonTextColor: isEnabled ? (themeData?.buttonTextColor || '#ffffff') : '#ffffff',
+        secondaryColor: isEnabled ? (themeData?.secondaryColor || '#ffffff') : '#ffffff',
+        backgroundColor: isEnabled ? (themeData?.backgroundColor || '#ffffff') : '#ffffff',
+        headerTextColor: isEnabled ? (themeData?.headerTextColor || '#111827') : '#111827',
+        bodyTextColor: isEnabled ? (themeData?.bodyTextColor || '#6b7280') : '#6b7280',
+        fontFamily: isEnabled ? (themeData?.fontFamily || 'Manrope') : 'Manrope'
+      };
 
   const steps = [
     { key: 'tickets', label: 'Tickets', progress: 25 },
@@ -88,15 +106,22 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div 
+      className="min-h-screen"
+      style={{ 
+        backgroundColor: theme.backgroundColor,
+        fontFamily: theme.fontFamily,
+                        color: theme.headerTextColor
+      }}
+    >
       <div className="container mx-auto px-4 py-8">
         {/* Event Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground">{eventData.name}</h1>
+              <h1 className="text-3xl font-bold" style={{ color: theme.headerTextColor }}>{eventData.name}</h1>
               {eventData.venue && (
-                <p className="text-muted-foreground mt-2">{eventData.venue}</p>
+                                  <p className="mt-2" style={{ color: theme.bodyTextColor }}>{eventData.venue}</p>
               )}
             </div>
             {eventData.logo_url && (
@@ -109,25 +134,34 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
           </div>
         </div>
 
+
+
         {/* Progress Bar - Full Width */}
         <div className="mb-8">
           <div className="flex justify-between mb-2">
             {steps.map((step) => (
               <div
                 key={step.key}
-                className={`text-sm font-medium ${
-                  currentStep === step.key 
-                    ? 'text-neutral-900' 
+                className="text-sm font-medium"
+                style={{
+                  color: currentStep === step.key 
+                    ? theme.headerTextColor
                     : steps.findIndex(s => s.key === currentStep) > steps.findIndex(s => s.key === step.key)
-                      ? 'text-muted-foreground'
-                      : 'text-muted-foreground/50'
-                }`}
+                      ? theme.headerTextColor
+                      : theme.headerTextColor + '80' // 50% opacity
+                }}
               >
                 {step.label}
               </div>
             ))}
           </div>
-          <Progress value={currentStepData?.progress || 0} className="h-2 [&>div]:bg-neutral-900" />
+          <Progress 
+            value={currentStepData?.progress || 0} 
+            className="h-2" 
+            style={{ 
+              '--progress-bg': theme.primaryColor || '#000000'
+            } as React.CSSProperties}
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -140,6 +174,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                 cartItems={cartItems}
                 onAddToCart={addToCart}
                 onNext={nextStep}
+                theme={theme}
               />
             )}
 
@@ -150,6 +185,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                 onMerchandiseCartUpdate={setMerchandiseCart}
                 onNext={nextStep}
                 onBack={prevStep}
+                theme={theme}
               />
             )}
 
@@ -158,6 +194,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                 customQuestions={customQuestions}
                 onNext={handleCustomerDetails}
                 onBack={prevStep}
+                theme={theme}
               />
             )}
 
@@ -167,6 +204,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                 cartItems={cartItems}
                 merchandiseCart={merchandiseCart}
                 customerInfo={customerInfo}
+                theme={theme}
               />
             )}
           </div>
@@ -182,6 +220,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                   customerInfo={customerInfo}
                   onUpdateTicketQuantity={updateTicketQuantity}
                   onBack={prevStep}
+                  theme={theme}
                 />
             </div>
           </div>

@@ -10,12 +10,14 @@ import { toast } from '@/hooks/use-toast';
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
 import { WindcaveHostedFields } from '@/components/payment/WindcaveHostedFields';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Theme } from '@/types/theme';
 
 interface PaymentProps {
   eventData: EventData;
   cartItems: CartItem[];
   merchandiseCart: MerchandiseCartItem[];
   customerInfo: CustomerInfo;
+  theme: Theme;
 }
 
 export const Payment: React.FC<PaymentProps> = ({
@@ -23,6 +25,7 @@ export const Payment: React.FC<PaymentProps> = ({
   cartItems,
   merchandiseCart,
   customerInfo,
+  theme
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null);
@@ -199,21 +202,21 @@ export const Payment: React.FC<PaymentProps> = ({
       {/* Customer Information Display */}
       <Card>
         <CardHeader>
-          <CardTitle>Customer Information</CardTitle>
+          <CardTitle style={{ color: theme.headerTextColor }}>Customer Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <p className="text-sm font-medium">Name</p>
-            <p className="text-sm text-muted-foreground">{customerInfo.name}</p>
+            <p className="text-sm font-medium" style={{ color: theme.textColor }}>Name</p>
+            <p className="text-sm text-muted-foreground" style={{ color: theme.textColor }}>{customerInfo.name}</p>
           </div>
           <div>
-            <p className="text-sm font-medium">Email</p>
-            <p className="text-sm text-muted-foreground">{customerInfo.email}</p>
+            <p className="text-sm font-medium" style={{ color: theme.textColor }}>Email</p>
+            <p className="text-sm text-muted-foreground" style={{ color: theme.textColor }}>{customerInfo.email}</p>
           </div>
           {customerInfo.phone && (
             <div>
-              <p className="text-sm font-medium">Phone</p>
-              <p className="text-sm text-muted-foreground">{customerInfo.phone}</p>
+                          <p className="text-sm font-medium" style={{ color: theme.textColor }}>Phone</p>
+            <p className="text-sm text-muted-foreground" style={{ color: theme.textColor }}>{customerInfo.phone}</p>
             </div>
           )}
         </CardContent>
@@ -222,20 +225,20 @@ export const Payment: React.FC<PaymentProps> = ({
       {/* Order Summary */}
       <Card>
         <CardHeader>
-          <CardTitle>Order Summary</CardTitle>
+          <CardTitle style={{ color: theme.headerTextColor }}>Order Summary</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Ticket Items */}
           {cartItems.length > 0 && (
             <div className="space-y-3">
-              <h4 className="font-medium text-sm">Tickets</h4>
+              <h4 className="font-medium text-sm" style={{ color: theme.headerTextColor }}>Tickets</h4>
               {cartItems.map((item) => (
                 <div key={item.id} className="flex justify-between items-center">
                   <div>
-                    <p className="font-medium text-sm">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">Qty: {item.quantity} × ${item.price.toFixed(2)}</p>
+                    <p className="font-medium text-sm" style={{ color: theme.textColor }}>{item.name}</p>
+                    <p className="text-xs text-muted-foreground" style={{ color: theme.textColor }}>Qty: {item.quantity} × ${item.price.toFixed(2)}</p>
                   </div>
-                  <p className="font-medium text-sm">${(item.price * item.quantity).toFixed(2)}</p>
+                  <p className="font-medium text-sm" style={{ color: theme.textColor }}>${(item.price * item.quantity).toFixed(2)}</p>
                 </div>
               ))}
             </div>
@@ -244,11 +247,11 @@ export const Payment: React.FC<PaymentProps> = ({
           {/* Merchandise Items */}
           {merchandiseCart.length > 0 && (
             <div className="space-y-3">
-              <h4 className="font-medium text-sm">Merchandise</h4>
+              <h4 className="font-medium text-sm" style={{ color: theme.headerTextColor }}>Merchandise</h4>
               {merchandiseCart.map((item, index) => (
                 <div key={index} className="flex justify-between items-start">
                   <div className="flex-1">
-                    <p className="font-medium text-sm">{item.merchandise.name}</p>
+                    <p className="font-medium text-sm" style={{ color: theme.textColor }}>{item.merchandise.name}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant="secondary" className="text-xs">Qty: {item.quantity}</Badge>
                       {item.selectedSize && (
@@ -258,11 +261,11 @@ export const Payment: React.FC<PaymentProps> = ({
                         <Badge variant="outline" className="text-xs">{item.selectedColor}</Badge>
                       )}
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground" style={{ color: theme.textColor }}>
                       ${item.merchandise.price.toFixed(2)} each
                     </span>
                   </div>
-                  <p className="font-medium text-sm">
+                  <p className="font-medium text-sm" style={{ color: theme.textColor }}>
                     ${(item.merchandise.price * item.quantity).toFixed(2)}
                   </p>
                 </div>
@@ -275,22 +278,22 @@ export const Payment: React.FC<PaymentProps> = ({
           {/* Totals */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span>Subtotal</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span style={{ color: theme.textColor }}>Subtotal</span>
+              <span style={{ color: theme.textColor }}>${subtotal.toFixed(2)}</span>
             </div>
             
             {processingFee > 0 && (
               <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Processing Fee ({eventData.organizations?.credit_card_processing_fee_percentage}%)</span>
-                <span>${processingFee.toFixed(2)}</span>
+                <span style={{ color: theme.textColor }}>Processing Fee ({eventData.organizations?.credit_card_processing_fee_percentage}%)</span>
+                <span style={{ color: theme.textColor }}>${processingFee.toFixed(2)}</span>
               </div>
             )}
             
             <Separator />
             
             <div className="flex justify-between font-semibold">
-              <span>Total</span>
-              <span>${total.toFixed(2)}</span>
+              <span style={{ color: theme.textColor }}>Total</span>
+              <span style={{ color: theme.textColor }}>${total.toFixed(2)}</span>
             </div>
           </div>
 
@@ -302,6 +305,10 @@ export const Payment: React.FC<PaymentProps> = ({
                 size="lg"
                 disabled={isProcessing}
                 className="w-full"
+                style={{ 
+                  backgroundColor: theme.primaryColor,
+                                      color: theme.buttonTextColor
+                }}
               >
                 {isProcessing ? (
                   <>
@@ -322,7 +329,7 @@ export const Payment: React.FC<PaymentProps> = ({
           {eventData.organizations?.payment_provider === 'windcave' && !showWindcavePayment && (
             <div className="pt-4 text-center">
               <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Initializing payment form...</p>
+              <p className="text-sm text-muted-foreground" style={{ color: theme.textColor }}>Initializing payment form...</p>
             </div>
           )}
         </CardContent>
@@ -344,7 +351,7 @@ export const Payment: React.FC<PaymentProps> = ({
         <Dialog open={showStripePayment} onOpenChange={setShowStripePayment}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Complete Payment</DialogTitle>
+              <DialogTitle style={{ color: theme.textColor }}>Complete Payment</DialogTitle>
             </DialogHeader>
             <StripePaymentForm
               publishableKey={stripePublishableKey}

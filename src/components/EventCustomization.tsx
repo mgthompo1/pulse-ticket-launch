@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,11 +45,14 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
   // Widget customization state
   const [widgetCustomization, setWidgetCustomization] = useState({
     theme: {
-      primaryColor: "#000000",
-      secondaryColor: "#ffffff",
-      backgroundColor: "#ffffff",
-      textColor: "#000000",
-      fontFamily: "Inter"
+      enabled: false, // Enable/disable theme customization
+      primaryColor: "#000000", // Black for buttons and progress bars (matching live project)
+      buttonTextColor: "#ffffff", // White for button text
+      secondaryColor: "#ffffff", // White for borders and secondary elements
+      backgroundColor: "#ffffff", // White background
+      headerTextColor: "#111827", // Dark gray for headers
+      bodyTextColor: "#6b7280", // Lighter gray for body text (matching GitHub)
+      fontFamily: "Manrope" // Default to Manrope (matching your CSS)
     },
     layout: {
       showEventImage: true,
@@ -324,24 +328,83 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="primaryColor">Primary Color</Label>
-                  <Input
-                    id="primaryColor"
-                    type="color"
-                    value={widgetCustomization.theme.primaryColor}
-                    onChange={(e) => updateWidgetCustomization(['theme', 'primaryColor'], e.target.value)}
-                    className="w-full h-10"
-                  />
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="themeEnabled"
+                      checked={widgetCustomization.theme.enabled}
+                      onCheckedChange={(checked: boolean | 'indeterminate') => 
+                        updateWidgetCustomization(['theme', 'enabled'], checked === true)
+                      }
+                    />
+                    <Label htmlFor="themeEnabled" className="text-sm font-medium">
+                      Enable Theme Customization (Colour/Font)
+                    </Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    When disabled, the widget will use default styling. When enabled, you can customize all colors and fonts.
+                  </p>
+                </div>
+                
+                {widgetCustomization.theme.enabled && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="headerTextColor">Header Font Color</Label>
+                    <Input
+                      id="headerTextColor"
+                      type="color"
+                      value={widgetCustomization.theme.headerTextColor}
+                      onChange={(e) => updateWidgetCustomization(['theme', 'headerTextColor'], e.target.value)}
+                      className="w-full h-10"
+                    />
+                    <p className="text-xs text-muted-foreground">Color for headers and titles</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bodyTextColor">Body Font Color</Label>
+                    <Input
+                      id="bodyTextColor"
+                      type="color"
+                      value={widgetCustomization.theme.bodyTextColor}
+                      onChange={(e) => updateWidgetCustomization(['theme', 'bodyTextColor'], e.target.value)}
+                      className="w-full h-10"
+                    />
+                    <p className="text-xs text-muted-foreground">Color for body text and descriptions</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="buttonColor">Button Color</Label>
+                    <Input
+                      id="buttonColor"
+                      type="color"
+                      value={widgetCustomization.theme.primaryColor}
+                      onChange={(e) => updateWidgetCustomization(['theme', 'primaryColor'], e.target.value)}
+                      className="w-full h-10"
+                    />
+                    <p className="text-xs text-muted-foreground">Color for buttons and primary elements</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="buttonTextColor">Button Font Colour</Label>
+                    <Input
+                      id="buttonTextColor"
+                      type="color"
+                      value={widgetCustomization.theme.buttonTextColor}
+                      onChange={(e) => updateWidgetCustomization(['theme', 'buttonTextColor'], e.target.value)}
+                      className="w-full h-10"
+                    />
+                    <p className="text-xs text-muted-foreground">Color for text inside buttons</p>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="secondaryColor">Secondary Color</Label>
+                  <Label htmlFor="themeColor">Theme Color</Label>
                   <Input
-                    id="secondaryColor"
+                    id="themeColor"
                     type="color"
                     value={widgetCustomization.theme.secondaryColor}
                     onChange={(e) => updateWidgetCustomization(['theme', 'secondaryColor'], e.target.value)}
                     className="w-full h-10"
                   />
+                  <p className="text-xs text-muted-foreground">Color for status bars, borders, and secondary elements</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="backgroundColor">Background Color</Label>
@@ -352,6 +415,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     onChange={(e) => updateWidgetCustomization(['theme', 'backgroundColor'], e.target.value)}
                     className="w-full h-10"
                   />
+                  <p className="text-xs text-muted-foreground">Color for the overall background</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="fontFamily">Font Family</Label>
@@ -364,6 +428,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     </SelectTrigger>
                     <SelectContent>
                       {/* Modern Sans-Serif Fonts */}
+                      <SelectItem value="Manrope" className="font-manrope">Manrope (Default)</SelectItem>
                       <SelectItem value="Inter" className="font-inter">Inter</SelectItem>
                       <SelectItem value="Roboto" className="font-roboto">Roboto</SelectItem>
                       <SelectItem value="Open Sans" className="font-open-sans">Open Sans</SelectItem>
@@ -412,6 +477,8 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     </SelectContent>
                   </Select>
                 </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 

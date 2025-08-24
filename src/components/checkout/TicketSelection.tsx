@@ -6,19 +6,22 @@ import { Plus } from 'lucide-react';
 import { TicketType, CartItem } from '@/types/widget';
 import { GuestSeatSelector } from '@/components/GuestSeatSelector';
 import { createClient } from '@supabase/supabase-js';
+import { Theme } from '@/types/theme';
 
 interface TicketSelectionProps {
   ticketTypes: TicketType[];
   cartItems: CartItem[];
   onAddToCart: (ticketType: TicketType) => void;
   onNext: () => void;
+  theme: Theme;
 }
 
 export const TicketSelection: React.FC<TicketSelectionProps> = ({
   ticketTypes,
   cartItems,
   onAddToCart,
-  onNext
+  onNext,
+  theme
 }) => {
   const [showSeatSelection, setShowSeatSelection] = useState(false);
   const [pendingSeatSelection, setPendingSeatSelection] = useState<TicketType | null>(null);
@@ -115,8 +118,8 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold mb-2">Select Your Tickets</h2>
-        <p className="text-muted-foreground">Choose the tickets you'd like to purchase</p>
+        <h2 className="text-2xl font-bold mb-2" style={{ color: theme.headerTextColor }}>Select Your Tickets</h2>
+        <p style={{ color: theme.bodyTextColor }}>Choose the tickets you'd like to purchase</p>
       </div>
 
       <div className="space-y-4">
@@ -128,15 +131,15 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle className="text-lg">{ticketType.name}</CardTitle>
+                                        <CardTitle className="text-lg" style={{ color: theme.headerTextColor }}>{ticketType.name}</CardTitle>
                     {ticketType.description && (
-                      <CardDescription className="mt-1">
+                      <CardDescription className="mt-1" style={{ color: theme.bodyTextColor }}>
                         {ticketType.description}
                       </CardDescription>
                     )}
                   </div>
                   <div className="text-right">
-                    <div className="text-xl font-bold">${ticketType.price}</div>
+                    <div className="text-xl font-bold" style={{ color: theme.headerTextColor }}>${ticketType.price}</div>
                     <Badge variant={isAvailable ? "secondary" : "secondary"}>
                       {isAvailable 
                         ? `${ticketType.quantity_available - ticketType.quantity_sold} available`
@@ -153,8 +156,12 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
                     <Button 
                       onClick={() => addToCartWithSeatCheck(ticketType)}
                       variant="secondary"
-                      className="bg-neutral-900 hover:bg-neutral-800 text-white border-0"
+                      className="border-0"
                       disabled={ticketType.quantity_available - ticketType.quantity_sold <= 0}
+                      style={{ 
+                        backgroundColor: theme.primaryColor,
+                        color: theme.buttonTextColor
+                      }}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add to Cart
@@ -173,7 +180,11 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
           onClick={onNext} 
           disabled={!hasSelectedTickets}
           size="lg"
-          className="bg-neutral-900 hover:bg-neutral-800 text-white border-0"
+          className="border-0"
+          style={{ 
+            backgroundColor: theme.primaryColor,
+                                color: theme.buttonTextColor
+          }}
         >
           Continue to Add-ons
         </Button>

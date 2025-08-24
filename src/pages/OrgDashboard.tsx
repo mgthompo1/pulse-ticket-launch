@@ -19,7 +19,7 @@ import EventCustomization from "@/components/EventCustomization";
 import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, BarChart3, Edit, Monitor, LogOut, Menu, HelpCircle } from "lucide-react";
+import { Calendar, Users, Ticket, BarChart3, Edit, Monitor, LogOut, Menu, HelpCircle, TrendingUp, CreditCard, Mail, Link, Shield, Settings } from "lucide-react";
 import OrganizationSettings from "@/components/OrganizationSettings";
 import OrganizationOnboarding from "@/components/OrganizationOnboarding";
 
@@ -67,9 +67,9 @@ const MobileSidebarTrigger = () => {
   return (
     <Button
       variant="ghost"
-      size="sm"
+      size="default"
       onClick={toggleSidebar}
-      className="h-8 w-8 p-0"
+      className="h-9 w-9 p-0 font-manrope font-medium"
     >
       <Menu className="h-4 w-4" />
       <span className="sr-only">Toggle Sidebar</span>
@@ -111,9 +111,26 @@ const OrgDashboard = () => {
     };
 
     window.addEventListener('openDashboardHelp', handleHelpRequest as EventListener);
+
     return () => {
       window.removeEventListener('openDashboardHelp', handleHelpRequest as EventListener);
     };
+  }, []);
+
+  // Debug layout issues
+  React.useEffect(() => {
+    console.log('=== Dashboard Layout Debug ===');
+    console.log('Screen width:', window.innerWidth);
+    console.log('Document width:', document.documentElement.clientWidth);
+    console.log('Body width:', document.body.clientWidth);
+    
+    // Check for any elements that might be causing the right-side space
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      console.log('Main element width:', mainElement.clientWidth);
+      console.log('Main element offsetWidth:', mainElement.offsetWidth);
+      console.log('Main element getBoundingClientRect:', mainElement.getBoundingClientRect());
+    }
   }, []);
 
   const { toast } = useToast();
@@ -477,32 +494,46 @@ const OrgDashboard = () => {
 
   return (
     <SidebarProvider>
-      <div className="h-screen bg-background flex flex-col dashboard-layout">
+      <div className="h-screen bg-background flex flex-col w-full" style={{ width: '100%', maxWidth: 'none' }}>
         {/* Header with minimal controls */}
-        <header className="border-b flex-shrink-0">
-          <div className="container mx-auto px-4 py-3">
-            <div className="flex items-center justify-between gap-4">
+        <header className="border-b border-gray-200/60 bg-white flex-shrink-0 w-full" style={{ width: '100%', maxWidth: 'none' }}>
+          <div className="px-4 py-3 w-full" style={{ width: '100%', maxWidth: 'none' }}>
+            <div className="flex items-center justify-between gap-4 w-full" style={{ width: '100%' }}>
               {/* Mobile sidebar trigger - only shows on mobile */}
               <div className="flex items-center gap-2 md:hidden">
                 <MobileSidebarTrigger />
               </div>
               
-              <div className="flex items-center gap-4 ml-auto">
+              {/* Dashboard Title */}
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-blue-50 border border-blue-200/60">
+                  <BarChart3 className="h-4 w-4 text-blue-600" />
+                </div>
+                <div>
+                  <h1 className="font-manrope font-semibold text-base text-gray-900">
+                    Dashboard
+                  </h1>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 ml-auto" style={{ marginLeft: 'auto', width: 'auto' }}>
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={() => setShowHelp(true)}
+                  className="font-manrope font-medium text-sm"
                 >
-                  <HelpCircle className="w-4 w-4 mr-2" />
+                  <HelpCircle className="h-4 w-4 mr-2" />
                   Help
                 </Button>
                 <Button 
-                  variant="outline" 
+                  variant="outline"
                   size="sm"
                   onClick={() => navigate("/")}
+                  className="font-manrope font-medium text-sm"
                 >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Exit Dashboard
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Exit
                 </Button>
               </div>
             </div>
@@ -510,59 +541,61 @@ const OrgDashboard = () => {
         </header>
 
         {/* Sidebar and content below header - takes remaining space */}
-        <div className="flex flex-1 min-h-0 w-full">
-          <AppSidebar 
-            activeTab={activeTab} 
-            setActiveTab={setActiveTab} 
-            selectedEvent={selectedEvent ? { id: selectedEvent.id, name: selectedEvent.name, event_date: selectedEvent.event_date, status: selectedEvent.status } : null} 
-          />
+        <div className="flex flex-1 min-h-0 w-full" style={{ maxWidth: 'none', width: '100%', minWidth: '100%' }}>
+          <div className="flex-shrink-0">
+            <AppSidebar 
+              activeTab={activeTab} 
+              setActiveTab={setActiveTab} 
+              selectedEvent={selectedEvent ? { id: selectedEvent.id, name: selectedEvent.name, event_date: selectedEvent.event_date, status: selectedEvent.status } : null} 
+            />
+          </div>
           
-          <main className="flex-1 min-w-0 p-4 md:p-8 overflow-y-auto overflow-x-hidden">
-            <div className="w-full dashboard-content">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8">
+          <main className="flex-1 min-w-0 flex-shrink-0 p-4 md:p-6 overflow-y-auto overflow-x-hidden bg-white">
+            <div className="w-full" style={{ maxWidth: 'none', margin: '0', padding: '0', width: '100%', minWidth: '100%' }}>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8" style={{ width: '100%', maxWidth: 'none', minWidth: '100%' }}>
                 <TabsContent value="overview" className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    <Card className="gradient-card hover-scale animate-in fade-in-0">
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Events</CardTitle>
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 w-full">
+                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                        <CardTitle className="font-manrope font-semibold text-base text-gray-900">Total Events</CardTitle>
+                        <Calendar className="h-5 w-5 text-gray-900" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">{events.length}</div>
-                        <p className="text-xs text-muted-foreground">Active events</p>
+                        <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">{events.length}</div>
+                        <p className="font-manrope text-sm text-gray-600">Active events</p>
                       </CardContent>
                     </Card>
 
-                    <Card className="gradient-card hover-scale animate-in fade-in-0" style={{ animationDelay: '100ms' }}>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Tickets Sold</CardTitle>
-                        <Ticket className="h-4 w-4 text-muted-foreground" />
+                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm" style={{ animationDelay: '100ms' }}>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                        <CardTitle className="font-manrope font-semibold text-base text-gray-900">Tickets Sold</CardTitle>
+                        <Ticket className="h-5 w-5 text-gray-900" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">{analytics.totalOrders}</div>
-                        <p className="text-xs text-muted-foreground">Total orders placed</p>
+                        <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">{analytics.totalOrders}</div>
+                        <p className="font-manrope text-sm text-gray-600">Total orders placed</p>
                       </CardContent>
                     </Card>
 
-                    <Card className="gradient-card hover-scale animate-in fade-in-0" style={{ animationDelay: '200ms' }}>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Revenue</CardTitle>
-                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm" style={{ animationDelay: '200ms' }}>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                        <CardTitle className="font-manrope font-semibold text-base text-gray-900">Revenue</CardTitle>
+                        <BarChart3 className="h-5 w-5 text-gray-900" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">${analytics.totalRevenue.toFixed(2)}</div>
-                        <p className="text-xs text-muted-foreground">Total revenue generated</p>
+                        <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">${analytics.totalRevenue.toFixed(2)}</div>
+                        <p className="font-manrope text-sm text-gray-600">Total revenue generated</p>
                       </CardContent>
                     </Card>
 
-                    <Card className="gradient-card hover-scale animate-in fade-in-0" style={{ animationDelay: '300ms' }}>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Platform Fees</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
+                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm" style={{ animationDelay: '300ms' }}>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                        <CardTitle className="font-manrope font-semibold text-base text-gray-900">Platform Fees</CardTitle>
+                        <Users className="h-5 w-5 text-gray-900" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">${analytics.estimatedPlatformFees.toFixed(2)}</div>
-                        <p className="text-xs text-muted-foreground">Estimated fees</p>
+                        <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">${analytics.estimatedPlatformFees.toFixed(2)}</div>
+                        <p className="font-manrope text-sm text-gray-600">Estimated fees</p>
                       </CardContent>
                     </Card>
                   </div>
@@ -575,25 +608,25 @@ const OrgDashboard = () => {
                     isLoading={false}
                   />
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Recent Events</CardTitle>
-                      <CardDescription>Your latest event performance</CardDescription>
+                  <Card className="border-gray-200/60 shadow-sm">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="font-manrope font-semibold text-lg text-gray-900">Recent Events</CardTitle>
+                      <CardDescription className="font-manrope text-sm text-gray-600">Your latest event performance</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         {events.map((event) => (
-                          <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors hover-lift animate-in fade-in-0 gap-4">
+                          <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border border-gray-200/60 rounded-lg hover:bg-gray-50/50 transition-colors gap-3">
                             <div className="space-y-1 flex-1">
-                              <h3 className="font-medium">{event.name}</h3>
-                              <p className="text-sm text-muted-foreground">{new Date(event.event_date).toLocaleDateString()} • {event.venue}</p>
+                              <h3 className="font-manrope font-medium text-sm text-gray-900">{event.name}</h3>
+                              <p className="font-manrope text-xs text-gray-600">{new Date(event.event_date).toLocaleDateString()} • {event.venue}</p>
                             </div>
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
                               <div className="text-left sm:text-right">
-                                <p className="text-sm font-medium">{event.tickets_sold}/{event.capacity} tickets</p>
-                                <p className="text-sm text-muted-foreground">${event.revenue}</p>
+                                <p className="font-manrope font-medium text-xs text-gray-900">{event.tickets_sold}/{event.capacity} tickets</p>
+                                <p className="font-manrope text-xs text-gray-600">${event.revenue}</p>
                               </div>
-                              <Badge variant={event.status === "published" ? "default" : "secondary"} className="w-fit">
+                              <Badge variant={event.status === "published" ? "default" : "secondary"} className="w-fit font-manrope font-medium text-xs">
                                 {event.status}
                               </Badge>
                               <div className="flex gap-2 w-full sm:w-auto">
@@ -604,9 +637,9 @@ const OrgDashboard = () => {
                                     setSelectedEvent(event);
                                     setActiveTab("event-details");
                                   }}
-                                  className="flex-1 sm:flex-none hover-scale"
+                                  className="flex-1 sm:flex-none hover-scale font-manrope font-medium text-xs"
                                 >
-                                  <Users className="h-4 w-4 mr-2" />
+                                  <Users className="h-3 w-3 mr-1" />
                                   <span className="hidden sm:inline">Manage</span>
                                   <span className="sm:hidden">Manage</span>
                                 </Button>
@@ -615,9 +648,9 @@ const OrgDashboard = () => {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => window.open(`/ticketflolive/${event.id}`, '_blank')}
-                                    className="flex-1 sm:flex-none hover-scale"
+                                    className="flex-1 sm:flex-none hover-scale font-manrope font-medium text-xs"
                                   >
-                                    <Monitor className="h-4 w-4 mr-2" />
+                                    <Monitor className="h-3 w-3 mr-1" />
                                     <span className="hidden sm:inline">TicketFloLIVE</span>
                                     <span className="sm:hidden">Live</span>
                                   </Button>
@@ -633,35 +666,39 @@ const OrgDashboard = () => {
 
                 <TabsContent value="events" className="space-y-6">
                   {/* Events List - Now at the top */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Your Events</CardTitle>
-                      <CardDescription>Manage your existing events</CardDescription>
+                  <Card className="border-gray-200/60 shadow-sm">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="font-manrope font-semibold text-lg text-gray-900">Your Events</CardTitle>
+                      <CardDescription className="font-manrope text-sm text-gray-600">Manage your existing events</CardDescription>
                     </CardHeader>
                     <CardContent>
                       {events.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-8">No events created yet. Create your first event below!</p>
+                        <p className="font-manrope text-muted-foreground text-center py-8">No events created yet. Create your first event below!</p>
                       ) : (
-                        <div className="space-y-4">
+                        <div className="space-y-3 w-full">
                           {events.map((event) => (
-                            <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors gap-4">
-                              <div className="space-y-1 flex-1">
-                                <h3 className="font-medium">{event.name}</h3>
-                                <p className="text-sm text-muted-foreground">{new Date(event.event_date).toLocaleDateString()} • {event.venue}</p>
-                                <Badge variant={event.status === "published" ? "default" : "secondary"} className="w-fit">
+                            <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-gray-200/60 rounded-lg hover:bg-gray-50/50 transition-colors gap-4 w-full" style={{ width: '100%' }}>
+                              <div className="space-y-2 flex-1">
+                                <h3 className="font-manrope font-semibold text-base text-gray-900">{event.name}</h3>
+                                <p className="font-manrope text-sm text-gray-600">{new Date(event.event_date).toLocaleDateString()} • {event.venue}</p>
+                                <Badge 
+                                  variant={event.status === "published" ? "default" : "secondary"} 
+                                  className="w-fit font-manrope font-medium text-sm"
+                                >
                                   {event.status}
                                 </Badge>
                               </div>
                               <div className="flex gap-2">
                                 <Button
                                   variant="outline"
-                                  size="sm"
+                                  size="default"
                                   onClick={() => {
                                     setSelectedEvent(event);
                                     setActiveTab("event-details");
                                   }}
+                                  className="font-manrope font-medium text-sm"
                                 >
-                                  <Edit className="h-4 w-4 mr-2" />
+                                  <Users className="h-4 w-4 mr-2" />
                                   Manage
                                 </Button>
                               </div>
@@ -672,65 +709,70 @@ const OrgDashboard = () => {
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Create New Event</CardTitle>
-                      <CardDescription>Start selling tickets for your next event</CardDescription>
+                  <Card className="border-gray-200/60 shadow-sm">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="font-manrope font-semibold text-lg text-gray-900">Create New Event</CardTitle>
+                      <CardDescription className="font-manrope text-sm text-gray-600">Start selling tickets for your next event</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="event-name">Event Name *</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
+                        <div className="space-y-2">
+                          <Label htmlFor="event-name" className="font-manrope font-medium text-sm text-gray-700">Event Name *</Label>
                           <Input
                             id="event-name"
                             value={eventForm.name}
                             onChange={(e) => setEventForm(prev => ({ ...prev, name: e.target.value }))}
                             placeholder="Enter event name"
+                            className="font-manrope text-sm"
                           />
                         </div>
-                        <div>
-                          <Label htmlFor="event-date">Event Date *</Label>
+                        <div className="space-y-2">
+                          <Label htmlFor="event-date" className="font-manrope font-medium text-sm text-gray-700">Event Date *</Label>
                           <Input
                             id="event-date"
                             type="datetime-local"
                             value={eventForm.date}
                             onChange={(e) => setEventForm(prev => ({ ...prev, date: e.target.value }))}
+                            className="font-manrope text-sm"
                           />
                         </div>
-                        <div>
-                          <Label htmlFor="event-venue">Venue *</Label>
+                        <div className="space-y-2">
+                          <Label htmlFor="event-venue" className="font-manrope font-medium text-sm text-gray-700">Venue *</Label>
                           <Input
                             id="event-venue"
                             value={eventForm.venue}
                             onChange={(e) => setEventForm(prev => ({ ...prev, venue: e.target.value }))}
                             placeholder="Enter venue name"
+                            className="font-manrope text-sm"
                           />
                         </div>
-                        <div>
-                          <Label htmlFor="event-capacity">Capacity *</Label>
+                        <div className="space-y-2">
+                          <Label htmlFor="event-capacity" className="font-manrope font-medium text-sm text-gray-700">Capacity *</Label>
                           <Input
                             id="event-capacity"
                             type="number"
                             value={eventForm.capacity}
                             onChange={(e) => setEventForm(prev => ({ ...prev, capacity: e.target.value }))}
                             placeholder="Maximum attendees"
+                            className="font-manrope text-sm"
                           />
                         </div>
                       </div>
-                      <div>
-                        <Label htmlFor="event-description">Description</Label>
+                      <div className="space-y-2">
+                        <Label htmlFor="event-description" className="font-manrope font-medium text-sm text-gray-700">Description</Label>
                         <Textarea
                           id="event-description"
                           value={eventForm.description}
                           onChange={(e) => setEventForm(prev => ({ ...prev, description: e.target.value }))}
                           placeholder="Event description"
                           rows={4}
+                          className="font-manrope text-sm"
                         />
                       </div>
                       <Button 
                         onClick={handleCreateEvent} 
                         disabled={isCreatingEvent}
-                        className="w-full md:w-auto"
+                        className="w-full md:w-auto font-manrope font-medium text-sm"
                       >
                         {isCreatingEvent ? "Creating..." : "Create Event"}
                       </Button>

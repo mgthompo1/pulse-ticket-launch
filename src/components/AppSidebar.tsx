@@ -78,14 +78,14 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
   return (
     <Sidebar 
       collapsible="icon"
-      className="border-r"
+      className="border-r border-gray-200/60 w-64 flex-shrink-0"
     >
-      <SidebarContent>
+      <SidebarContent className="p-0">
         {/* Organization Logo Section */}
         {organizationLogo && !isCollapsed && (
-          <div className="p-4 border-b">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
+          <div className="p-3 border-b border-gray-200/60">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
                 <img
                   src={organizationLogo}
                   alt="Organization logo"
@@ -93,7 +93,9 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">{organizationName}</p>
+                <p className="font-manrope font-medium text-sm text-gray-900 truncate">
+                  {organizationName}
+                </p>
               </div>
             </div>
           </div>
@@ -101,8 +103,8 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
         
         {/* Mini logo for collapsed state */}
         {organizationLogo && isCollapsed && (
-          <div className="p-2 border-b flex justify-center">
-            <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+          <div className="p-3 border-b border-gray-200/60 flex justify-center">
+            <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
               <img
                 src={organizationLogo}
                 alt="Organization logo"
@@ -111,9 +113,11 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
             </div>
           </div>
         )}
-        <SidebarGroup>
+
+        {/* Navigation Menu */}
+        <SidebarGroup className="px-3 py-4">
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {sidebarItems.map((item) => {
                 const isDisabled = item.requiresEvent && !selectedEvent;
                 const isActive = activeTab === item.id;
@@ -127,11 +131,26 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
                         }
                       }}
                       data-active={isActive}
-                      className={`w-full justify-start ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`
+                        w-full justify-start rounded-lg transition-all duration-200 ease-in-out
+                        font-manrope font-medium text-sm
+                        ${isActive 
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200/60' 
+                          : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                        }
+                        ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                        px-3 py-2.5
+                      `}
                       disabled={isDisabled}
                     >
-                      <item.icon className="mr-3 h-4 w-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
+                      <item.icon className={`mr-3 h-4 w-4 flex-shrink-0 ${
+                        isActive ? 'text-blue-600' : 'text-gray-500'
+                      }`} />
+                      {!isCollapsed && (
+                        <span className="font-manrope font-medium text-sm">
+                          {item.title}
+                        </span>
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -139,6 +158,22 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Bottom Section - User Info */}
+        {!isCollapsed && (
+          <div className="mt-auto p-3 border-t border-gray-200/60">
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 border border-gray-200/40">
+              <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-manrope font-semibold">
+                {user?.email?.charAt(0).toUpperCase() || 'U'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-manrope font-medium text-xs text-gray-900 truncate">
+                  {user?.email || 'User'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </SidebarContent>
     </Sidebar>
   );

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Minus, ShoppingCart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Theme } from '@/types/theme';
 
 interface MerchandiseItem {
   id: string;
@@ -30,9 +31,10 @@ interface CartItem {
 interface MerchandiseSelectorProps {
   eventId: string;
   onCartUpdate: (items: CartItem[]) => void;
+  theme?: Theme;
 }
 
-const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCartUpdate }) => {
+const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCartUpdate, theme }) => {
   const [merchandise, setMerchandise] = useState<MerchandiseItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,7 +121,7 @@ const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCa
   return (
     <Card className="animate-in fade-in-0">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2" style={{ color: theme?.headerTextColor || '#111827' }}>
           <ShoppingCart className="h-5 w-5" />
           Event Merchandise
         </CardTitle>
