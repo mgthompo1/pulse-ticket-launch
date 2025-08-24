@@ -171,7 +171,6 @@ export const GuestSeatSelector = ({
 
     // Improve rendering quality
     ctx.imageSmoothingEnabled = false; // Disable anti-aliasing for crisp edges
-    ctx.textRenderingOptimization = 'optimizeSpeed';
 
     // Clear canvas
     ctx.clearRect(0, 0, rect.width, rect.height);

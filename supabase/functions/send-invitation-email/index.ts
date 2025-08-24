@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
     const emailResponse = await resend.emails.send({
-      from: 'Ticket2 <onboarding@resend.dev>',
+      from: 'TicketFlo <hello@ticketflo.org>',
       to: [email],
       subject: 'You\'ve been invited to join Ticket2',
       html: `
