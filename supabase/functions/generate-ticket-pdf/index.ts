@@ -67,7 +67,8 @@ const logStep = (step: string, details?: any) => {
   console.log(`[GENERATE-TICKET-PDF] ${step}${detailsStr}`);
 };
 
-Deno.serve(async (req) => {
+// Main handler function separated to avoid Deno.serve recursion issues
+async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -307,7 +308,7 @@ Deno.serve(async (req) => {
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(31, 41, 55); // Dark gray
       
-      let safeEventName = (ticket.event_name || 'Event')
+      const safeEventName = (ticket.event_name || 'Event')
         .replace(/[^\w\s.-]/g, '')
         .replace(/\s+/g, ' ')
         .trim() || 'Event';
@@ -390,7 +391,7 @@ Deno.serve(async (req) => {
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(31, 41, 55);
       
-      let safeCustomerName = (ticket.customer_name || 'Attendee')
+      const safeCustomerName = (ticket.customer_name || 'Attendee')
         .replace(/[^\w\s.-]/g, '')
         .replace(/\s+/g, ' ')
         .trim() || 'Attendee';
@@ -488,4 +489,7 @@ Deno.serve(async (req) => {
       status: 500,
     });
   }
-});
+}
+
+// Use the separated handler to avoid recursion issues
+Deno.serve(handleRequest);
