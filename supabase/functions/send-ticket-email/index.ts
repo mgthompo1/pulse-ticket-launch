@@ -308,7 +308,7 @@ Deno.serve(async (req) => {
     });
 
     const emailOptions: any = {
-      from: "TicketFlo <onboarding@resend.dev>", // Using verified Resend domain
+      from: `${order.events.name} <noreply@ticketflo.org>`,
       to: [emailContent.to],
       subject: emailContent.subject,
       html: emailContent.html,
