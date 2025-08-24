@@ -157,7 +157,7 @@ const TicketWidget = () => {
   }, [eventData?.widget_customization?.theme]);
 
   // Destructure theme colors for easier use
-        const { primaryColor, buttonTextColor, secondaryColor, backgroundColor, headerTextColor, bodyTextColor, fontFamily } = theme;
+        const { primaryColor, buttonTextColor, backgroundColor, headerTextColor, bodyTextColor, fontFamily } = theme;
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [merchandiseCart, setMerchandiseCart] = useState<MerchandiseCartItem[]>([]);

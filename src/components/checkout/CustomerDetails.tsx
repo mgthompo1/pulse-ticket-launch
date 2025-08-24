@@ -71,7 +71,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             name={`customAnswers.${question.id}`}
             render={({ field }) => (
               <FormItem>
-                <FormLabel style={{ color: theme.textColor }}>
+                <FormLabel style={{ color: theme.bodyTextColor }}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
@@ -97,7 +97,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             name={`customAnswers.${question.id}`}
             render={({ field }) => (
               <FormItem>
-                <FormLabel style={{ color: theme.textColor }}>
+                <FormLabel style={{ color: theme.bodyTextColor }}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
@@ -122,7 +122,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             name={`customAnswers.${question.id}`}
             render={({ field }) => (
               <FormItem>
-                <FormLabel style={{ color: theme.textColor }}>
+                <FormLabel style={{ color: theme.bodyTextColor }}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
@@ -155,7 +155,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             name={`customAnswers.${question.id}`}
             render={({ field }) => (
               <FormItem>
-                <FormLabel style={{ color: theme.textColor }}>
+                <FormLabel style={{ color: theme.bodyTextColor }}>
                   {question.label}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
@@ -168,7 +168,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                      {safeOptions.map((option) => (
                        <div key={option} className="flex items-center space-x-2">
                          <RadioGroupItem value={option} id={option} />
-                         <label htmlFor={option} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" style={{ color: theme.textColor }}>
+                         <label htmlFor={option} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" style={{ color: theme.bodyTextColor }}>
                            {option}
                          </label>
                       </div>
@@ -197,7 +197,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                   />
                 </FormControl>
                 <div className="space-y-1 leading-none">
-                  <FormLabel style={{ color: theme.textColor }}>
+                  <FormLabel style={{ color: theme.bodyTextColor }}>
                     {question.label}
                     {question.required && <span className="text-destructive ml-1">*</span>}
                   </FormLabel>

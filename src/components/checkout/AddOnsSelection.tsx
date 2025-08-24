@@ -15,7 +15,6 @@ interface AddOnsSelectionProps {
 
 export const AddOnsSelection: React.FC<AddOnsSelectionProps> = ({
   eventId,
-  merchandiseCart,
   onMerchandiseCartUpdate,
   onNext,
   onBack,
