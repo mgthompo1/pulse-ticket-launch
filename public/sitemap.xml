@@ -52,20 +52,7 @@
     <priority>0.7</priority>
   </url>
   
-  <!-- Features Section (Anchor) -->
-  <url>
-    <loc>https://www.ticketflo.org/#features</loc>
-    <lastmod>2024-12-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  
-  <!-- Pricing Section (Anchor) -->
-  <url>
-    <loc>https://www.ticketflo.org/#pricing</loc>
-    <lastmod>2024-12-19</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
+  <!-- Remove anchor links from sitemap as they can cause indexing issues -->
+  <!-- Google treats anchors as the same page, which can create "alternate page" issues -->
   
 </urlset>

@@ -1,0 +1,14 @@
+# TicketFlo Redirects and SPA Configuration
+
+# Handle SPA routing - must be last rule
+/*    /index.html   200
+
+# Optional: Remove trailing slashes to prevent duplicate content
+/*/   /:splat       301
+
+# Force HTTPS
+http://www.ticketflo.org/*   https://www.ticketflo.org/:splat   301!
+http://ticketflo.org/*       https://www.ticketflo.org/:splat   301!
+
+# Force www domain
+https://ticketflo.org/*      https://www.ticketflo.org/:splat   301!
