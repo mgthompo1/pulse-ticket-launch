@@ -17,6 +17,7 @@ import {
   ResponsiveContainer,
   Legend
 } from "recharts";
+import { Receipt } from "lucide-react";
 
 // Custom label component for pie chart
 const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, value }: any) => {
@@ -31,7 +32,7 @@ const CustomPieLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, v
     <text 
       x={x} 
       y={y} 
-      fill="white" 
+      fill="#1a1a1a" 
       textAnchor="middle" 
       dominantBaseline="central"
       fontSize="12"
@@ -97,15 +98,16 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
               <Tooltip
                 contentStyle={{
                   backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
+                  border: "2px solid #ff4d00",
                   borderRadius: "6px",
+                  boxShadow: "0 4px 12px rgba(255, 77, 0, 0.15)"
                 }}
                 formatter={(value: any) => [`$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Revenue']}
                 labelFormatter={(label) => `Event: ${label}`}
               />
               <Bar 
                 dataKey="revenue" 
-                fill="hsl(var(--primary))"
+                fill="#ff4d00"
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>
@@ -117,38 +119,37 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
       <Card>
         <CardHeader>
           <CardTitle>Total Revenue by Event</CardTitle>
-          <CardDescription>All-time revenue distribution across events</CardDescription>
+          <CardDescription>All-time revenue for each event</CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={eventTypeData}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={120}
-                paddingAngle={5}
-                dataKey="value"
-                label={<CustomPieLabel />}
-                labelLine={false}
-              >
-                {eventTypeData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "6px",
-                }}
-                formatter={(value: any) => [`$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Revenue']}
-                labelFormatter={(label) => `Event: ${label}`}
-              />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="space-y-3">
+            {eventTypeData.length === 0 ? (
+              <div className="text-center py-8">
+                <Receipt className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                <p className="text-muted-foreground">No revenue data available</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Revenue will appear here once you start selling tickets
+                </p>
+              </div>
+            ) : (
+              eventTypeData.map((event, index) => (
+                <div key={index} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div>
+                    <h4 className="font-medium text-sm">{event.name}</h4>
+                    <p className="text-xs text-muted-foreground">Total Revenue</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-lg text-[#ff4d00]">
+                      ${(event.value / 1000).toFixed(1)}k
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      ${event.value.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -178,15 +179,16 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
               <Tooltip
                 contentStyle={{
                   backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
+                  border: "2px solid #ff4d00",
                   borderRadius: "6px",
+                  boxShadow: "0 4px 12px rgba(255, 77, 0, 0.15)"
                 }}
                 formatter={(value: any) => [`$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Revenue']}
                 labelFormatter={(label) => `Event: ${label}`}
               />
               <Bar 
                 dataKey="revenue" 
-                fill="hsl(var(--secondary))"
+                fill="#ff4d00"
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>

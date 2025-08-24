@@ -370,16 +370,16 @@ const OrgDashboard = () => {
     
     // Convert total revenue to array format for pie chart
     const colors = [
+      '#ff4d00', // Primary Orange
       '#3b82f6', // Blue
-      '#ef4444', // Red
       '#10b981', // Green
       '#f59e0b', // Yellow
       '#8b5cf6', // Purple
-      '#f97316', // Orange
+      '#ef4444', // Red
       '#06b6d4', // Cyan
       '#84cc16', // Lime
       '#ec4899', // Pink
-      '#6366f1'  // Indigo
+      '#f97316'  // Orange
     ];
     
     const eventTypesData: EventTypeDatum[] = Array.from(totalRevenueByEvent.entries())
