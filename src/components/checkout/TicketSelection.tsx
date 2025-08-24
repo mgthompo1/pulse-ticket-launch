@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +22,7 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
 }) => {
   const [showSeatSelection, setShowSeatSelection] = useState(false);
   const [pendingSeatSelection, setPendingSeatSelection] = useState<TicketType | null>(null);
-  const [selectedSeats, setSelectedSeats] = useState<Record<string, string[]>>({});
+  
   
   // Create anonymous Supabase client for seat map queries
   const anonymousSupabase = createClient(
@@ -74,10 +74,6 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
         selectedSeats: seats
       };
       onAddToCart(ticketWithSeats);
-      setSelectedSeats(prev => ({
-        ...prev,
-        [pendingSeatSelection.id]: seats
-      }));
     }
     
     setShowSeatSelection(false);
