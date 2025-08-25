@@ -313,15 +313,19 @@ const OrgDashboard = () => {
     console.log("Orders found:", orderData?.length || 0);
     console.log("Sample order data:", orderData?.[0]);
     
-    // Get ticket data
+    // Get ticket data - tickets are related to orders, orders are related to events
     const { data: ticketData } = await supabase
       .from("tickets")
       .select(`
         id, 
         status,
-        events(organization_id, name)
+        order_items!inner(
+          orders!inner(
+            events!inner(organization_id, name)
+          )
+        )
       `)
-      .eq("events.organization_id", orgId);
+      .eq("order_items.orders.events.organization_id", orgId);
     
     console.log("Tickets found:", ticketData?.length || 0);
     
