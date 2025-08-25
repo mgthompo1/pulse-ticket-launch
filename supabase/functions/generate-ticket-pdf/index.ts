@@ -80,206 +80,215 @@ async function createTicketPage(pdf: jsPDF, ticket: TicketData, logoUrl?: string
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
   
-  // Card dimensions and positioning - making it larger and more prominent
-  const cardWidth = 140;
-  const cardHeight = 180;
+  // Card dimensions and positioning - matching React component size
+  const cardWidth = 160;
+  const cardHeight = 220;
   const cardX = (pageWidth - cardWidth) / 2;
   const cardY = (pageHeight - cardHeight) / 2;
   
-  // Background gradient simulation with multiple layers
-  // Create gradient effect using multiple rectangles with decreasing opacity
-  for (let i = 0; i < 5; i++) {
-    const opacity = 0.05 - (i * 0.008);
-    const offset = i * 0.5;
-    pdf.setFillColor(99, 102, 241); // Primary color
+  // Create gradient background effect (from-background to-accent/5)
+  for (let i = 0; i < 8; i++) {
+    const opacity = 0.03 - (i * 0.003);
+    const offset = i * 0.3;
+    pdf.setFillColor(99, 102, 241); // Primary/accent color
     pdf.setGState(new pdf.GState({opacity: opacity}));
     pdf.roundedRect(cardX - offset, cardY - offset, cardWidth + (offset * 2), cardHeight + (offset * 2), 12, 12, 'F');
   }
   
-  // Reset opacity for main card
+  // Reset opacity
   pdf.setGState(new pdf.GState({opacity: 1}));
   
-  // Main card background
-  pdf.setFillColor(255, 255, 255); // White background
+  // Main card background (clean white)
+  pdf.setFillColor(255, 255, 255);
   pdf.roundedRect(cardX, cardY, cardWidth, cardHeight, 8, 8, 'F');
   
-  // Card border with primary color
-  pdf.setDrawColor(99, 102, 241, 0.2); // Primary with opacity
-  pdf.setLineWidth(1);
+  // Card border - 2px border with primary/20 opacity (border-2 border-primary/20)
+  pdf.setDrawColor(99, 102, 241, 0.2);
+  pdf.setLineWidth(2);
   pdf.roundedRect(cardX, cardY, cardWidth, cardHeight, 8, 8, 'S');
   
-  // Add subtle shadow effect
-  pdf.setFillColor(0, 0, 0, 0.1);
-  pdf.roundedRect(cardX + 2, cardY + 2, cardWidth, cardHeight, 8, 8, 'F');
+  // Shadow effect (shadow-lg)
+  pdf.setFillColor(0, 0, 0, 0.05);
+  pdf.roundedRect(cardX + 3, cardY + 3, cardWidth, cardHeight, 8, 8, 'F');
   
-  // Reset for content
+  // Reset for main content
   pdf.setFillColor(255, 255, 255);
   pdf.roundedRect(cardX, cardY, cardWidth, cardHeight, 8, 8, 'F');
 
-  const contentX = cardX + 12;
-  let currentY = cardY + 20;
-  const contentWidth = cardWidth - 24;
+  // Content area with proper padding (p-6)
+  const contentX = cardX + 24;
+  let currentY = cardY + 24;
+  const contentWidth = cardWidth - 48;
 
-  // Header section with optional logo
+  // Header section - logo and event name (text-center border-b border-border pb-4)
+  const headerStartY = currentY;
+  
   if (logoUrl && logoUrl.length > 10) {
     try {
-      // Add logo with proper scaling
-      const logoHeight = 16;
-      const logoY = currentY;
-      const logoX = contentX + (contentWidth - 60) / 2; // Center logo
-      // Note: In a real implementation, you'd fetch and add the actual logo
-      currentY += logoHeight + 8;
+      // Logo styling (h-12 w-auto mx-auto mb-3)
+      const logoHeight = 20;
+      const logoWidth = 80; // max-w-[200px] scaled down
+      const logoX = contentX + (contentWidth - logoWidth) / 2;
+      // Note: In real implementation, fetch and add the actual logo image
+      currentY += logoHeight + 6; // mb-3
     } catch (error) {
       console.warn('Logo loading failed:', error);
     }
   }
 
-  // Event name (main title)
+  // Event name - main title (text-xl font-bold text-foreground)
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(14);
-  pdf.setTextColor(15, 23, 42); // slate-900 equivalent
+  pdf.setFontSize(16); // text-xl equivalent
+  pdf.setTextColor(15, 23, 42); // foreground color
   const eventNameLines = pdf.splitTextToSize(ticket.event_name, contentWidth);
-  const eventNameY = currentY;
   pdf.text(eventNameLines, contentX + contentWidth / 2, currentY, { align: 'center' });
-  currentY += (eventNameLines.length * 6) + 8;
+  currentY += (eventNameLines.length * 8) + 4;
 
-  // Venue with icon-like styling
+  // Venue info (flex items-center justify-center gap-1 text-sm text-muted-foreground)
   if (ticket.venue) {
     pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(9);
-    pdf.setTextColor(100, 116, 139); // slate-500 equivalent
+    pdf.setFontSize(10); // text-sm
+    pdf.setTextColor(100, 116, 139); // muted-foreground
     const venueText = `📍 ${ticket.venue}`;
     pdf.text(venueText, contentX + contentWidth / 2, currentY, { align: 'center' });
-    currentY += 12;
+    currentY += 8;
   }
 
-  // Header separator line
-  pdf.setDrawColor(226, 232, 240); // border equivalent
-  pdf.setLineWidth(0.5);
+  // Header border (border-b border-border pb-4)
+  currentY += 6; // pb-4
+  pdf.setDrawColor(229, 231, 235); // border color
+  pdf.setLineWidth(1);
   pdf.line(contentX, currentY, contentX + contentWidth, currentY);
-  currentY += 12;
+  currentY += 20; // space-y-6
 
-  // Event details section with improved spacing and icons
-  const detailSectionY = currentY;
-  const itemSpacing = 16;
-  const iconOffset = 8;
+  // Event details section (space-y-3)
+  const itemSpacing = 18; // space-y-3 equivalent
+  const iconSize = 12; // h-4 w-4
+  const iconOffset = 18; // gap-3
 
-  // Date and time with calendar icon styling
+  // Date and time (flex items-center gap-3)
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(8);
-  pdf.setTextColor(99, 102, 241); // primary color for icons
+  pdf.setFontSize(10);
+  pdf.setTextColor(99, 102, 241); // text-primary
   pdf.text("📅", contentX, currentY + 3);
   
+  // Date (font-medium)
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(10);
-  pdf.setTextColor(15, 23, 42);
+  pdf.setFontSize(12);
+  pdf.setTextColor(15, 23, 42); // foreground
   pdf.text(formatDate(ticket.event_date), contentX + iconOffset, currentY);
   
+  // Time (text-sm text-muted-foreground)
   const timeStr = formatTime(ticket.event_date);
   if (timeStr) {
     pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(8);
-    pdf.setTextColor(100, 116, 139);
-    pdf.text(timeStr, contentX + iconOffset, currentY + 6);
+    pdf.setFontSize(9);
+    pdf.setTextColor(100, 116, 139); // muted-foreground
+    pdf.text(timeStr, contentX + iconOffset, currentY + 8);
   }
   currentY += itemSpacing;
 
-  // Ticket type
+  // Ticket type section
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(8);
-  pdf.setTextColor(99, 102, 241);
+  pdf.setFontSize(10);
+  pdf.setTextColor(99, 102, 241); // text-primary
   pdf.text("🎫", contentX, currentY + 3);
   
+  // Ticket type name (font-medium)
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(10);
+  pdf.setFontSize(12);
   pdf.setTextColor(15, 23, 42);
   pdf.text(ticket.ticket_type_name, contentX + iconOffset, currentY);
   
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(7);
-  pdf.setTextColor(100, 116, 139);
-  pdf.text("Ticket Type", contentX + iconOffset, currentY + 6);
-  currentY += itemSpacing;
-
-  // Customer name
+  // Label (text-xs text-muted-foreground)
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(8);
-  pdf.setTextColor(99, 102, 241);
+  pdf.setTextColor(100, 116, 139);
+  pdf.text("Ticket Type", contentX + iconOffset, currentY + 8);
+  currentY += itemSpacing;
+
+  // Customer name section
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(10);
+  pdf.setTextColor(99, 102, 241); // text-primary
   pdf.text("👤", contentX, currentY + 3);
   
+  // Customer name (font-medium)
   pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(10);
+  pdf.setFontSize(12);
   pdf.setTextColor(15, 23, 42);
   pdf.text(ticket.customer_name, contentX + iconOffset, currentY);
   
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(7);
-  pdf.setTextColor(100, 116, 139);
-  pdf.text("Attendee", contentX + iconOffset, currentY + 6);
-  currentY += 18;
-
-  // QR section separator
-  pdf.setDrawColor(226, 232, 240);
-  pdf.setLineWidth(0.5);
-  pdf.line(contentX, currentY, contentX + contentWidth, currentY);
-  currentY += 12;
-
-  // QR Code section with improved styling
+  // Label (text-xs text-muted-foreground)
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(8);
   pdf.setTextColor(100, 116, 139);
-  pdf.text("Scan QR Code at Event", contentX + contentWidth / 2, currentY, { align: 'center' });
-  currentY += 8;
+  pdf.text("Attendee", contentX + iconOffset, currentY + 8);
+  currentY += 24; // Extra space before QR section
 
-  // Generate and add QR code with border
+  // QR Code section (border-t border-border pt-4)
+  pdf.setDrawColor(229, 231, 235); // border color
+  pdf.setLineWidth(1);
+  pdf.line(contentX, currentY, contentX + contentWidth, currentY);
+  currentY += 16; // pt-4
+
+  // QR section header (text-center space-y-3)
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(10); // text-sm font-medium
+  pdf.setTextColor(100, 116, 139); // text-muted-foreground
+  pdf.text("Scan QR Code at Event", contentX + contentWidth / 2, currentY, { align: 'center' });
+  currentY += 12; // space-y-3
+
+  // Generate and add QR code (mx-auto border border-border rounded)
   const qrCodeUrl = await generateQR(ticket);
   if (qrCodeUrl && qrCodeUrl.length > 50) {
     try {
-      const qrSize = 32;
+      const qrSize = 40; // Larger QR code to match React component
       const qrX = contentX + (contentWidth - qrSize) / 2;
       
-      // QR code border
-      pdf.setDrawColor(226, 232, 240);
-      pdf.setLineWidth(0.5);
-      pdf.rect(qrX - 1, currentY - 1, qrSize + 2, qrSize + 2, 'S');
+      // QR code border (border border-border rounded)
+      pdf.setDrawColor(229, 231, 235);
+      pdf.setLineWidth(1);
+      pdf.roundedRect(qrX - 2, currentY - 2, qrSize + 4, qrSize + 4, 2, 2, 'S');
       
       // Add QR code
       pdf.addImage(qrCodeUrl, 'PNG', qrX, currentY, qrSize, qrSize);
-      currentY += qrSize + 10;
+      currentY += qrSize + 12; // space-y-3
     } catch (qrError) {
       console.warn('Failed to add QR code:', qrError);
-      currentY += 20;
+      currentY += 24;
     }
   } else {
-    currentY += 20;
+    currentY += 24;
   }
 
-  // Ticket details with improved formatting
+  // Ticket details (text-xs text-muted-foreground space-y-1)
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(7);
-  pdf.setTextColor(100, 116, 139);
+  pdf.setFontSize(8); // text-xs
+  pdf.setTextColor(100, 116, 139); // text-muted-foreground
   
-  // Ticket code with monospace styling simulation
+  // Ticket code (font-mono font-medium)
   const ticketCodeText = `Ticket Code: ${ticket.ticket_code}`;
   pdf.text(ticketCodeText, contentX + contentWidth / 2, currentY, { align: 'center' });
-  currentY += 5;
+  currentY += 6; // space-y-1
   
-  // Status with color coding
-  pdf.setTextColor(34, 197, 94); // green-500 for valid status
-  const statusText = `Status: ${ticket.status.toUpperCase()}`;
+  // Status (capitalize font-medium text-green-600)
+  pdf.setFont("helvetica", "bold"); // font-medium
+  pdf.setTextColor(34, 197, 94); // text-green-600
+  const statusText = `Status: ${ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)}`;
   pdf.text(statusText, contentX + contentWidth / 2, currentY, { align: 'center' });
-  currentY += 12;
+  currentY += 16;
 
-  // Final separator
-  pdf.setDrawColor(226, 232, 240);
-  pdf.setLineWidth(0.5);
+  // Footer section (border-t border-border pt-4 text-center)
+  pdf.setDrawColor(229, 231, 235);
+  pdf.setLineWidth(1);
   pdf.line(contentX, currentY, contentX + contentWidth, currentY);
-  currentY += 8;
+  currentY += 16; // pt-4
 
-  // Footer message
+  // Footer message (text-xs text-muted-foreground)
   pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(7);
-  pdf.setTextColor(100, 116, 139);
+  pdf.setFontSize(8); // text-xs
+  pdf.setTextColor(100, 116, 139); // text-muted-foreground
   pdf.text("Please present this ticket at the event entrance", contentX + contentWidth / 2, currentY, { align: 'center' });
 }
 
