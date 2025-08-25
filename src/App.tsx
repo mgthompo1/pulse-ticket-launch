@@ -26,6 +26,7 @@ import Contact from "./pages/Contact";
 import Support from "./pages/Support";
 import NotFound from "./pages/NotFound";
 import { InvitationPasswordSetup } from "./components/InvitationPasswordSetup";
+import { InvitationAcceptance } from "./components/InvitationAcceptance";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/xero-callback" element={<XeroCallback />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/invite" element={<InvitationAcceptance />} />
             <Route path="/invitation-setup" element={<InvitationPasswordSetup />} />
             
             {/* Authenticated routes - WITH theme context */}

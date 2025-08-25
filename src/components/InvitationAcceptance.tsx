@@ -31,7 +31,7 @@ export const InvitationAcceptance = () => {
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const inviteToken = searchParams.get('invite');
+  const inviteToken = searchParams.get('token') || searchParams.get('invite');
 
   useEffect(() => {
     if (inviteToken) {
