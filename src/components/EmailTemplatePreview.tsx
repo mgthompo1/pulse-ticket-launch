@@ -56,62 +56,6 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
 
   const logoUrl = getLogoUrl();
 
-  const getThemeStyles = () => {
-    const baseStyles = {
-      fontFamily: template.fontFamily || 'Arial, sans-serif',
-      backgroundColor: template.backgroundColor,
-      color: template.textColor,
-    };
-
-    switch (template.theme) {
-      case 'modern':
-        return {
-          ...baseStyles,
-          borderRadius: '12px',
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-        };
-      case 'elegant':
-        return {
-          ...baseStyles,
-          borderRadius: '8px',
-          border: `2px solid ${template.borderColor}`,
-        };
-      case 'minimal':
-        return {
-          ...baseStyles,
-          borderRadius: '4px',
-          border: `1px solid ${template.borderColor}`,
-        };
-      case 'creative':
-        return {
-          ...baseStyles,
-          borderRadius: '16px',
-          background: `linear-gradient(135deg, ${template.backgroundColor}, ${template.accentColor}15)`,
-        };
-      default:
-        return baseStyles;
-    }
-  };
-
-  const getHeaderStyle = () => {
-    const headerStyle = layout?.headerStyle || 'standard';
-    const baseStyle = {
-      backgroundColor: template.headerColor,
-      color: '#ffffff', // Always use white text in header for better contrast
-      padding: headerStyle === 'compact' ? '15px 20px' : '25px 20px',
-    };
-
-    if (headerStyle === 'gradient') {
-      return {
-        ...baseStyle,
-        background: `linear-gradient(135deg, ${template.headerColor}, ${template.accentColor})`,
-        color: '#ffffff',
-      };
-    }
-
-    return baseStyle;
-  };
-
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleDateString('en-US', {
@@ -133,147 +77,210 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
       <CardContent>
         <div className="border rounded-lg overflow-hidden bg-gray-50 p-4">
           <div 
-            style={getThemeStyles()}
-            className="max-w-md mx-auto bg-white"
+            style={{
+              fontFamily: template.fontFamily || 'Arial, sans-serif',
+              maxWidth: '600px',
+              margin: '0 auto',
+              backgroundColor: template.backgroundColor,
+              borderRadius: template.theme === 'modern' ? '12px' : template.theme === 'elegant' ? '8px' : template.theme === 'minimal' ? '4px' : template.theme === 'creative' ? '16px' : '0px',
+              boxShadow: template.theme === 'modern' ? '0 4px 6px rgba(0, 0, 0, 0.1)' : 'none',
+              border: template.theme === 'elegant' ? `2px solid ${template.borderColor}` : template.theme === 'minimal' ? `1px solid ${template.borderColor}` : 'none',
+              background: template.theme === 'creative' ? `linear-gradient(135deg, ${template.backgroundColor}, ${template.accentColor}15)` : template.backgroundColor
+            }}
           >
-            {/* Header */}
-            <div style={getHeaderStyle()}>
-              {logoUrl && branding.logoPosition === 'header' && (
-                <div className="text-center mb-3">
+            {/* Header Section - Matches actual email template */}
+            <div style={{
+              backgroundColor: template.headerColor,
+              color: '#ffffff',
+              padding: layout?.headerStyle === 'compact' ? '15px 20px' : '25px 20px',
+              borderRadius: template.theme === 'modern' ? '12px 12px 0 0' : template.theme === 'elegant' ? '8px 8px 0 0' : template.theme === 'minimal' ? '4px 4px 0 0' : template.theme === 'creative' ? '16px 16px 0 0' : '0'
+            }}>
+              {logoUrl && branding.showLogo && branding.logoPosition === 'header' && (
+                <div style={{ textAlign: 'center', marginBottom: '15px' }}>
                   <img 
                     src={logoUrl} 
                     alt="Logo" 
                     style={{
-                      maxHeight: branding.logoSize === 'small' ? '40px' : 
-                                branding.logoSize === 'large' ? '80px' : '60px',
+                      maxHeight: branding.logoSize === 'small' ? '40px' : branding.logoSize === 'large' ? '80px' : '60px',
                       maxWidth: '200px',
                       height: 'auto'
                     }}
-                    className="mx-auto"
                   />
                 </div>
               )}
-              <h1 
-                style={{ 
-                  fontSize: '24px', 
-                  fontWeight: 'bold', 
-                  margin: 0,
-                  textAlign: 'center',
-                  color: '#ffffff' // Ensure white text for header
-                }}
-              >
+              <h1 style={{
+                margin: 0,
+                fontSize: '24px',
+                fontWeight: 'bold',
+                textAlign: layout?.headerStyle === 'center' ? 'center' : 'left',
+                color: '#ffffff'
+              }}>
                 {content.headerText}
               </h1>
             </div>
-
-            {/* Content */}
-            <div style={{ padding: '20px' }}>
-              {logoUrl && branding.logoPosition === 'content' && (
-                <div className="text-center mb-4">
+            
+            {/* Content Section - Matches actual email template */}
+            <div style={{ padding: '30px 20px' }}>
+              {logoUrl && branding.showLogo && branding.logoPosition === 'content' && (
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                   <img 
                     src={logoUrl} 
                     alt="Logo" 
                     style={{
-                      maxHeight: branding.logoSize === 'small' ? '40px' : 
-                                branding.logoSize === 'large' ? '80px' : '60px',
+                      maxHeight: branding.logoSize === 'small' ? '40px' : branding.logoSize === 'large' ? '80px' : '60px',
                       maxWidth: '200px',
                       height: 'auto'
                     }}
-                    className="mx-auto"
                   />
                 </div>
               )}
-
-              {/* Event Details */}
-              <div 
-                style={{ 
-                  backgroundColor: `${template.accentColor}15`,
-                  padding: '15px',
-                  borderRadius: '8px',
-                  marginBottom: '20px',
-                  border: `1px solid ${template.borderColor}`,
-                  textAlign: 'center'
-                }}
-              >
-                <h2 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '600' }}>
+              
+              {/* Event Details Card - Matches actual email template */}
+              <div style={{
+                backgroundColor: template.accentColor,
+                padding: '20px',
+                borderRadius: '8px',
+                marginBottom: '25px',
+                border: `1px solid ${template.borderColor}`
+              }}>
+                <h2 style={{
+                  margin: '0 0 15px 0',
+                  color: template.textColor,
+                  fontSize: '20px',
+                  fontWeight: '600'
+                }}>
                   {eventDetails.name}
                 </h2>
-                <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                <p style={{ margin: '5px 0', fontSize: '14px', color: template.textColor }}>
                   📅 {formatDate(eventDetails.event_date)}
                 </p>
-                {eventDetails.venue && (
-                  <p style={{ margin: '5px 0', fontSize: '14px' }}>
-                    📍 {eventDetails.venue}
-                  </p>
-                )}
+                <p style={{ margin: '5px 0', fontSize: '14px', color: template.textColor }}>
+                  📍 {eventDetails.venue || 'TBA'}
+                </p>
+                <p style={{ margin: '5px 0', fontSize: '14px', color: template.textColor }}>
+                  👤 Sample Customer
+                </p>
               </div>
 
-              {/* Body Text */}
-              <div 
-                style={{ 
-                  color: template.textColor,
-                  lineHeight: '1.6',
-                  marginBottom: '20px'
-                }}
-              >
+              {/* Body Text - Matches actual email template */}
+              <div style={{
+                color: template.textColor,
+                lineHeight: '1.6',
+                marginBottom: '25px',
+                fontSize: '16px'
+              }}>
                 {content.bodyText}
               </div>
 
-              {/* Mock Ticket Section */}
-              <div 
-                style={{ 
-                  border: `1px solid ${template.borderColor}`,
-                  borderRadius: '8px',
-                  padding: '15px',
-                  marginBottom: '20px',
-                  textAlign: 'center'
-                }}
-              >
-                <h3 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>Your Tickets:</h3>
-                <div style={{ 
-                  backgroundColor: '#f8f9fa',
-                  padding: '10px',
-                  borderRadius: '4px',
-                  fontSize: '14px'
+              {/* Tickets Section - Matches actual email template structure */}
+              <h3 style={{
+                color: template.textColor,
+                marginBottom: '15px',
+                fontSize: '18px'
+              }}>
+                Your Tickets:
+              </h3>
+              
+              {/* Sample ticket - matches actual email template */}
+              <div style={{
+                border: `1px solid ${template.borderColor}`,
+                padding: '20px',
+                margin: '15px 0',
+                borderRadius: '8px',
+                backgroundColor: '#ffffff'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap'
                 }}>
-                  <strong>General Admission</strong><br />
-                  <code style={{ backgroundColor: '#e9ecef', padding: '2px 6px', borderRadius: '3px' }}>
-                    TCK-SAMPLE123
-                  </code>
+                  <div>
+                    <strong style={{
+                      fontSize: '16px',
+                      color: template.textColor
+                    }}>
+                      General Admission
+                    </strong>
+                    <br />
+                    <code style={{
+                      background: template.accentColor,
+                      padding: '8px 12px',
+                      fontSize: '14px',
+                      borderRadius: '4px',
+                      display: 'inline-block',
+                      margin: '8px 0',
+                      fontFamily: "'Courier New', monospace"
+                    }}>
+                      TCK-SAMPLE123
+                    </code>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <strong style={{
+                      fontSize: '16px',
+                      color: template.textColor
+                    }}>
+                      $25.00
+                    </strong>
+                  </div>
                 </div>
               </div>
 
-              {/* CTA Button */}
-              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                <button
-                  style={{
-                    backgroundColor: template.buttonColor,
-                    color: '#ffffff',
-                    padding: '12px 24px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  View Tickets
-                </button>
+              {/* Important Information - Matches actual email template */}
+              <div style={{
+                background: template.accentColor,
+                padding: '20px',
+                borderRadius: '8px',
+                margin: '25px 0',
+                borderLeft: `4px solid ${template.buttonColor}`
+              }}>
+                <h4 style={{
+                  margin: '0 0 10px 0',
+                  color: template.textColor
+                }}>
+                  Important Information:
+                </h4>
+                <ul style={{
+                  margin: 0,
+                  paddingLeft: '20px',
+                  color: template.textColor
+                }}>
+                  <li>Present your ticket codes at the event entrance</li>
+                  <li>Screenshots or printed versions are accepted</li>
+                  <li>Each ticket is valid for one person only</li>
+                  <li>Arrive early to avoid queues</li>
+                </ul>
               </div>
-            </div>
 
-            {/* Footer */}
-            <div 
-              style={{ 
-                backgroundColor: '#f8f9fa',
-                padding: '15px 20px',
-                borderTop: `1px solid ${template.borderColor}`,
+              {/* Contact Information - Matches actual email template */}
+              <p style={{
+                color: '#666',
+                fontSize: '14px',
+                margin: '20px 0'
+              }}>
+                Questions? Contact the event organizer: <a href="#" style={{
+                  color: template.buttonColor
+                }}>
+                  organizer@example.com
+                </a>
+              </p>
+            </div>
+            
+            {/* Footer - Matches actual email template */}
+            <div style={{
+              backgroundColor: template.accentColor,
+              padding: '20px',
+              textAlign: 'center',
+              borderRadius: template.theme === 'modern' ? '0 0 12px 12px' : template.theme === 'elegant' ? '0 0 8px 8px' : template.theme === 'minimal' ? '0 0 4px 4px' : template.theme === 'creative' ? '0 0 16px 16px' : '0',
+              borderTop: `1px solid ${template.borderColor}`
+            }}>
+              <p style={{
+                color: '#999',
                 fontSize: '12px',
-                color: '#6b7280',
-                textAlign: 'center' as const
-              }}
-            >
-              {content.footerText}
+                margin: 0
+              }}>
+                {content.footerText}
+              </p>
             </div>
           </div>
         </div>
