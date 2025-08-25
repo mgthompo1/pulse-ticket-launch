@@ -158,7 +158,7 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                   fontSize: '24px', 
                   fontWeight: 'bold', 
                   margin: 0,
-                  textAlign: (layout?.headerStyle || 'standard') === 'center' ? 'center' : 'left'
+                  textAlign: 'center'
                 }}
               >
                 {content.headerText}
@@ -190,7 +190,8 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                   padding: '15px',
                   borderRadius: '8px',
                   marginBottom: '20px',
-                  border: `1px solid ${template.borderColor}`
+                  border: `1px solid ${template.borderColor}`,
+                  textAlign: 'center'
                 }}
               >
                 <h2 style={{ margin: '0 0 10px 0', fontSize: '18px', fontWeight: '600' }}>
@@ -223,7 +224,8 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                   border: `1px solid ${template.borderColor}`,
                   borderRadius: '8px',
                   padding: '15px',
-                  marginBottom: '20px'
+                  marginBottom: '20px',
+                  textAlign: 'center'
                 }}
               >
                 <h3 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>Your Tickets:</h3>
