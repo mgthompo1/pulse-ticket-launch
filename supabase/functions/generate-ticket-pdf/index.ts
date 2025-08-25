@@ -89,32 +89,50 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("id", orderId)
       .single();
 
-    if (orderError || !order) {
+    if (orderError) {
+      console.error('Order fetch error:', orderError);
+      throw new Error(`Order not found: ${orderError.message}`);
+    }
+    
+    if (!order) {
       throw new Error("Order not found");
     }
 
-    // Fetch tickets
-    const { data: tickets, error: ticketsError } = await supabase
-      .from("tickets")
+    console.log('Order data retrieved:', {
+      customerName: order.customer_name,
+      eventName: order.events.name,
+      organizationName: order.events.organizations.name,
+      venue: order.events.venue
+    });
+
+    // Fetch tickets with proper joins
+    const { data: orderItems, error: orderItemsError } = await supabase
+      .from("order_items")
       .select(`
         *,
-        order_items!inner(
-          quantity,
-          unit_price,
-          ticket_types!inner(name)
-        )
+        ticket_types!inner(name),
+        tickets!inner(*)
       `)
-      .in('order_item_id', 
-        await supabase
-          .from('order_items')
-          .select('id')
-          .eq('order_id', orderId)
-          .then(({ data }) => data?.map(item => item.id) || [])
-      );
+      .eq("order_id", orderId);
 
-    if (ticketsError || !tickets?.length) {
-      throw new Error("No tickets found");
+    if (orderItemsError) {
+      console.error('Order items fetch error:', orderItemsError);
+      throw new Error(`Tickets not found: ${orderItemsError.message}`);
     }
+
+    if (!orderItems?.length) {
+      throw new Error("No tickets found for this order");
+    }
+
+    // Flatten tickets from order items
+    const tickets = orderItems.flatMap(item => 
+      item.tickets.map(ticket => ({
+        ...ticket,
+        order_item: item,
+        ticket_type_name: item.ticket_types.name,
+        unit_price: item.unit_price
+      }))
+    );
 
     console.log(`Found ${tickets.length} tickets to process`);
 
@@ -125,7 +143,6 @@ const handler = async (req: Request): Promise<Response> => {
     
     // Process each ticket
     for (let i = 0; i < tickets.length; i++) {
-      const ticket = tickets[i];
       
       // Add new page for each ticket after the first
       if (i > 0) {
@@ -135,13 +152,13 @@ const handler = async (req: Request): Promise<Response> => {
       try {
         // Safely extract data
         const ticketData: TicketData = {
-          ticket_code: sanitizeText(ticket.ticket_code, 'INVALID'),
-          ticket_type_name: sanitizeText(ticket.order_items?.ticket_types?.name, 'General Admission'),
+          ticket_code: sanitizeText(tickets[i].ticket_code, 'INVALID'),
+          ticket_type_name: sanitizeText(tickets[i].ticket_type_name, 'General Admission'),
           customer_name: sanitizeText(order.customer_name, 'Guest'),
           event_name: sanitizeText(order.events.name, 'Event'),
           event_date: order.events.event_date || new Date().toISOString(),
           venue: sanitizeText(order.events.venue, 'TBA'),
-          price: Number(ticket.order_items?.unit_price) || 0,
+          price: Number(tickets[i].unit_price) || 0,
           order_id: orderId
         };
 
