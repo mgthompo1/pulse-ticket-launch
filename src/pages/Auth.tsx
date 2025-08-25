@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, CheckCircle } from "lucide-react";
+import { InvitationAcceptance } from "@/components/InvitationAcceptance";
 
 
 const Auth = () => {
@@ -18,26 +20,21 @@ const Auth = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [invitationValid, setInvitationValid] = useState(false);
-  // const [invitationLoading, setInvitationLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
+  
+  const inviteToken = searchParams.get('invite');
 
   useEffect(() => {
-    // Check if user is already logged in
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Check if user has verified their email
-        if (user.email_confirmed_at) {
-          navigate("/dashboard");
-        } else {
-          // User exists but email not verified - show message
-          setError("Please check your email and click the verification link before signing in.");
-        }
-      }
-    };
-    checkUser();
+    // Check if user is already logged in and redirect if no invite token
+    if (!authLoading && user && !inviteToken) {
+      navigate("/dashboard");
+    }
+  }, [user, authLoading, navigate, inviteToken]);
+
+  useEffect(() => {
 
     // Check for invitation token
     const checkInvitation = async () => {
@@ -79,7 +76,7 @@ const Auth = () => {
     };
 
     checkInvitation();
-  }, [navigate, searchParams, toast]);
+  }, [searchParams, toast]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -220,6 +217,22 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  // Show invitation acceptance if invite token is present
+  if (inviteToken) {
+    return <InvitationAcceptance />;
+  }
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">

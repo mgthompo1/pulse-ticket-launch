@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.send-invitation-email]
 verify_jwt = false
+
+[functions.send-organization-invitation]
+verify_jwt = false

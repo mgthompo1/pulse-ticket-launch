@@ -28,6 +28,7 @@ import { MarketingTools } from "@/components/MarketingTools";
 import { AnalyticsCharts } from "@/components/AnalyticsCharts";
 import Support from "@/pages/Support";
 import { DashboardHelp } from "@/components/DashboardHelp";
+import { OrganizationUserManagement } from "@/components/OrganizationUserManagement";
 import { useNavigate } from "react-router-dom";
 
 // Types
@@ -82,6 +83,7 @@ const OrgDashboard = () => {
   const [selectedEvent, setSelectedEvent] = useState<DashboardEvent | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [organizationId, setOrganizationId] = useState<string>("");
+  const [organization, setOrganization] = useState<Organization | null>(null);
   
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -178,6 +180,7 @@ const OrgDashboard = () => {
         const org = orgs as Organization;
         
         setOrganizationId(org.id);
+        setOrganization(org);
         
         loadEvents(org.id);
         loadAnalytics(org.id);
@@ -808,6 +811,13 @@ const OrgDashboard = () => {
 
                 <TabsContent value="billing" className="space-y-6">
                   <BillingDashboard organizationId={organizationId} isLoading={false} />
+                </TabsContent>
+
+                <TabsContent value="users" className="space-y-6">
+                  <OrganizationUserManagement 
+                    organizationId={organizationId} 
+                    organizationName={organization?.name || 'Organization'} 
+                  />
                 </TabsContent>
 
                 <TabsContent value="support" className="space-y-6">
