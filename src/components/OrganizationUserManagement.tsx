@@ -138,7 +138,14 @@ export const OrganizationUserManagement = ({ organizationId, organizationName }:
 
     setSending(true);
     try {
-      const { error } = await supabase.functions.invoke('send-organization-invitation', {
+      console.log('Sending invitation with data:', {
+        email: inviteEmail,
+        role: inviteRole,
+        permissions: invitePermissions,
+        organizationId,
+      });
+
+      const { data, error } = await supabase.functions.invoke('send-organization-invitation', {
         body: {
           email: inviteEmail,
           role: inviteRole,
@@ -146,6 +153,8 @@ export const OrganizationUserManagement = ({ organizationId, organizationName }:
           organizationId,
         }
       });
+
+      console.log('Invitation response:', { data, error });
 
       if (error) throw error;
 
