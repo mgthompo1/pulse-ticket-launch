@@ -1390,7 +1390,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
                   <div className="space-y-2">
                     <Label htmlFor="headerStyle">Header Style</Label>
-                    <Select value={emailCustomization.layout.headerStyle} onValueChange={(value) => updateEmailCustomization(['layout', 'headerStyle'], value)}>
+                    <Select value={emailCustomization.layout?.headerStyle || 'standard'} onValueChange={(value) => updateEmailCustomization(['layout', 'headerStyle'], value)}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
