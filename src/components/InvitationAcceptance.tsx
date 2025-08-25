@@ -106,7 +106,7 @@ export const InvitationAcceptance = () => {
 
       toast({
         title: 'Success!',
-        description: `You've successfully joined ${invitation.organization.name}`,
+        description: `You've successfully joined ${invitation.organization?.name || 'the organization'}`,
       });
 
       // Redirect to dashboard
@@ -183,7 +183,7 @@ export const InvitationAcceptance = () => {
             <div className="flex items-center space-x-3">
               <Building className="h-5 w-5 text-muted-foreground" />
               <div>
-                <p className="font-medium">{invitation.organization.name}</p>
+                <p className="font-medium">{invitation.organization?.name || 'Unknown Organization'}</p>
                 <p className="text-sm text-muted-foreground">Organization</p>
               </div>
             </div>
