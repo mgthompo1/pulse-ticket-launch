@@ -16,6 +16,7 @@ import AttendeeManagement from "@/components/AttendeeManagement";
 import MerchandiseManager from "@/components/MerchandiseManager";
 import TicketTypesManager from "@/components/TicketTypesManager";
 import { EventLogoUploader } from "@/components/events/EventLogoUploader";
+import { EmailTemplatePreview } from "@/components/EmailTemplatePreview";
 
 interface EventCustomizationProps {
   eventId: string;
@@ -100,13 +101,17 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     }
   });
 
-  // Email customization state
+  // Email customization state with enhanced options
   const [emailCustomization, setEmailCustomization] = useState({
     template: {
+      theme: "professional", // professional, modern, elegant, minimal, creative
       headerColor: "#000000",
       backgroundColor: "#ffffff",
       textColor: "#000000",
-      buttonColor: "#000000"
+      buttonColor: "#000000",
+      accentColor: "#f3f4f6",
+      borderColor: "#e5e7eb",
+      fontFamily: "Arial, sans-serif"
     },
     content: {
       subject: "Your ticket confirmation",
@@ -116,7 +121,13 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     },
     branding: {
       showLogo: true,
-      logoPosition: "header"
+      logoPosition: "header", // header, content
+      logoSize: "medium" // small, medium, large
+    },
+    layout: {
+      headerStyle: "standard", // standard, compact, gradient, center
+      contentLayout: "standard", // standard, cards, minimal
+      footerStyle: "standard" // standard, minimal, branded
     },
     notifications: {
       organiserNotifications: false,
@@ -1157,141 +1168,293 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         </TabsContent>
 
         <TabsContent value="emails" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Email Template</CardTitle>
-                <CardDescription>Customize email appearance</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="emailHeaderColor">Header Color</Label>
-                  <Input
-                    id="emailHeaderColor"
-                    type="color"
-                    value={emailCustomization.template.headerColor}
-                    onChange={(e) => updateEmailCustomization(['template', 'headerColor'], e.target.value)}
-                    className="w-full h-10"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="emailBgColor">Background Color</Label>
-                  <Input
-                    id="emailBgColor"
-                    type="color"
-                    value={emailCustomization.template.backgroundColor}
-                    onChange={(e) => updateEmailCustomization(['template', 'backgroundColor'], e.target.value)}
-                    className="w-full h-10"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="emailTextColor">Text Color</Label>
-                  <Input
-                    id="emailTextColor"
-                    type="color"
-                    value={emailCustomization.template.textColor}
-                    onChange={(e) => updateEmailCustomization(['template', 'textColor'], e.target.value)}
-                    className="w-full h-10"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="emailButtonColor">Button Color</Label>
-                  <Input
-                    id="emailButtonColor"
-                    type="color"
-                    value={emailCustomization.template.buttonColor}
-                    onChange={(e) => updateEmailCustomization(['template', 'buttonColor'], e.target.value)}
-                    className="w-full h-10"
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Email Content</CardTitle>
-                <CardDescription>Customize email text and messaging</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="emailSubject">Subject Line</Label>
-                  <Input
-                    id="emailSubject"
-                    value={emailCustomization.content.subject}
-                    onChange={(e) => updateEmailCustomization(['content', 'subject'], e.target.value)}
-                    placeholder="Your ticket confirmation"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="emailHeaderText">Header Text</Label>
-                  <Input
-                    id="emailHeaderText"
-                    value={emailCustomization.content.headerText}
-                    onChange={(e) => updateEmailCustomization(['content', 'headerText'], e.target.value)}
-                    placeholder="Thank you for your purchase!"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="emailBodyText">Body Text</Label>
-                  <Textarea
-                    id="emailBodyText"
-                    value={emailCustomization.content.bodyText}
-                    onChange={(e) => updateEmailCustomization(['content', 'bodyText'], e.target.value)}
-                    placeholder="We are excited to see you at the event."
-                    rows={3}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="emailFooterText">Footer Text</Label>
-                  <Input
-                    id="emailFooterText"
-                    value={emailCustomization.content.footerText}
-                    onChange={(e) => updateEmailCustomization(['content', 'footerText'], e.target.value)}
-                    placeholder="Questions? Contact us anytime."
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="emailShowLogo">Show Logo</Label>
-                  <Switch
-                    id="emailShowLogo"
-                    checked={emailCustomization.branding.showLogo}
-                    onCheckedChange={(checked) => updateEmailCustomization(['branding', 'showLogo'], checked)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Organiser Notifications</CardTitle>
-                <CardDescription>Get notified when tickets are sold</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="organiserNotifications">Send notifications when tickets are sold</Label>
-                  <Switch
-                    id="organiserNotifications"
-                    checked={emailCustomization.notifications?.organiserNotifications || false}
-                    onCheckedChange={(checked) => updateEmailCustomization(['notifications', 'organiserNotifications'], checked)}
-                  />
-                </div>
-                {emailCustomization.notifications?.organiserNotifications && (
-                  <div className="space-y-2">
-                    <Label htmlFor="organiserEmail">Notification Email</Label>
-                    <Input
-                      id="organiserEmail"
-                      type="email"
-                      value={emailCustomization.notifications?.organiserEmail || ""}
-                      onChange={(e) => updateEmailCustomization(['notifications', 'organiserEmail'], e.target.value)}
-                      placeholder="Enter email to receive notifications"
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      You'll receive an email with ticket details and customer information each time a ticket is sold.
-                    </p>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="space-y-6">
+              {/* Theme Selection */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Palette className="h-5 w-5" />
+                    Email Theme
+                  </CardTitle>
+                  <CardDescription>Choose a pre-designed theme for your confirmation emails</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-3">
+                    {[
+                      { value: 'professional', label: 'Professional', description: 'Clean and corporate design' },
+                      { value: 'modern', label: 'Modern', description: 'Contemporary with rounded corners' },
+                      { value: 'elegant', label: 'Elegant', description: 'Sophisticated with subtle borders' },
+                      { value: 'minimal', label: 'Minimal', description: 'Simple and clean layout' },
+                      { value: 'creative', label: 'Creative', description: 'Vibrant with gradients' }
+                    ].map(theme => (
+                      <div 
+                        key={theme.value}
+                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                          emailCustomization.template.theme === theme.value 
+                            ? 'border-primary bg-primary/5' 
+                            : 'border-muted hover:border-primary/50'
+                        }`}
+                        onClick={() => updateEmailCustomization(['template', 'theme'], theme.value)}
+                      >
+                        <div className="font-medium">{theme.label}</div>
+                        <div className="text-sm text-muted-foreground">{theme.description}</div>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              {/* Colors & Style */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Colors & Style</CardTitle>
+                  <CardDescription>Customize the visual appearance</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="headerColor">Header Color</Label>
+                      <Input
+                        id="headerColor"
+                        type="color"
+                        value={emailCustomization.template.headerColor}
+                        onChange={(e) => updateEmailCustomization(['template', 'headerColor'], e.target.value)}
+                        className="w-full h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="backgroundColor">Background Color</Label>
+                      <Input
+                        id="backgroundColor"
+                        type="color"
+                        value={emailCustomization.template.backgroundColor}
+                        onChange={(e) => updateEmailCustomization(['template', 'backgroundColor'], e.target.value)}
+                        className="w-full h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="textColor">Text Color</Label>
+                      <Input
+                        id="textColor"
+                        type="color"
+                        value={emailCustomization.template.textColor}
+                        onChange={(e) => updateEmailCustomization(['template', 'textColor'], e.target.value)}
+                        className="w-full h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="buttonColor">Button Color</Label>
+                      <Input
+                        id="buttonColor"
+                        type="color"
+                        value={emailCustomization.template.buttonColor}
+                        onChange={(e) => updateEmailCustomization(['template', 'buttonColor'], e.target.value)}
+                        className="w-full h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="accentColor">Accent Color</Label>
+                      <Input
+                        id="accentColor"
+                        type="color"
+                        value={emailCustomization.template.accentColor}
+                        onChange={(e) => updateEmailCustomization(['template', 'accentColor'], e.target.value)}
+                        className="w-full h-10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="borderColor">Border Color</Label>
+                      <Input
+                        id="borderColor"
+                        type="color"
+                        value={emailCustomization.template.borderColor}
+                        onChange={(e) => updateEmailCustomization(['template', 'borderColor'], e.target.value)}
+                        className="w-full h-10"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="fontFamily">Font Family</Label>
+                    <Select value={emailCustomization.template.fontFamily} onValueChange={(value) => updateEmailCustomization(['template', 'fontFamily'], value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Arial, sans-serif">Arial</SelectItem>
+                        <SelectItem value="Helvetica, Arial, sans-serif">Helvetica</SelectItem>
+                        <SelectItem value="Georgia, serif">Georgia</SelectItem>
+                        <SelectItem value="'Times New Roman', serif">Times New Roman</SelectItem>
+                        <SelectItem value="'Courier New', monospace">Courier New</SelectItem>
+                        <SelectItem value="Verdana, sans-serif">Verdana</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Content Customization */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Email Content</CardTitle>
+                  <CardDescription>Customize the text and messaging</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="emailSubject">Subject Line</Label>
+                    <Input
+                      id="emailSubject"
+                      value={emailCustomization.content.subject}
+                      onChange={(e) => updateEmailCustomization(['content', 'subject'], e.target.value)}
+                      placeholder="Your ticket confirmation"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="emailHeaderText">Header Text</Label>
+                    <Input
+                      id="emailHeaderText"
+                      value={emailCustomization.content.headerText}
+                      onChange={(e) => updateEmailCustomization(['content', 'headerText'], e.target.value)}
+                      placeholder="Thank you for your purchase!"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="emailBodyText">Body Text</Label>
+                    <Textarea
+                      id="emailBodyText"
+                      value={emailCustomization.content.bodyText}
+                      onChange={(e) => updateEmailCustomization(['content', 'bodyText'], e.target.value)}
+                      placeholder="We are excited to see you at the event."
+                      rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="emailFooterText">Footer Text</Label>
+                    <Input
+                      id="emailFooterText"
+                      value={emailCustomization.content.footerText}
+                      onChange={(e) => updateEmailCustomization(['content', 'footerText'], e.target.value)}
+                      placeholder="Questions? Contact us anytime."
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Branding Options */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Branding & Layout</CardTitle>
+                  <CardDescription>Control logo placement and layout options</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="emailShowLogo">Show Logo</Label>
+                    <Switch
+                      id="emailShowLogo"
+                      checked={emailCustomization.branding.showLogo}
+                      onCheckedChange={(checked) => updateEmailCustomization(['branding', 'showLogo'], checked)}
+                    />
+                  </div>
+                  
+                  {emailCustomization.branding.showLogo && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="logoPosition">Logo Position</Label>
+                        <Select value={emailCustomization.branding.logoPosition} onValueChange={(value) => updateEmailCustomization(['branding', 'logoPosition'], value)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="header">Header</SelectItem>
+                            <SelectItem value="content">Content Area</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="logoSize">Logo Size</Label>
+                        <Select value={emailCustomization.branding.logoSize} onValueChange={(value) => updateEmailCustomization(['branding', 'logoSize'], value)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="small">Small</SelectItem>
+                            <SelectItem value="medium">Medium</SelectItem>
+                            <SelectItem value="large">Large</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="headerStyle">Header Style</Label>
+                    <Select value={emailCustomization.layout.headerStyle} onValueChange={(value) => updateEmailCustomization(['layout', 'headerStyle'], value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="standard">Standard</SelectItem>
+                        <SelectItem value="compact">Compact</SelectItem>
+                        <SelectItem value="gradient">Gradient</SelectItem>
+                        <SelectItem value="center">Center Aligned</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Organiser Notifications */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Organiser Notifications</CardTitle>
+                  <CardDescription>Get notified when tickets are sold</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="organiserNotifications">Send notifications when tickets are sold</Label>
+                    <Switch
+                      id="organiserNotifications"
+                      checked={emailCustomization.notifications?.organiserNotifications || false}
+                      onCheckedChange={(checked) => updateEmailCustomization(['notifications', 'organiserNotifications'], checked)}
+                    />
+                  </div>
+                  {emailCustomization.notifications?.organiserNotifications && (
+                    <div className="space-y-2">
+                      <Label htmlFor="organiserEmail">Notification Email</Label>
+                      <Input
+                        id="organiserEmail"
+                        type="email"
+                        value={emailCustomization.notifications?.organiserEmail || ""}
+                        onChange={(e) => updateEmailCustomization(['notifications', 'organiserEmail'], e.target.value)}
+                        placeholder="Enter email to receive notifications"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        You'll receive an email with ticket details and customer information each time a ticket is sold.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Email Preview */}
+            <div className="lg:sticky lg:top-6">
+              <EmailTemplatePreview
+                emailCustomization={emailCustomization}
+                eventDetails={{
+                  name: "Sample Event Name",
+                  venue: "Sample Venue",
+                  event_date: new Date().toISOString(),
+                  logo_url: undefined
+                }}
+                organizationDetails={{
+                  name: "Your Organization",
+                  logo_url: undefined
+                }}
+              />
+            </div>
           </div>
         </TabsContent>
 
