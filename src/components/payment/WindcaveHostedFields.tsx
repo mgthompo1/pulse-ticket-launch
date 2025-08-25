@@ -149,7 +149,23 @@ export const WindcaveHostedFields: React.FC<WindcaveHostedFieldsProps> = ({
           // Card validation rules based on type
           validation: {
             enabled: true,
-            cardNumberFormat: true
+            cardNumberFormat: true,
+            luhnCheck: true,
+            length: {
+              visa: [13, 16, 19],
+              masterCard: [16],
+              amex: [15],
+              discover: [16],
+              diners: [14]
+            }
+          },
+          // Enhanced card type specific configurations
+          cardTypeSpecific: {
+            visa: { maxLength: 19, minLength: 13 },
+            masterCard: { maxLength: 16, minLength: 16 },
+            amex: { maxLength: 15, minLength: 15 },
+            discover: { maxLength: 16, minLength: 16 },
+            diners: { maxLength: 14, minLength: 14 }
           }
         },
         ExpirationDate: {
