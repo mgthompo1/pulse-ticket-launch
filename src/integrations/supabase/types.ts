@@ -1432,6 +1432,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_current_user_email: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_guest_status_for_event: {
         Args: { p_event_id: string }
         Returns: {
