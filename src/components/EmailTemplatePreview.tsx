@@ -158,7 +158,8 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                   fontSize: '24px', 
                   fontWeight: 'bold', 
                   margin: 0,
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  color: '#ffffff' // Ensure white text for header
                 }}
               >
                 {content.headerText}
