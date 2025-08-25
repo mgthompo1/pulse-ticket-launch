@@ -686,6 +686,112 @@ export type Database = {
           },
         ]
       }
+      organization_invitations: {
+        Row: {
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          invitation_token: string
+          invited_by: string
+          organization_id: string
+          permissions:
+            | Database["public"]["Enums"]["organization_permission"][]
+            | null
+          role: Database["public"]["Enums"]["organization_role"]
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          expires_at?: string
+          id?: string
+          invitation_token: string
+          invited_by: string
+          organization_id: string
+          permissions?:
+            | Database["public"]["Enums"]["organization_permission"][]
+            | null
+          role?: Database["public"]["Enums"]["organization_role"]
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          invitation_token?: string
+          invited_by?: string
+          organization_id?: string
+          permissions?:
+            | Database["public"]["Enums"]["organization_permission"][]
+            | null
+          role?: Database["public"]["Enums"]["organization_role"]
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_users: {
+        Row: {
+          created_at: string | null
+          id: string
+          invited_by: string | null
+          joined_at: string | null
+          organization_id: string
+          permissions:
+            | Database["public"]["Enums"]["organization_permission"][]
+            | null
+          role: Database["public"]["Enums"]["organization_role"]
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          invited_by?: string | null
+          joined_at?: string | null
+          organization_id: string
+          permissions?:
+            | Database["public"]["Enums"]["organization_permission"][]
+            | null
+          role?: Database["public"]["Enums"]["organization_role"]
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          invited_by?: string | null
+          joined_at?: string | null
+          organization_id?: string
+          permissions?:
+            | Database["public"]["Enums"]["organization_permission"][]
+            | null
+          role?: Database["public"]["Enums"]["organization_role"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_users_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           address: string | null
@@ -1263,6 +1369,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_organization_invitation: {
+        Args: { p_invitation_token: string }
+        Returns: string
+      }
       calculate_platform_fee: {
         Args:
           | Record<PropertyKey, never>
@@ -1276,6 +1386,14 @@ export type Database = {
       }
       check_billing_setup: {
         Args: { p_organization_id: string }
+        Returns: boolean
+      }
+      check_user_permission: {
+        Args: {
+          p_organization_id: string
+          p_permission: Database["public"]["Enums"]["organization_permission"]
+          p_user_id: string
+        }
         Returns: boolean
       }
       create_admin_session: {
@@ -1365,6 +1483,10 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: string
       }
+      get_user_organization_role: {
+        Args: { p_organization_id: string; p_user_id: string }
+        Returns: Database["public"]["Enums"]["organization_role"]
+      }
       invalidate_admin_session: {
         Args: { token: string }
         Returns: boolean
@@ -1405,7 +1527,15 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      organization_permission:
+        | "manage_events"
+        | "edit_events"
+        | "view_events"
+        | "manage_payments"
+        | "view_payments"
+        | "manage_users"
+        | "view_analytics"
+      organization_role: "owner" | "admin" | "editor" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1532,6 +1662,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      organization_permission: [
+        "manage_events",
+        "edit_events",
+        "view_events",
+        "manage_payments",
+        "view_payments",
+        "manage_users",
+        "view_analytics",
+      ],
+      organization_role: ["owner", "admin", "editor", "viewer"],
+    },
   },
 } as const
