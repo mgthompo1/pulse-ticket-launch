@@ -97,7 +97,7 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
     const headerStyle = layout?.headerStyle || 'standard';
     const baseStyle = {
       backgroundColor: template.headerColor,
-      color: template.textColor,
+      color: '#ffffff', // Always use white text in header for better contrast
       padding: headerStyle === 'compact' ? '15px 20px' : '25px 20px',
     };
 
