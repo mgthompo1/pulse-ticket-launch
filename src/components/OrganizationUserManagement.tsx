@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, UserPlus, Mail, Users } from 'lucide-react';
+import { Trash2, UserPlus, Mail, Users, Copy, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface OrganizationUser {
@@ -32,6 +32,7 @@ interface Invitation {
   status: string;
   expires_at: string;
   created_at: string;
+  invitation_token: string;
 }
 
 interface OrganizationUserManagementProps {
@@ -243,6 +244,25 @@ export const OrganizationUserManagement = ({ organizationId, organizationName }:
     }
   };
 
+  const handleCopyInvitationLink = async (invitationToken: string) => {
+    const invitationUrl = `${window.location.origin}/invite?token=${invitationToken}`;
+    
+    try {
+      await navigator.clipboard.writeText(invitationUrl);
+      toast({
+        title: 'Success',
+        description: 'Invitation link copied to clipboard',
+      });
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to copy invitation link',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (loading) {
     return <div className="p-6">Loading users...</div>;
   }
@@ -424,6 +444,7 @@ export const OrganizationUserManagement = ({ organizationId, organizationName }:
                 <TableRow>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Invitation Link</TableHead>
                   <TableHead>Sent</TableHead>
                   <TableHead>Expires</TableHead>
                   <TableHead>Actions</TableHead>
@@ -439,19 +460,44 @@ export const OrganizationUserManagement = ({ organizationId, organizationName }:
                       </Badge>
                     </TableCell>
                     <TableCell>
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs bg-muted px-2 py-1 rounded max-w-[200px] truncate">
+                          {`${window.location.origin}/invite?token=${invitation.invitation_token}`}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCopyInvitationLink(invitation.invitation_token)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       {format(new Date(invitation.created_at), 'MMM d, yyyy')}
                     </TableCell>
                     <TableCell>
                       {format(new Date(invitation.expires_at), 'MMM d, yyyy')}
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleCancelInvitation(invitation.id)}
-                      >
-                        Cancel
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleCopyInvitationLink(invitation.invitation_token)}
+                          title="Copy invitation link"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCancelInvitation(invitation.id)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
