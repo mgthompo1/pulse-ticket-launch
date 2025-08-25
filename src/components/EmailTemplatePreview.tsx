@@ -94,13 +94,14 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
   };
 
   const getHeaderStyle = () => {
+    const headerStyle = layout?.headerStyle || 'standard';
     const baseStyle = {
       backgroundColor: template.headerColor,
       color: template.textColor,
-      padding: layout?.headerStyle === 'compact' ? '15px 20px' : '25px 20px',
+      padding: headerStyle === 'compact' ? '15px 20px' : '25px 20px',
     };
 
-    if (layout?.headerStyle === 'gradient') {
+    if (headerStyle === 'gradient') {
       return {
         ...baseStyle,
         background: `linear-gradient(135deg, ${template.headerColor}, ${template.accentColor})`,
@@ -157,7 +158,7 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                   fontSize: '24px', 
                   fontWeight: 'bold', 
                   margin: 0,
-                  textAlign: layout?.headerStyle === 'center' ? 'center' : 'left'
+                  textAlign: (layout?.headerStyle || 'standard') === 'center' ? 'center' : 'left'
                 }}
               >
                 {content.headerText}
