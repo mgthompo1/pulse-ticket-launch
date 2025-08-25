@@ -182,19 +182,19 @@ Deno.serve(async (req) => {
           <div style="font-family: ${themeStyles.fontFamily}; max-width: 600px; margin: 0 auto; ${themeStyles.background ? `background: ${themeStyles.background};` : `background-color: ${themeStyles.backgroundColor};`} ${themeStyles.borderRadius ? `border-radius: ${themeStyles.borderRadius};` : ''} ${themeStyles.boxShadow ? `box-shadow: ${themeStyles.boxShadow};` : ''}">
             
             <!-- Header Section -->
-            <div style="background-color: ${emailCustomization?.template?.headerColor || '#000000'}; color: ${emailCustomization?.template?.textColor || '#ffffff'}; padding: ${emailCustomization?.layout?.headerStyle === 'compact' ? '15px 20px' : '25px 20px'}; ${themeStyles.borderRadius ? `border-radius: ${themeStyles.borderRadius} ${themeStyles.borderRadius} 0 0;` : ''}">
+            <div style="background-color: ${emailCustomization?.template?.headerColor || '#000000'}; color: ${emailCustomization?.template?.textColor || '#ffffff'}; padding: ${emailCustomization?.layout?.headerStyle === 'compact' ? '15px 20px' : '25px 20px'}; ${themeStyles.borderRadius ? `border-radius: ${themeStyles.borderRadius} ${themeStyles.borderRadius} 0 0;` : ''} text-align: center;">
               ${orgLogo && emailCustomization?.branding?.showLogo && emailCustomization?.branding?.logoPosition === 'header' ? `
                 <div style="text-align: center; margin-bottom: 15px;">
                   <img src="${orgLogo}" alt="Logo" style="max-height: ${emailCustomization?.branding?.logoSize === 'small' ? '40px' : emailCustomization?.branding?.logoSize === 'large' ? '80px' : '60px'}; max-width: 200px; height: auto;">
                 </div>
               ` : ''}
-              <h1 style="margin: 0; font-size: 24px; font-weight: bold; text-align: ${emailCustomization?.layout?.headerStyle === 'center' ? 'center' : 'left'};">
-                ${emailCustomization?.content?.headerText || 'Your Tickets Are Ready!'}
+              <h1 style="margin: 0; font-size: 24px; font-weight: bold; text-align: center;">
+                ${emailCustomization?.content?.headerText || 'Thank you for your purchase!'}
               </h1>
             </div>
             
             <!-- Content Section -->
-            <div style="padding: 30px 20px;">
+            <div style="padding: 30px 20px; text-align: center;">
               ${orgLogo && emailCustomization?.branding?.showLogo && emailCustomization?.branding?.logoPosition === 'content' ? `
                 <div style="text-align: center; margin-bottom: 20px;">
                   <img src="${orgLogo}" alt="Logo" style="max-height: ${emailCustomization?.branding?.logoSize === 'small' ? '40px' : emailCustomization?.branding?.logoSize === 'large' ? '80px' : '60px'}; max-width: 200px; height: auto;">
@@ -202,28 +202,30 @@ Deno.serve(async (req) => {
               ` : ''}
               
               <!-- Event Details Card -->
-              <div style="background-color: ${emailCustomization?.template?.accentColor || '#f8f9fa'}; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid ${emailCustomization?.template?.borderColor || '#e5e7eb'};">
-                <h2 style="margin: 0 0 15px 0; color: ${emailCustomization?.template?.textColor || '#333333'}; font-size: 20px; font-weight: 600;">${order.events.name}</h2>
-                <p style="margin: 5px 0; font-size: 14px; color: ${emailCustomization?.template?.textColor || '#666666'};">📅 ${new Date(order.events.event_date).toLocaleDateString()}</p>
-                <p style="margin: 5px 0; font-size: 14px; color: ${emailCustomization?.template?.textColor || '#666666'};">📍 ${order.events.venue || 'TBA'}</p>
-                <p style="margin: 5px 0; font-size: 14px; color: ${emailCustomization?.template?.textColor || '#666666'};">👤 ${order.customer_name}</p>
+              <div style="background-color: ${emailCustomization?.template?.accentColor || '#f8f9fa'}; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid ${emailCustomization?.template?.borderColor || '#e5e7eb'}; text-align: center;">
+                <h2 style="margin: 0 0 15px 0; color: ${emailCustomization?.template?.textColor || '#333333'}; font-size: 20px; font-weight: 600; text-align: center;">${order.events.name}</h2>
+                <p style="margin: 5px 0; font-size: 14px; color: ${emailCustomization?.template?.textColor || '#666666'}; text-align: center;">📅 ${new Date(order.events.event_date).toLocaleDateString()}</p>
+                <br>
+                <p style="margin: 5px 0; font-size: 14px; color: ${emailCustomization?.template?.textColor || '#666666'}; text-align: center;">📍 ${order.events.venue || 'TBA'}</p>
+                <br>
+                <p style="margin: 5px 0; font-size: 14px; color: ${emailCustomization?.template?.textColor || '#666666'}; text-align: center;">👤 ${order.customer_name}</p>
               </div>
 
               <!-- Body Text -->
-              <div style="color: ${emailCustomization?.template?.textColor || '#333333'}; line-height: 1.6; margin-bottom: 25px; font-size: 16px;">
-                ${emailCustomization?.content?.bodyText || 'We are excited to see you at the event!'}
+              <div style="color: ${emailCustomization?.template?.textColor || '#333333'}; line-height: 1.6; margin-bottom: 25px; font-size: 16px; text-align: center;">
+                ${emailCustomization?.content?.bodyText || 'We are excited to see you at the event.'}
               </div>
 
               <!-- Tickets Section -->
-              <h3 style="color: ${emailCustomization?.template?.textColor || '#333333'}; margin-bottom: 15px; font-size: 18px;">Your Tickets:</h3>
+              <h3 style="color: ${emailCustomization?.template?.textColor || '#333333'}; margin-bottom: 15px; font-size: 18px; text-align: center;">Your Tickets:</h3>
               ${allTickets.map(ticket => `
-                <div style="border: 1px solid ${emailCustomization?.template?.borderColor || '#ddd'}; padding: 20px; margin: 15px 0; border-radius: 8px; background-color: #ffffff;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-                    <div>
-                      <strong style="font-size: 16px; color: ${emailCustomization?.template?.textColor || '#333333'};">${ticket.type}</strong><br>
+                <div style="border: 1px solid ${emailCustomization?.template?.borderColor || '#ddd'}; padding: 20px; margin: 15px 0; border-radius: 8px; background-color: #ffffff; text-align: center;">
+                  <div style="text-align: center;">
+                    <div style="margin-bottom: 10px;">
+                      <strong style="font-size: 16px; color: ${emailCustomization?.template?.textColor || '#333333'}; display: block;">${ticket.type}</strong>
                       <code style="background: ${emailCustomization?.template?.accentColor || '#f0f0f0'}; padding: 8px 12px; font-size: 14px; border-radius: 4px; display: inline-block; margin: 8px 0; font-family: 'Courier New', monospace;">${ticket.code}</code>
                     </div>
-                    <div style="text-align: right;">
+                    <div>
                       <strong style="font-size: 16px; color: ${emailCustomization?.template?.textColor || '#333333'};">$${ticket.price}</strong>
                     </div>
                   </div>
@@ -231,26 +233,26 @@ Deno.serve(async (req) => {
               `).join('')}
 
               <!-- Important Information -->
-              <div style="background: ${emailCustomization?.template?.accentColor || '#e3f2fd'}; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid ${emailCustomization?.template?.buttonColor || '#2196f3'};">
-                <h4 style="margin: 0 0 10px 0; color: ${emailCustomization?.template?.textColor || '#333333'};">Important Information:</h4>
-                <ul style="margin: 0; padding-left: 20px; color: ${emailCustomization?.template?.textColor || '#333333'};">
-                  <li>Present your ticket codes at the event entrance</li>
-                  <li>Screenshots or printed versions are accepted</li>
-                  <li>Each ticket is valid for one person only</li>
-                  <li>Arrive early to avoid queues</li>
-                </ul>
+              <div style="background: ${emailCustomization?.template?.accentColor || '#e3f2fd'}; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid ${emailCustomization?.template?.buttonColor || '#2196f3'}; text-align: center;">
+                <h4 style="margin: 0 0 10px 0; color: ${emailCustomization?.template?.textColor || '#333333'}; text-align: center;">Important Information:</h4>
+                <div style="text-align: center; color: ${emailCustomization?.template?.textColor || '#333333'};">
+                  <p style="margin: 8px 0;">Present your ticket codes at the event entrance</p>
+                  <p style="margin: 8px 0;">Screenshots or printed versions are accepted</p>
+                  <p style="margin: 8px 0;">Each ticket is valid for one person only</p>
+                  <p style="margin: 8px 0;">Arrive early to avoid queues</p>
+                </div>
               </div>
 
               <!-- Contact Information -->
-              <p style="color: #666; font-size: 14px; margin: 20px 0;">
+              <p style="color: #666; font-size: 14px; margin: 20px 0; text-align: center;">
                 Questions? Contact the event organizer: <a href="mailto:${order.events.organizations.email}" style="color: ${emailCustomization?.template?.buttonColor || '#2196f3'};">${order.events.organizations.email}</a>
               </p>
             </div>
             
             <!-- Footer -->
             <div style="background-color: ${emailCustomization?.template?.accentColor || '#f8f9fa'}; padding: 20px; text-align: center; ${themeStyles.borderRadius ? `border-radius: 0 0 ${themeStyles.borderRadius} ${themeStyles.borderRadius};` : ''} border-top: 1px solid ${emailCustomization?.template?.borderColor || '#eee'};">
-              <p style="color: #999; font-size: 12px; margin: 0;">
-                ${emailCustomization?.content?.footerText || 'Powered by TicketFlo Platform'}
+              <p style="color: #999; font-size: 12px; margin: 0; text-align: center;">
+                ${emailCustomization?.content?.footerText || 'Questions? Contact us anytime.'}
               </p>
             </div>
           </div>
