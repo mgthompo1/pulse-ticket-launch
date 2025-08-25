@@ -166,7 +166,22 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         setTicketCustomization(data.ticket_customization as typeof ticketCustomization);
       }
       if (data?.email_customization) {
-        setEmailCustomization(data.email_customization as typeof emailCustomization);
+        const savedCustomization = data.email_customization as any;
+        setEmailCustomization(prev => ({
+          ...prev,
+          ...savedCustomization,
+          template: {
+            ...prev.template,
+            ...savedCustomization?.template,
+            // Ensure color values are never empty
+            headerColor: savedCustomization?.template?.headerColor || "#000000",
+            backgroundColor: savedCustomization?.template?.backgroundColor || "#ffffff", 
+            textColor: savedCustomization?.template?.textColor || "#000000",
+            buttonColor: savedCustomization?.template?.buttonColor || "#000000",
+            accentColor: savedCustomization?.template?.accentColor || "#f3f4f6",
+            borderColor: savedCustomization?.template?.borderColor || "#e5e7eb"
+          }
+        }));
       }
     } catch (error) {
       console.error("Error loading customizations:", error);
