@@ -24,7 +24,7 @@ interface EmailTemplatePreviewProps {
       logoPosition: string;
       logoSize: string;
     };
-    layout: {
+    layout?: {
       headerStyle: string;
       contentLayout: string;
       footerStyle: string;
@@ -47,7 +47,7 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
   eventDetails,
   organizationDetails
 }) => {
-  const { template, content, branding, layout } = emailCustomization;
+  const { template, content, branding, layout = { headerStyle: 'standard', contentLayout: 'standard', footerStyle: 'standard' } } = emailCustomization;
   
   const getLogoUrl = () => {
     if (!branding.showLogo) return null;
