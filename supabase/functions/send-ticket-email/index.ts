@@ -145,14 +145,67 @@ Deno.serve(async (req) => {
     const emailCustomization = order.events.email_customization as any;
     const orgLogo = order.events.organizations.logo_url;
     
-    // Helper function to get theme-based styles
+    // Helper function to get theme-based styles with color presets
     const getThemeStyles = (theme: string) => {
       const template = emailCustomization?.template || {};
+      
+      // Theme color presets matching the frontend
+      const themePresets = {
+        professional: {
+          headerColor: "#1f2937",
+          backgroundColor: "#ffffff", 
+          textColor: "#374151",
+          buttonColor: "#1f2937",
+          accentColor: "#f9fafb",
+          borderColor: "#d1d5db"
+        },
+        modern: {
+          headerColor: "#3b82f6",
+          backgroundColor: "#ffffff",
+          textColor: "#1f2937", 
+          buttonColor: "#3b82f6",
+          accentColor: "#eff6ff",
+          borderColor: "#dbeafe"
+        },
+        elegant: {
+          headerColor: "#7c3aed",
+          backgroundColor: "#ffffff",
+          textColor: "#374151",
+          buttonColor: "#7c3aed", 
+          accentColor: "#f5f3ff",
+          borderColor: "#e0e7ff"
+        },
+        minimal: {
+          headerColor: "#000000",
+          backgroundColor: "#ffffff",
+          textColor: "#000000",
+          buttonColor: "#000000",
+          accentColor: "#f8f9fa",
+          borderColor: "#e9ecef"
+        },
+        creative: {
+          headerColor: "#ec4899",
+          backgroundColor: "#ffffff",
+          textColor: "#1f2937",
+          buttonColor: "#ec4899",
+          accentColor: "#fdf2f8", 
+          borderColor: "#f9a8d4"
+        }
+      };
+
+      // Get theme preset or use template colors if custom
+      const themeColors = themePresets[theme as keyof typeof themePresets] || {
+        headerColor: template.headerColor || "#1f2937",
+        backgroundColor: template.backgroundColor || "#ffffff",
+        textColor: template.textColor || "#374151",
+        buttonColor: template.buttonColor || "#1f2937",
+        accentColor: template.accentColor || "#f9fafb",
+        borderColor: template.borderColor || "#d1d5db"
+      };
+
       const baseStyles = {
         fontFamily: template.fontFamily || 'Arial, sans-serif',
-        backgroundColor: template.backgroundColor || '#ffffff',
-        borderColor: template.borderColor || '#e5e7eb',
-        accentColor: template.accentColor || '#f3f4f6'
+        ...themeColors
       };
 
       switch (theme) {
@@ -164,8 +217,9 @@ Deno.serve(async (req) => {
           return { ...baseStyles, borderRadius: '4px', border: `1px solid ${baseStyles.borderColor}` };
         case 'creative':
           return { ...baseStyles, borderRadius: '16px', background: `linear-gradient(135deg, ${baseStyles.backgroundColor}, ${baseStyles.accentColor}15)` };
+        case 'professional':
         default:
-          return baseStyles;
+          return { ...baseStyles, borderRadius: '8px', border: `1px solid ${baseStyles.borderColor}` };
       }
     };
 
@@ -182,7 +236,7 @@ Deno.serve(async (req) => {
           <div style="font-family: ${themeStyles.fontFamily}; max-width: 600px; margin: 0 auto; ${themeStyles.background ? `background: ${themeStyles.background};` : `background-color: ${themeStyles.backgroundColor};`} ${themeStyles.borderRadius ? `border-radius: ${themeStyles.borderRadius};` : ''} ${themeStyles.boxShadow ? `box-shadow: ${themeStyles.boxShadow};` : ''}">
             
             <!-- Header Section -->
-            <div style="background-color: ${emailCustomization?.template?.headerColor || '#000000'}; color: ${emailCustomization?.template?.textColor || '#ffffff'}; padding: ${emailCustomization?.layout?.headerStyle === 'compact' ? '15px 20px' : '25px 20px'}; ${themeStyles.borderRadius ? `border-radius: ${themeStyles.borderRadius} ${themeStyles.borderRadius} 0 0;` : ''} text-align: center;">
+            <div style="background-color: ${themeStyles.headerColor}; color: ${themeStyles.backgroundColor}; padding: ${emailCustomization?.layout?.headerStyle === 'compact' ? '15px 20px' : '25px 20px'}; ${themeStyles.borderRadius ? `border-radius: ${themeStyles.borderRadius} ${themeStyles.borderRadius} 0 0;` : ''} text-align: center;">
               ${orgLogo && emailCustomization?.branding?.showLogo && emailCustomization?.branding?.logoPosition === 'header' ? `
                 <div style="text-align: center; margin-bottom: 15px;">
                   <img src="${orgLogo}" alt="Logo" style="max-height: ${emailCustomization?.branding?.logoSize === 'small' ? '40px' : emailCustomization?.branding?.logoSize === 'large' ? '80px' : '60px'}; max-width: 200px; height: auto;">
@@ -202,40 +256,40 @@ Deno.serve(async (req) => {
               ` : ''}
               
               <!-- Event Details Card -->
-              <div style="background-color: ${emailCustomization?.template?.accentColor || '#f8f9fa'}; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid ${emailCustomization?.template?.borderColor || '#e5e7eb'}; text-align: center;">
-                <h2 style="margin: 0 0 15px 0; color: ${emailCustomization?.template?.textColor || '#333333'}; font-size: 20px; font-weight: 600; text-align: center;">${order.events.name}</h2>
-                <p style="margin: 5px 0; font-size: 14px; color: ${emailCustomization?.template?.textColor || '#666666'}; text-align: center;">📅 ${new Date(order.events.event_date).toLocaleDateString()}</p>
+              <div style="background-color: ${themeStyles.accentColor}; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid ${themeStyles.borderColor}; text-align: center;">
+                <h2 style="margin: 0 0 15px 0; color: ${themeStyles.textColor}; font-size: 20px; font-weight: 600; text-align: center;">${order.events.name}</h2>
+                <p style="margin: 5px 0; font-size: 14px; color: ${themeStyles.textColor}; text-align: center;">📅 ${new Date(order.events.event_date).toLocaleDateString()}</p>
                 <br>
-                <p style="margin: 5px 0; font-size: 14px; color: ${emailCustomization?.template?.textColor || '#666666'}; text-align: center;">📍 ${order.events.venue || 'TBA'}</p>
+                <p style="margin: 5px 0; font-size: 14px; color: ${themeStyles.textColor}; text-align: center;">📍 ${order.events.venue || 'TBA'}</p>
                 <br>
-                <p style="margin: 5px 0; font-size: 14px; color: ${emailCustomization?.template?.textColor || '#666666'}; text-align: center;">👤 ${order.customer_name}</p>
+                <p style="margin: 5px 0; font-size: 14px; color: ${themeStyles.textColor}; text-align: center;">👤 ${order.customer_name}</p>
               </div>
 
               <!-- Body Text -->
-              <div style="color: ${emailCustomization?.template?.textColor || '#333333'}; line-height: 1.6; margin-bottom: 25px; font-size: 16px; text-align: center;">
+              <div style="color: ${themeStyles.textColor}; line-height: 1.6; margin-bottom: 25px; font-size: 16px; text-align: center;">
                 ${emailCustomization?.content?.bodyText || 'We are excited to see you at the event.'}
               </div>
 
               <!-- Tickets Section -->
-              <h3 style="color: ${emailCustomization?.template?.textColor || '#333333'}; margin-bottom: 15px; font-size: 18px; text-align: center;">Your Tickets:</h3>
+              <h3 style="color: ${themeStyles.textColor}; margin-bottom: 15px; font-size: 18px; text-align: center;">Your Tickets:</h3>
               ${allTickets.map(ticket => `
-                <div style="border: 1px solid ${emailCustomization?.template?.borderColor || '#ddd'}; padding: 20px; margin: 15px 0; border-radius: 8px; background-color: #ffffff; text-align: center;">
+                <div style="border: 1px solid ${themeStyles.borderColor}; padding: 20px; margin: 15px 0; border-radius: 8px; background-color: #ffffff; text-align: center;">
                   <div style="text-align: center;">
                     <div style="margin-bottom: 10px;">
-                      <strong style="font-size: 16px; color: ${emailCustomization?.template?.textColor || '#333333'}; display: block;">${ticket.type}</strong>
-                      <code style="background: ${emailCustomization?.template?.accentColor || '#f0f0f0'}; padding: 8px 12px; font-size: 14px; border-radius: 4px; display: inline-block; margin: 8px 0; font-family: 'Courier New', monospace;">${ticket.code}</code>
+                      <strong style="font-size: 16px; color: ${themeStyles.textColor}; display: block;">${ticket.type}</strong>
+                      <code style="background: ${themeStyles.accentColor}; padding: 8px 12px; font-size: 14px; border-radius: 4px; display: inline-block; margin: 8px 0; font-family: 'Courier New', monospace;">${ticket.code}</code>
                     </div>
                     <div>
-                      <strong style="font-size: 16px; color: ${emailCustomization?.template?.textColor || '#333333'};">$${ticket.price}</strong>
+                      <strong style="font-size: 16px; color: ${themeStyles.textColor};">$${ticket.price}</strong>
                     </div>
                   </div>
                 </div>
               `).join('')}
 
               <!-- Important Information -->
-              <div style="background: ${emailCustomization?.template?.accentColor || '#e3f2fd'}; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid ${emailCustomization?.template?.buttonColor || '#2196f3'}; text-align: center;">
-                <h4 style="margin: 0 0 10px 0; color: ${emailCustomization?.template?.textColor || '#333333'}; text-align: center;">Important Information:</h4>
-                <div style="text-align: center; color: ${emailCustomization?.template?.textColor || '#333333'};">
+              <div style="background: ${themeStyles.accentColor}; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid ${themeStyles.buttonColor}; text-align: center;">
+                <h4 style="margin: 0 0 10px 0; color: ${themeStyles.textColor}; text-align: center;">Important Information:</h4>
+                <div style="text-align: center; color: ${themeStyles.textColor};">
                   <p style="margin: 8px 0;">Present your ticket codes at the event entrance</p>
                   <p style="margin: 8px 0;">Screenshots or printed versions are accepted</p>
                   <p style="margin: 8px 0;">Each ticket is valid for one person only</p>
@@ -245,12 +299,12 @@ Deno.serve(async (req) => {
 
               <!-- Contact Information -->
               <p style="color: #666; font-size: 14px; margin: 20px 0; text-align: center;">
-                Questions? Contact the event organizer: <a href="mailto:${order.events.organizations.email}" style="color: ${emailCustomization?.template?.buttonColor || '#2196f3'};">${order.events.organizations.email}</a>
+                Questions? Contact the event organizer: <a href="mailto:${order.events.organizations.email}" style="color: ${themeStyles.buttonColor};">${order.events.organizations.email}</a>
               </p>
             </div>
             
             <!-- Footer -->
-            <div style="background-color: ${emailCustomization?.template?.accentColor || '#f8f9fa'}; padding: 20px; text-align: center; ${themeStyles.borderRadius ? `border-radius: 0 0 ${themeStyles.borderRadius} ${themeStyles.borderRadius};` : ''} border-top: 1px solid ${emailCustomization?.template?.borderColor || '#eee'};">
+            <div style="background-color: ${themeStyles.accentColor}; padding: 20px; text-align: center; ${themeStyles.borderRadius ? `border-radius: 0 0 ${themeStyles.borderRadius} ${themeStyles.borderRadius};` : ''} border-top: 1px solid ${themeStyles.borderColor};">
               <p style="color: #999; font-size: 12px; margin: 0; text-align: center;">
                 ${emailCustomization?.content?.footerText || 'Questions? Contact us anytime.'}
               </p>
