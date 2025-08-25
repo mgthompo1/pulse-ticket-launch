@@ -105,10 +105,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
   const [emailCustomization, setEmailCustomization] = useState({
     template: {
       theme: "professional", // professional, modern, elegant, minimal, creative
-      headerColor: "#000000",
+      headerColor: "#3b82f6",
       backgroundColor: "#ffffff",
-      textColor: "#000000",
-      buttonColor: "#000000",
+      textColor: "#1f2937",
+      buttonColor: "#3b82f6",
       accentColor: "#f3f4f6",
       borderColor: "#e5e7eb",
       fontFamily: "Arial, sans-serif"
@@ -132,8 +132,53 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     notifications: {
       organiserNotifications: false,
       organiserEmail: ""
-    }
+    },
+    useCustomColors: false // New toggle for custom vs theme colors
   });
+
+  // Email theme presets
+  const emailThemePresets = {
+    professional: {
+      headerColor: "#1f2937",
+      backgroundColor: "#ffffff", 
+      textColor: "#374151",
+      buttonColor: "#1f2937",
+      accentColor: "#f9fafb",
+      borderColor: "#d1d5db"
+    },
+    modern: {
+      headerColor: "#3b82f6",
+      backgroundColor: "#ffffff",
+      textColor: "#1f2937", 
+      buttonColor: "#3b82f6",
+      accentColor: "#eff6ff",
+      borderColor: "#dbeafe"
+    },
+    elegant: {
+      headerColor: "#7c3aed",
+      backgroundColor: "#ffffff",
+      textColor: "#374151",
+      buttonColor: "#7c3aed", 
+      accentColor: "#f5f3ff",
+      borderColor: "#e0e7ff"
+    },
+    minimal: {
+      headerColor: "#000000",
+      backgroundColor: "#ffffff",
+      textColor: "#000000",
+      buttonColor: "#000000",
+      accentColor: "#f8f9fa",
+      borderColor: "#e9ecef"
+    },
+    creative: {
+      headerColor: "#ec4899",
+      backgroundColor: "#ffffff",
+      textColor: "#1f2937",
+      buttonColor: "#ec4899",
+      accentColor: "#fdf2f8", 
+      borderColor: "#f9a8d4"
+    }
+  };
 
   const loadCustomizations = useCallback(async () => {
     try {
@@ -265,9 +310,41 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         current = current[path[i]];
       }
       current[path[path.length - 1]] = value;
+      
+      // If theme is being changed and not using custom colors, apply theme preset
+      if (path[0] === 'template' && path[1] === 'theme' && !updated.useCustomColors) {
+        const preset = emailThemePresets[value as keyof typeof emailThemePresets];
+        if (preset) {
+          updated.template = { ...updated.template, ...preset };
+        }
+      }
+      
       return updated;
     });
   };
+
+  // Function to inherit colors from widget theme
+  const inheritWidgetTheme = () => {
+    const widgetTheme = widgetCustomization.theme;
+    setEmailCustomization(prev => ({
+      ...prev,
+      template: {
+        ...prev.template,
+        headerColor: widgetTheme.primaryColor,
+        backgroundColor: widgetTheme.backgroundColor,
+        textColor: widgetTheme.bodyTextColor,
+        buttonColor: widgetTheme.primaryColor,
+        accentColor: widgetTheme.secondaryColor + "20", // Add transparency for accent
+        borderColor: widgetTheme.secondaryColor
+      },
+      useCustomColors: false
+    }));
+  };
+
+  // Debug email customization changes
+  useEffect(() => {
+    console.log("Email customization changed:", emailCustomization);
+  }, [emailCustomization]);
 
   return (
     <div className="space-y-6">
@@ -1217,6 +1294,24 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       </div>
                     ))}
                   </div>
+                  
+                  {/* Inherit Widget Theme Option */}
+                  <div className="mt-4 p-3 border rounded-lg bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="font-medium">Use Widget Theme</Label>
+                        <p className="text-xs text-muted-foreground">Automatically match your widget's color scheme</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={inheritWidgetTheme}
+                        className="shrink-0"
+                      >
+                        Apply Widget Colors
+                      </Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -1227,6 +1322,22 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   <CardDescription>Customize the visual appearance</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Custom Colors Toggle */}
+                  <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/20">
+                    <div>
+                      <Label htmlFor="useCustomColors" className="font-medium">Custom Colors</Label>
+                      <p className="text-xs text-muted-foreground">Enable to override theme colors with custom values</p>
+                    </div>
+                    <Switch
+                      id="useCustomColors"
+                      checked={emailCustomization.useCustomColors}
+                      onCheckedChange={(checked) => updateEmailCustomization(['useCustomColors'], checked)}
+                    />
+                  </div>
+                  
+                  {/* Color Controls - Only show if custom colors enabled */}
+                  {emailCustomization.useCustomColors && (
+                  <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="headerColor">Header Color</Label>
@@ -1305,7 +1416,9 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         <SelectItem value="Verdana, sans-serif">Verdana</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                   </div>
+                   </div>
+                   )}
                 </CardContent>
               </Card>
 
