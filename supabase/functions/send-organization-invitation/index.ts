@@ -25,7 +25,9 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const resendApiKey = Deno.env.get('RESEND_API_KEY')!;
 
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: { persistSession: false }
+    });
     const resend = new Resend(resendApiKey);
 
     // Get the JWT token from the Authorization header
@@ -34,15 +36,9 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('No authorization header');
     }
 
-    // Set the auth context for RLS
+    // Set the Authorization header for RLS context
     const jwt = authHeader.replace('Bearer ', '');
-    supabase.auth.session = {
-      access_token: jwt,
-      refresh_token: '',
-      expires_in: 3600,
-      token_type: 'bearer',
-      user: null
-    } as any;
+    supabase.rest.headers['Authorization'] = `Bearer ${jwt}`;
 
     const { email, role, permissions, organizationId }: InvitationRequest = await req.json();
 
