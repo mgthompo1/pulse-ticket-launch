@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { jsPDF } from "npm:jspdf@2.5.1";
+import QRCode from "npm:qrcode@1.5.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,81 +16,220 @@ interface TicketData {
   venue?: string;
   price: number;
   order_id: string;
+  status: string;
 }
 
 // Helper function to safely sanitize text
 function sanitizeText(text: string, fallback: string = 'N/A'): string {
   if (!text || typeof text !== 'string') return fallback;
-  return text.replace(/[<>&"']/g, (char) => {
-    const entityMap: { [key: string]: string } = {
-      '<': '&lt;',
-      '>': '&gt;',
-      '&': '&amp;',
-      '"': '&quot;',
-      "'": '&#39;'
-    };
-    return entityMap[char] || char;
-  }).trim() || fallback;
+  return text.replace(/[^\w\s.-]/g, '').replace(/\s+/g, ' ').trim() || fallback;
 }
 
-// Generate simple HTML ticket
-function generateTicketHTML(tickets: TicketData[], orderInfo: any): string {
-  const ticketsHTML = tickets.map(ticket => `
-    <div style="page-break-after: always; padding: 40px; border: 2px solid #e5e7eb; margin: 20px; background: white; font-family: Arial, sans-serif;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-        <div style="flex: 1;">
-          <h1 style="font-size: 24px; font-weight: bold; margin: 0 0 10px 0; color: #1f2937;">
-            ${sanitizeText(ticket.event_name)}
-          </h1>
-          <p style="font-size: 14px; color: #6b7280; margin: 0 0 20px 0;">
-            ${new Date(ticket.event_date).toLocaleDateString()} • ${sanitizeText(ticket.venue || 'TBA')}
-          </p>
-          <div style="margin: 20px 0;">
-            <h3 style="font-size: 16px; font-weight: bold; margin: 0 0 5px 0;">
-              ${sanitizeText(ticket.ticket_type_name)}
-            </h3>
-            <p style="font-size: 18px; font-weight: bold; margin: 0;">
-              ${sanitizeText(ticket.customer_name)}
-            </p>
-          </div>
-        </div>
-        <div style="text-align: center; padding-left: 20px;">
-          <div style="width: 120px; height: 120px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
-            <span style="font-size: 10px; color: #9ca3af;">QR Code</span>
-          </div>
-          <p style="font-size: 12px; color: #6b7280; margin: 0;">
-            ${ticket.ticket_code}
-          </p>
-        </div>
-      </div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-        <span style="font-size: 12px; color: #9ca3af;">
-          Ticket: ${ticket.ticket_code}
-        </span>
-        ${ticket.price > 0 ? `<span style="font-size: 16px; font-weight: bold;">$${ticket.price.toFixed(2)}</span>` : ''}
-      </div>
-    </div>
-  `).join('');
+// Generate QR code as base64 - simplified to avoid stack overflow
+async function generateQR(ticket: TicketData): Promise<string> {
+  try {
+    const qrData = JSON.stringify({
+      ticketId: ticket.ticket_code,
+      ticketCode: ticket.ticket_code,
+      eventName: ticket.event_name,
+      customerName: ticket.customer_name,
+      status: ticket.status
+    });
+    
+    return await QRCode.toDataURL(qrData, {
+      width: 128,
+      margin: 2,
+      color: { dark: '#000000', light: '#FFFFFF' }
+    });
+  } catch (error) {
+    console.error('QR generation error:', error);
+    return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  }
+}
 
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Tickets</title>
-      <style>
-        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
-        @media print { 
-          .ticket { page-break-after: always; }
-          .ticket:last-child { page-break-after: avoid; }
-        }
-      </style>
-    </head>
-    <body>
-      ${ticketsHTML}
-    </body>
-    </html>
-  `;
+// Format date like the React component
+function formatDate(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  } catch {
+    return dateString;
+  }
+}
+
+function formatTime(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  } catch {
+    return '';
+  }
+}
+
+// Create beautiful ticket design matching React component
+async function createTicketPage(pdf: jsPDF, ticket: TicketData, logoUrl?: string): Promise<void> {
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const margin = 20;
+  const cardWidth = 160; // Fixed width for card
+  const cardX = (pageWidth - cardWidth) / 2; // Center the card
+  let currentY = 30;
+
+  // Card background with subtle gradient effect (simulate with light gray)
+  pdf.setFillColor(249, 250, 251); // Very light gray
+  pdf.roundedRect(cardX, currentY, cardWidth, 200, 8, 8, 'F');
+  
+  // Card border
+  pdf.setDrawColor(229, 231, 235);
+  pdf.setLineWidth(0.5);
+  pdf.roundedRect(cardX, currentY, cardWidth, 200, 8, 8, 'S');
+
+  const contentX = cardX + 15;
+  currentY += 20;
+
+  // Logo section (if available)
+  if (logoUrl && logoUrl.length > 50) {
+    try {
+      // Add logo - simplified approach
+      const logoY = currentY;
+      currentY += 25; // Space for logo
+    } catch (error) {
+      console.warn('Logo loading failed:', error);
+    }
+  }
+
+  // Event name (header)
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(16);
+  pdf.setTextColor(0, 0, 0);
+  const eventNameLines = pdf.splitTextToSize(ticket.event_name, cardWidth - 30);
+  pdf.text(eventNameLines, contentX, currentY);
+  currentY += eventNameLines.length * 8 + 5;
+
+  // Venue (if available)
+  if (ticket.venue) {
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.setTextColor(107, 114, 128);
+    pdf.text(`📍 ${ticket.venue}`, contentX, currentY);
+    currentY += 15;
+  }
+
+  // Border line
+  pdf.setDrawColor(229, 231, 235);
+  pdf.line(contentX, currentY, contentX + cardWidth - 30, currentY);
+  currentY += 15;
+
+  // Event details section
+  const sectionSpacing = 12;
+
+  // Date and time
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  pdf.setTextColor(107, 114, 128);
+  pdf.text("📅", contentX, currentY);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(10);
+  pdf.setTextColor(0, 0, 0);
+  pdf.text(formatDate(ticket.event_date), contentX + 10, currentY);
+  currentY += 6;
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(9);
+  pdf.setTextColor(107, 114, 128);
+  const timeStr = formatTime(ticket.event_date);
+  if (timeStr) {
+    pdf.text(timeStr, contentX + 10, currentY);
+  }
+  currentY += sectionSpacing;
+
+  // Ticket type
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  pdf.setTextColor(107, 114, 128);
+  pdf.text("🎫", contentX, currentY);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(10);
+  pdf.setTextColor(0, 0, 0);
+  pdf.text(ticket.ticket_type_name, contentX + 10, currentY);
+  currentY += 6;
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  pdf.setTextColor(107, 114, 128);
+  pdf.text("Ticket Type", contentX + 10, currentY);
+  currentY += sectionSpacing;
+
+  // Customer name
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  pdf.setTextColor(107, 114, 128);
+  pdf.text("👤", contentX, currentY);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(10);
+  pdf.setTextColor(0, 0, 0);
+  pdf.text(ticket.customer_name, contentX + 10, currentY);
+  currentY += 6;
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  pdf.setTextColor(107, 114, 128);
+  pdf.text("Attendee", contentX + 10, currentY);
+  currentY += 15;
+
+  // Border line before QR section
+  pdf.setDrawColor(229, 231, 235);
+  pdf.line(contentX, currentY, contentX + cardWidth - 30, currentY);
+  currentY += 15;
+
+  // QR Code section
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(9);
+  pdf.setTextColor(107, 114, 128);
+  pdf.text("Scan QR Code at Event", contentX + (cardWidth - 30) / 2, currentY, { align: 'center' });
+  currentY += 10;
+
+  // Generate and add QR code
+  const qrCodeUrl = await generateQR(ticket);
+  if (qrCodeUrl && qrCodeUrl.length > 50) {
+    try {
+      const qrSize = 40;
+      const qrX = contentX + (cardWidth - 30 - qrSize) / 2;
+      pdf.addImage(qrCodeUrl, 'PNG', qrX, currentY, qrSize, qrSize);
+      currentY += qrSize + 8;
+    } catch (qrError) {
+      console.warn('Failed to add QR code:', qrError);
+      currentY += 20;
+    }
+  } else {
+    currentY += 20;
+  }
+
+  // Ticket code and status
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  pdf.setTextColor(107, 114, 128);
+  pdf.text(`Ticket Code: ${ticket.ticket_code}`, contentX + (cardWidth - 30) / 2, currentY, { align: 'center' });
+  currentY += 6;
+  pdf.setTextColor(34, 197, 94); // Green color for status
+  pdf.text(`Status: ${ticket.status.toUpperCase()}`, contentX + (cardWidth - 30) / 2, currentY, { align: 'center' });
+  currentY += 15;
+
+  // Final border line
+  pdf.setDrawColor(229, 231, 235);
+  pdf.line(contentX, currentY, contentX + cardWidth - 30, currentY);
+  currentY += 8;
+
+  // Footer
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(7);
+  pdf.setTextColor(107, 114, 128);
+  pdf.text("Please present this ticket at the event entrance", contentX + (cardWidth - 30) / 2, currentY, { align: 'center' });
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -172,28 +313,53 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Found ${tickets.length} tickets to process`);
 
-    // Prepare ticket data
-    const ticketDataArray: TicketData[] = tickets.map(ticket => ({
-      ticket_code: sanitizeText(ticket.ticket_code, 'INVALID'),
-      ticket_type_name: sanitizeText(ticket.ticket_type_name, 'General Admission'),
-      customer_name: sanitizeText(order.customer_name, 'Guest'),
-      event_name: sanitizeText(order.events.name, 'Event'),
-      event_date: order.events.event_date || new Date().toISOString(),
-      venue: sanitizeText(order.events.venue, 'TBA'),
-      price: Number(ticket.unit_price) || 0,
-      order_id: orderId
-    }));
+    // Create PDF with beautiful design matching React component
+    const pdf = new jsPDF();
+    
+    // Process each ticket
+    for (let i = 0; i < tickets.length; i++) {
+      // Add new page for each ticket after the first
+      if (i > 0) {
+        pdf.addPage();
+      }
 
-    // Generate HTML content
-    const htmlContent = generateTicketHTML(ticketDataArray, order);
+      try {
+        // Prepare ticket data with status
+        const ticketData: TicketData = {
+          ticket_code: sanitizeText(tickets[i].ticket_code, 'INVALID'),
+          ticket_type_name: sanitizeText(tickets[i].ticket_type_name, 'General Admission'),
+          customer_name: sanitizeText(order.customer_name, 'Guest'),
+          event_name: sanitizeText(order.events.name, 'Event'),
+          event_date: order.events.event_date || new Date().toISOString(),
+          venue: sanitizeText(order.events.venue, 'TBA'),
+          price: Number(tickets[i].unit_price) || 0,
+          order_id: orderId,
+          status: tickets[i].status || 'valid'
+        };
 
-    // For now, return HTML instead of PDF to avoid library issues
-    // This will display properly formatted tickets that can be printed
+        console.log(`Processing ticket ${i + 1}: ${ticketData.ticket_code}`);
+
+        // Create beautiful ticket page matching React design
+        await createTicketPage(pdf, ticketData, order.events.logo_url);
+
+        console.log(`Completed ticket ${i + 1}`);
+        
+      } catch (ticketError) {
+        console.error(`Error processing ticket ${i + 1}:`, ticketError);
+        // Continue with next ticket instead of failing completely
+      }
+    }
+
+    // Generate PDF output
+    const pdfArrayBuffer = pdf.output('arraybuffer');
+    const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfArrayBuffer)));
+
+    console.log("=== PDF Generation Completed Successfully ===");
+
     return new Response(
       JSON.stringify({
-        html: htmlContent,
-        filename: `tickets-${orderId}.html`,
-        message: "HTML ticket generated successfully. You can print this as PDF from your browser."
+        pdf: pdfBase64,
+        filename: `tickets-${orderId}.pdf`
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
