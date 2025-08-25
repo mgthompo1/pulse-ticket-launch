@@ -1506,6 +1506,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      user_is_org_member: {
+        Args: { p_organization_id: string; p_user_id: string }
+        Returns: boolean
+      }
       user_owns_organization: {
         Args: { org_id: string; user_uuid: string }
         Returns: boolean
