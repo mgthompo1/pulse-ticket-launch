@@ -86,7 +86,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send invitation email
     const emailResponse = await resend.emails.send({
-      from: 'TicketFlo <noreply@ticketflo.org>',
+      from: 'TicketFlo <hello@ticketflo.org>',
       to: [email],
       subject: `Invitation to join ${organization.name} on TicketFlo`,
       html: `
