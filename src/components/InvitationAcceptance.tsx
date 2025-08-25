@@ -244,11 +244,23 @@ export const InvitationAcceptance = () => {
           ) : (
             <div className="text-center space-y-3">
               <p className="text-sm text-muted-foreground">
-                Please sign in to accept this invitation
+                Create your account to accept this invitation
               </p>
-              <Button onClick={() => navigate('/auth')} className="w-full">
-                Sign In
+              <Button 
+                onClick={() => navigate(`/invitation-setup?invite=${inviteToken}`)} 
+                className="w-full"
+              >
+                Create Account
               </Button>
+              <p className="text-xs text-muted-foreground">
+                Already have an account?{' '}
+                <button 
+                  onClick={() => navigate('/auth')}
+                  className="text-primary hover:underline"
+                >
+                  Sign in instead
+                </button>
+              </p>
             </div>
           )}
         </CardContent>
