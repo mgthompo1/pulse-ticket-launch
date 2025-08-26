@@ -224,50 +224,36 @@ export const InvitationPasswordSetup = () => {
         return;
       }
 
-      // Since the user is already in organization_users (added when invitation was sent),
-      // we just need to update the placeholder user_id with the real user_id
-      console.log('Adding user to organization_users...');
-      
-      // Use simple SQL query to bypass all TypeScript issues
-      const { error: insertError } = await supabase
-        .from('organization_users')
-        .insert({
-          organization_id: invitation.organization.id,
-          user_id: currentUser.id,
-          role: 'member',
-          permissions: ['read', 'write']
-        } as any); // Use 'as any' to bypass TypeScript type checking
+      // Now use the database function to accept the invitation
+      const { data: acceptResult, error: acceptError } = await supabase
+        .rpc('accept_invitation_and_signup', {
+          p_invitation_token: inviteToken || '',
+          p_user_id: currentUser.id
+        });
 
-      if (insertError) {
-        console.error('Error adding user to organization:', insertError);
-        
-        // If insert fails, try to update (in case they're already there)
-        const { error: updateError } = await supabase
-          .from('organization_users')
-          .update({
-            user_id: currentUser.id,
-            updated_at: new Date().toISOString()
-          })
-          .eq('organization_id', invitation.organization.id)
-          .eq('user_id', invitation.id); // Use invitation.id as the placeholder user_id
+      if (acceptError) {
+        console.error('Error accepting invitation:', acceptError);
+        toast({
+          title: 'Invitation Error',
+          description: 'There was an issue accepting your invitation. Please contact support.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-        if (updateError) {
-          console.error('Error updating organization_users:', updateError);
-          toast({
-            title: 'Welcome!',
-            description: `Your account has been created and you've joined ${invitation.organization?.name || 'your organization'}. There was an issue updating your organization membership, but you're already a member.`,
-          });
-        } else {
-          toast({
-            title: 'Welcome!',
-            description: `Your account has been created and you've joined ${invitation.organization?.name || 'your organization'}`,
-          });
-        }
-      } else {
+      const result = acceptResult as any;
+      if (result && result.success) {
         toast({
           title: 'Welcome!',
-          description: `Your account has been created and you've joined ${invitation.organization?.name || 'your organization'}`,
+          description: `You've successfully joined ${invitation.organization?.name || 'your organization'}!`,
         });
+      } else {
+        toast({
+          title: 'Invitation Error',
+          description: result?.error || 'Failed to accept invitation',
+          variant: 'destructive',
+        });
+        return;
       }
       
       // Mark invitation as accepted
