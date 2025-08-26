@@ -69,8 +69,8 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
   const [activeTab, setActiveTab] = useState("connections");
 
-  // LinkedIn OAuth URLs - Update the Client ID to match your LinkedIn app
-  const LINKEDIN_CLIENT_ID = "78s8mjzlmhgpgj"; // Update this to your actual LinkedIn Client ID
+  // LinkedIn OAuth URLs - Using your actual LinkedIn app Client ID
+  const LINKEDIN_CLIENT_ID = "780xcbz4f2nchj"; // Your correct LinkedIn Client ID
   const LINKEDIN_REDIRECT_URI = "https://ticketflo.org/auth/linkedin/callback"; // Use exact URL from LinkedIn config
   
   // Facebook OAuth URLs (hardcoded for testing)
