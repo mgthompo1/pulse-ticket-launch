@@ -6,30 +6,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Mail, 
   Share2, 
   QrCode, 
-  Megaphone, 
   TrendingUp, 
   Target, 
   Copy,
   Download,
-  ExternalLink,
-  Facebook,
-  Twitter,
-  Instagram,
-  MessageSquare,
-  Linkedin,
-  Calendar,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  Plus,
-  Trash2,
-  Edit3
+  ExternalLink
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,12 +43,6 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
     subject: "",
     content: "",
     segment: "all"
-  });
-  const [socialPost, setSocialPost] = useState({
-    platform: "facebook",
-    content: "",
-    scheduled: false,
-    scheduleDate: ""
   });
 
   // Load events when component mounts
@@ -140,13 +120,6 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
     setEmailCampaign({ subject: "", content: "", segment: "all" });
   };
 
-  const handleSchedulePost = () => {
-    toast({
-      title: "Social Post Scheduled",
-      description: `Your ${socialPost.platform} post has been scheduled`
-    });
-    setSocialPost({ platform: "facebook", content: "", scheduled: false, scheduleDate: "" });
-  };
 
   if (!selectedEvent) {
     return (

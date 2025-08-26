@@ -998,6 +998,62 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduled_posts: {
+        Row: {
+          content: string
+          created_at: string | null
+          error_message: string | null
+          event_id: string | null
+          id: string
+          image_url: string | null
+          link_url: string | null
+          platform: string
+          published_post_id: string | null
+          scheduled_time: string
+          status: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          error_message?: string | null
+          event_id?: string | null
+          id?: string
+          image_url?: string | null
+          link_url?: string | null
+          platform: string
+          published_post_id?: string | null
+          scheduled_time: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          error_message?: string | null
+          event_id?: string | null
+          id?: string
+          image_url?: string | null
+          link_url?: string | null
+          platform?: string
+          published_post_id?: string | null
+          scheduled_time?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_posts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seat_maps: {
         Row: {
           created_at: string
@@ -1115,6 +1171,51 @@ export type Database = {
           id?: string
           ip_address?: unknown | null
           user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      social_connections: {
+        Row: {
+          access_token: string | null
+          account_name: string
+          account_type: string
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_connected: boolean | null
+          last_sync: string | null
+          platform: string
+          refresh_token: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          account_name: string
+          account_type: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_connected?: boolean | null
+          last_sync?: string | null
+          platform: string
+          refresh_token?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          account_name?: string
+          account_type?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_connected?: boolean | null
+          last_sync?: string | null
+          platform?: string
+          refresh_token?: string | null
+          updated_at?: string | null
           user_id?: string | null
         }
         Relationships: []

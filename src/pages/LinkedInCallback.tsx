@@ -41,23 +41,17 @@ export default function LinkedInCallback() {
       }
 
       try {
-        // Exchange authorization code for access token
-        const tokenResponse = await fetch('/api/linkedin/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        // Exchange authorization code for access token using Supabase edge function
+        const { data: tokenData, error: tokenError } = await supabase.functions.invoke('linkedin-token', {
+          body: {
             code,
             redirect_uri: `${window.location.origin}/auth/linkedin/callback`,
-          }),
+          },
         });
 
-        if (!tokenResponse.ok) {
+        if (tokenError || !tokenData) {
           throw new Error('Failed to exchange authorization code for access token');
         }
-
-        const tokenData = await tokenResponse.json();
         
         // Get user profile information
         const profileResponse = await fetch('https://api.linkedin.com/v2/me', {
@@ -84,7 +78,7 @@ export default function LinkedInCallback() {
             is_connected: true,
             access_token: tokenData.access_token,
             refresh_token: tokenData.refresh_token,
-            expires_at: tokenData.expires_at ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString() : null,
+            expires_at: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString() : null,
           });
 
         if (dbError) {

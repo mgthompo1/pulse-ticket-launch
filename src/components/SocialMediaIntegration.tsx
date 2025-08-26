@@ -12,18 +12,13 @@ import {
   Facebook, 
   Linkedin, 
   MessageSquare, 
-  Calendar, 
   Clock, 
   CheckCircle, 
   AlertCircle, 
-  Plus, 
-  Trash2, 
-  Edit3,
-  ExternalLink,
+  Trash2,
   BarChart3,
   Users,
   Eye,
-  Share2,
   Zap,
   TrendingUp
 } from "lucide-react";
@@ -45,9 +40,9 @@ interface SocialMediaIntegrationProps {
 
 interface SocialConnection {
   id: string;
-  platform: 'linkedin' | 'facebook';
+  platform: string;
   account_name: string;
-  account_type: 'personal' | 'page' | 'company';
+  account_type: string;
   is_connected: boolean;
   last_sync?: string;
   access_token?: string;
@@ -57,10 +52,10 @@ interface SocialConnection {
 
 interface ScheduledPost {
   id: string;
-  platform: 'linkedin' | 'facebook';
+  platform: string;
   content: string;
   scheduled_time: string;
-  status: 'scheduled' | 'published' | 'failed';
+  status: string;
   created_at: string;
   event_id?: string;
   image_url?: string;
@@ -72,12 +67,11 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
   const { user } = useAuth();
   const [connections, setConnections] = useState<SocialConnection[]>([]);
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("connections");
 
-  // LinkedIn OAuth URLs (hardcoded for testing)
-  const LINKEDIN_CLIENT_ID = "780xcbz4f2nchj";
-  const LINKEDIN_REDIRECT_URI = `${window.location.origin}/auth/linkedin/callback`;
+  // LinkedIn OAuth URLs - Update the Client ID to match your LinkedIn app
+  const LINKEDIN_CLIENT_ID = "78s8mjzlmhgpgj"; // Update this to your actual LinkedIn Client ID
+  const LINKEDIN_REDIRECT_URI = "https://ticketflo.org/auth/linkedin/callback"; // Use exact URL from LinkedIn config
   
   // Facebook OAuth URLs (hardcoded for testing)
   const FACEBOOK_CLIENT_ID = "your_facebook_client_id";
@@ -98,7 +92,7 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
         .eq('user_id', user.id);
 
       if (error) throw error;
-      setConnections(data || []);
+      setConnections((data || []) as SocialConnection[]);
     } catch (error) {
       console.error('Error loading connections:', error);
     }
@@ -115,15 +109,15 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
         .order('scheduled_time', { ascending: true });
 
       if (error) throw error;
-      setScheduledPosts(data || []);
+      setScheduledPosts((data || []) as ScheduledPost[]);
     } catch (error) {
       console.error('Error loading scheduled posts:', error);
     }
   };
 
   const connectLinkedIn = () => {
-    const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(LINKEDIN_REDIRECT_URI)}&scope=r_basicprofile%20w_member_social&state=${user?.id}`;
-    window.open(linkedinAuthUrl, '_blank', 'width=600,height=600');
+    const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(LINKEDIN_REDIRECT_URI)}&scope=r_liteprofile%20w_member_social&state=${user?.id}`;
+    window.location.href = linkedinAuthUrl; // Use location.href instead of popup
   };
 
   const connectFacebook = () => {
@@ -131,7 +125,9 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
     window.open(facebookAuthUrl, '_blank', 'width=600,height=600');
   };
 
-  const disconnectPlatform = async (platform: 'linkedin' | 'facebook') => {
+  const disconnectPlatform = async (platform: string) => {
+    if (!user?.id) return;
+    
     try {
       const { error } = await supabase
         .from('social_connections')
@@ -141,7 +137,7 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
           refresh_token: null,
           expires_at: null 
         })
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .eq('platform', platform);
 
       if (error) throw error;
@@ -161,7 +157,7 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
     }
   };
 
-  const schedulePost = async (platform: 'linkedin' | 'facebook', content: string, scheduledTime: string) => {
+  const schedulePost = async (platform: string, content: string, scheduledTime: string) => {
     if (!user || !selectedEvent) return;
 
     try {
@@ -446,11 +442,11 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
 interface PostSchedulerProps {
   selectedEvent: Event;
   connections: SocialConnection[];
-  onSchedule: (platform: 'linkedin' | 'facebook', content: string, scheduledTime: string) => void;
+  onSchedule: (platform: string, content: string, scheduledTime: string) => void;
 }
 
 const PostScheduler = ({ selectedEvent, connections, onSchedule }: PostSchedulerProps) => {
-  const [platform, setPlatform] = useState<'linkedin' | 'facebook'>('linkedin');
+  const [platform, setPlatform] = useState<string>('linkedin');
   const [content, setContent] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
   const [isScheduled, setIsScheduled] = useState(false);
@@ -489,7 +485,7 @@ const PostScheduler = ({ selectedEvent, connections, onSchedule }: PostScheduler
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>Platform</Label>
-          <Select value={platform} onValueChange={(value: 'linkedin' | 'facebook') => setPlatform(value)}>
+          <Select value={platform} onValueChange={(value: string) => setPlatform(value)}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
