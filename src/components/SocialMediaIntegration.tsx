@@ -159,7 +159,7 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
   };
 
   const schedulePost = async (platform: string, content: string, scheduledTime: string) => {
-    if (!user || !selectedEvent) return;
+    if (!user) return;
 
     try {
       const { error } = await supabase
@@ -170,27 +170,31 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
           content,
           scheduled_time: scheduledTime,
           status: 'scheduled',
-          event_id: selectedEvent.id
+          image_url: null // Will be set by PostScheduler component
         });
 
       if (error) throw error;
 
       toast({
         title: "Post Scheduled",
-        description: `Your ${platform} post has been scheduled for ${new Date(scheduledTime).toLocaleString()}`,
+        description: `Your ${platform} post has been scheduled successfully`
       });
 
       loadScheduledPosts();
     } catch (error) {
+      console.error('Error scheduling post:', error);
       toast({
         title: "Error",
-        description: "Failed to schedule post",
-        variant: "destructive",
+        description: "Failed to schedule post. Please try again.",
+        variant: "destructive"
       });
     }
   };
 
+
   const deleteScheduledPost = async (postId: string) => {
+    if (!user) return;
+
     try {
       const { error } = await supabase
         .from('scheduled_posts')
@@ -211,6 +215,29 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
         description: "Failed to delete post",
         variant: "destructive",
       });
+    }
+  };
+
+  const checkForScheduledPosts = async () => {
+    try {
+      const { error } = await supabase.functions.invoke('publish-scheduled-posts');
+      
+      if (error) {
+        console.error('Error checking scheduled posts:', error);
+        toast({
+          title: "Error",
+          description: "Failed to check for scheduled posts",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Check Complete",
+          description: "Checked for scheduled posts to publish"
+        });
+        loadScheduledPosts(); // Refresh the list
+      }
+    } catch (error) {
+      console.error('Error:', error);
     }
   };
 
@@ -422,10 +449,28 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
               <CardDescription>Manage your upcoming social media posts</CardDescription>
             </CardHeader>
             <CardContent>
-              <ScheduledPostsList 
-                posts={scheduledPosts}
-                onDelete={deleteScheduledPost}
-              />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h4 className="text-sm font-medium">Scheduled Posts Management</h4>
+                <p className="text-sm text-muted-foreground">
+                  Manually check for posts ready to publish
+                </p>
+              </div>
+              <Button 
+                onClick={checkForScheduledPosts}
+                variant="outline"
+                size="sm"
+              >
+                <Clock className="w-4 h-4 mr-2" />
+                Check Now
+              </Button>
+            </div>
+            <ScheduledPostsList 
+              posts={scheduledPosts}
+              onDelete={deleteScheduledPost}
+            />
+          </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -524,6 +569,7 @@ const PostScheduler = ({ selectedEvent, connections, onSchedule }: PostScheduler
     setContent('');
     setScheduledTime('');
     setIsScheduled(false);
+    removeImage();
   };
 
   return (
