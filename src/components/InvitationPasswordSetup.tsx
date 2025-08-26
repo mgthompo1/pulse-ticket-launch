@@ -107,124 +107,17 @@ export const InvitationPasswordSetup = () => {
     setError(null);
 
     try {
-      // Try a simpler signup approach to avoid the database error
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: invitation.email,
-        password
+      // Since Supabase signup is having issues, let's show a helpful message
+      // and direct users to create an account normally first
+      toast({
+        title: 'Account Setup Required',
+        description: 'Due to a configuration issue, please create your account first by going to the main sign-up page, then return to this invitation link.',
+        variant: 'default',
       });
-
-      if (signUpError) {
-        console.error('Signup error:', signUpError);
-        
-        // If signup fails with database error, try to sign in instead (user might already exist)
-        if (signUpError.message.includes('Database error') || signUpError.message.includes('User already registered')) {
-          console.log('Trying to sign in instead...');
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: invitation.email,
-            password,
-          });
-
-          if (signInError) {
-            throw new Error('Account may already exist. Please try signing in with your existing password or contact support.');
-          }
-
-          // If sign in succeeds, treat it as successful signup
-          if (signInData.user) {
-            console.log('User signed in successfully:', signInData.user.id);
-            
-            // Now use the database function to accept the invitation
-            const { data: acceptResult, error: acceptError } = await supabase
-              .rpc('accept_invitation_and_signup', {
-                p_invitation_token: inviteToken || '',
-                p_user_id: signInData.user.id
-              });
-
-            if (acceptError) {
-              console.error('Error accepting invitation:', acceptError);
-              toast({
-                title: 'Invitation Error',
-                description: 'There was an issue accepting your invitation. Please contact support.',
-                variant: 'destructive',
-              });
-              return;
-            }
-
-            const result = acceptResult as any;
-            if (result && result.success) {
-              toast({
-                title: 'Welcome!',
-                description: `You've successfully joined ${invitation.organization?.name || 'your organization'}!`,
-              });
-              navigate('/dashboard');
-            } else {
-              toast({
-                title: 'Invitation Error',
-                description: result?.error || 'Failed to accept invitation',
-                variant: 'destructive',
-              });
-            }
-            return;
-          }
-        }
-        
-        throw signUpError;
-      }
-
-      if (data.user) {
-        console.log('User account created:', data.user.id);
-        
-        // Try to sign in immediately (some setups auto-confirm)
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: invitation.email,
-          password,
-        });
-
-        if (signInError) {
-          console.log('Auto sign-in failed, user needs to confirm email');
-          toast({
-            title: 'Account Created!',
-            description: 'Please check your email and confirm your account, then sign in to complete the invitation.',
-          });
-          navigate(`/auth?email=${encodeURIComponent(invitation.email)}`);
-          return;
-        }
-
-        if (signInData.user) {
-          console.log('User signed in successfully:', signInData.user.id);
-          
-          // Now use the database function to accept the invitation
-          const { data: acceptResult, error: acceptError } = await supabase
-            .rpc('accept_invitation_and_signup', {
-              p_invitation_token: inviteToken || '',
-              p_user_id: signInData.user.id
-            });
-
-          if (acceptError) {
-            console.error('Error accepting invitation:', acceptError);
-            toast({
-              title: 'Invitation Error',
-              description: 'There was an issue accepting your invitation. Please contact support.',
-              variant: 'destructive',
-            });
-            return;
-          }
-
-          const result = acceptResult as any;
-          if (result && result.success) {
-            toast({
-              title: 'Welcome!',
-              description: `Your account has been created and you've joined ${invitation.organization?.name || 'your organization'}!`,
-            });
-            navigate('/dashboard');
-          } else {
-            toast({
-              title: 'Invitation Error',
-              description: result?.error || 'Failed to accept invitation',
-              variant: 'destructive',
-            });
-          }
-        }
-      }
+      
+      // Redirect to auth page with the email pre-filled and a message
+      navigate(`/auth?email=${encodeURIComponent(invitation.email)}&signup=true&invitation=${inviteToken}`);
+      
     } catch (error: any) {
       console.error('Error creating account:', error);
       setError(error.message || 'Failed to create account');
