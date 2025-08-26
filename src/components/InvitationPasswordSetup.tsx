@@ -172,19 +172,11 @@ export const InvitationPasswordSetup = () => {
         // Wait a moment for the user to be fully created in auth.users
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Verify the user exists in auth.users before proceeding
-        const { data: { user: verifiedUser } } = await supabase.auth.getUser();
-        if (!verifiedUser) {
-          console.error('User not found after creation');
-          setError('Account creation failed. Please try again.');
-          return;
-        }
-        
         // Add user to organization_users table using our database function
         const { data: acceptResult, error: acceptError } = await supabase
           .rpc('accept_invitation_and_signup', {
             p_invitation_token: inviteToken || '',
-            p_user_id: verifiedUser.id
+            p_user_id: data.user.id
           });
 
         if (acceptError) {
