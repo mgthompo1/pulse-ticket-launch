@@ -59,19 +59,41 @@ export default function LinkedInCallback() {
           localizedLastName: 'User'
         };
 
-        // Store the connection in the database
-        const { error: dbError } = await supabase
+        // Store the connection in the database - first try to update existing, then insert
+        const connectionData = {
+          user_id: user.id,
+          platform: 'linkedin',
+          account_name: `${profileData.localizedFirstName} ${profileData.localizedLastName}`,
+          account_type: 'personal',
+          is_connected: true,
+          access_token: tokenData.access_token,
+          refresh_token: tokenData.refresh_token,
+          expires_at: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString() : null,
+        };
+
+        // Try to update existing connection first
+        const { data: existing } = await supabase
           .from('social_connections')
-          .upsert({
-            user_id: user.id,
-            platform: 'linkedin',
-            account_name: `${profileData.localizedFirstName} ${profileData.localizedLastName}`,
-            account_type: 'personal',
-            is_connected: true,
-            access_token: tokenData.access_token,
-            refresh_token: tokenData.refresh_token,
-            expires_at: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString() : null,
-          });
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('platform', 'linkedin')
+          .single();
+
+        let dbError;
+        if (existing) {
+          // Update existing connection
+          const { error } = await supabase
+            .from('social_connections')
+            .update(connectionData)
+            .eq('id', existing.id);
+          dbError = error;
+        } else {
+          // Insert new connection
+          const { error } = await supabase
+            .from('social_connections')
+            .insert(connectionData);
+          dbError = error;
+        }
 
         if (dbError) {
           throw dbError;
