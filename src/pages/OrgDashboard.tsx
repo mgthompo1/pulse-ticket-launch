@@ -158,19 +158,48 @@ const OrgDashboard = () => {
 
       console.log("Loading organization for user:", user.id);
 
-      const { data: orgs, error } = await supabase
+      // First, try to find an organization where the user is the owner
+      let { data: orgs, error } = await supabase
         .from("organizations")
         .select("*")
         .eq("user_id", user.id)
         .single();
 
+      // If no owned organization found, check if user is a member of any organization
+      if (error && error.code === 'PGRST116') {
+        console.log("No owned organization found, checking memberships...");
+        
+        const { data: membershipData, error: membershipError } = await supabase
+          .from("organization_users")
+          .select(`
+            organization_id,
+            role,
+            organizations (*)
+          `)
+          .eq("user_id", user.id)
+          .limit(1)
+          .single();
+
+        if (membershipError) {
+          console.error("Error loading organization membership:", membershipError);
+          
+          // If no organization membership exists either, show onboarding
+          if (membershipError.code === 'PGRST116') {
+            setShowOnboarding(true);
+          }
+          return;
+        }
+
+        if (membershipData && membershipData.organizations) {
+          console.log("Organization membership found:", membershipData);
+          orgs = membershipData.organizations as any;
+          error = null;
+        }
+      }
+
       if (error) {
         console.error("Error loading organization:", error);
-        
-        // If no organization exists, show onboarding
-        if (error.code === 'PGRST116') {
-          setShowOnboarding(true);
-        }
+        setShowOnboarding(true);
         return;
       }
 
