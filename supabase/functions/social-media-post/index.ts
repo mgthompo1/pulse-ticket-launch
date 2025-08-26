@@ -7,6 +7,7 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -48,7 +49,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: `No ${platform} connection found. Please reconnect your account.`,
-          debug: connectionError 
+          reconnect_required: true
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
@@ -70,11 +71,29 @@ serve(async (req) => {
     })
 
     if (!meResponse.ok) {
-      const errorText = await meResponse.text()
+      const errorData = await meResponse.json()
+      
+      // If access token is revoked/expired, update connection status
+      if (meResponse.status === 401 && errorData.code === 'REVOKED_ACCESS_TOKEN') {
+        console.log('LinkedIn token revoked, marking connection as disconnected')
+        await supabase
+          .from('social_connections')
+          .update({ is_connected: false })
+          .eq('id', connection.id)
+          
+        return new Response(
+          JSON.stringify({ 
+            error: 'LinkedIn connection expired. Please reconnect your LinkedIn account.',
+            reconnect_required: true
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      
       return new Response(
         JSON.stringify({ 
           error: 'LinkedIn authentication failed. Please reconnect your account.',
-          details: errorText 
+          details: errorData 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
@@ -148,6 +167,7 @@ serve(async (req) => {
     )
 
   } catch (error) {
+    console.error('Error in social media post function:', error)
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error', 
