@@ -20,7 +20,8 @@ import {
   Users,
   Eye,
   Zap,
-  TrendingUp
+  TrendingUp,
+  X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -449,6 +450,10 @@ const PostScheduler = ({ selectedEvent, connections, onSchedule }: PostScheduler
   const [platform, setPlatform] = useState<string>('linkedin');
   const [content, setContent] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [isScheduled, setIsScheduled] = useState(false);
 
   const connectedPlatforms = connections.filter(c => c.is_connected).map(c => c.platform);
@@ -467,6 +472,47 @@ const PostScheduler = ({ selectedEvent, connections, onSchedule }: PostScheduler
       </div>
     );
   }
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('social-media-images')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('social-media-images')
+        .getPublicUrl(fileName);
+
+      setUploadedImage(publicUrl);
+      
+      toast({
+        title: "Image uploaded",
+        description: "Your image has been uploaded successfully"
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: "Upload failed", 
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = () => {
+    setUploadedImage(null);
+  };
 
   const handleSchedule = () => {
     if (!content.trim() || (isScheduled && !scheduledTime)) return;
@@ -536,6 +582,45 @@ const PostScheduler = ({ selectedEvent, connections, onSchedule }: PostScheduler
         <div className="text-sm text-muted-foreground">
           {content.length}/3,000 characters
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Add Image (Optional)</Label>
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              disabled={uploading}
+              className="cursor-pointer"
+            />
+          </div>
+          {uploading && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              Uploading...
+            </div>
+          )}
+        </div>
+        
+        {uploadedImage && (
+          <div className="relative inline-block mt-2">
+            <img 
+              src={uploadedImage} 
+              alt="Upload preview" 
+              className="w-32 h-32 object-cover rounded-lg border"
+            />
+            <Button
+              size="sm"
+              variant="destructive"
+              className="absolute -top-2 -right-2 w-6 h-6 rounded-full p-0"
+              onClick={removeImage}
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="space-y-2">
