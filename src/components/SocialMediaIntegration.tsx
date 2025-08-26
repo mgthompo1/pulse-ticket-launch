@@ -158,34 +158,65 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
     }
   };
 
-  const schedulePost = async (platform: string, content: string, scheduledTime: string) => {
+  const handlePost = async (platform: string, content: string, scheduledTime: string, imageUrl: string | null, postNow: boolean = false) => {
     if (!user) return;
 
     try {
-      const { error } = await supabase
-        .from('scheduled_posts')
-        .insert({
-          user_id: user.id,
-          platform,
-          content,
-          scheduled_time: scheduledTime,
-          status: 'scheduled',
-          image_url: null // Will be set by PostScheduler component
+      const connection = connections.find(c => c.platform === platform && c.is_connected);
+      if (!connection) {
+        toast({
+          title: "Error",
+          description: "Platform not connected",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (postNow) {
+        // Post immediately to social media
+        const { error } = await supabase.functions.invoke('social-media-post', {
+          body: {
+            user_id: user.id,
+            platform,
+            content,
+            image_url: imageUrl
+          }
         });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({
-        title: "Post Scheduled",
-        description: `Your ${platform} post has been scheduled successfully`
-      });
+        toast({
+          title: "Posted Successfully",
+          description: `Your post has been published to ${platform}`,
+        });
+      } else {
+        // Schedule for later
+        const { error } = await supabase
+          .from('scheduled_posts')
+          .insert({
+            user_id: user.id,
+            connection_id: connection.id,
+            platform,
+            content,
+            scheduled_time: scheduledTime,
+            status: 'scheduled',
+            image_url: imageUrl
+          });
+
+        if (error) throw error;
+
+        toast({
+          title: "Post Scheduled",
+          description: `Your ${platform} post has been scheduled successfully`
+        });
+      }
 
       loadScheduledPosts();
     } catch (error) {
-      console.error('Error scheduling post:', error);
+      console.error('Error posting:', error);
       toast({
         title: "Error",
-        description: "Failed to schedule post. Please try again.",
+        description: postNow ? "Failed to post immediately" : "Failed to schedule post",
         variant: "destructive"
       });
     }
@@ -428,10 +459,10 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <PostScheduler 
+                 <PostScheduler 
                   selectedEvent={selectedEvent}
                   connections={connections}
-                  onSchedule={schedulePost}
+                  onPost={handlePost}
                 />
               </CardContent>
             </Card>
@@ -488,10 +519,10 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
 interface PostSchedulerProps {
   selectedEvent: Event;
   connections: SocialConnection[];
-  onSchedule: (platform: string, content: string, scheduledTime: string) => void;
+  onPost: (platform: string, content: string, scheduledTime: string, imageUrl: string | null, postNow: boolean) => void;
 }
 
-const PostScheduler = ({ selectedEvent, connections, onSchedule }: PostSchedulerProps) => {
+const PostScheduler = ({ selectedEvent, connections, onPost }: PostSchedulerProps) => {
   const [platform, setPlatform] = useState<string>('linkedin');
   const [content, setContent] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
@@ -559,11 +590,11 @@ const PostScheduler = ({ selectedEvent, connections, onSchedule }: PostScheduler
     setUploadedImage(null);
   };
 
-  const handleSchedule = () => {
-    if (!content.trim() || (isScheduled && !scheduledTime)) return;
+  const handleSubmit = (postNow: boolean) => {
+    if (!content.trim() || (!postNow && isScheduled && !scheduledTime)) return;
     
-    const postTime = isScheduled ? scheduledTime : new Date().toISOString();
-    onSchedule(platform, content, postTime);
+    const postTime = postNow ? new Date().toISOString() : (isScheduled ? scheduledTime : new Date().toISOString());
+    onPost(platform, content, postTime, uploadedImage, postNow);
     
     // Reset form
     setContent('');
@@ -679,14 +710,25 @@ const PostScheduler = ({ selectedEvent, connections, onSchedule }: PostScheduler
         </div>
       </div>
 
-      <Button 
-        onClick={handleSchedule} 
-        className="w-full"
-        disabled={!content.trim() || (isScheduled && !scheduledTime)}
-      >
-        <MessageSquare className="w-4 h-4 mr-2" />
-        {isScheduled ? "Schedule Post" : "Post Now"}
-      </Button>
+      <div className="flex gap-2">
+        <Button 
+          onClick={() => handleSubmit(true)} 
+          className="flex-1"
+          disabled={!content.trim()}
+        >
+          <MessageSquare className="w-4 h-4 mr-2" />
+          Post Now
+        </Button>
+        <Button 
+          onClick={() => handleSubmit(false)} 
+          variant="outline"
+          className="flex-1"
+          disabled={!content.trim() || (isScheduled && !scheduledTime)}
+        >
+          <Clock className="w-4 h-4 mr-2" />
+          {isScheduled ? "Schedule Post" : "Schedule for Later"}
+        </Button>
+      </div>
     </div>
   );
 };

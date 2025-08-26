@@ -27,7 +27,7 @@ serve(async (req) => {
       .from('scheduled_posts')
       .select(`
         *,
-        social_connections!inner(access_token, refresh_token, expires_at)
+        social_connections!connection_id(access_token, refresh_token, expires_at)
       `)
       .eq('status', 'scheduled')
       .lte('scheduled_time', now)

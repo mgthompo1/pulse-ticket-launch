@@ -1000,6 +1000,7 @@ export type Database = {
       }
       scheduled_posts: {
         Row: {
+          connection_id: string | null
           content: string
           created_at: string | null
           error_message: string | null
@@ -1015,6 +1016,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          connection_id?: string | null
           content: string
           created_at?: string | null
           error_message?: string | null
@@ -1030,6 +1032,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          connection_id?: string | null
           content?: string
           created_at?: string | null
           error_message?: string | null
@@ -1045,6 +1048,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "scheduled_posts_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "social_connections"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "scheduled_posts_event_id_fkey"
             columns: ["event_id"]
