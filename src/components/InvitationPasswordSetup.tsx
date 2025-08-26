@@ -49,83 +49,31 @@ export const InvitationPasswordSetup = () => {
 
   const loadInvitation = async () => {
     try {
-      // First, get the invitation details
+      // Use the new database function to get invitation details
       const { data: invitationData, error: invitationError } = await supabase
-        .from('organization_invitations')
-        .select('*')
-        .eq('invitation_token', inviteToken || '')
-        .eq('status', 'pending')
-        .single();
+        .rpc('get_invitation_details', { p_invitation_token: inviteToken || '' });
 
-      if (invitationError || !invitationData) {
+      if (invitationError || !invitationData || invitationData.length === 0) {
         setError('Invitation not found or has expired');
         return;
       }
 
-      // Check if invitation has expired
-      if (new Date(invitationData.expires_at) < new Date()) {
-        setError('This invitation has expired');
-        return;
-      }
-
-      // Try to get organization details with the join first
-      let organizationData = null;
-      try {
-        const { data: orgJoinData, error: orgJoinError } = await supabase
-          .from('organization_invitations')
-          .select(`
-            *,
-            organization:organizations(name, id)
-          `)
-          .eq('invitation_token', inviteToken || '')
-          .eq('status', 'pending')
-          .single();
-
-        if (!orgJoinError && orgJoinData?.organization) {
-          organizationData = orgJoinData.organization;
+      const invitation = invitationData[0];
+      
+      // Format the data for the component
+      const formattedInvitation = {
+        id: invitation.id,
+        email: invitation.email,
+        role: invitation.role,
+        permissions: invitation.permissions,
+        expires_at: invitation.expires_at,
+        organization: {
+          id: invitation.organization_id,
+          name: invitation.organization_name
         }
-      } catch (joinError) {
-        console.log('Join query failed, trying separate query...');
-      }
-
-      // If join failed, try to get organization data separately
-      if (!organizationData) {
-        try {
-          const { data: orgData, error: orgError } = await supabase
-            .from('organizations')
-            .select('name, id')
-            .eq('id', invitationData.organization_id)
-            .single();
-
-          if (!orgError && orgData) {
-            organizationData = orgData;
-          }
-        } catch (separateError) {
-          console.log('Separate organization query also failed');
-        }
-      }
-
-      // If we still don't have organization data, create a fallback
-      if (!organizationData) {
-        // Create a fallback invitation object with minimal organization info
-        const fallbackInvitation = {
-          ...invitationData,
-          organization: {
-            id: invitationData.organization_id,
-            name: 'Your Organization' // Fallback name
-          }
-        };
-        setInvitation(fallbackInvitation as any);
-        return;
-      }
-
-      // Combine the data
-      const combinedData = {
-        ...invitationData,
-        organization: organizationData
       };
 
-      setInvitation(combinedData as any);
+      setInvitation(formattedInvitation as any);
     } catch (error: any) {
       console.error('Error loading invitation:', error);
       setError('Failed to load invitation details');
@@ -159,160 +107,74 @@ export const InvitationPasswordSetup = () => {
     setError(null);
 
     try {
-      // Create the user account with auto-confirmation for invited users
+      // Create the user account - use basic signup without any extra options
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: invitation.email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
-          data: {
-            signup_source: 'invitation',
-            skip_email_verification: true
-          }
+          emailRedirectTo: `${window.location.origin}/dashboard`
         }
       });
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        console.error('Signup error:', signUpError);
+        throw signUpError;
+      }
 
-      // For invited users, we'll auto-confirm their email and accept the invitation
       if (data.user) {
-        console.log('User account created:', data.user);
+        console.log('User account created:', data.user.id);
         
-        // Check if the user needs email confirmation
-        if (!data.user.email_confirmed_at) {
-          console.log('User needs email confirmation, attempting to confirm...');
-          
-          // Try to confirm the user's email programmatically
-          try {
-            const { error: confirmError } = await supabase.auth.admin.updateUserById(
-              data.user.id,
-              { email_confirm: true }
-            );
-            
-            if (confirmError) {
-              console.log('Admin confirmation failed, trying alternative approach...');
-              // If admin confirmation fails, we'll proceed with the normal flow
-            }
-          } catch (adminError) {
-            console.log('Admin API not available, proceeding with normal flow...');
-          }
-        }
-        
-        // Wait for the account to be fully available
-        console.log('Waiting for account to be fully available...');
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        // Now try to sign in the user
-        console.log('Attempting to sign in with:', invitation.email);
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        // Try to sign in immediately (some setups auto-confirm)
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email: invitation.email,
           password,
         });
 
         if (signInError) {
-          console.error('Error signing in after account creation:', signInError);
-          
-          // If auto sign-in fails, try one more time after a longer delay
-          console.log('First sign-in attempt failed, waiting longer and trying again...');
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          
-          const { error: retrySignInError } = await supabase.auth.signInWithPassword({
-            email: invitation.email,
-            password,
-          });
-          
-          if (retrySignInError) {
-            console.error('Retry sign in also failed:', retrySignInError);
-            
-            // If both attempts fail, show a more helpful message
-            toast({
-              title: 'Account Created Successfully!',
-              description: 'Your account was created, but there was an issue with automatic sign-in. Please try signing in manually.',
-            });
-            
-            // Redirect to auth page with a helpful message
-            navigate('/auth?message=account-created');
-            return;
-          }
-        }
-
-        // Wait a moment for authentication to fully establish
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Verify authentication is working
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        console.log('Current user after sign in:', currentUser);
-        if (!currentUser) {
-          console.error('User not authenticated after sign in');
+          console.log('Auto sign-in failed, user needs to confirm email');
           toast({
-            title: 'Authentication Issue',
-            description: 'Please try signing in again to complete the invitation.',
+            title: 'Account Created!',
+            description: 'Please check your email and confirm your account, then sign in to complete the invitation.',
           });
-          navigate('/auth');
+          navigate(`/auth?email=${encodeURIComponent(invitation.email)}`);
           return;
         }
 
-        // Since the user is already in organization_users (added when invitation was sent),
-        // we just need to update the placeholder user_id with the real user_id
-        console.log('Adding user to organization_users...');
-        
-        // Use simple SQL query to bypass all TypeScript issues
-        const { error: insertError } = await supabase
-          .from('organization_users')
-          .insert({
-            organization_id: invitation.organization.id,
-            user_id: currentUser.id,
-            role: 'member',
-            permissions: ['read', 'write']
-          } as any); // Use 'as any' to bypass TypeScript type checking
-
-        if (insertError) {
-          console.error('Error adding user to organization:', insertError);
+        if (signInData.user) {
+          console.log('User signed in successfully:', signInData.user.id);
           
-          // If insert fails, try to update (in case they're already there)
-          const { error: updateError } = await supabase
-            .from('organization_users')
-            .update({
-              user_id: currentUser.id,
-              updated_at: new Date().toISOString()
-            })
-            .eq('organization_id', invitation.organization.id)
-            .eq('user_id', invitation.id); // Use invitation.id as the placeholder user_id
+          // Now use the database function to accept the invitation
+          const { data: acceptResult, error: acceptError } = await supabase
+            .rpc('accept_invitation_and_signup', {
+              p_invitation_token: inviteToken || '',
+              p_user_id: signInData.user.id
+            });
 
-          if (updateError) {
-            console.error('Error updating organization_users:', updateError);
+          if (acceptError) {
+            console.error('Error accepting invitation:', acceptError);
+            toast({
+              title: 'Invitation Error',
+              description: 'There was an issue accepting your invitation. Please contact support.',
+              variant: 'destructive',
+            });
+            return;
+          }
+
+          const result = acceptResult as any;
+          if (result && result.success) {
             toast({
               title: 'Welcome!',
-              description: `Your account has been created and you've joined ${invitation.organization?.name || 'your organization'}. There was an issue updating your organization membership, but you're already a member.`,
+              description: `Your account has been created and you've joined ${invitation.organization?.name || 'your organization'}!`,
             });
+            navigate('/dashboard');
           } else {
             toast({
-              title: 'Welcome!',
-              description: `Your account has been created and you've joined ${invitation.organization?.name || 'your organization'}`,
+              title: 'Invitation Error',
+              description: result?.error || 'Failed to accept invitation',
+              variant: 'destructive',
             });
           }
-        } else {
-          toast({
-            title: 'Welcome!',
-            description: `Your account has been created and you've joined ${invitation.organization?.name || 'your organization'}`,
-          });
         }
-        
-        // Mark invitation as accepted
-        const { error: updateInvitationError } = await supabase
-          .from('organization_invitations')
-          .update({ 
-            status: 'accepted', 
-            updated_at: new Date().toISOString() 
-          })
-          .eq('invitation_token', inviteToken || '');
-
-        if (updateInvitationError) {
-          console.error('Error updating invitation status:', updateInvitationError);
-        }
-        
-        // Redirect to dashboard
-        navigate('/dashboard');
       }
     } catch (error: any) {
       console.error('Error creating account:', error);

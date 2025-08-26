@@ -1369,8 +1369,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invitation_and_signup: {
+        Args: { p_invitation_token: string; p_user_id: string }
+        Returns: Json
+      }
       accept_organization_invitation: {
         Args: { p_invitation_token: string }
+        Returns: string
+      }
+      add_user_to_organization: {
+        Args: {
+          p_organization_id: string
+          p_permissions?: Database["public"]["Enums"]["organization_permission"][]
+          p_role?: Database["public"]["Enums"]["organization_role"]
+          p_user_id: string
+        }
         Returns: string
       }
       calculate_platform_fee: {
@@ -1458,6 +1471,18 @@ export type Database = {
           ticket_type: string
         }[]
       }
+      get_invitation_details: {
+        Args: { p_invitation_token: string }
+        Returns: {
+          email: string
+          expires_at: string
+          id: string
+          organization_id: string
+          organization_name: string
+          permissions: Database["public"]["Enums"]["organization_permission"][]
+          role: Database["public"]["Enums"]["organization_role"]
+        }[]
+      }
       get_organization_payment_config: {
         Args: { p_organization_id: string }
         Returns: {
@@ -1509,6 +1534,20 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      send_organization_invitation_with_user_add: {
+        Args: {
+          p_email: string
+          p_invited_by?: string
+          p_organization_id: string
+          p_permissions?: Database["public"]["Enums"]["organization_permission"][]
+          p_role?: Database["public"]["Enums"]["organization_role"]
+        }
+        Returns: string
+      }
+      update_organization_user_after_signup: {
+        Args: { p_invitation_token: string; p_real_user_id: string }
+        Returns: boolean
       }
       user_is_org_member: {
         Args: { p_organization_id: string; p_user_id: string }
