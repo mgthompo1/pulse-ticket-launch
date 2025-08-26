@@ -45,7 +45,7 @@ export default function LinkedInCallback() {
         const { data: tokenData, error: tokenError } = await supabase.functions.invoke('linkedin-token', {
           body: {
             code,
-            redirect_uri: `${window.location.origin}/auth/linkedin/callback`,
+            redirect_uri: `${window.location.origin}/dashboard/auth/linkedin/callback`,
           },
         });
 

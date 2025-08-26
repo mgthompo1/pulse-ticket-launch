@@ -53,7 +53,7 @@ const App = () => (
             <Route path="/payment-failed" element={<PaymentFailed />} />
             <Route path="/payment-cancelled" element={<PaymentCancelled />} />
             <Route path="/xero-callback" element={<XeroCallback />} />
-            <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
+            <Route path="/dashboard/auth/linkedin/callback" element={<LinkedInCallback />} />
             <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/contact" element={<Contact />} />

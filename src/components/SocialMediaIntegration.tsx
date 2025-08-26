@@ -72,7 +72,7 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
 
   // LinkedIn OAuth URLs - Using registered redirect URI
   const LINKEDIN_CLIENT_ID = "780xcbz4f2nchj"; // Your correct LinkedIn Client ID
-  const LINKEDIN_REDIRECT_URI = "https://ticketflo.org/auth/linkedin/callback"; // Must match LinkedIn app config
+  const LINKEDIN_REDIRECT_URI = "https://ticketflo.org/dashboard/auth/linkedin/callback"; // Must match LinkedIn app config
   
   // Facebook OAuth URLs (hardcoded for testing)
   const FACEBOOK_CLIENT_ID = "your_facebook_client_id";
