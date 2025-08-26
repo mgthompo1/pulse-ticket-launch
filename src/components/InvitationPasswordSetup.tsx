@@ -107,7 +107,50 @@ export const InvitationPasswordSetup = () => {
     setError(null);
 
     try {
-      // Create the user account (just signup, no auto-login)
+      // First check if user already exists
+      const { data: existingUser } = await supabase.auth.signInWithPassword({
+        email: invitation.email,
+        password,
+      });
+
+      if (existingUser.user) {
+        // User already exists and password is correct, just add them to org
+        console.log('User already exists, adding to organization:', existingUser.user.id);
+        
+        const { data: acceptResult, error: acceptError } = await supabase
+          .rpc('accept_invitation_and_signup', {
+            p_invitation_token: inviteToken || '',
+            p_user_id: existingUser.user.id
+          });
+
+        if (acceptError) {
+          console.error('Error accepting invitation:', acceptError);
+          toast({
+            title: 'Invitation Error',
+            description: 'There was an issue accepting your invitation. Please contact support.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        const result = acceptResult as any;
+        if (result && result.success) {
+          toast({
+            title: 'Welcome!',
+            description: `You've successfully joined ${invitation.organization?.name || 'your organization'}!`,
+          });
+          navigate('/dashboard');
+        } else {
+          toast({
+            title: 'Invitation Error',
+            description: result?.error || 'Failed to accept invitation',
+            variant: 'destructive',
+          });
+        }
+        return;
+      }
+
+      // If sign in fails, try to create new account
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: invitation.email,
         password
@@ -115,7 +158,12 @@ export const InvitationPasswordSetup = () => {
 
       if (signUpError) {
         console.error('Signup error:', signUpError);
-        throw signUpError;
+        if (signUpError.message.includes('User already registered')) {
+          setError('An account with this email already exists. Please try signing in instead.');
+        } else {
+          throw signUpError;
+        }
+        return;
       }
 
       if (data.user) {
