@@ -22,8 +22,11 @@ serve(async (req) => {
     }
 
     const { user_id, platform, content, scheduled_time, event_id, image_url } = await req.json()
+    
+    console.log('Request payload:', { user_id, platform, content, scheduled_time, event_id, image_url })
 
     if (!user_id || !platform || !content) {
+      console.error('Missing required parameters:', { user_id, platform, content })
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -35,6 +38,8 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+    console.log('Looking for social connection:', { user_id, platform })
+
     // Get the user's social connection for the specified platform
     const { data: connection, error: connectionError } = await supabase
       .from('social_connections')
@@ -44,7 +49,10 @@ serve(async (req) => {
       .eq('is_connected', true)
       .single()
 
+    console.log('Connection result:', { connection, connectionError })
+
     if (connectionError || !connection) {
+      console.error('No connection found:', connectionError)
       return new Response(
         JSON.stringify({ error: `No active ${platform} connection found` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -132,8 +140,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Social media post error:', error)
+    console.error('Error stack:', error.stack)
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error', details: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
