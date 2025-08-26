@@ -107,17 +107,54 @@ export const InvitationPasswordSetup = () => {
     setError(null);
 
     try {
-      // Since Supabase signup is having issues, let's show a helpful message
-      // and direct users to create an account normally first
-      toast({
-        title: 'Account Setup Required',
-        description: 'Due to a configuration issue, please create your account first by going to the main sign-up page, then return to this invitation link.',
-        variant: 'default',
+      // Create the user account (just signup, no auto-login)
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: invitation.email,
+        password
       });
-      
-      // Redirect to auth page with the email pre-filled and a message
-      navigate(`/auth?email=${encodeURIComponent(invitation.email)}&signup=true&invitation=${inviteToken}`);
-      
+
+      if (signUpError) {
+        console.error('Signup error:', signUpError);
+        throw signUpError;
+      }
+
+      if (data.user) {
+        console.log('User account created:', data.user.id);
+        
+        // Add user to organization_users table using our database function
+        const { data: acceptResult, error: acceptError } = await supabase
+          .rpc('accept_invitation_and_signup', {
+            p_invitation_token: inviteToken || '',
+            p_user_id: data.user.id
+          });
+
+        if (acceptError) {
+          console.error('Error accepting invitation:', acceptError);
+          toast({
+            title: 'Account Created but Invitation Error',
+            description: 'Your account was created but there was an issue adding you to the organization. Please contact support.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        const result = acceptResult as any;
+        if (result && result.success) {
+          toast({
+            title: 'Account Created Successfully!',
+            description: `Your account has been created and you've been added to ${invitation.organization?.name || 'your organization'}. Please sign in with your new password.`,
+          });
+          
+          // Redirect to login page with email pre-filled
+          navigate(`/auth?email=${encodeURIComponent(invitation.email)}&message=account-created`);
+        } else {
+          toast({
+            title: 'Invitation Error',
+            description: result?.error || 'Failed to accept invitation',
+            variant: 'destructive',
+          });
+        }
+      }
     } catch (error: any) {
       console.error('Error creating account:', error);
       setError(error.message || 'Failed to create account');
