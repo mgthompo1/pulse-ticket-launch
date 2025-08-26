@@ -21,6 +21,8 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import XeroCallback from "./pages/XeroCallback";
+import LinkedInCallback from "./pages/LinkedInCallback";
+import FacebookCallback from "./pages/FacebookCallback";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Contact from "./pages/Contact";
 import Support from "./pages/Support";
@@ -51,6 +53,8 @@ const App = () => (
             <Route path="/payment-failed" element={<PaymentFailed />} />
             <Route path="/payment-cancelled" element={<PaymentCancelled />} />
             <Route path="/xero-callback" element={<XeroCallback />} />
+            <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
+            <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/invite" element={<InvitationAcceptance />} />

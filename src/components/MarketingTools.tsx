@@ -15,18 +15,26 @@ import {
   Megaphone, 
   TrendingUp, 
   Target, 
-  
   Copy,
   Download,
   ExternalLink,
   Facebook,
   Twitter,
   Instagram,
-  MessageSquare
+  MessageSquare,
+  Linkedin,
+  Calendar,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Plus,
+  Trash2,
+  Edit3
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { SocialMediaIntegration } from "./SocialMediaIntegration";
 
 interface Event {
   id: string;
@@ -319,78 +327,7 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
         </TabsContent>
 
         <TabsContent value="social" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Megaphone className="w-5 h-5" />
-                Social Media Posts
-              </CardTitle>
-              <CardDescription>Schedule posts across social platforms</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="social-platform">Platform</Label>
-                  <Select value={socialPost.platform} onValueChange={(value) => setSocialPost(prev => ({ ...prev, platform: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select platform" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="facebook">
-                        <div className="flex items-center gap-2">
-                          <Facebook className="w-4 h-4" />
-                          Facebook
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="twitter">
-                        <div className="flex items-center gap-2">
-                          <Twitter className="w-4 h-4" />
-                          Twitter
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="instagram">
-                        <div className="flex items-center gap-2">
-                          <Instagram className="w-4 h-4" />
-                          Instagram
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="schedule-post">Schedule Post</Label>
-                    <Switch
-                      id="schedule-post"
-                      checked={socialPost.scheduled}
-                      onCheckedChange={(checked) => setSocialPost(prev => ({ ...prev, scheduled: checked }))}
-                    />
-                  </div>
-                  {socialPost.scheduled && (
-                    <Input
-                      type="datetime-local"
-                      value={socialPost.scheduleDate}
-                      onChange={(e) => setSocialPost(prev => ({ ...prev, scheduleDate: e.target.value }))}
-                    />
-                  )}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="social-content">Post Content</Label>
-                <Textarea
-                  id="social-content"
-                  value={socialPost.content}
-                  onChange={(e) => setSocialPost(prev => ({ ...prev, content: e.target.value }))}
-                  placeholder="Write your social media post..."
-                  rows={4}
-                />
-              </div>
-              <Button onClick={handleSchedulePost} className="w-full">
-                <MessageSquare className="w-4 h-4 mr-2" />
-                {socialPost.scheduled ? "Schedule Post" : "Post Now"}
-              </Button>
-            </CardContent>
-          </Card>
+          <SocialMediaIntegration selectedEvent={selectedEvent} />
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
