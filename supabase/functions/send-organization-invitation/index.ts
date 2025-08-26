@@ -77,12 +77,13 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Failed to create invitation');
     }
 
-    // Create invitation link
-    const inviteUrl = `${req.headers.get('origin') || 'https://your-app.com'}/auth?invite=${invitationToken}`;
+    // Create invitation link - use the current app domain
+    const appDomain = req.headers.get('origin') || 'https://96d67e39-36de-4452-b1c7-f463124ceb0b.sandbox.lovable.dev';
+    const inviteUrl = `${appDomain}/invite?token=${invitationToken}`;
 
     // Send invitation email
     const emailResponse = await resend.emails.send({
-      from: 'TicketFlo <hello@ticketflo.org>',
+      from: 'TicketFlo <onboarding@resend.dev>', // Use verified Resend domain
       to: [email],
       subject: `Invitation to join ${organization.name} on TicketFlo`,
       html: `
