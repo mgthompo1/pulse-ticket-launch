@@ -21,7 +21,7 @@ serve(async (req) => {
       )
     }
 
-    const { user_id, platform, content, scheduled_time, event_id } = await req.json()
+    const { user_id, platform, content, scheduled_time, event_id, image_url } = await req.json()
 
     if (!user_id || !platform || !content) {
       return new Response(
@@ -64,10 +64,10 @@ serve(async (req) => {
 
     // Post to the appropriate platform
     if (platform === 'linkedin') {
-      postResult = await postToLinkedIn(connection.access_token, content, event_id)
+      postResult = await postToLinkedIn(connection.access_token, content, event_id, image_url)
       externalPostId = postResult.id
     } else if (platform === 'facebook') {
-      postResult = await postToFacebook(connection.access_token, content, event_id)
+      postResult = await postToFacebook(connection.access_token, content, event_id, image_url)
       externalPostId = postResult.id
     } else {
       return new Response(
@@ -76,21 +76,45 @@ serve(async (req) => {
       )
     }
 
-    // Update the scheduled post status to published
-    const { error: updateError } = await supabase
-      .from('scheduled_posts')
-      .update({
-        status: 'published',
-        published_post_id: externalPostId,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', user_id)
-      .eq('platform', platform)
-      .eq('content', content)
-      .eq('scheduled_time', scheduled_time)
+    // For immediate posts, we can optionally create a record or just log success
+    console.log(`Successfully posted to ${platform}:`, externalPostId)
+    
+    // If this was an immediate post, we can store it in scheduled_posts with status 'posted'
+    if (!scheduled_time) {
+      const { error: insertError } = await supabase
+        .from('scheduled_posts')
+        .insert({
+          user_id: user_id,
+          connection_id: connection.id,
+          platform: platform,
+          content: content,
+          scheduled_time: new Date().toISOString(),
+          status: 'posted',
+          published_post_id: externalPostId,
+          event_id: event_id,
+          image_url: image_url
+        })
+      
+      if (insertError) {
+        console.error('Error creating post record:', insertError)
+      }
+    } else {
+      // Update existing scheduled post
+      const { error: updateError } = await supabase
+        .from('scheduled_posts')
+        .update({
+          status: 'posted',
+          published_post_id: externalPostId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user_id)
+        .eq('platform', platform)
+        .eq('content', content)
+        .eq('scheduled_time', scheduled_time)
 
-    if (updateError) {
-      console.error('Error updating post status:', updateError)
+      if (updateError) {
+        console.error('Error updating post status:', updateError)
+      }
     }
 
     return new Response(
@@ -115,7 +139,7 @@ serve(async (req) => {
   }
 })
 
-async function postToLinkedIn(accessToken: string, content: string, eventId?: string) {
+async function postToLinkedIn(accessToken: string, content: string, eventId?: string, imageUrl?: string) {
   // LinkedIn API endpoint for creating posts
   const response = await fetch('https://api.linkedin.com/v2/ugcPosts', {
     method: 'POST',
@@ -133,7 +157,19 @@ async function postToLinkedIn(accessToken: string, content: string, eventId?: st
           shareCommentary: {
             text: content
           },
-          shareMediaCategory: 'NONE'
+          shareMediaCategory: imageUrl ? 'IMAGE' : 'NONE',
+          ...(imageUrl && {
+            media: [{
+              status: 'READY',
+              description: {
+                text: 'Event promotion image'
+              },
+              media: imageUrl,
+              title: {
+                text: 'Event Image'
+              }
+            }]
+          })
         }
       },
       visibility: {
@@ -150,7 +186,7 @@ async function postToLinkedIn(accessToken: string, content: string, eventId?: st
   return await response.json()
 }
 
-async function postToFacebook(accessToken: string, content: string, eventId?: string) {
+async function postToFacebook(accessToken: string, content: string, eventId?: string, imageUrl?: string) {
   // Facebook API endpoint for creating posts
   const response = await fetch(`https://graph.facebook.com/v18.0/me/feed`, {
     method: 'POST',
