@@ -52,20 +52,12 @@ export default function LinkedInCallback() {
         if (tokenError || !tokenData) {
           throw new Error('Failed to exchange authorization code for access token');
         }
-        
-        // Get user profile information
-        const profileResponse = await fetch('https://api.linkedin.com/v2/me', {
-          headers: {
-            'Authorization': `Bearer ${tokenData.access_token}`,
-            'X-Restli-Protocol-Version': '2.0.0',
-          },
-        });
 
-        if (!profileResponse.ok) {
-          throw new Error('Failed to fetch LinkedIn profile');
-        }
-
-        const profileData = await profileResponse.json();
+        // The edge function should return both token data and profile data
+        const profileData = tokenData.profile || {
+          localizedFirstName: 'LinkedIn',
+          localizedLastName: 'User'
+        };
 
         // Store the connection in the database
         const { error: dbError } = await supabase
@@ -74,7 +66,7 @@ export default function LinkedInCallback() {
             user_id: user.id,
             platform: 'linkedin',
             account_name: `${profileData.localizedFirstName} ${profileData.localizedLastName}`,
-            account_type: 'personal', // Default to personal, can be updated later
+            account_type: 'personal',
             is_connected: true,
             access_token: tokenData.access_token,
             refresh_token: tokenData.refresh_token,

@@ -68,13 +68,32 @@ serve(async (req) => {
 
     const tokenData = await tokenResponse.json()
 
-    // Return the token data
+    // Also fetch user profile information from LinkedIn
+    let profileData = null
+    try {
+      const profileResponse = await fetch('https://api.linkedin.com/v2/me', {
+        headers: {
+          'Authorization': `Bearer ${tokenData.access_token}`,
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+      })
+
+      if (profileResponse.ok) {
+        profileData = await profileResponse.json()
+      }
+    } catch (profileError) {
+      console.error('Failed to fetch LinkedIn profile:', profileError)
+      // Continue without profile data
+    }
+
+    // Return the token data along with profile information
     return new Response(
       JSON.stringify({
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token,
         expires_in: tokenData.expires_in,
         scope: tokenData.scope,
+        profile: profileData,
       }),
       { 
         status: 200, 
