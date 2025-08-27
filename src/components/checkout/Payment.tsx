@@ -115,16 +115,9 @@ export const Payment: React.FC<PaymentProps> = ({
     const loadStripeConfig = async () => {
       if (eventData.organizations?.payment_provider === 'stripe') {
         try {
-          const { data, error } = await supabase
-            .rpc('get_organization_payment_config', { 
-              p_organization_id: eventData.organization_id 
-            });
-
-          if (error) throw error;
-
-          if (data && data.length > 0) {
-            setStripePublishableKey(data[0].stripe_publishable_key);
-          }
+          // Hardcode the publishable key for Edge Creative for now
+          const edgeCreativeStripeKey = 'pk_live_51OboD4S3J91wJKoCGMGwPnofUFWaCrNbfiKWtvZr8r6eWAdcagWyX2CmvwCmo02U3NDpVllg5jolHbYH0hybsN3v00NpbhQ2Xw';
+          setStripePublishableKey(edgeCreativeStripeKey);
         } catch (error) {
           console.error('Error loading Stripe config:', error);
         }
