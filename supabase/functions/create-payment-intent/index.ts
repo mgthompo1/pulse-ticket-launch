@@ -63,14 +63,19 @@ serve(async (req) => {
         p_organization_id: event.organization_id 
       });
 
+    console.log("=== PAYMENT CREDENTIALS DEBUG ===");
+    console.log("Credentials query error:", credError);
+    console.log("Credentials found:", credentials?.length || 0);
+    console.log("Has stripe secret:", credentials?.[0]?.stripe_secret_key ? 'YES' : 'NO');
+
     if (credError || !credentials || credentials.length === 0) {
       console.error("Credentials error:", credError);
-      throw new Error("Payment credentials not found");
+      throw new Error("Payment credentials not found for organization");
     }
 
     const creds = credentials[0];
     if (!creds.stripe_secret_key) {
-      throw new Error("Stripe secret key not configured");
+      throw new Error("Stripe secret key not configured for this organization");
     }
 
     console.log("=== INITIALIZING STRIPE ===");
