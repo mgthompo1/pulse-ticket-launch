@@ -126,14 +126,28 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    console.error("=== ERROR ===");
+    console.error("=== DETAILED ERROR ===");
     console.error("Error message:", error.message);
+    console.error("Error name:", error.name);
     console.error("Error type:", error.constructor.name);
     console.error("Error stack:", error.stack);
+    console.error("Full error object:", error);
+    
+    // Log the error details for debugging
+    if (error.code) {
+      console.error("Error code:", error.code);
+    }
+    if (error.statusCode) {
+      console.error("Status code:", error.statusCode);
+    }
+    if (error.raw) {
+      console.error("Raw error:", error.raw);
+    }
     
     return new Response(JSON.stringify({ 
       error: error.message,
-      type: error.constructor.name
+      type: error.constructor.name,
+      code: error.code || 'UNKNOWN'
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
