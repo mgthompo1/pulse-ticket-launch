@@ -23,6 +23,8 @@ const PaymentSuccess = () => {
     if (!orderDetails) return;
     
     try {
+      console.log('Loading tickets for order:', orderDetails.id);
+      
       // Get only ticket items (not merchandise) and their tickets
       const { data: orderItems, error: orderItemsError } = await supabase
         .from('order_items')
@@ -30,13 +32,15 @@ const PaymentSuccess = () => {
         .eq('order_id', orderDetails.id)
         .eq('item_type', 'ticket'); // Only get ticket items
 
+      console.log('Order items query result:', { orderItems, orderItemsError });
+
       if (orderItemsError) {
         console.error('Error fetching tickets:', orderItemsError);
         return;
       }
 
       if (!orderItems || orderItems.length === 0) {
-        console.error('No tickets found for this order');
+        console.log('No ticket items found for this order - might be merchandise only or tickets not created yet');
         return;
       }
 

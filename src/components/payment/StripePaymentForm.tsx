@@ -145,6 +145,27 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, onS
         return;
       }
 
+      // Payment confirmed successfully, now process the order
+      console.log("Payment confirmed, processing order...");
+      
+      try {
+        // Call our success handler to create tickets and send emails
+        const { error: processError } = await supabase.functions.invoke('stripe-payment-success', {
+          body: {
+            orderId: data.orderId,
+            paymentIntentId: data.clientSecret.split('_secret_')[0] // Extract payment intent ID
+          }
+        });
+
+        if (processError) {
+          console.error("Post-payment processing failed:", processError);
+          // Still show success to user since payment went through
+        }
+      } catch (processError) {
+        console.error("Failed to process post-payment actions:", processError);
+        // Still show success to user since payment went through
+      }
+
       toast({
         title: "Payment Successful",
         description: "Your tickets have been purchased successfully!",
