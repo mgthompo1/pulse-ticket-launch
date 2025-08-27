@@ -204,7 +204,11 @@ const OrgDashboard = () => {
       }
 
       if (orgs) {
-        console.log("Organization loaded:", orgs);
+        console.log("=== ORGANIZATION LOADED DEBUG ===");
+        console.log("Organization data:", orgs);
+        console.log("Organization ID:", orgs.id);
+        console.log("Organization name:", orgs.name);
+        
         // Get organization data
         const org = orgs as Organization;
         
@@ -279,6 +283,12 @@ const OrgDashboard = () => {
         .eq("organization_id", orgId);
 
       if (eventsError) throw eventsError;
+
+      console.log("=== ANALYTICS CALCULATION DEBUG ===");
+      console.log("Organization ID used for analytics:", orgId);
+      console.log("Total orders found:", totalOrders);
+      console.log("Total revenue calculated:", totalRevenue);
+      console.log("Orders data:", orders);
 
       setAnalytics({
         totalEvents: events?.length || 0,
