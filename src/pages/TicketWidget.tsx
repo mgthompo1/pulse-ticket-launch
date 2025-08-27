@@ -442,7 +442,12 @@ const TicketWidget = () => {
       const newMode = eventData.widget_customization.checkoutMode;
       console.log("🔄 Setting checkout mode to:", newMode);
       console.log("Previous checkout mode was:", checkoutMode);
-      setCheckoutMode(newMode);
+      
+      // Always update if the mode is different or if we're initializing
+      if (checkoutMode !== newMode) {
+        setCheckoutMode(newMode);
+        console.log("✅ Checkout mode updated to:", newMode);
+      }
     } else if (eventData) {
       // If no checkout mode is explicitly set in widget customization, default to onepage
       console.log("No checkoutMode found in widget_customization, defaulting to onepage");
@@ -1164,14 +1169,20 @@ const TicketWidget = () => {
 
   // Optimize checkout mode decision with useMemo
   const shouldRenderMultiStep = useMemo(() => {
-    const isMultiStep = checkoutMode === 'multistep' && eventData;
+    // Check both local state and event data for checkout mode
+    const localCheckoutMode = checkoutMode;
+    const dataCheckoutMode = eventData?.widget_customization?.checkoutMode;
+    const effectiveCheckoutMode = dataCheckoutMode || localCheckoutMode;
+    
+    const isMultiStep = effectiveCheckoutMode === 'multistep' && eventData;
     
     // Debug logging
     console.log("=== CHECKOUT MODE DECISION DEBUG ===");
-    console.log("checkoutMode:", checkoutMode);
+    console.log("Local checkoutMode:", localCheckoutMode);
+    console.log("Data checkoutMode:", dataCheckoutMode);
+    console.log("Effective checkoutMode:", effectiveCheckoutMode);
     console.log("eventData exists:", !!eventData);
     console.log("widget_customization:", eventData?.widget_customization);
-    console.log("checkoutMode from widget:", eventData?.widget_customization?.checkoutMode);
     console.log("isMultiStep:", isMultiStep);
     
     // Only log once when the decision changes
@@ -1182,7 +1193,7 @@ const TicketWidget = () => {
     }
     
     return isMultiStep;
-  }, [checkoutMode, eventData]);
+  }, [checkoutMode, eventData?.widget_customization?.checkoutMode, eventData]);
 
   // Render multi-step checkout if enabled
   if (shouldRenderMultiStep && eventData) {
@@ -1282,7 +1293,7 @@ const TicketWidget = () => {
                       variant="outline"
                       size="sm"
                       onClick={refreshWidgetData}
-                      className="text-xs h-8 px-2"
+                      className="text-xs h-8 px-2 bg-blue-50 hover:bg-blue-100"
                       title="Refresh widget data (use after making changes)"
                     >
                       🔄

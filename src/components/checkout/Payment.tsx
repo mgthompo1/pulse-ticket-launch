@@ -175,7 +175,7 @@ export const Payment: React.FC<PaymentProps> = ({
         description: "Finalizing your order...",
       });
       
-      const { error } = await supabase.functions.invoke('windcave-dropin-success', {
+      const { data, error } = await supabase.functions.invoke('windcave-dropin-success', {
         body: { 
           sessionId: sessionId,
           eventId: eventData.id
@@ -189,8 +189,14 @@ export const Payment: React.FC<PaymentProps> = ({
         description: "Your tickets have been confirmed. Check your email for details.",
       });
       
+      // Redirect to payment success page with the order ID
       setTimeout(() => {
-        window.location.href = '/payment-success';
+        if (data?.orderId) {
+          window.location.href = `/payment-success?orderId=${data.orderId}`;
+        } else {
+          // Fallback to payment success page without order ID (will show appropriate message)
+          window.location.href = '/payment-success';
+        }
       }, 1500);
       
     } catch (error: any) {
@@ -392,13 +398,14 @@ export const Payment: React.FC<PaymentProps> = ({
                   merchandiseCart={merchandiseCart as any}
                   customerInfo={customerInfo}
                   total={total}
-                  onSuccess={() => {
+                  onSuccess={(orderId: string) => {
                     setShowStripePayment(false);
                     toast({
                       title: "Payment Successful",
                       description: "Your payment has been processed successfully.",
                     });
-                    window.location.href = '/payment-success';
+                    // Redirect to payment success page with the order ID
+                    window.location.href = `/payment-success?orderId=${orderId}`;
                   }}
                   onCancel={() => setShowStripePayment(false)}
                 />

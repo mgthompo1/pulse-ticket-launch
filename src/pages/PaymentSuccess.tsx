@@ -257,23 +257,14 @@ const PaymentSuccess = () => {
             console.error('No order found');
           }
         } else {
-          console.log('No session parameters found, looking for most recent order...');
-          // If no URL params, show the most recent completed order
-          const { data: recentOrder, error: recentError } = await supabase
-            .from('orders')
-            .select('*, events(name, event_date, venue, logo_url, description, organization_id, ticket_customization, widget_customization, organizations(logo_url, name))')
-            .in('status', ['completed', 'paid'])
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-
-          if (!recentError && recentOrder) {
-            setOrderDetails(recentOrder);
-            console.log('Showing most recent order:', recentOrder.id);
-          }
+          console.log('No session parameters found - cannot determine which order to show');
+          console.log('This usually means the user navigated directly to the success page without completing a payment');
+          // Don't show any order details if we can't determine which order this is for
+          setOrderDetails(null);
         }
       } catch (error) {
         console.error('Error processing payment success:', error);
+        setOrderDetails(null);
       } finally {
         setLoading(false);
       }
@@ -306,7 +297,7 @@ const PaymentSuccess = () => {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {orderDetails && (
+          {orderDetails ? (
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm">
                 <Calendar className="h-4 w-4" />
@@ -321,6 +312,14 @@ const PaymentSuccess = () => {
                 <p className="text-xs text-muted-foreground">Order ID: {orderDetails.id}</p>
               </div>
             </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  No order details available. This usually happens when you navigate directly to this page without completing a payment.
+                </p>
+              </div>
+            </div>
           )}
           
           <div className="space-y-2">
@@ -328,15 +327,6 @@ const PaymentSuccess = () => {
               variant="outline"
               className="w-full bg-black text-white border-black hover:bg-gray-800 hover:text-white hover:border-gray-800" 
               onClick={() => {
-                // Check if event has custom success URL
-                console.log('Success URL check:', {
-                  hasOrderDetails: !!orderDetails,
-                  hasEvents: !!orderDetails?.events,
-                  hasWidgetCustomization: !!orderDetails?.events?.widget_customization,
-                  hasPayment: !!orderDetails?.events?.widget_customization?.payment,
-                  successUrl: orderDetails?.events?.widget_customization?.payment?.successUrl
-                });
-                
                 if (orderDetails?.events?.widget_customization?.payment?.successUrl) {
                   const successUrl = orderDetails.events.widget_customization.payment.successUrl;
                   console.log('Redirecting to custom success URL:', successUrl);
@@ -352,101 +342,105 @@ const PaymentSuccess = () => {
                 : 'Return to Home'
               }
             </Button>
-            <Button 
-              variant="outline" 
-              className="w-full" 
-              onClick={downloadOfficialPDF}
-              disabled={isDownloadingOfficialPDF}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              {isDownloadingOfficialPDF ? 'Generating PDF...' : 'Download Official PDF Tickets'}
-            </Button>
-            <Dialog open={showTickets} onOpenChange={setShowTickets}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="w-full" onClick={viewTickets}>
-                  <Eye className="h-4 w-4 mr-2" />
-                  View Tickets
+            {orderDetails && (
+              <>
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={downloadOfficialPDF}
+                  disabled={isDownloadingOfficialPDF}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {isDownloadingOfficialPDF ? 'Generating PDF...' : 'Download Official PDF Tickets'}
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Your Tickets</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-6 py-4">
-                  {/* Hidden area for printing */}
-                  <div id="tickets-print-area" className="hidden">
-                    {tickets.map((ticket) => (
-                      <div key={ticket.id} className="ticket-container">
-                        <TicketDisplay 
-                          ticket={ticket}
-                          eventDetails={{
-                            venue: orderDetails?.events?.venue,
-                            logo_url: orderDetails?.events?.logo_url,
-                            description: orderDetails?.events?.description
-                          }}
-                          organizationDetails={{
-                            logo_url: orderDetails?.events?.organizations?.logo_url,
-                            name: orderDetails?.events?.organizations?.name
-                          }}
-                          ticketCustomization={orderDetails?.events?.ticket_customization || {
-                            content: {
-                              showLogo: true,
-                              logoSource: "event",
-                              customLogoUrl: ""
-                            }
-                          }}
-                        />
+                <Dialog open={showTickets} onOpenChange={setShowTickets}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full" onClick={viewTickets}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      View Tickets
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Your Tickets</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-6 py-4">
+                      {/* Hidden area for printing */}
+                      <div id="tickets-print-area" className="hidden">
+                        {tickets.map((ticket) => (
+                          <div key={ticket.id} className="ticket-container">
+                            <TicketDisplay 
+                              ticket={ticket}
+                              eventDetails={{
+                                venue: orderDetails?.events?.venue,
+                                logo_url: orderDetails?.events?.logo_url,
+                                description: orderDetails?.events?.description
+                              }}
+                              organizationDetails={{
+                                logo_url: orderDetails?.events?.organizations?.logo_url,
+                                name: orderDetails?.events?.organizations?.name
+                              }}
+                              ticketCustomization={orderDetails?.events?.ticket_customization || {
+                                content: {
+                                  showLogo: true,
+                                  logoSource: "event",
+                                  customLogoUrl: ""
+                                }
+                              }}
+                            />
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
 
-                  {/* Visible tickets for PDF generation */}
-                  {tickets.map((ticket) => (
-                    <div key={ticket.id} className="ticket-for-pdf">
-                      <TicketDisplay 
-                        ticket={ticket}
-                        eventDetails={{
-                          venue: orderDetails?.events?.venue,
-                          logo_url: orderDetails?.events?.logo_url,
-                          description: orderDetails?.events?.description
-                        }}
-                        organizationDetails={{
-                          logo_url: orderDetails?.events?.organizations?.logo_url,
-                          name: orderDetails?.events?.organizations?.name
-                        }}
-                        ticketCustomization={orderDetails?.events?.ticket_customization || {
-                          content: {
-                            showLogo: true,
-                            logoSource: "event",
-                            customLogoUrl: ""
-                          }
-                        }}
-                      />
+                      {/* Visible tickets for PDF generation */}
+                      {tickets.map((ticket) => (
+                        <div key={ticket.id} className="ticket-for-pdf">
+                          <TicketDisplay 
+                            ticket={ticket}
+                            eventDetails={{
+                              venue: orderDetails?.events?.venue,
+                              logo_url: orderDetails?.events?.logo_url,
+                              description: orderDetails?.events?.description
+                            }}
+                            organizationDetails={{
+                              logo_url: orderDetails?.events?.organizations?.logo_url,
+                              name: orderDetails?.events?.organizations?.name
+                            }}
+                            ticketCustomization={orderDetails?.events?.ticket_customization || {
+                              content: {
+                                showLogo: true,
+                                logoSource: "event",
+                                customLogoUrl: ""
+                              }
+                            }}
+                          />
+                        </div>
+                      ))}
+                      
+                      <div className="flex flex-col sm:flex-row gap-2 pt-4">
+                        <Button onClick={printTickets} variant="outline" className="flex-1">
+                          <Printer className="h-4 w-4 mr-2" />
+                          Print Tickets
+                        </Button>
+                        <Button 
+                          onClick={generatePDF} 
+                          variant="outline" 
+                          className="flex-1"
+                          disabled={isGeneratingPDF}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          {isGeneratingPDF ? 'Generating...' : 'Save as PDF'}
+                        </Button>
+                        <Button onClick={addToWallet} variant="outline" className="flex-1">
+                          <Download className="h-4 w-4 mr-2" />
+                          Add to Wallet
+                        </Button>
+                      </div>
                     </div>
-                  ))}
-                  
-                  <div className="flex flex-col sm:flex-row gap-2 pt-4">
-                    <Button onClick={printTickets} variant="outline" className="flex-1">
-                      <Printer className="h-4 w-4 mr-2" />
-                      Print Tickets
-                    </Button>
-                    <Button 
-                      onClick={generatePDF} 
-                      variant="outline" 
-                      className="flex-1"
-                      disabled={isGeneratingPDF}
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      {isGeneratingPDF ? 'Generating...' : 'Save as PDF'}
-                    </Button>
-                    <Button onClick={addToWallet} variant="outline" className="flex-1">
-                      <Download className="h-4 w-4 mr-2" />
-                      Add to Wallet
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>

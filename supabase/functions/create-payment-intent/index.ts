@@ -110,11 +110,85 @@ serve(async (req) => {
     console.log("Amount:", amountInCents, "cents");
     console.log("Currency:", currency);
 
+    // Create order in database first
+    console.log("=== CREATING ORDER IN DATABASE ===");
+    const orderData = {
+      event_id: eventId,
+      customer_name: customerInfo?.name || "Unknown",
+      customer_email: customerInfo?.email || "unknown@example.com",
+      customer_phone: customerInfo?.phone || null,
+      total_amount: finalTotal,
+      status: "pending",
+      stripe_session_id: null // Will be updated after payment intent creation
+    };
+
+    const { data: order, error: orderError } = await supabaseClient
+      .from("orders")
+      .insert(orderData)
+      .select()
+      .single();
+
+    if (orderError) {
+      console.error("Error creating order:", orderError);
+      throw new Error("Failed to create order record");
+    }
+
+    console.log("=== ORDER CREATED ===", { orderId: order.id });
+
+    // Create order items
+    console.log("=== CREATING ORDER ITEMS ===");
+    const orderItems = items.map((item: any) => {
+      const baseItem = {
+        order_id: order.id,
+        item_type: item.type || 'ticket',
+        quantity: item.quantity,
+        unit_price: item.unit_price || item.price,
+        merchandise_options: item.type === 'merchandise' ? item.merchandise_options : null
+      };
+
+      // Handle ticket items
+      if (item.type === 'ticket') {
+        return {
+          ...baseItem,
+          ticket_type_id: item.ticket_type_id,
+          merchandise_id: null
+        };
+      }
+      
+      // Handle merchandise items
+      if (item.type === 'merchandise') {
+        return {
+          ...baseItem,
+          ticket_type_id: null,
+          merchandise_id: item.merchandise_id
+        };
+      }
+
+      // Default to ticket if type is not specified
+      return {
+        ...baseItem,
+        ticket_type_id: item.ticket_type_id,
+        merchandise_id: null
+      };
+    });
+
+    const { error: orderItemsError } = await supabaseClient
+      .from("order_items")
+      .insert(orderItems);
+
+    if (orderItemsError) {
+      console.error("Error creating order items:", orderItemsError);
+      throw new Error("Failed to create order items");
+    }
+
+    console.log("=== ORDER ITEMS CREATED ===", { count: orderItems.length });
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
       currency: currency.toLowerCase(),
       metadata: {
         eventId: eventId,
+        orderId: order.id,
         customerName: customerInfo?.name || "Unknown",
         customerEmail: customerInfo?.email || "unknown@example.com",
         itemCount: items?.length || 0,
@@ -123,10 +197,22 @@ serve(async (req) => {
 
     console.log("=== PAYMENT INTENT CREATED ===", paymentIntent.id);
 
+    // Update order with Stripe session ID
+    const { error: updateError } = await supabaseClient
+      .from("orders")
+      .update({ stripe_session_id: paymentIntent.id })
+      .eq("id", order.id);
+
+    if (updateError) {
+      console.error("Error updating order with Stripe session ID:", updateError);
+      // Don't fail the whole process for this update error
+    }
+
     return new Response(JSON.stringify({
       success: true,
       paymentIntentId: paymentIntent.id,
-      clientSecret: paymentIntent.client_secret
+      clientSecret: paymentIntent.client_secret,
+      orderId: order.id
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
