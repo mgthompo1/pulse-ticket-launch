@@ -80,6 +80,13 @@ const MasterAdmin = () => {
     loading: true
   });
   const [savingPlatformConfig, setSavingPlatformConfig] = useState(false);
+  
+  // User management state
+  const [userManagement, setUserManagement] = useState({
+    email: "",
+    newPassword: "",
+    isResetting: false
+  });
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -507,6 +514,51 @@ const MasterAdmin = () => {
     }
   };
 
+  const handleUserPasswordReset = async () => {
+    if (!userManagement.email || !userManagement.newPassword) {
+      toast({
+        title: "Error",
+        description: "Please enter both email and new password",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUserManagement(prev => ({ ...prev, isResetting: true }));
+    const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+        body: {
+          email: userManagement.email,
+          newPassword: userManagement.newPassword,
+          adminToken: adminToken
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data.success) {
+        toast({
+          title: "Password Reset Successful",
+          description: `Password updated for ${userManagement.email}`,
+        });
+        setUserManagement({ email: "", newPassword: "", isResetting: false });
+      } else {
+        throw new Error(data.error || 'Password reset failed');
+      }
+    } catch (error: any) {
+      console.error("Error resetting password:", error);
+      toast({
+        title: "Password Reset Failed",
+        description: error?.message || "Failed to reset password. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setUserManagement(prev => ({ ...prev, isResetting: false }));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-accent/5 to-primary/5">
       {/* Header */}
@@ -536,9 +588,10 @@ const MasterAdmin = () => {
 
       <div className="container mx-auto p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="organizations">Organizations</TabsTrigger>
+            <TabsTrigger value="users">User Management</TabsTrigger>
             <TabsTrigger value="enquiries">Contact Enquiries</TabsTrigger>
             <TabsTrigger value="content">Content</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
@@ -760,6 +813,70 @@ const MasterAdmin = () => {
                     </table>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* User Management Tab */}
+          <TabsContent value="users" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  User Management
+                </CardTitle>
+                <CardDescription>
+                  Manage user accounts and reset passwords
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="user-email">User Email</Label>
+                      <Input
+                        id="user-email"
+                        type="email"
+                        placeholder="user@example.com"
+                        value={userManagement.email}
+                        onChange={(e) => setUserManagement(prev => ({
+                          ...prev,
+                          email: e.target.value
+                        }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password">New Password</Label>
+                      <Input
+                        id="new-password"
+                        type="password"
+                        placeholder="Enter new password"
+                        value={userManagement.newPassword}
+                        onChange={(e) => setUserManagement(prev => ({
+                          ...prev,
+                          newPassword: e.target.value
+                        }))}
+                      />
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={handleUserPasswordReset}
+                    disabled={userManagement.isResetting || !userManagement.email || !userManagement.newPassword}
+                    className="w-full"
+                  >
+                    {userManagement.isResetting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Resetting Password...
+                      </>
+                    ) : (
+                      <>
+                        <Shield className="h-4 w-4 mr-2" />
+                        Reset User Password
+                      </>
+                    )}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
