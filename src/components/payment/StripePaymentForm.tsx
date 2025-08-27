@@ -207,6 +207,11 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, onS
 };
 
 export const StripePaymentForm = ({ publishableKey, ...props }: StripePaymentFormProps) => {
+  console.log('=== STRIPE PAYMENT FORM INIT ===');
+  console.log('Publishable key received:', publishableKey);
+  console.log('Publishable key type:', typeof publishableKey);
+  console.log('Publishable key length:', publishableKey?.length);
+  
   const stripePromise = loadStripe(publishableKey);
 
   return (

@@ -114,6 +114,9 @@ export const Payment: React.FC<PaymentProps> = ({
   useEffect(() => {
     const loadStripeConfig = async () => {
       if (eventData.organizations?.payment_provider === 'stripe') {
+        console.log('=== LOADING STRIPE CONFIG ===');
+        console.log('Event ID:', eventData.id);
+        
         try {
           // Use the new public function to get payment config for this specific event
           const { data, error } = await supabase
@@ -121,18 +124,29 @@ export const Payment: React.FC<PaymentProps> = ({
               p_event_id: eventData.id 
             });
 
+          console.log('Payment config response:', { data, error });
+
           if (error) {
             console.error('Error loading payment config:', error);
             return;
           }
 
-          if (data && data.length > 0 && data[0].stripe_publishable_key) {
-            setStripePublishableKey(data[0].stripe_publishable_key);
+          if (data && data.length > 0) {
+            console.log('Payment config data:', data[0]);
+            const publishableKey = data[0].stripe_publishable_key;
+            console.log('Stripe publishable key:', publishableKey);
+            
+            if (publishableKey) {
+              setStripePublishableKey(publishableKey);
+              console.log('✅ Stripe publishable key set successfully');
+            } else {
+              console.error('❌ No Stripe publishable key found in response');
+            }
           } else {
-            console.error('No Stripe publishable key found for this event');
+            console.error('❌ No payment config data returned');
           }
         } catch (error) {
-          console.error('Error loading Stripe config:', error);
+          console.error('❌ Exception loading Stripe config:', error);
         }
       }
     };
@@ -353,29 +367,48 @@ export const Payment: React.FC<PaymentProps> = ({
       )}
 
       {/* Stripe Payment Form Modal */}
-      {showStripePayment && stripePublishableKey && (
+      {showStripePayment && (
         <Dialog open={showStripePayment} onOpenChange={setShowStripePayment}>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle style={{ color: theme.headerTextColor }}>Complete Payment</DialogTitle>
             </DialogHeader>
-            <StripePaymentForm
-              publishableKey={stripePublishableKey}
-              eventId={eventData.id}
-              cart={cartItems as any}
-              merchandiseCart={merchandiseCart as any}
-              customerInfo={customerInfo}
-              total={total}
-              onSuccess={() => {
-                setShowStripePayment(false);
-                toast({
-                  title: "Payment Successful",
-                  description: "Your payment has been processed successfully.",
-                });
-                window.location.href = '/payment-success';
-              }}
-              onCancel={() => setShowStripePayment(false)}
-            />
+            {stripePublishableKey ? (
+              <>
+                {/* Debug logging */}
+                {(() => {
+                  console.log('=== RENDERING STRIPE FORM ===', { 
+                    stripePublishableKey, 
+                    showStripePayment,
+                    hasKey: !!stripePublishableKey,
+                    keyLength: stripePublishableKey?.length 
+                  });
+                  return null;
+                })()}
+                <StripePaymentForm
+                  publishableKey={stripePublishableKey}
+                  eventId={eventData.id}
+                  cart={cartItems as any}
+                  merchandiseCart={merchandiseCart as any}
+                  customerInfo={customerInfo}
+                  total={total}
+                  onSuccess={() => {
+                    setShowStripePayment(false);
+                    toast({
+                      title: "Payment Successful",
+                      description: "Your payment has been processed successfully.",
+                    });
+                    window.location.href = '/payment-success';
+                  }}
+                  onCancel={() => setShowStripePayment(false)}
+                />
+              </>
+            ) : (
+              <div className="p-4 text-center">
+                <p>Loading payment form...</p>
+                <p className="text-sm text-muted-foreground">Stripe key: {stripePublishableKey || 'Not loaded'}</p>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       )}
