@@ -94,8 +94,9 @@ serve(async (req) => {
       console.log("Items array:", JSON.stringify(items, null, 2));
       
       finalTotal = items.reduce((sum: number, item: any) => {
-        const itemTotal = item.unit_price * item.quantity;
-        console.log(`Item: ${item.type}, price: ${item.unit_price}, qty: ${item.quantity}, subtotal: ${itemTotal}`);
+        const itemPrice = item.unit_price || item.price || 0;
+        const itemTotal = itemPrice * item.quantity;
+        console.log(`Item: ${item.type}, price: ${itemPrice}, qty: ${item.quantity}, subtotal: ${itemTotal}`);
         return sum + itemTotal;
       }, 0);
       console.log("=== CALCULATED TOTAL FROM ITEMS ===", finalTotal);
