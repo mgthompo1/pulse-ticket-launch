@@ -17,8 +17,9 @@ serve(async (req) => {
     
     console.log("=== RECEIVED PARAMETERS ===");
     console.log("eventId:", eventId);
-    console.log("items:", items);
+    console.log("items:", JSON.stringify(items, null, 2));
     console.log("total:", total);
+    console.log("customerInfo:", JSON.stringify(customerInfo, null, 2));
     
     if (!eventId || !items) {
       throw new Error("Missing required parameters: eventId, items");
@@ -79,14 +80,23 @@ serve(async (req) => {
 
     // Calculate amount in cents - handle both total parameter and calculate from items
     let finalTotal = total;
+    console.log("=== TOTAL CALCULATION DEBUG ===");
+    console.log("Received total:", total, "type:", typeof total);
+    
     if (!finalTotal || finalTotal === 0) {
       // Calculate total from items if not provided
+      console.log("=== CALCULATING FROM ITEMS ===");
+      console.log("Items array:", JSON.stringify(items, null, 2));
+      
       finalTotal = items.reduce((sum: number, item: any) => {
-        return sum + (item.unit_price * item.quantity);
+        const itemTotal = item.unit_price * item.quantity;
+        console.log(`Item: ${item.type}, price: ${item.unit_price}, qty: ${item.quantity}, subtotal: ${itemTotal}`);
+        return sum + itemTotal;
       }, 0);
       console.log("=== CALCULATED TOTAL FROM ITEMS ===", finalTotal);
     }
     
+    console.log("=== FINAL TOTAL ===", finalTotal);
     const amountInCents = Math.round(finalTotal * 100);
     const currency = event.organizations?.currency || "usd";
 
