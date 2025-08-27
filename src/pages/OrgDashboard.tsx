@@ -266,9 +266,19 @@ const OrgDashboard = () => {
       // Get all orders for this organization
       const { data: orders, error: ordersError } = await supabase
         .from("orders")
-        .select("total_amount, status, events(organization_id)")
+        .select(`
+          total_amount, 
+          status, 
+          events!inner(organization_id, name)
+        `)
         .eq("events.organization_id", orgId)
         .in("status", ["paid", "completed"]);
+
+      console.log("=== LOAD ANALYTICS QUERY DEBUG ===");
+      console.log("Query for organization_id:", orgId);
+      console.log("Orders found by loadAnalytics:", orders?.length || 0);
+      console.log("First 3 orders:", orders?.slice(0, 3));
+      console.log("Query error:", ordersError);
 
       if (ordersError) throw ordersError;
 
