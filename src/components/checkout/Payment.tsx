@@ -115,9 +115,22 @@ export const Payment: React.FC<PaymentProps> = ({
     const loadStripeConfig = async () => {
       if (eventData.organizations?.payment_provider === 'stripe') {
         try {
-          // Hardcode the publishable key for Edge Creative for now
-          const edgeCreativeStripeKey = 'pk_live_51OboD4S3J91wJKoCGMGwPnofUFWaCrNbfiKWtvZr8r6eWAdcagWyX2CmvwCmo02U3NDpVllg5jolHbYH0hybsN3v00NpbhQ2Xw';
-          setStripePublishableKey(edgeCreativeStripeKey);
+          // Use the new public function to get payment config for this specific event
+          const { data, error } = await supabase
+            .rpc('get_public_payment_config', { 
+              p_event_id: eventData.id 
+            });
+
+          if (error) {
+            console.error('Error loading payment config:', error);
+            return;
+          }
+
+          if (data && data.length > 0 && data[0].stripe_publishable_key) {
+            setStripePublishableKey(data[0].stripe_publishable_key);
+          } else {
+            console.error('No Stripe publishable key found for this event');
+          }
         } catch (error) {
           console.error('Error loading Stripe config:', error);
         }
@@ -125,7 +138,7 @@ export const Payment: React.FC<PaymentProps> = ({
     };
 
     loadStripeConfig();
-  }, [eventData.organizations?.payment_provider, eventData.organization_id]);
+  }, [eventData.organizations?.payment_provider, eventData.id]);
 
   const handlePayment = async () => {
     // This function is now only for Stripe payments

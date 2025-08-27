@@ -1619,6 +1619,18 @@ export type Database = {
           windcave_username: string
         }[]
       }
+      get_public_payment_config: {
+        Args: { p_event_id: string }
+        Returns: {
+          apple_pay_merchant_id: string
+          credit_card_processing_fee_percentage: number
+          currency: string
+          payment_provider: string
+          stripe_publishable_key: string
+          windcave_enabled: boolean
+          windcave_endpoint: string
+        }[]
+      }
       get_user_organization_id: {
         Args: { user_uuid: string }
         Returns: string
