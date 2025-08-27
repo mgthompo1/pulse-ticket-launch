@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, Mail, Search, Calendar, CreditCard, User, Receipt } from "lucide-react";
+import { Download, Mail, Search, Calendar, User, Receipt, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 
 interface PaymentLogProps {
@@ -34,6 +34,7 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [emailLoading, setEmailLoading] = useState<string | null>(null);
+  const [refundLoading, setRefundLoading] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -63,7 +64,7 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
           )
         `)
         .eq('events.organization_id', organizationId)
-        .or('status.in.(completed,paid),and(status.eq.pending,stripe_session_id.not.is.null)')
+        .or('status.in.(completed,paid,refunded),and(status.eq.pending,stripe_session_id.not.is.null)')
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -137,6 +138,43 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
     }
   };
 
+  const handleRefund = async (payment: PaymentRecord) => {
+    if (!confirm(`Are you sure you want to refund $${payment.total_amount.toFixed(2)} for order ${payment.order_id.slice(0, 8)}...?\n\nThis action cannot be undone and will immediately refund the customer's card.`)) {
+      return;
+    }
+
+    try {
+      setRefundLoading(payment.id);
+      
+      const { error } = await supabase.functions.invoke('stripe-refund', {
+        body: {
+          orderId: payment.order_id,
+          refundAmount: payment.total_amount,
+          reason: 'requested_by_customer'
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Refund Processed",
+        description: `$${payment.total_amount.toFixed(2)} refunded to ${payment.customer_name}`,
+      });
+
+      // Reload payments to show updated status
+      loadPayments();
+    } catch (error) {
+      console.error('Error processing refund:', error);
+      toast({
+        title: "Refund Failed",
+        description: "Failed to process refund. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setRefundLoading(null);
+    }
+  };
+
   const exportToCSV = () => {
     const csvHeaders = [
       'Order ID',
@@ -202,6 +240,20 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
     }
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+      case 'paid':
+        return <Badge variant="default">Paid</Badge>;
+      case 'refunded':
+        return <Badge variant="destructive">Refunded</Badge>;
+      case 'pending':
+        return <Badge variant="secondary">Pending</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -254,7 +306,7 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
                   <TableHead>Customer</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Provider</TableHead>
-                  <TableHead>Method</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -288,13 +340,7 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
                       {getPaymentProviderBadge(payment.payment_provider)}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="w-3 h-3" />
-                        <span>{payment.payment_method}</span>
-                        <span className="text-muted-foreground font-mono text-xs">
-                          {payment.card_last_four}
-                        </span>
-                      </div>
+                      {getStatusBadge(payment.status)}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -308,21 +354,42 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEmailReceipt(payment)}
-                        disabled={emailLoading === payment.id}
-                      >
-                        {emailLoading === payment.id ? (
-                          "Sending..."
-                        ) : (
-                          <>
-                            <Mail className="w-3 h-3 mr-1" />
-                            Email Receipt
-                          </>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEmailReceipt(payment)}
+                          disabled={emailLoading === payment.id || refundLoading === payment.id}
+                        >
+                          {emailLoading === payment.id ? (
+                            "Sending..."
+                          ) : (
+                            <>
+                              <Mail className="w-3 h-3 mr-1" />
+                              Receipt
+                            </>
+                          )}
+                        </Button>
+                        
+                        {payment.payment_provider === 'stripe' && payment.status !== 'refunded' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRefund(payment)}
+                            disabled={emailLoading === payment.id || refundLoading === payment.id}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            {refundLoading === payment.id ? (
+                              "Refunding..."
+                            ) : (
+                              <>
+                                <RotateCcw className="w-3 h-3 mr-1" />
+                                Refund
+                              </>
+                            )}
+                          </Button>
                         )}
-                      </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
