@@ -105,6 +105,12 @@ const TicketWidget = () => {
   const { eventId } = useParams();
   const { toast } = useToast();
   
+  // Add debugging for eventId
+  console.log("=== URL DEBUG ===");
+  console.log("Current URL:", window.location.href);
+  console.log("Event ID from params:", eventId);
+  console.log("Expected Kaleidoscope event ID: 4217e500-6744-4480-b419-b4c61f5dbe89");
+  
   // Use useMemo to ensure the client is only created once
   const anonymousSupabase = useMemo(() => createAnonymousSupabaseClient(), []);
   
