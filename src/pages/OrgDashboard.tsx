@@ -93,8 +93,6 @@ const OrgDashboard = () => {
   const canAccessSecurity = () => userRole === 'owner' || userRole === 'admin';
   const canAccessSettings = () => userRole === 'owner' || userRole === 'admin';
   const canAccessIntegrations = () => userRole === 'owner' || userRole === 'admin';
-  const canEditEvents = () => userRole === 'owner' || userRole === 'admin' || userRole === 'editor';
-  const canViewEvents = () => userRole === 'owner' || userRole === 'admin' || userRole === 'editor' || userRole === 'viewer';
   
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showHelp, setShowHelp] = useState(false);

@@ -231,21 +231,9 @@ const PaymentSuccess = () => {
             }
           }
 
-          // If not found by session, try to find the most recent completed order
+          // Don't fall back to random orders - only show if we can identify the specific order
           if (!order) {
-            console.log('Trying to find most recent completed order...');
-            const { data: recentOrder, error: recentError } = await supabase
-              .from('orders')
-              .select('*, events(name, event_date, venue, logo_url, description, organization_id, ticket_customization, widget_customization, organizations(logo_url, name))')
-              .in('status', ['completed', 'paid'])
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .single();
-
-            if (!recentError && recentOrder) {
-              order = recentOrder;
-              console.log('Found most recent completed order:', order.id);
-            }
+            console.log('Could not find order by orderId or sessionId - not showing any order details');
           }
 
           if (order) {
