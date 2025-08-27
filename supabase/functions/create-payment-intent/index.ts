@@ -77,8 +77,17 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    // Calculate amount in cents
-    const amountInCents = Math.round((total || 0) * 100);
+    // Calculate amount in cents - handle both total parameter and calculate from items
+    let finalTotal = total;
+    if (!finalTotal || finalTotal === 0) {
+      // Calculate total from items if not provided
+      finalTotal = items.reduce((sum: number, item: any) => {
+        return sum + (item.unit_price * item.quantity);
+      }, 0);
+      console.log("=== CALCULATED TOTAL FROM ITEMS ===", finalTotal);
+    }
+    
+    const amountInCents = Math.round(finalTotal * 100);
     const currency = event.organizations?.currency || "usd";
 
     console.log("=== CREATING PAYMENT INTENT ===");
