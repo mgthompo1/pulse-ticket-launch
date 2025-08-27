@@ -51,13 +51,38 @@ const OrganizationSettings: React.FC = () => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      // First, try to find organization where user is the owner
+      let { data, error } = await supabase
         .from("organizations")
         .select("*")
         .eq("user_id", user.id)
         .single();
 
-      if (error) {
+      // If no owned organization found, check if user is a member of any organization
+      if (error && error.code === 'PGRST116') {
+        console.log("No owned organization found, checking memberships...");
+        
+        const { data: membershipData, error: membershipError } = await supabase
+          .from("organization_users")
+          .select(`
+            organization_id,
+            role,
+            organizations (*)
+          `)
+          .eq("user_id", user.id)
+          .limit(1)
+          .single();
+
+        if (membershipError) {
+          console.error("Error loading organization membership:", membershipError);
+          return;
+        }
+
+        if (membershipData?.organizations) {
+          data = membershipData.organizations as any;
+          console.log("Found organization via membership:", data);
+        }
+      } else if (error) {
         console.error("Error loading organization:", error);
         return;
       }
