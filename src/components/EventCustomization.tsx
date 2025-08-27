@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle } from "lucide-react";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
@@ -25,6 +26,7 @@ interface EventCustomizationProps {
 
 const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave }) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showSeatMapDesigner, setShowSeatMapDesigner] = useState(false);
   const [organizationId, setOrganizationId] = useState<string>("");
@@ -182,13 +184,27 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
   const loadCustomizations = useCallback(async () => {
     try {
+      console.log("🔍 Loading customizations for event:", eventId);
+      
       const { data, error } = await supabase
         .from("events")
         .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, organization_id")
         .eq("id", eventId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Error loading customizations:", error);
+        console.error("❌ Error details:", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
+
+      console.log("✅ Customizations loaded successfully:", data);
+      console.log("✅ Widget customization data:", data.widget_customization);
       
       setOrganizationId(data.organization_id);
       setEventData({ 
@@ -240,16 +256,86 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
   const saveCustomizations = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase
+      console.log("🔍 Attempting to save customizations...");
+      console.log("🔍 Event ID:", eventId);
+      console.log("🔍 Current user:", user?.id);
+      console.log("🔍 Widget customization to save:", widgetCustomization);
+      console.log("🔍 Ticket customization to save:", ticketCustomization);
+      console.log("🔍 Email customization to save:", emailCustomization);
+      
+      // First, let's check if we can read the current event data
+      const { data: currentEvent, error: readError } = await supabase
+        .from("events")
+        .select("id, organization_id, widget_customization")
+        .eq("id", eventId)
+        .single();
+      
+      if (readError) {
+        console.error("❌ Error reading current event:", readError);
+        throw new Error(`Cannot read event: ${readError.message}`);
+      }
+      
+      console.log("✅ Current event data:", currentEvent);
+      console.log("🔍 Organization ID:", currentEvent.organization_id);
+      
+      // Check if user has access to this organization
+      const { data: orgAccess, error: orgError } = await supabase
+        .from("organizations")
+        .select("id, user_id")
+        .eq("id", currentEvent.organization_id)
+        .single();
+      
+      if (orgError) {
+        console.error("❌ Error checking organization access:", orgError);
+      } else {
+        console.log("✅ Organization access check:", orgAccess);
+        console.log("🔍 Is user organization owner?", orgAccess.user_id === user?.id);
+      }
+      
+      // Check if user is a member of the organization
+      if (user?.id) {
+        const { data: membership, error: membershipError } = await supabase
+          .from("organization_users")
+          .select("role, permissions")
+          .eq("organization_id", currentEvent.organization_id)
+          .eq("user_id", user.id)
+          .single();
+        
+        if (membershipError && membershipError.code !== 'PGRST116') {
+          console.error("❌ Error checking organization membership:", membershipError);
+        } else if (membership) {
+          console.log("✅ Organization membership:", membership);
+        } else {
+          console.log("ℹ️ User is not a member of this organization");
+        }
+      } else {
+        console.log("❌ No authenticated user found");
+      }
+      
+      // Now attempt the update
+      const { data: updateResult, error: updateError } = await supabase
         .from("events")
         .update({
           widget_customization: widgetCustomization,
           ticket_customization: ticketCustomization,
           email_customization: emailCustomization
         })
-        .eq("id", eventId);
+        .eq("id", eventId)
+        .select("id, widget_customization, ticket_customization, email_customization");
 
-      if (error) throw error;
+      if (updateError) {
+        console.error("❌ Error updating event:", updateError);
+        console.error("❌ Error details:", {
+          code: updateError.code,
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint
+        });
+        throw updateError;
+      }
+
+      console.log("✅ Update successful:", updateResult);
+      console.log("✅ New widget customization:", updateResult[0]?.widget_customization);
 
       toast({
         title: "Success",
@@ -258,10 +344,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
       onSave?.();
     } catch (error) {
-      console.error("Error saving customizations:", error);
+      console.error("❌ Error saving customizations:", error);
       toast({
         title: "Error",
-        description: "Failed to save customizations",
+        description: `Failed to save customizations: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive"
       });
     } finally {
@@ -270,6 +356,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
   };
 
   const updateWidgetCustomization = (path: string[], value: any) => {
+    console.log("🔍 Updating widget customization:", { path, value });
     setWidgetCustomization(prev => {
       const updated = { ...prev } as any;
       let current = updated;
@@ -280,8 +367,102 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         current = current[path[i]];
       }
       current[path[path.length - 1]] = value;
+      console.log("✅ Widget customization updated locally:", updated);
       return updated;
     });
+  };
+
+  // Test function to check if user can update the event
+  const testEventUpdate = async () => {
+    try {
+      console.log("🧪 Testing event update permissions...");
+      
+      // Test 1: Try to add a new field
+      const testData1 = {
+        widget_customization: {
+          ...eventData?.widget_customization,
+          testField: `test-${Date.now()}`
+        }
+      };
+      
+      console.log("🧪 Test 1 - Current widget_customization keys:", Object.keys(eventData?.widget_customization || {}));
+      console.log("🧪 Test 1 - Adding new field 'testField'");
+      
+      console.log("🧪 Test 1 - Adding new field:", testData1);
+      
+      const { data: data1, error: error1 } = await supabase
+        .from("events")
+        .update(testData1)
+        .eq("id", eventId)
+        .select("widget_customization");
+      
+      if (error1) {
+        console.error("❌ Test 1 failed:", error1);
+      } else {
+        console.log("✅ Test 1 successful:", data1);
+        
+        // Verify the new field was saved
+        const { data: verify1, error: verifyError1 } = await supabase
+          .from("events")
+          .select("widget_customization")
+          .eq("id", eventId)
+          .single();
+        
+        if (verifyError1) {
+          console.error("❌ Verification 1 failed:", verifyError1);
+        } else {
+          console.log("✅ Verification 1 - saved data:", verify1.widget_customization);
+          console.log("✅ Verification 1 - testField exists:", (verify1.widget_customization as any)?.testField);
+        }
+      }
+      
+      // Test 2: Try to update existing field
+      const testData2 = {
+        widget_customization: {
+          ...eventData?.widget_customization,
+          theme: {
+            ...(eventData?.widget_customization?.theme as any),
+            testColor: `#${Math.floor(Math.random()*16777215).toString(16)}`
+          }
+        }
+      };
+      
+      console.log("🧪 Test 2 - Updating existing field:", testData2);
+      
+      const { data: data2, error: error2 } = await supabase
+        .from("events")
+        .update(testData2)
+        .eq("id", eventId)
+        .select("widget_customization");
+      
+      if (error2) {
+        console.error("❌ Test 2 failed:", error2);
+      } else {
+        console.log("✅ Test 2 successful:", data2);
+      }
+      
+      // Test 3: Try to update a simple field
+      const testData3 = {
+        description: `Test description ${Date.now()}`
+      };
+      
+      console.log("🧪 Test 3 - Updating simple field:", testData3);
+      
+      const { data: data3, error: error3 } = await supabase
+        .from("events")
+        .update(testData3)
+        .eq("id", eventId)
+        .select("description");
+      
+      if (error3) {
+        console.error("❌ Test 3 failed:", error3);
+      } else {
+        console.log("✅ Test 3 successful:", data3);
+      }
+      
+    } catch (error) {
+      console.error("❌ Test update error:", error);
+    }
   };
 
   const updateTicketCustomization = (path: string[], value: any) => {
@@ -1817,10 +1998,22 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               {/* Checkout Mode */}
               <div className="space-y-3 p-4 border rounded-lg">
                 <div className="space-y-2">
-                  <Label className="text-base font-medium">Checkout Experience</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Choose how customers will complete their purchase
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-base font-medium">Checkout Experience</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Choose how customers will complete their purchase
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={testEventUpdate}
+                      className="text-xs"
+                    >
+                      🧪 Test Update
+                    </Button>
+                  </div>
                   <Select
                     value={(eventData?.widget_customization as any)?.checkoutMode || 'onepage'}
                     onValueChange={async (value: 'onepage' | 'multistep') => {
@@ -1828,38 +2021,68 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         const currentCustomization = (eventData?.widget_customization as any) || {};
                         console.log("Saving checkout mode:", value);
                         console.log("Current customization:", currentCustomization);
+                        console.log("Current customization keys:", Object.keys(currentCustomization));
                         
                         const updatedCustomization = {
                           ...currentCustomization,
                           checkoutMode: value
                         };
                         console.log("Updated customization:", updatedCustomization);
+                        console.log("Updated customization keys:", Object.keys(updatedCustomization));
+                        console.log("Checkout mode value being saved:", updatedCustomization.checkoutMode);
                         
-                        const { error } = await supabase
+                        console.log("🔍 Attempting to update database...");
+                        console.log("🔍 Event ID:", eventId);
+                        console.log("🔍 Updated customization:", updatedCustomization);
+                        
+                        const { data, error } = await supabase
                           .from("events")
                           .update({ 
                             widget_customization: updatedCustomization
                           })
-                          .eq("id", eventId);
+                          .eq("id", eventId)
+                          .select("widget_customization");
 
                         if (error) {
-                          console.error("Database error:", error);
+                          console.error("❌ Database error:", error);
+                          console.error("❌ Error details:", {
+                            code: error.code,
+                            message: error.message,
+                            details: error.details,
+                            hint: error.hint
+                          });
                           throw error;
                         }
 
-                        console.log("Database update successful");
+                                                console.log("✅ Database update successful");
+                        console.log("✅ Returned data:", data);
+                        console.log("✅ Checkout mode in returned data:", (data?.[0]?.widget_customization as any)?.checkoutMode);
+                        
+                        // Verify the data was actually saved by fetching it back
+                        const { data: verifyData, error: verifyError } = await supabase
+                          .from("events")
+                          .select("widget_customization")
+                          .eq("id", eventId)
+                          .single();
+                        
+                        if (verifyError) {
+                          console.error("❌ Error verifying saved data:", verifyError);
+                        } else {
+                          console.log("✅ Verification - saved widget_customization:", verifyData.widget_customization);
+                          console.log("✅ Verification - checkout mode:", (verifyData.widget_customization as any)?.checkoutMode);
+                        }
                         setEventData(prev => prev ? ({
                           ...prev,
                           widget_customization: updatedCustomization as any
                         }) : null);
                         
-                        // Force reload of customizations to ensure the change is reflected
-                        await loadCustomizations();
-                        
-                        toast({
-                          title: "Success",
-                          description: `Checkout mode updated to ${value === 'onepage' ? 'One Page' : 'Multi-Step'}. Open your widget to see changes.`
-                        });
+                        // Small delay to ensure database update is fully propagated
+                        setTimeout(() => {
+                          toast({
+                            title: "Success",
+                            description: `Checkout mode updated to ${value === 'onepage' ? 'One Page' : 'Multi-Step'}. Open your widget to see changes.`
+                          });
+                        }, 100);
                       } catch (error) {
                         console.error("Error updating checkout mode:", error);
                         toast({

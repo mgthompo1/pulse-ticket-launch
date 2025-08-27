@@ -183,6 +183,117 @@ const TicketWidget = () => {
   const [creditCardProcessingFee, setCreditCardProcessingFee] = useState(0);
   const [paymentProvider, setPaymentProvider] = useState('stripe');
   const [stripePublishableKey, setStripePublishableKey] = useState('');
+  
+  // Debug effect to monitor Stripe key changes
+  useEffect(() => {
+    console.log("🔑 Stripe publishable key changed:", stripePublishableKey ? "Key loaded" : "No key");
+  }, [stripePublishableKey]);
+
+  // Function to refresh widget data
+  const refreshWidgetData = useCallback(async () => {
+    if (!eventId) return;
+    
+    try {
+      console.log("🔄 Refreshing widget data...");
+      console.log("🔄 Current checkout mode:", checkoutMode);
+      console.log("🔄 Current widget customization:", eventData?.widget_customization);
+      
+      // Add timestamp to bypass any caching
+      const timestamp = Date.now();
+      console.log("🔄 Refresh timestamp:", timestamp);
+      
+      // Small delay to ensure database changes are propagated
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Fetch the complete event data to ensure we get the latest
+      const { data: eventUpdate, error: eventError } = await supabase
+        .from("events")
+        .select(`
+          *,
+          organizations (
+            name,
+            payment_provider,
+            currency,
+            logo_url,
+            credit_card_processing_fee_percentage
+          )
+        `)
+        .eq("id", eventId as string)
+        .eq("status", "published")
+        .single();
+
+      if (!eventError && eventUpdate) {
+        console.log("🔄 Fresh event data loaded:", eventUpdate);
+        console.log("🔄 Fresh widget customization:", eventUpdate.widget_customization);
+        console.log("🔄 Fresh checkout mode:", (eventUpdate.widget_customization as any)?.checkoutMode);
+        
+        setEventData(eventUpdate);
+        console.log("✅ Widget data refreshed successfully");
+      } else {
+        console.error("❌ Error refreshing widget data:", eventError);
+      }
+    } catch (error) {
+      console.error("Error refreshing widget data:", error);
+    }
+  }, [eventId, eventData?.widget_customization]);
+
+  // Auto-refresh widget data every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(refreshWidgetData, 30000); // 30 seconds
+    return () => clearInterval(interval);
+  }, [refreshWidgetData]);
+
+  // Add a small delay after event data changes to ensure checkout mode is updated
+  useEffect(() => {
+    if (eventData?.widget_customization?.checkoutMode) {
+      // Small delay to ensure state updates properly
+      const timer = setTimeout(() => {
+        console.log("⏰ Delayed checkout mode update for:", eventData.widget_customization.checkoutMode);
+        setCheckoutMode(eventData.widget_customization.checkoutMode);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [eventData?.widget_customization?.checkoutMode]);
+
+  // Function to test database connection and fetch raw data
+  const testDatabaseConnection = useCallback(async () => {
+    if (!eventId) return;
+    
+    try {
+      console.log("🧪 Testing database connection...");
+      
+      // Test 1: Direct event query
+      const { data: directEvent, error: directError } = await supabase
+        .from("events")
+        .select("widget_customization")
+        .eq("id", eventId)
+        .single();
+      
+      console.log("🧪 Direct event query result:", { directEvent, directError });
+      
+      // Test 2: Query with timestamp to bypass cache
+      const timestamp = Date.now();
+      const { data: timestampedEvent, error: timestampedError } = await supabase
+        .from("events")
+        .select("widget_customization")
+        .eq("id", eventId)
+        .eq("status", "published")
+        .single();
+      
+      console.log("🧪 Timestamped event query result:", { timestampedEvent, timestampedError, timestamp });
+      
+      // Test 3: Check if checkoutMode exists in the data
+      if (directEvent?.widget_customization) {
+        console.log("🧪 Widget customization keys:", Object.keys(directEvent.widget_customization));
+        console.log("🧪 Checkout mode value:", (directEvent.widget_customization as any)?.checkoutMode);
+        console.log("🧪 Full widget customization:", directEvent.widget_customization);
+      }
+      
+    } catch (error) {
+      console.error("🧪 Database connection test error:", error);
+    }
+  }, [eventId]);
   const [showPayment, setShowPayment] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   // State for custom question answers
@@ -197,9 +308,9 @@ const TicketWidget = () => {
       console.log("Event ID:", eventId);
       
       // Load event details with safe payment configuration
-      // Add timestamp to ensure we get fresh data and bypass any caching
-      const timestamp = Date.now();
-      console.log("🔄 Loading event data with timestamp:", timestamp);
+              // Add timestamp to ensure we get fresh data and bypass any caching
+        const timestamp = Date.now();
+        console.log("🔄 Loading event data with timestamp:", timestamp);
       
       const { data: event, error: eventError } = await supabase
         .from("events")
@@ -240,25 +351,39 @@ const TicketWidget = () => {
 
       // Get safe payment configuration from organization data
       if (event.organizations) {
+        console.log("🔍 Organization payment provider:", event.organizations.payment_provider);
         setPaymentProvider(event.organizations.payment_provider || "stripe");
         setCreditCardProcessingFee(event.organizations.credit_card_processing_fee_percentage || 0);
         
         // Load payment configuration including Stripe publishable key
         try {
+          console.log("🔍 Loading payment config for event:", eventId);
           const { data: paymentConfig, error: configError } = await supabase
-            .rpc('get_organization_payment_config', { 
-              p_organization_id: event.organization_id 
+            .rpc('get_public_payment_config', { 
+              p_event_id: eventId as string
             });
+
+          console.log("🔍 Payment config result:", { paymentConfig, configError });
 
           if (!configError && paymentConfig && paymentConfig.length > 0) {
             const config = paymentConfig[0];
+            console.log("🔍 Payment config details:", config);
             if (config.stripe_publishable_key) {
               setStripePublishableKey(config.stripe_publishable_key);
+              console.log("✅ Stripe publishable key loaded successfully");
+            } else {
+              console.warn("⚠️ No Stripe publishable key found in payment config");
             }
+          } else {
+            console.warn("⚠️ No payment config found or error occurred:", configError);
           }
         } catch (configError) {
           console.error("Error loading payment config:", configError);
         }
+
+        // Note: Widget customization is already loaded in the initial event data above
+        console.log("🔍 Widget customization from initial load:", event.widget_customization);
+        console.log("🔍 Checkout mode from initial load:", (event.widget_customization as any)?.checkoutMode);
       }
 
       // Load ticket types
@@ -295,7 +420,7 @@ const TicketWidget = () => {
   useEffect(() => {
     if (eventId) {
       console.log("=== TicketWidget mounting or eventId changed ===");
-      loadEventData();
+              loadEventData();
     }
   }, [eventId, loadEventData]);
 
@@ -307,32 +432,26 @@ const TicketWidget = () => {
 
   // Check if multi-step checkout should be used based on widget customization
   useEffect(() => {
-    console.log("=== TicketWidget useEffect ===");
+    console.log("=== CHECKOUT MODE UPDATE EFFECT ===");
     console.log("Event data:", eventData);
-    console.log("Event data widget_customization:", eventData?.widget_customization);
-    console.log("Widget customization type:", typeof eventData?.widget_customization);
-    console.log("Widget customization keys:", eventData?.widget_customization ? Object.keys(eventData.widget_customization) : 'none');
+    console.log("Widget customization:", eventData?.widget_customization);
     console.log("CheckoutMode from data:", eventData?.widget_customization?.checkoutMode);
     console.log("Current checkoutMode state:", checkoutMode);
     
     if (eventData?.widget_customization?.checkoutMode) {
       const newMode = eventData.widget_customization.checkoutMode;
-      console.log("Setting checkout mode to:", newMode);
+      console.log("🔄 Setting checkout mode to:", newMode);
       console.log("Previous checkout mode was:", checkoutMode);
-      if (checkoutMode !== newMode) {
-        console.log("🔄 CHECKOUT MODE CHANGING FROM", checkoutMode, "TO", newMode);
-      }
       setCheckoutMode(newMode);
     } else if (eventData) {
       // If no checkout mode is explicitly set in widget customization, default to onepage
       console.log("No checkoutMode found in widget_customization, defaulting to onepage");
-      console.log("Previous checkout mode was:", checkoutMode);
       if (checkoutMode !== 'onepage') {
         console.log("🔄 CHECKOUT MODE CHANGING FROM", checkoutMode, "TO onepage (default)");
+        setCheckoutMode('onepage');
       }
-      setCheckoutMode('onepage');
     }
-  }, [eventData?.widget_customization?.checkoutMode, eventData?.id]); // Depend on checkoutMode value and event ID
+  }, [eventData?.widget_customization?.checkoutMode, eventData?.id]); // Remove checkoutMode from dependencies to prevent circular updates
 
   // Function to dynamically load Windcave scripts based on endpoint
   const loadWindcaveScripts = async (endpoint: string): Promise<void> => {
@@ -634,6 +753,8 @@ const TicketWidget = () => {
         }
       } else {
         // Handle Stripe payment (existing logic)
+        console.log("🔍 Starting Stripe checkout with key:", stripePublishableKey ? "Key available" : "No key");
+        
         const { data, error } = await supabase.functions.invoke("create-payment-intent", {
           body: { 
             eventId, 
@@ -643,6 +764,10 @@ const TicketWidget = () => {
         });
 
         if (error) throw error;
+
+        if (!stripePublishableKey) {
+          throw new Error("Stripe publishable key not loaded. Please check organization payment configuration.");
+        }
 
         const stripe = await loadStripe(stripePublishableKey);
         if (!stripe) throw new Error("Failed to load Stripe");
@@ -1150,7 +1275,28 @@ const TicketWidget = () => {
             {/* Event Title - Left aligned with right padding to avoid logo overlap */}
             <div className="text-left pr-32">
               <div className="flex items-center justify-between mb-2">
-                <h1 className="text-3xl font-bold" style={{ color: headerTextColor }}>{eventData.name}</h1>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-3xl font-bold" style={{ color: headerTextColor }}>{eventData.name}</h1>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={refreshWidgetData}
+                      className="text-xs h-8 px-2"
+                      title="Refresh widget data (use after making changes)"
+                    >
+                      🔄
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={testDatabaseConnection}
+                      className="text-xs h-8 px-2"
+                    >
+                      🧪
+                    </Button>
+                  </div>
+                </div>
               </div>
               <div className="flex items-center gap-6" style={{ color: bodyTextColor }}>
                 <div className="flex items-center gap-2">

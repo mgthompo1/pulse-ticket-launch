@@ -84,6 +84,17 @@ const OrgDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [organizationId, setOrganizationId] = useState<string>("");
   const [organization, setOrganization] = useState<Organization | null>(null);
+  const [userRole, setUserRole] = useState<'owner' | 'admin' | 'editor' | 'viewer' | null>(null);
+  
+  // Permission checking functions
+  const canAccessAnalytics = () => userRole === 'owner' || userRole === 'admin';
+  const canAccessBilling = () => userRole === 'owner' || userRole === 'admin';
+  const canAccessUsers = () => userRole === 'owner' || userRole === 'admin';
+  const canAccessSecurity = () => userRole === 'owner' || userRole === 'admin';
+  const canAccessSettings = () => userRole === 'owner' || userRole === 'admin';
+  const canAccessIntegrations = () => userRole === 'owner' || userRole === 'admin';
+  const canEditEvents = () => userRole === 'owner' || userRole === 'admin' || userRole === 'editor';
+  const canViewEvents = () => userRole === 'owner' || userRole === 'admin' || userRole === 'editor' || userRole === 'viewer';
   
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -165,6 +176,8 @@ const OrgDashboard = () => {
         .eq("user_id", user.id)
         .single();
 
+      let userRole: 'owner' | 'admin' | 'editor' | 'viewer' = 'owner';
+
       // If no owned organization found, check if user is a member of any organization
       if (error && error.code === 'PGRST116') {
         console.log("No owned organization found, checking memberships...");
@@ -193,6 +206,10 @@ const OrgDashboard = () => {
         if (membershipData && membershipData.organizations) {
           console.log("Organization membership found:", membershipData);
           orgs = membershipData.organizations as any;
+          // Store the user's role
+          userRole = membershipData.role;
+          setUserRole(membershipData.role);
+          console.log("User role set to:", membershipData.role);
           error = null;
         }
       }
@@ -216,8 +233,18 @@ const OrgDashboard = () => {
         setOrganization(org);
         
         loadEvents(org.id);
-        loadAnalytics(org.id);
-        loadAnalyticsData(org.id);
+        
+        // Load analytics based on role
+        console.log("🔐 User role:", userRole);
+        console.log("🔐 Can access analytics:", userRole === 'owner' || userRole === 'admin');
+        console.log("🔐 Can access billing:", userRole === 'owner' || userRole === 'admin');
+        console.log("🔐 Can access users:", userRole === 'owner' || userRole === 'admin');
+        console.log("🔐 Can edit events:", userRole === 'owner' || userRole === 'admin' || userRole === 'editor');
+        
+        if (userRole === 'owner' || userRole === 'admin') {
+          loadAnalytics(org.id);
+          loadAnalyticsData(org.id);
+        }
       }
     };
 
@@ -622,7 +649,9 @@ const OrgDashboard = () => {
                       </CardContent>
                     </Card>
 
-                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm" style={{ animationDelay: '100ms' }}>
+                    {canAccessAnalytics() && (
+                      <>
+                        <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm" style={{ animationDelay: '100ms' }}>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                         <CardTitle className="font-manrope font-semibold text-base text-gray-900">Tickets Sold</CardTitle>
                         <Ticket className="h-5 w-5 text-gray-900" />
@@ -654,15 +683,19 @@ const OrgDashboard = () => {
                         <p className="font-manrope text-sm text-gray-600">Estimated fees</p>
                       </CardContent>
                     </Card>
+                      </>
+                    )}
                   </div>
 
                   {/* Add Analytics Charts */}
-                  <AnalyticsCharts 
-                    salesData={analyticsData.salesData.map(item => ({ month: item.month, revenue: item.sales }))}
-                    eventTypeData={analyticsData.eventTypesData}
-                    revenueData={analyticsData.revenueData}
-                    isLoading={false}
-                  />
+                  {canAccessAnalytics() && (
+                    <AnalyticsCharts 
+                      salesData={analyticsData.salesData.map(item => ({ month: item.month, revenue: item.sales }))}
+                      eventTypeData={analyticsData.eventTypesData}
+                      revenueData={analyticsData.revenueData}
+                      isLoading={false}
+                    />
+                  )}
 
                   <Card className="border-gray-200/60 shadow-sm">
                     <CardHeader className="pb-3">
@@ -850,9 +883,11 @@ const OrgDashboard = () => {
                   )}
                 </TabsContent>
 
-                <TabsContent value="analytics" className="space-y-6">
-                  <EventAnalytics events={events} />
-                </TabsContent>
+                {canAccessAnalytics() && (
+                  <TabsContent value="analytics" className="space-y-6">
+                    <EventAnalytics events={events} />
+                  </TabsContent>
+                )}
 
                 <TabsContent value="payments" className="space-y-6">
                   <PaymentConfiguration organizationId={organizationId} />
@@ -862,32 +897,42 @@ const OrgDashboard = () => {
                   <MarketingTools selectedEvent={selectedEvent ? { id: selectedEvent.id, name: selectedEvent.name, status: selectedEvent.status, event_date: selectedEvent.event_date, description: undefined } : undefined} />
                 </TabsContent>
 
-                <TabsContent value="billing" className="space-y-6">
-                  <BillingDashboard organizationId={organizationId} isLoading={false} />
-                </TabsContent>
+                {canAccessBilling() && (
+                  <TabsContent value="billing" className="space-y-6">
+                    <BillingDashboard organizationId={organizationId} isLoading={false} />
+                  </TabsContent>
+                )}
 
-                <TabsContent value="users" className="space-y-6">
-                  <OrganizationUserManagement 
-                    organizationId={organizationId} 
-                    organizationName={organization?.name || 'Organization'} 
-                  />
-                </TabsContent>
+                {canAccessUsers() && (
+                  <TabsContent value="users" className="space-y-6">
+                    <OrganizationUserManagement 
+                      organizationId={organizationId} 
+                      organizationName={organization?.name || 'Organization'} 
+                    />
+                  </TabsContent>
+                )}
 
                 <TabsContent value="support" className="space-y-6">
                   <Support />
                 </TabsContent>
 
-                <TabsContent value="integrations" className="space-y-6">
-                  <XeroIntegration organizationId={organizationId} />
-                </TabsContent>
+                {canAccessIntegrations() && (
+                  <TabsContent value="integrations" className="space-y-6">
+                    <XeroIntegration organizationId={organizationId} />
+                  </TabsContent>
+                )}
 
-                <TabsContent value="security" className="space-y-6">
-                  <SecurityDashboard />
-                </TabsContent>
+                {canAccessSecurity() && (
+                  <TabsContent value="security" className="space-y-6">
+                    <SecurityDashboard />
+                  </TabsContent>
+                )}
 
-                <TabsContent value="settings" className="space-y-6">
-                  <OrganizationSettings />
-                </TabsContent>
+                {canAccessSettings() && (
+                  <TabsContent value="settings" className="space-y-6">
+                    <OrganizationSettings />
+                  </TabsContent>
+                )}
               </Tabs>
               
               {/* AI Chatbot */}
