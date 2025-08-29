@@ -132,7 +132,7 @@ const CheckoutForm = ({
           Cancel
         </Button>
         <Button type="submit" disabled={!stripe || loading} className="flex-1">
-          {loading ? "Processing..." : `Proceed to Payment`}
+          {loading ? "Processing..." : `Pay`}
         </Button>
       </div>
     </form>
