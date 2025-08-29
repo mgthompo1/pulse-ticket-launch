@@ -1731,8 +1731,8 @@ const TicketWidget = () => {
                             </button>
                           )}
                           
-                          {/* Apple Pay Button */}
-                          {enableApplePay && (
+                          {/* Apple Pay Button - Only show on Apple devices */}
+                          {enableApplePay && /iPad|iPhone|iPod|Mac/.test(navigator.userAgent) && (
                             <button
                               type="button"
                               onClick={() => {
@@ -1758,7 +1758,7 @@ const TicketWidget = () => {
                               console.log("Stripe Link button clicked");
                               // Handle Stripe Link payment
                             }}
-                            className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center"
+                            className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center"
                             style={{ minHeight: '48px' }}
                           >
                             <span className="flex items-center justify-center">
