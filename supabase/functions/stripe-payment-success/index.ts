@@ -32,18 +32,47 @@ serve(async (req) => {
       }
     );
 
-    // Update order status to completed
-    console.log("Updating order status to completed...");
+    // Update order status to paid
+    console.log("Updating order status to paid...");
+    console.log("Looking for order with ID:", orderId);
+    
+    // First, let's check if the order exists
+    const { data: existingOrder, error: lookupError } = await supabaseClient
+      .from("orders")
+      .select("*")
+      .eq("id", orderId)
+      .single();
+    
+    if (lookupError || !existingOrder) {
+      console.error("Order lookup failed:", lookupError);
+      console.error("Order ID searched:", orderId);
+      throw new Error(`Order not found: ${orderId}`);
+    }
+    
+    console.log("Order found:", existingOrder.id, "Status:", existingOrder.status);
+    
+    console.log("About to update order with data:", {
+      orderId: orderId,
+      newStatus: "paid",
+      paymentIntentId: paymentIntentId
+    });
+    
     const { error: updateError } = await supabaseClient
       .from("orders")
       .update({ 
-        status: "completed",
+        status: "paid",
         stripe_session_id: paymentIntentId || null
       })
       .eq("id", orderId);
 
     if (updateError) {
       console.error("Failed to update order status:", updateError);
+      console.error("Update error details:", {
+        code: updateError.code,
+        message: updateError.message,
+        details: updateError.details,
+        hint: updateError.hint
+      });
       throw new Error("Failed to update order status");
     }
 

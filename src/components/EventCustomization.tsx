@@ -79,7 +79,8 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     },
     payment: {
       successUrl: ""
-    }
+    },
+    checkoutMode: "onepage" as 'onepage' | 'multistep'
   });
 
   // Ticket customization state
@@ -213,7 +214,11 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         status: data.status,
         logo_url: data.logo_url,
         venue: data.venue,
-        widget_customization: data.widget_customization as Record<string, unknown>,
+        widget_customization: {
+          ...(data.widget_customization as Record<string, unknown>),
+          // Ensure checkoutMode is preserved if it exists
+          ...((data.widget_customization as any)?.checkoutMode && { checkoutMode: (data.widget_customization as any).checkoutMode })
+        },
         ticket_customization: data.ticket_customization as Record<string, unknown>,
         email_customization: data.email_customization as Record<string, unknown>
       });
@@ -221,7 +226,15 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       setEventVenue(data?.venue || "");
 
       if (data?.widget_customization) {
-        setWidgetCustomization(data.widget_customization as typeof widgetCustomization);
+        // Preserve checkoutMode if it's already set in local state
+        const currentCheckoutMode = (widgetCustomization as any).checkoutMode;
+        const newWidgetCustomization = {
+          ...widgetCustomization,
+          ...(data.widget_customization as any),
+          // Keep the current checkoutMode if it exists
+          ...(currentCheckoutMode && { checkoutMode: currentCheckoutMode })
+        };
+        setWidgetCustomization(newWidgetCustomization);
       }
       if (data?.ticket_customization) {
         setTicketCustomization(data.ticket_customization as typeof ticketCustomization);
@@ -2071,18 +2084,19 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                           console.log("✅ Verification - saved widget_customization:", verifyData.widget_customization);
                           console.log("✅ Verification - checkout mode:", (verifyData.widget_customization as any)?.checkoutMode);
                         }
+                        // Update local state immediately to prevent it from being overwritten
                         setEventData(prev => prev ? ({
                           ...prev,
                           widget_customization: updatedCustomization as any
                         }) : null);
                         
-                        // Small delay to ensure database update is fully propagated
-                        setTimeout(() => {
-                          toast({
-                            title: "Success",
-                            description: `Checkout mode updated to ${value === 'onepage' ? 'One Page' : 'Multi-Step'}. Open your widget to see changes.`
-                          });
-                        }, 100);
+                        // Also update the widgetCustomization state to keep it in sync
+                        setWidgetCustomization(updatedCustomization);
+                        
+                        toast({
+                          title: "Success",
+                          description: `Checkout mode updated to ${value === 'onepage' ? 'One Page' : 'Multi-Step'}. Open your widget to see changes.`
+                        });
                       } catch (error) {
                         console.error("Error updating checkout mode:", error);
                         toast({

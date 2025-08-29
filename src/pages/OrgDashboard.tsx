@@ -87,7 +87,7 @@ const OrgDashboard = () => {
   const [userRole, setUserRole] = useState<'owner' | 'admin' | 'editor' | 'viewer' | null>(null);
   
   // Permission checking functions
-  const canAccessAnalytics = () => userRole === 'owner' || userRole === 'admin';
+  const canAccessAnalytics = () => userRole === 'owner' || userRole === 'admin' || userRole === 'editor';
   const canAccessBilling = () => userRole === 'owner' || userRole === 'admin';
   const canAccessUsers = () => userRole === 'owner' || userRole === 'admin';
   const canAccessSecurity = () => userRole === 'owner' || userRole === 'admin';
@@ -175,6 +175,11 @@ const OrgDashboard = () => {
         .single();
 
       let userRole: 'owner' | 'admin' | 'editor' | 'viewer' = 'owner';
+      
+      // If user owns the organization, set the role in state
+      if (!error && orgs) {
+        setUserRole('owner');
+      }
 
       // If no owned organization found, check if user is a member of any organization
       if (error && error.code === 'PGRST116') {
@@ -234,12 +239,12 @@ const OrgDashboard = () => {
         
         // Load analytics based on role
         console.log("🔐 User role:", userRole);
-        console.log("🔐 Can access analytics:", userRole === 'owner' || userRole === 'admin');
+        console.log("🔐 Can access analytics:", userRole === 'owner' || userRole === 'admin' || userRole === 'editor');
         console.log("🔐 Can access billing:", userRole === 'owner' || userRole === 'admin');
         console.log("🔐 Can access users:", userRole === 'owner' || userRole === 'admin');
         console.log("🔐 Can edit events:", userRole === 'owner' || userRole === 'admin' || userRole === 'editor');
         
-        if (userRole === 'owner' || userRole === 'admin') {
+        if (userRole === 'owner' || userRole === 'admin' || userRole === 'editor') {
           loadAnalytics(org.id);
           loadAnalyticsData(org.id);
         }
@@ -495,12 +500,21 @@ const OrgDashboard = () => {
       eventTypesData: eventTypesData.length
     });
     
+    console.log("Setting analytics data with:", {
+      totalTickets,
+      salesData: monthlyRevenueData,
+      eventTypesData,
+      revenueData: weeklyRevenueData
+    });
+    
     setAnalyticsData({
       totalTickets,
       salesData: monthlyRevenueData, // Use monthly revenue data for performance trend
       eventTypesData,
       revenueData: weeklyRevenueData // Use weekly revenue data for weekly revenue chart
     });
+    
+    console.log("Analytics data set successfully");
   }, []);
 
   const handleOnboardingComplete = () => {
@@ -635,6 +649,8 @@ const OrgDashboard = () => {
             <div className="w-full" style={{ maxWidth: 'none', margin: '0', padding: '0', width: '100%', minWidth: '100%' }}>
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8" style={{ width: '100%', maxWidth: 'none', minWidth: '100%' }}>
                 <TabsContent value="overview" className="space-y-6">
+
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 w-full">
                     <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm">
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
