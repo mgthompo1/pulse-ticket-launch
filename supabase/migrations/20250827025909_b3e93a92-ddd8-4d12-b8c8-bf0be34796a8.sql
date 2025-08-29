@@ -6,6 +6,8 @@ RETURNS TABLE(
   windcave_enabled boolean,
   windcave_endpoint text,
   apple_pay_merchant_id text,
+  enable_apple_pay boolean,
+  enable_google_pay boolean,
   currency text,
   credit_card_processing_fee_percentage numeric
 )
@@ -22,6 +24,8 @@ BEGIN
     pc.windcave_enabled,
     pc.windcave_endpoint,
     pc.apple_pay_merchant_id,
+    pc.enable_apple_pay,
+    pc.enable_google_pay,
     o.currency,
     pc.credit_card_processing_fee_percentage
   FROM events e
