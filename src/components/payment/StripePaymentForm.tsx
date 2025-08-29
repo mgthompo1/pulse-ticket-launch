@@ -407,10 +407,14 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, ena
               💡 Works on all browsers - Apple Pay shows QR code on desktop
             </p>
           </div>
-          <div className="flex justify-center">
-            <div className="text-xs text-muted-foreground mb-2">
-              Debug: canMakePayment={canMakePayment.toString()}, enableGooglePay={enableGooglePay.toString()}, enableApplePay={enableApplePay.toString()}
-            </div>
+          
+          {/* Debug Information */}
+          <div className="text-xs text-muted-foreground text-center mb-2">
+            Debug: canMakePayment={canMakePayment.toString()}, enableGooglePay={enableGooglePay.toString()}, enableApplePay={enableApplePay.toString()}
+          </div>
+          
+          {/* Stripe PaymentRequest Button */}
+          <div className="flex justify-center mb-3">
             <PaymentRequestButtonElement
               options={{
                 paymentRequest,
@@ -424,6 +428,31 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, ena
               }}
             />
           </div>
+          
+          {/* Explicit Google Pay Button for Chrome */}
+          {enableGooglePay && (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  console.log("Google Pay button clicked");
+                  if (paymentRequest) {
+                    paymentRequest.show();
+                  }
+                }}
+                className="bg-black text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors"
+                style={{ minHeight: '48px' }}
+              >
+                <span className="flex items-center justify-center">
+                  <svg className="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M5.26 11c.35-1.88 1.88-3.24 3.74-3.24 1.88 0 3.39 1.36 3.74 3.24H5.26zM9 12.5c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/>
+                  </svg>
+                  Pay with Google Pay
+                </span>
+              </button>
+            </div>
+          )}
+          
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
