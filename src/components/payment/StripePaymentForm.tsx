@@ -408,6 +408,9 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, ena
             </p>
           </div>
           <div className="flex justify-center">
+            <div className="text-xs text-muted-foreground mb-2">
+              Debug: canMakePayment={canMakePayment.toString()}, enableGooglePay={enableGooglePay.toString()}, enableApplePay={enableApplePay.toString()}
+            </div>
             <PaymentRequestButtonElement
               options={{
                 paymentRequest,
