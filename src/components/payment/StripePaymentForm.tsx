@@ -1,37 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Elements, CardElement, useStripe, useElements, PaymentRequestButtonElement } from '@stripe/react-stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-
-interface CartItem {
-  ticketTypeId: string;
-  quantity: number;
-  price: number;
-  name: string;
-}
-
-interface MerchandiseItem {
-  merchandiseId: string;
-  quantity: number;
-  price: number;
-  name: string;
-  options?: Record<string, string>;
-}
-
-interface CustomerInfo {
-  name: string;
-  email: string;
-  phone?: string;
-}
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, useStripe, useElements } from '@stripe/react-stripe-js';
 
 interface StripePaymentFormProps {
-  publishableKey: string;
   eventId: string;
-  cart: CartItem[];
-  merchandiseCart: MerchandiseItem[];
-  customerInfo: CustomerInfo;
+  cart: any[];
+  merchandiseCart: any[];
+  customerInfo: any;
   total: number;
   enableApplePay?: boolean;
   enableGooglePay?: boolean;
@@ -39,15 +16,21 @@ interface StripePaymentFormProps {
   onCancel: () => void;
 }
 
-const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, enableApplePay = false, enableGooglePay = false, onSuccess, onCancel }: Omit<StripePaymentFormProps, 'publishableKey'>) => {
-  console.log("=== CHECKOUT FORM RENDER ===");
-  console.log("Props received:", { eventId, cart, merchandiseCart, customerInfo, total });
-  
+const CheckoutForm = ({ 
+  eventId, 
+  cart, 
+  merchandiseCart, 
+  customerInfo, 
+  total, 
+  enableApplePay = false, 
+  enableGooglePay = false, 
+  onSuccess, 
+  onCancel
+}: StripePaymentFormProps) => {
+  const [loading, setLoading] = useState(false);
+  const [expressCheckoutElement, setExpressCheckoutElement] = useState<any>(null);
   const stripe = useStripe();
   const elements = useElements();
-  const [loading, setLoading] = useState(false);
-  const [paymentRequest, setPaymentRequest] = useState<any>(null);
-  const [canMakePayment, setCanMakePayment] = useState(false);
   const { toast } = useToast();
 
   // Log when component mounts
@@ -55,347 +38,143 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, ena
     console.log("=== CHECKOUT FORM MOUNTED ===");
     console.log("Stripe available:", !!stripe);
     console.log("Elements available:", !!elements);
-  }, [stripe, elements]);
-
-  // Initialize PaymentRequest for Apple Pay and Google Pay
-  useEffect(() => {
-    // Only initialize if Apple Pay or Google Pay is enabled
-    if (!enableApplePay && !enableGooglePay) {
-      console.log("=== PAYMENT REQUEST DEBUG ===");
-      console.log("Apple Pay and Google Pay are disabled in configuration");
-      setCanMakePayment(false);
-      setPaymentRequest(null);
-      return;
-    }
-
-    console.log("=== PAYMENT REQUEST DEBUG ===");
-    console.log("Stripe available:", !!stripe);
-    console.log("Elements available:", !!elements);
-    console.log("Total amount:", total);
-    console.log("Total is valid:", total > 0 && isFinite(total));
     console.log("Apple Pay enabled:", enableApplePay);
     console.log("Google Pay enabled:", enableGooglePay);
-    
-    // Add a small delay to ensure Stripe Elements are fully loaded
-    const timer = setTimeout(() => {
-      if (stripe && elements && total > 0 && isFinite(total)) {
-      console.log("Creating PaymentRequest...");
-      
-      const pr = stripe.paymentRequest({
-        country: 'NZ',
-        currency: 'nzd', // Must be lowercase for Stripe PaymentRequest
-        total: {
-          label: 'Total',
-          amount: Math.round(total * 100), // Convert to cents
-        },
-        requestPayerName: true,
-        requestPayerEmail: true,
-        requestPayerPhone: true,
-        // Add additional options for better cross-browser support
-        disableWallets: [], // Don't disable any wallets
-        requestShipping: false, // Don't request shipping for tickets
-      });
+  }, [stripe, elements, enableApplePay, enableGooglePay]);
 
-      console.log("PaymentRequest created successfully:", pr);
+  // Initialize Express Checkout Element
+  useEffect(() => {
+    if (!stripe || !elements) return;
 
-      // Check if the PaymentRequest is supported
-      pr.canMakePayment().then((result: any) => {
-        console.log("PaymentRequest canMakePayment result:", result);
-        console.log("Result details:", {
-          applePay: result?.applePay,
-          googlePay: result?.googlePay,
-          canMakePayment: !!result
-        });
-        
-        // More permissive check - show Apple Pay/Google Pay if any payment method is available
-        const hasAnyPaymentMethod = result && (
-          result.applePay || 
-          result.googlePay || 
-          result.basicCard || 
-          result.https
-        );
-        
-        console.log("Has any payment method:", hasAnyPaymentMethod);
-        
-        setCanMakePayment(!!hasAnyPaymentMethod);
-        if (hasAnyPaymentMethod) {
-          console.log("Setting paymentRequest state - payment method available");
-          setPaymentRequest(pr);
-        } else {
-          console.log("No payment methods available on this device/browser");
-          console.log("This could be due to:");
-          console.log("- Not on HTTPS (required for Apple Pay/Google Pay)");
-          console.log("- Browser doesn't support PaymentRequest API");
-          console.log("- No payment methods configured on device");
-          console.log("- Device doesn't support mobile payments");
-        }
-      }).catch((error: any) => {
-        console.error("Error checking PaymentRequest support:", error);
-        console.log("Falling back to card-only payment");
-        setCanMakePayment(false);
-      });
+    console.log("=== EXPRESS CHECKOUT INIT ===");
+    console.log("Creating Express Checkout Element...");
 
-      // Handle PaymentRequest completion
-      pr.on('paymentmethod', async (event: any) => {
-        setLoading(true);
-        try {
-          // Prepare items array combining tickets and merchandise
-          const items = [
-            ...cart.map((ticket: any) => ({
-              type: 'ticket',
-              ticket_type_id: ticket.id || ticket.ticketTypeId,
-              quantity: ticket.quantity,
-              unit_price: ticket.price,
-            })),
-            ...merchandiseCart.map((item: any) => ({
-              type: 'merchandise',
-              merchandise_id: item.merchandise.id,
-              quantity: item.quantity,
-              unit_price: item.merchandise.price,
-              merchandise_options: {
-                size: item.selectedSize,
-                color: item.selectedColor,
-              },
-            })),
-          ];
+    const expressElement = elements.create("expressCheckout", {
+      emailRequired: true,
+      // Only show enabled payment methods
+      paymentMethodOrder: enableApplePay && enableGooglePay 
+        ? ['apple_pay', 'google_pay', 'card']
+        : enableApplePay 
+        ? ['apple_pay', 'card']
+        : enableGooglePay 
+        ? ['google_pay', 'card']
+        : ['card']
+    });
 
-          console.log("=== APPLE PAY/GOOGLE PAY PAYMENT DEBUG ===");
-          console.log("Sending to create-payment-intent:", {
-            eventId,
-            items,
-            customerInfo,
-            total
-          });
+    setExpressCheckoutElement(expressElement);
 
-          // Create payment intent
-          const { data, error } = await supabase.functions.invoke('create-payment-intent', {
-            body: {
-              eventId,
-              items,
-              customerInfo,
-              total
-            }
-          });
+    // Listen for confirm event
+    expressElement.on('confirm', async (event: any) => {
+      console.log("Express Checkout confirm event:", event);
+      await handleExpressCheckoutConfirm(event);
+    });
 
-          if (error) {
-            console.error("Failed to create payment intent:", error);
-            throw new Error(error.message || "Failed to create payment intent");
-          }
+    // Listen for ready event
+    expressElement.on('ready', (event: any) => {
+      console.log("Express Checkout ready:", event);
+    });
 
-          // Confirm the payment with the payment method
-          const { error: confirmError } = await stripe.confirmCardPayment(
-            data.clientSecret,
-            {
-              payment_method: event.paymentMethod.id,
-            }
-          );
+    console.log("Express Checkout Element created successfully");
+  }, [stripe, elements, enableApplePay, enableGooglePay]);
 
-          if (confirmError) {
-            console.error("Payment confirmation failed:", confirmError);
-            throw confirmError;
-          }
-
-          // Payment successful, process the order
-          const { error: processError } = await supabase.functions.invoke('stripe-payment-success', {
-            body: {
-              orderId: data.orderId,
-              paymentIntentId: data.clientSecret.split('_secret_')[0]
-            }
-          });
-
-          if (processError) {
-            console.error("Post-payment processing failed:", processError);
-          }
-
-          toast({
-            title: "Payment Successful",
-            description: "Your tickets have been purchased successfully!",
-          });
-
-          onSuccess(data.orderId);
-        } catch (error: any) {
-          console.error('Express payment failed:', error);
-          toast({
-            title: "Payment Failed",
-            description: error.message || "There was an error processing your payment. Please try again.",
-            variant: "destructive",
-          });
-        } finally {
-          setLoading(false);
-        }
-      });
-
-      // Handle PaymentRequest cancellation
-      pr.on('cancel', () => {
-        console.log('PaymentRequest was cancelled');
-      });
-    }
-    }, 100); // 100ms delay
-
-    // Cleanup timer
-    return () => clearTimeout(timer);
-  }, [stripe, elements, total, cart, merchandiseCart, customerInfo, eventId, onSuccess, toast]);
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    if (!stripe || !elements) {
-      return;
-    }
-
+  const handleExpressCheckoutConfirm = async (event: any) => {
     setLoading(true);
-
     try {
-      // Prepare items array combining tickets and merchandise
-      const items = [
-        ...cart.map((ticket: any) => ({
-          type: 'ticket',
-          ticket_type_id: ticket.id || ticket.ticketTypeId,
-          quantity: ticket.quantity,
-          unit_price: ticket.price,
-        })),
-        ...merchandiseCart.map((item: any) => ({
-          type: 'merchandise',
-          merchandise_id: item.merchandise.id,
-          quantity: item.quantity,
-          unit_price: item.merchandise.price,
-          merchandise_options: {
-            size: item.selectedSize,
-            color: item.selectedColor,
-          },
-        })),
-      ];
+      console.log("=== EXPRESS CHECKOUT CONFIRM ===");
+      console.log("Event:", event);
 
-      console.log("=== STRIPE PAYMENT FORM DEBUG ===");
-      console.log("Sending to create-payment-intent:", {
-        eventId,
-        items,
-        customerInfo,
-        total
-      });
-
-      // Create payment intent
-      const { data, error } = await supabase.functions.invoke('create-payment-intent', {
-        body: {
+      // Create payment intent on your server
+      const response = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           eventId,
-          items,
+          cart,
+          merchandiseCart,
           customerInfo,
-          total
-        }
+          total,
+          paymentMethodType: event.paymentMethod.type
+        }),
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error('Failed to create payment intent');
+      }
 
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) throw new Error('Card element not found');
+      const { clientSecret } = await response.json();
 
-      // Confirm payment
-      const { error: paymentError } = await stripe.confirmCardPayment(data.clientSecret, {
-        payment_method: {
-          card: cardElement,
-          billing_details: {
-            name: customerInfo.name,
-            email: customerInfo.email,
-            phone: customerInfo.phone,
-          },
-        }
+      // Confirm the payment
+      const { error } = await stripe!.confirmPayment({
+        elements: elements!,
+        clientSecret,
+        confirmParams: {
+          return_url: `${window.location.origin}/payment-success?orderId=${eventId}`,
+        },
+        redirect: 'if_required',
       });
 
-      if (paymentError) {
-        // Handle specific payment decline messages
-        const errorTitle = "Payment Failed";
-        let errorDescription = "Please try again or use a different payment method.";
-        
-        if (paymentError.type === 'card_error') {
-          switch (paymentError.code) {
-            case 'card_declined':
-              errorDescription = "Your card was declined. Please try again or use a different payment method.";
-              break;
-            case 'insufficient_funds':
-              errorDescription = "Insufficient funds. Please check your account balance or use a different card.";
-              break;
-            case 'expired_card':
-              errorDescription = "Your card has expired. Please use a different payment method.";
-              break;
-            case 'incorrect_cvc':
-              errorDescription = "Incorrect security code. Please check your CVC and try again.";
-              break;
-            case 'processing_error':
-              errorDescription = "Payment processing error. Please try again in a few moments.";
-              break;
-            default:
-              errorDescription = paymentError.message || "Payment failed. Please try again.";
-          }
-        } else if (paymentError.type === 'validation_error') {
-          errorDescription = "Please check your payment details and try again.";
-        }
-        
+      if (error) {
+        console.error("Payment confirmation error:", error);
         toast({
-          title: errorTitle,
-          description: errorDescription,
-          variant: "destructive",
+          title: "Payment Error",
+          description: error.message || "Payment failed",
+          variant: "destructive"
         });
-        return;
+      } else {
+        console.log("Payment confirmed successfully");
+        onSuccess(eventId);
       }
-
-      // Payment confirmed successfully, now process the order
-      console.log("Payment confirmed, processing order...");
-      
-      try {
-        // Call our success handler to create tickets and send emails
-        const { error: processError } = await supabase.functions.invoke('stripe-payment-success', {
-          body: {
-            orderId: data.orderId,
-            paymentIntentId: data.clientSecret.split('_secret_')[0] // Extract payment intent ID
-          }
-        });
-
-        if (processError) {
-          console.error("Post-payment processing failed:", processError);
-          // Still show success to user since payment went through
-        }
-      } catch (processError) {
-        console.error("Failed to process post-payment actions:", processError);
-        // Still show success to user since payment went through
-      }
-
+    } catch (error: any) {
+      console.error("Express checkout error:", error);
       toast({
-        title: "Payment Successful",
-        description: "Your tickets have been purchased successfully!",
-      });
-
-      onSuccess(data.orderId);
-    } catch (error: unknown) {
-      console.error('Payment failed:', error);
-      
-      // Handle non-Stripe errors (like network issues or server errors)
-      const errorTitle = "Payment Failed";
-      let errorDescription = "There was an error processing your payment. Please try again.";
-      
-      if (error instanceof Error) {
-        if (error.message?.includes('network') || error.message?.includes('fetch')) {
-          errorDescription = "Network error. Please check your connection and try again.";
-        } else if (error.message) {
-          errorDescription = error.message;
-        }
-      }
-      
-      toast({
-        title: errorTitle,
-        description: errorDescription,
-        variant: "destructive",
+        title: "Error",
+        description: error.message || "Payment failed",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
 
+    setLoading(true);
+    try {
+      // Handle card payment submission
+      const { error } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/payment-success?orderId=${eventId}`,
+        },
+      });
+
+      if (error) {
+        toast({
+          title: "Payment Error",
+          description: error.message || "Payment failed",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      console.error("Payment error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Payment failed",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Express Payment Options - Apple Pay and Google Pay */}
-      {canMakePayment && paymentRequest && (enableApplePay || enableGooglePay) ? (
+      {/* Express Checkout Element */}
+      {(enableApplePay || enableGooglePay) && (
         <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
           <div className="text-center">
             <div className="mb-3">
@@ -404,54 +183,25 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, ena
             </div>
             <p className="text-sm text-muted-foreground mb-3">Express Checkout</p>
             <p className="text-xs text-muted-foreground mb-2">
-              💡 Works on all browsers - Apple Pay shows QR code on desktop
+              💡 Apple Pay and Google Pay available when supported
             </p>
           </div>
           
           {/* Debug Information */}
           <div className="text-xs text-muted-foreground text-center mb-2">
-            Debug: canMakePayment={canMakePayment.toString()}, enableGooglePay={enableGooglePay.toString()}, enableApplePay={enableApplePay.toString()}
+            Debug: enableGooglePay={enableGooglePay.toString()}, enableApplePay={enableApplePay.toString()}
           </div>
           
-          {/* Stripe PaymentRequest Button */}
-          <div className="flex justify-center mb-3">
-            <PaymentRequestButtonElement
-              options={{
-                paymentRequest,
-                style: {
-                  paymentRequestButton: {
-                    type: 'buy',
-                    theme: 'dark',
-                    height: '48px',
-                  },
-                },
-              }}
-            />
+          {/* Express Checkout Element */}
+          <div id="express-checkout-element" className="min-h-[48px]">
+            {expressCheckoutElement && (
+              <div ref={(el) => {
+                if (el && expressCheckoutElement) {
+                  expressCheckoutElement.mount(el);
+                }
+              }} />
+            )}
           </div>
-          
-          {/* Explicit Google Pay Button for Chrome */}
-          {enableGooglePay && (
-            <div className="flex justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  console.log("Google Pay button clicked");
-                  if (paymentRequest) {
-                    paymentRequest.show();
-                  }
-                }}
-                className="bg-black text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors"
-                style={{ minHeight: '48px' }}
-              >
-                <span className="flex items-center justify-center">
-                  <svg className="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M5.26 11c.35-1.88 1.88-3.24 3.74-3.24 1.88 0 3.39 1.36 3.74 3.24H5.26zM9 12.5c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/>
-                  </svg>
-                  Pay with Google Pay
-                </span>
-              </button>
-            </div>
-          )}
           
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -462,32 +212,13 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, ena
             </div>
           </div>
         </div>
-      ) : (
-        <div className="text-center p-4 border rounded-lg bg-muted/30">
-          <div className="mb-3">
-            <p className="text-2xl font-bold">${total.toFixed(2)}</p>
-            <p className="text-sm text-muted-foreground">Total Amount</p>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {enableApplePay || enableGooglePay ? "Card Payment" : "Payment"}
-          </p>
-        </div>
       )}
       
+      {/* Card Payment Form */}
       <div className="p-4 border rounded-lg">
-        <CardElement
-          options={{
-            style: {
-              base: {
-                fontSize: '16px',
-                color: 'hsl(var(--foreground))',
-                '::placeholder': {
-                  color: 'hsl(var(--muted-foreground))',
-                },
-              },
-            },
-          }}
-        />
+        <div id="card-element" className="min-h-[48px]">
+          {/* Card element will be mounted here */}
+        </div>
       </div>
       
       <div className="flex gap-3">
@@ -495,14 +226,14 @@ const CheckoutForm = ({ eventId, cart, merchandiseCart, customerInfo, total, ena
           Cancel
         </Button>
         <Button type="submit" disabled={!stripe || loading} className="flex-1">
-          {loading ? "Processing..." : `Proceed to Payment`}
+          {loading ? "Processing..." : `Pay $${total.toFixed(2)}`}
         </Button>
       </div>
     </form>
   );
 };
 
-export const StripePaymentForm = ({ publishableKey, ...props }: StripePaymentFormProps) => {
+export const StripePaymentForm = ({ publishableKey, ...props }: StripePaymentFormProps & { publishableKey: string }) => {
   console.log('=== STRIPE PAYMENT FORM INIT ===');
   console.log('Publishable key received:', publishableKey);
   console.log('Publishable key type:', typeof publishableKey);
@@ -512,7 +243,11 @@ export const StripePaymentForm = ({ publishableKey, ...props }: StripePaymentFor
   const stripePromise = loadStripe(publishableKey);
 
   return (
-    <Elements stripe={stripePromise}>
+    <Elements stripe={stripePromise} options={{
+      mode: 'payment',
+      amount: Math.round(props.total * 100), // Convert to cents
+      currency: 'nzd', // Your currency
+    }}>
       <CheckoutForm {...props} />
     </Elements>
   );
