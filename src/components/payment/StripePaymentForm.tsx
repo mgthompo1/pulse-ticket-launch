@@ -108,14 +108,6 @@ const CheckoutForm = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Total Amount Display */}
-      <div className="text-center p-4 border rounded-lg bg-muted/30">
-        <div className="mb-3">
-          <p className="text-2xl font-bold">${total.toFixed(2)}</p>
-          <p className="text-sm text-muted-foreground">Total Amount</p>
-        </div>
-      </div>
-
       {/* Card Payment Form */}
       <div className="p-4 border rounded-lg">
         <div className="text-center mb-3">
