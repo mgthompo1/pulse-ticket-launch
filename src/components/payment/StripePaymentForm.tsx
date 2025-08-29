@@ -28,7 +28,7 @@ const CheckoutForm = ({
   onCancel
 }: StripePaymentFormProps) => {
   const [loading, setLoading] = useState(false);
-  const [paymentElement, setPaymentElement] = useState<any>(null);
+
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
@@ -42,48 +42,7 @@ const CheckoutForm = ({
     console.log("Google Pay enabled:", enableGooglePay);
   }, [stripe, elements, enableApplePay, enableGooglePay]);
 
-  // Initialize Express Checkout Element
-  useEffect(() => {
-    if (!stripe || !elements) return;
 
-    console.log("=== EXPRESS CHECKOUT INIT ===");
-    console.log("Creating Express Checkout Element...");
-
-    // Use Payment Element which supports Apple Pay and Google Pay
-    const paymentElement = elements.create("payment", {
-      layout: "tabs",
-      paymentMethodOrder: enableApplePay && enableGooglePay 
-        ? ['apple_pay', 'google_pay', 'card']
-        : enableApplePay 
-        ? ['apple_pay', 'card']
-        : enableGooglePay 
-        ? ['google_pay', 'card']
-        : ['card'],
-      // Ensure Apple Pay and Google Pay are prioritized
-      defaultValues: {
-        billingDetails: {
-          email: customerInfo?.email || '',
-          name: customerInfo?.name || '',
-        }
-      }
-    });
-
-    setPaymentElement(paymentElement);
-
-    // Mount the Payment Element
-    const expressContainer = document.getElementById('express-checkout-element');
-    if (expressContainer) {
-      paymentElement.mount(expressContainer);
-      console.log("Payment Element mounted successfully");
-    }
-
-    // Listen for change event to detect payment method selection
-    paymentElement.on('change', (event: any) => {
-      console.log("Payment Element change:", event);
-    });
-
-    console.log("Payment Element created successfully");
-  }, [stripe, elements, enableApplePay, enableGooglePay]);
 
   // Initialize Card Element
   useEffect(() => {
@@ -157,41 +116,92 @@ const CheckoutForm = ({
         </div>
       </div>
 
-      {/* Express Checkout Element */}
-      {(enableApplePay || enableGooglePay) && (
-        <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-          {/* Payment Element */}
-          <div id="express-checkout-element" className="min-h-[48px]">
-            {/* Payment Element will be mounted here */}
-          </div>
-          
-          {/* Fallback: Show explicit buttons if Express Checkout Element doesn't render */}
-          <div className="text-center text-sm text-muted-foreground">
-            Apple Pay and Google Pay buttons should appear above
-          </div>
-        </div>
-      )}
-      
       {/* Card Payment Form */}
       <div className="p-4 border rounded-lg">
         <div className="text-center mb-3">
-          <p className="text-sm text-muted-foreground">
-            {enableApplePay || enableGooglePay ? "Or pay with card" : "Card Payment"}
-          </p>
+          <p className="text-sm text-muted-foreground">Card Payment</p>
         </div>
         <div id="card-element" className="min-h-[48px]">
           {/* Card element will be mounted here */}
         </div>
       </div>
       
+      {/* Main Payment Button */}
       <div className="flex gap-3">
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
           Cancel
         </Button>
         <Button type="submit" disabled={!stripe || loading} className="flex-1">
-          {loading ? "Processing..." : `Pay $${total.toFixed(2)}`}
+          {loading ? "Processing..." : `Proceed to Payment`}
         </Button>
       </div>
+
+      {/* Express Payment Alternatives */}
+      {(enableApplePay || enableGooglePay) && (
+        <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+          <div className="text-center">
+            <p className="text-sm font-medium mb-3">Express Payment Options</p>
+          </div>
+          
+          {/* Google Pay Button */}
+          {enableGooglePay && (
+            <button
+              type="button"
+              onClick={() => {
+                console.log("Google Pay button clicked");
+                // Handle Google Pay payment
+              }}
+              className="w-full bg-white text-black px-6 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors border border-gray-300 flex items-center justify-center"
+              style={{ minHeight: '48px' }}
+            >
+              <span className="flex items-center justify-center">
+                <svg className="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M5.26 11c.35-1.88 1.88-3.24 3.74-3.24 1.88 0 3.39 1.36 3.74 3.24H5.26zM9 12.5c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/>
+                </svg>
+                Pay with Google Pay
+              </span>
+            </button>
+          )}
+          
+          {/* Apple Pay Button */}
+          {enableApplePay && (
+            <button
+              type="button"
+              onClick={() => {
+                console.log("Apple Pay button clicked");
+                // Handle Apple Pay payment
+              }}
+              className="w-full bg-black text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors flex items-center justify-center"
+              style={{ minHeight: '48px' }}
+            >
+              <span className="flex items-center justify-center">
+                <svg className="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                </svg>
+                Pay with Apple Pay
+              </span>
+            </button>
+          )}
+          
+          {/* Stripe Link Button */}
+          <button
+            type="button"
+            onClick={() => {
+              console.log("Stripe Link button clicked");
+              // Handle Stripe Link payment
+            }}
+            className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center"
+            style={{ minHeight: '48px' }}
+          >
+            <span className="flex items-center justify-center">
+              <svg className="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              </svg>
+              Pay with Stripe Link
+            </span>
+          </button>
+        </div>
+      )}
     </form>
   );
 };
