@@ -1,7 +1,10 @@
 -- Fix Apple Pay and Google Pay configuration in public payment config function
 -- Run this SQL in your Supabase SQL editor to fix the issue where Apple Pay/Google Pay toggles don't work
 
--- Update the get_public_payment_config function to include the enable flags
+-- First, drop the existing function since we're changing its return type
+DROP FUNCTION IF EXISTS public.get_public_payment_config(uuid);
+
+-- Now recreate the function with the new return type including enable flags
 CREATE OR REPLACE FUNCTION public.get_public_payment_config(p_event_id uuid)
 RETURNS TABLE(
   payment_provider text,
