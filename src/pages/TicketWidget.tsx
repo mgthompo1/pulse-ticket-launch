@@ -805,6 +805,246 @@ const TicketWidget = () => {
     }
   };
 
+  // Express Payment Handlers
+  const handleGooglePayPayment = async () => {
+    try {
+      console.log("🟢 Google Pay payment initiated");
+      
+      // Validate customer info and cart
+      if (!customerInfo.name || !customerInfo.email) {
+        toast({
+          title: "Error",
+          description: "Please provide your name and email address",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (cart.length === 0 && merchandiseCart.length === 0) {
+        toast({
+          title: "Error",
+          description: "Please add tickets or merchandise to your cart first",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Validate custom questions
+      if (!validateCustomQuestions()) {
+        toast({
+          title: "Error",
+          description: "Please answer all required questions.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Prepare items for checkout
+      const allItems = [
+        ...cart.map(item => ({ ...item, type: 'ticket' })),
+        ...merchandiseCart.map(item => ({ 
+          ...item.merchandise, 
+          quantity: item.quantity,
+          type: 'merchandise',
+          selectedSize: (item as any).selectedSize,
+          selectedColor: (item as any).selectedColor
+        }))
+      ];
+
+      const fullCustomerInfo = { ...customerInfo, customAnswers };
+
+      // Create payment intent for Google Pay
+      const { data, error } = await supabase.functions.invoke("create-payment-intent", {
+        body: { 
+          eventId, 
+          items: allItems,
+          customerInfo: fullCustomerInfo,
+          paymentMethod: 'google_pay'
+        }
+      });
+
+      if (error) throw error;
+
+      // For now, redirect to Stripe checkout with Google Pay enabled
+      if (stripePublishableKey) {
+        const stripe = await loadStripe(stripePublishableKey);
+        if (stripe) {
+          const { error: stripeError } = await stripe.redirectToCheckout({
+            sessionId: data.sessionId
+          });
+          if (stripeError) throw stripeError;
+        }
+      }
+
+    } catch (error: any) {
+      console.error("Google Pay payment error:", error);
+      toast({
+        title: "Google Pay Error",
+        description: error.message || "Failed to process Google Pay payment",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleApplePayPayment = async () => {
+    try {
+      console.log("🍎 Apple Pay payment initiated");
+      
+      // Validate customer info and cart
+      if (!customerInfo.name || !customerInfo.email) {
+        toast({
+          title: "Error",
+          description: "Please provide your name and email address",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (cart.length === 0 && merchandiseCart.length === 0) {
+        toast({
+          title: "Error",
+          description: "Please add tickets or merchandise to your cart first",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Validate custom questions
+      if (!validateCustomQuestions()) {
+        toast({
+          title: "Error",
+          description: "Please answer all required questions.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Prepare items for checkout
+      const allItems = [
+        ...cart.map(item => ({ ...item, type: 'ticket' })),
+        ...merchandiseCart.map(item => ({ 
+          ...item.merchandise, 
+          quantity: item.quantity,
+          type: 'merchandise',
+          selectedSize: (item as any).selectedSize,
+          selectedColor: (item as any).selectedColor
+        }))
+      ];
+
+      const fullCustomerInfo = { ...customerInfo, customAnswers };
+
+      // Create payment intent for Apple Pay
+      const { data, error } = await supabase.functions.invoke("create-payment-intent", {
+        body: { 
+          eventId, 
+          items: allItems,
+          customerInfo: fullCustomerInfo,
+          paymentMethod: 'apple_pay'
+        }
+      });
+
+      if (error) throw error;
+
+      // For now, redirect to Stripe checkout with Apple Pay enabled
+      if (stripePublishableKey) {
+        const stripe = await loadStripe(stripePublishableKey);
+        if (stripe) {
+          const { error: stripeError } = await stripe.redirectToCheckout({
+            sessionId: data.sessionId
+          });
+          if (stripeError) throw stripeError;
+        }
+      }
+
+    } catch (error: any) {
+      console.error("Apple Pay payment error:", error);
+      toast({
+        title: "Apple Pay Error",
+        description: error.message || "Failed to process Apple Pay payment",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleStripeLinkPayment = async () => {
+    try {
+      console.log("🔗 Stripe Link payment initiated");
+      
+      // Validate customer info and cart
+      if (!customerInfo.name || !customerInfo.email) {
+        toast({
+          title: "Error",
+          description: "Please provide your name and email address",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (cart.length === 0 && merchandiseCart.length === 0) {
+        toast({
+          title: "Error",
+          description: "Please add tickets or merchandise to your cart first",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Validate custom questions
+      if (!validateCustomQuestions()) {
+        toast({
+          title: "Error",
+          description: "Please answer all required questions.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Prepare items for checkout
+      const allItems = [
+        ...cart.map(item => ({ ...item, type: 'ticket' })),
+                 ...merchandiseCart.map(item => ({ 
+           ...item.merchandise, 
+           quantity: item.quantity,
+           type: 'merchandise',
+           selectedSize: (item as any).selectedSize,
+           selectedColor: (item as any).selectedColor
+         }))
+      ];
+
+      const fullCustomerInfo = { ...customerInfo, customAnswers };
+
+      // Create payment intent for Stripe Link
+      const { data, error } = await supabase.functions.invoke("create-payment-intent", {
+        body: { 
+          eventId, 
+          items: allItems,
+          customerInfo: fullCustomerInfo,
+          paymentMethod: 'stripe_link'
+        }
+      });
+
+      if (error) throw error;
+
+      // Redirect to Stripe checkout with Stripe Link enabled
+      if (stripePublishableKey) {
+        const stripe = await loadStripe(stripePublishableKey);
+        if (stripe) {
+          const { error: stripeError } = await stripe.redirectToCheckout({
+            sessionId: data.sessionId
+          });
+          if (stripeError) throw stripeError;
+        }
+      }
+
+    } catch (error: any) {
+      console.error("Stripe Link payment error:", error);
+      toast({
+        title: "Stripe Link Error",
+        description: error.message || "Failed to process Stripe Link payment",
+        variant: "destructive"
+      });
+    }
+  };
 
   const initializeWindcaveDropIn = (links: WindcaveLink[], totalAmount: number) => {
     console.log("=== INITIALIZING WINDCAVE DROP-IN ===");
@@ -1711,16 +1951,23 @@ const TicketWidget = () => {
                             <p className="text-sm font-medium mb-3 text-muted-foreground">Express Payment Options</p>
                           </div>
                           
-                          {/* Google Pay Button */}
+                          {/* Google Pay Button - Proper Google Pay styling */}
                           {enableGooglePay && (
                             <button
                               type="button"
                               onClick={() => {
                                 console.log("Google Pay button clicked");
                                 // Handle Google Pay payment
+                                handleGooglePayPayment();
                               }}
                               className="w-full bg-white text-black px-6 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors border border-gray-300 flex items-center justify-center"
-                              style={{ minHeight: '48px' }}
+                              style={{ 
+                                minHeight: '48px',
+                                background: 'linear-gradient(135deg, #4285f4 0%, #34a853 25%, #fbbc05 50%, #ea4335 75%)',
+                                color: 'white',
+                                border: 'none',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                              }}
                             >
                               <span className="flex items-center justify-center">
                                 <svg className="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="currentColor">
@@ -1738,6 +1985,7 @@ const TicketWidget = () => {
                               onClick={() => {
                                 console.log("Apple Pay button clicked");
                                 // Handle Apple Pay payment
+                                handleApplePayPayment();
                               }}
                               className="w-full bg-black text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors flex items-center justify-center"
                               style={{ minHeight: '48px' }}
@@ -1757,6 +2005,7 @@ const TicketWidget = () => {
                             onClick={() => {
                               console.log("Stripe Link button clicked");
                               // Handle Stripe Link payment
+                              handleStripeLinkPayment();
                             }}
                             className="w-full bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center"
                             style={{ minHeight: '48px' }}

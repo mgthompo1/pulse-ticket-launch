@@ -107,13 +107,13 @@ const CheckoutForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {/* Card Payment Form */}
-      <div className="p-4 border rounded-lg">
-        <div className="text-center mb-3">
+      <div className="p-3 border rounded-lg">
+        <div className="text-center mb-2">
           <p className="text-sm text-muted-foreground">Card Payment</p>
         </div>
-        <div id="card-element" className="min-h-[48px]">
+        <div id="card-element" className="min-h-[40px]">
           {/* Card element will be mounted here */}
         </div>
       </div>
