@@ -9,6 +9,7 @@ import { PaymentProviderSelector } from './payment/PaymentProviderSelector';
 import { StripeConfiguration } from './payment/StripeConfiguration';
 import { WindcaveConfiguration } from './payment/WindcaveConfiguration';
 import { ApplePayConfiguration } from './payment/ApplePayConfiguration';
+import { GooglePayConfiguration } from './payment/GooglePayConfiguration';
 import { PaymentLog } from './PaymentLog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -30,7 +31,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
   const [windcaveHitUsername, setWindcaveHitUsername] = useState('');
   const [windcaveHitKey, setWindcaveHitKey] = useState('');
   const [windcaveStationId, setWindcaveStationId] = useState('');
-  const [applePayMerchantId, setApplePayMerchantId] = useState('');
+
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [currency, setCurrency] = useState('NZD');
@@ -80,7 +81,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         setWindcaveHitUsername(credData.windcave_hit_username || '');
         setWindcaveHitKey(credData.windcave_hit_key || '');
         setWindcaveStationId(credData.windcave_station_id || '');
-        setApplePayMerchantId(credData.apple_pay_merchant_id || '');
+
       }
     } catch (error) {
       console.error('Error loading payment configuration:', error);
@@ -122,7 +123,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
           windcave_hit_username: windcaveHitUsername,
           windcave_hit_key: windcaveHitKey,
           windcave_station_id: windcaveStationId,
-          apple_pay_merchant_id: applePayMerchantId
+
         }, {
           onConflict: 'organization_id'
         });
@@ -204,12 +205,21 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
               />
             )}
 
-            {paymentProvider === 'applepay' && (
-              <ApplePayConfiguration 
-                applePayMerchantId={applePayMerchantId}
-                onApplePayMerchantIdChange={setApplePayMerchantId}
-              />
+            {paymentProvider === 'stripe' && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Digital Wallets</h3>
+                <ApplePayConfiguration 
+                  isEnabled={enableApplePay}
+                  onToggle={setEnableApplePay}
+                />
+                <GooglePayConfiguration 
+                  isEnabled={enableGooglePay}
+                  onToggle={setEnableGooglePay}
+                />
+              </div>
             )}
+
+
 
             <div className="space-y-3">
               <Label htmlFor="creditCardFee">Credit Card Processing Fee (%)</Label>
