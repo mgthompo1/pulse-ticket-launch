@@ -63,6 +63,13 @@ const CheckoutForm = ({
 
     setExpressCheckoutElement(expressElement);
 
+    // Mount the Express Checkout Element
+    const expressContainer = document.getElementById('express-checkout-element');
+    if (expressContainer) {
+      expressElement.mount(expressContainer);
+      console.log("Express Checkout Element mounted successfully");
+    }
+
     // Listen for confirm event
     expressElement.on('confirm', async (event: any) => {
       console.log("Express Checkout confirm event:", event);
@@ -76,6 +83,33 @@ const CheckoutForm = ({
 
     console.log("Express Checkout Element created successfully");
   }, [stripe, elements, enableApplePay, enableGooglePay]);
+
+  // Initialize Card Element
+  useEffect(() => {
+    if (!stripe || !elements) return;
+
+    console.log("=== CARD ELEMENT INIT ===");
+    const cardElement = elements.create('card', {
+      style: {
+        base: {
+          fontSize: '16px',
+          color: 'hsl(var(--foreground))',
+          '::placeholder': {
+            color: 'hsl(var(--muted-foreground))',
+          },
+        },
+      },
+    });
+
+    const cardContainer = document.getElementById('card-element');
+    if (cardContainer) {
+      cardElement.mount(cardContainer);
+    }
+
+    return () => {
+      cardElement.destroy();
+    };
+  }, [stripe, elements]);
 
   const handleExpressCheckoutConfirm = async (event: any) => {
     setLoading(true);
@@ -173,14 +207,18 @@ const CheckoutForm = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Total Amount Display */}
+      <div className="text-center p-4 border rounded-lg bg-muted/30">
+        <div className="mb-3">
+          <p className="text-2xl font-bold">${total.toFixed(2)}</p>
+          <p className="text-sm text-muted-foreground">Total Amount</p>
+        </div>
+      </div>
+
       {/* Express Checkout Element */}
       {(enableApplePay || enableGooglePay) && (
         <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
           <div className="text-center">
-            <div className="mb-3">
-              <p className="text-2xl font-bold">${total.toFixed(2)}</p>
-              <p className="text-sm text-muted-foreground">Total Amount</p>
-            </div>
             <p className="text-sm text-muted-foreground mb-3">Express Checkout</p>
             <p className="text-xs text-muted-foreground mb-2">
               💡 Apple Pay and Google Pay available when supported
@@ -194,28 +232,18 @@ const CheckoutForm = ({
           
           {/* Express Checkout Element */}
           <div id="express-checkout-element" className="min-h-[48px]">
-            {expressCheckoutElement && (
-              <div ref={(el) => {
-                if (el && expressCheckoutElement) {
-                  expressCheckoutElement.mount(el);
-                }
-              }} />
-            )}
-          </div>
-          
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-muted/30 px-2 text-muted-foreground">Or pay with card</span>
-            </div>
+            {/* Express Checkout Element will be mounted here */}
           </div>
         </div>
       )}
       
       {/* Card Payment Form */}
       <div className="p-4 border rounded-lg">
+        <div className="text-center mb-3">
+          <p className="text-sm text-muted-foreground">
+            {enableApplePay || enableGooglePay ? "Or pay with card" : "Card Payment"}
+          </p>
+        </div>
         <div id="card-element" className="min-h-[48px]">
           {/* Card element will be mounted here */}
         </div>
