@@ -183,6 +183,8 @@ const TicketWidget = () => {
   const [creditCardProcessingFee, setCreditCardProcessingFee] = useState(0);
   const [paymentProvider, setPaymentProvider] = useState('stripe');
   const [stripePublishableKey, setStripePublishableKey] = useState('');
+  const [enableApplePay, setEnableApplePay] = useState<boolean>(false);
+  const [enableGooglePay, setEnableGooglePay] = useState<boolean>(false);
   
   // Debug effect to monitor Stripe key changes
   useEffect(() => {
@@ -373,6 +375,16 @@ const TicketWidget = () => {
               console.log("✅ Stripe publishable key loaded successfully");
             } else {
               console.warn("⚠️ No Stripe publishable key found in payment config");
+            }
+            
+            // Load Apple Pay and Google Pay configuration
+            if ((config as any).enable_apple_pay !== undefined) {
+              setEnableApplePay((config as any).enable_apple_pay);
+              console.log("✅ Apple Pay enabled:", (config as any).enable_apple_pay);
+            }
+            if ((config as any).enable_google_pay !== undefined) {
+              setEnableGooglePay((config as any).enable_google_pay);
+              console.log("✅ Google Pay enabled:", (config as any).enable_google_pay);
             }
           } else {
             console.warn("⚠️ No payment config found or error occurred:", configError);
@@ -1832,6 +1844,8 @@ const TicketWidget = () => {
                         merchandiseCart={merchandiseCart as any}
                         customerInfo={customerInfo}
                         total={getTotalAmount()}
+                        enableApplePay={enableApplePay}
+                        enableGooglePay={enableGooglePay}
                         onSuccess={(orderId: string) => {
                           setCart([]);
                           setMerchandiseCart([]);

@@ -21,6 +21,8 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
   const [stripeAccountId, setStripeAccountId] = useState('');
   const [stripePublishableKey, setStripePublishableKey] = useState('');
   const [stripeSecretKey, setStripeSecretKey] = useState('');
+  const [enableApplePay, setEnableApplePay] = useState(false);
+  const [enableGooglePay, setEnableGooglePay] = useState(false);
   const [windcaveUsername, setWindcaveUsername] = useState('');
   const [windcaveApiKey, setWindcaveApiKey] = useState('');
   const [windcaveEndpoint, setWindcaveEndpoint] = useState('UAT');
@@ -69,6 +71,8 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         setStripeAccountId(credData.stripe_account_id || '');
         setStripePublishableKey(credData.stripe_publishable_key || '');
         setStripeSecretKey(credData.stripe_secret_key || '');
+        setEnableApplePay(credData.enable_apple_pay || false);
+        setEnableGooglePay(credData.enable_google_pay || false);
         setWindcaveUsername(credData.windcave_username || '');
         setWindcaveApiKey(credData.windcave_api_key || '');
         setWindcaveEndpoint(credData.windcave_endpoint || 'UAT');
@@ -109,6 +113,8 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
           stripe_account_id: stripeAccountId,
           stripe_publishable_key: stripePublishableKey,
           stripe_secret_key: stripeSecretKey,
+          enable_apple_pay: enableApplePay,
+          enable_google_pay: enableGooglePay,
           windcave_username: windcaveUsername,
           windcave_api_key: windcaveApiKey,
           windcave_endpoint: windcaveEndpoint,
@@ -167,9 +173,13 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
                 stripeAccountId={stripeAccountId}
                 stripePublishableKey={stripePublishableKey}
                 stripeSecretKey={stripeSecretKey}
+                enableApplePay={enableApplePay}
+                enableGooglePay={enableGooglePay}
                 onStripeAccountIdChange={setStripeAccountId}
                 onStripePublishableKeyChange={setStripePublishableKey}
                 onStripeSecretKeyChange={setStripeSecretKey}
+                onEnableApplePayChange={setEnableApplePay}
+                onEnableGooglePayChange={setEnableGooglePay}
               />
             )}
 
