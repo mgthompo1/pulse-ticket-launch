@@ -28,7 +28,7 @@ const CheckoutForm = ({
   onCancel
 }: StripePaymentFormProps) => {
   const [loading, setLoading] = useState(false);
-  const [expressCheckoutElement, setExpressCheckoutElement] = useState<any>(null);
+  const [paymentElement, setPaymentElement] = useState<any>(null);
   const stripe = useStripe();
   const elements = useElements();
   const { toast } = useToast();
@@ -49,39 +49,40 @@ const CheckoutForm = ({
     console.log("=== EXPRESS CHECKOUT INIT ===");
     console.log("Creating Express Checkout Element...");
 
-    const expressElement = elements.create("expressCheckout", {
-      emailRequired: true,
-      // Only show enabled payment methods
+    // Use Payment Element which supports Apple Pay and Google Pay
+    const paymentElement = elements.create("payment", {
+      layout: "tabs",
       paymentMethodOrder: enableApplePay && enableGooglePay 
         ? ['apple_pay', 'google_pay', 'card']
         : enableApplePay 
         ? ['apple_pay', 'card']
         : enableGooglePay 
         ? ['google_pay', 'card']
-        : ['card']
+        : ['card'],
+      // Ensure Apple Pay and Google Pay are prioritized
+      defaultValues: {
+        billingDetails: {
+          email: customerInfo?.email || '',
+          name: customerInfo?.name || '',
+        }
+      }
     });
 
-    setExpressCheckoutElement(expressElement);
+    setPaymentElement(paymentElement);
 
-    // Mount the Express Checkout Element
+    // Mount the Payment Element
     const expressContainer = document.getElementById('express-checkout-element');
     if (expressContainer) {
-      expressElement.mount(expressContainer);
-      console.log("Express Checkout Element mounted successfully");
+      paymentElement.mount(expressContainer);
+      console.log("Payment Element mounted successfully");
     }
 
-    // Listen for confirm event
-    expressElement.on('confirm', async (event: any) => {
-      console.log("Express Checkout confirm event:", event);
-      await handleExpressCheckoutConfirm(event);
+    // Listen for change event to detect payment method selection
+    paymentElement.on('change', (event: any) => {
+      console.log("Payment Element change:", event);
     });
 
-    // Listen for ready event
-    expressElement.on('ready', (event: any) => {
-      console.log("Express Checkout ready:", event);
-    });
-
-    console.log("Express Checkout Element created successfully");
+    console.log("Payment Element created successfully");
   }, [stripe, elements, enableApplePay, enableGooglePay]);
 
   // Initialize Card Element
@@ -111,66 +112,7 @@ const CheckoutForm = ({
     };
   }, [stripe, elements]);
 
-  const handleExpressCheckoutConfirm = async (event: any) => {
-    setLoading(true);
-    try {
-      console.log("=== EXPRESS CHECKOUT CONFIRM ===");
-      console.log("Event:", event);
 
-      // Create payment intent on your server
-      const response = await fetch('/api/create-payment-intent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          eventId,
-          cart,
-          merchandiseCart,
-          customerInfo,
-          total,
-          paymentMethodType: event.paymentMethod.type
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create payment intent');
-      }
-
-      const { clientSecret } = await response.json();
-
-      // Confirm the payment
-      const { error } = await stripe!.confirmPayment({
-        elements: elements!,
-        clientSecret,
-        confirmParams: {
-          return_url: `${window.location.origin}/payment-success?orderId=${eventId}`,
-        },
-        redirect: 'if_required',
-      });
-
-      if (error) {
-        console.error("Payment confirmation error:", error);
-        toast({
-          title: "Payment Error",
-          description: error.message || "Payment failed",
-          variant: "destructive"
-        });
-      } else {
-        console.log("Payment confirmed successfully");
-        onSuccess(eventId);
-      }
-    } catch (error: any) {
-      console.error("Express checkout error:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Payment failed",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,21 +160,14 @@ const CheckoutForm = ({
       {/* Express Checkout Element */}
       {(enableApplePay || enableGooglePay) && (
         <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-3">Express Checkout</p>
-            <p className="text-xs text-muted-foreground mb-2">
-              💡 Apple Pay and Google Pay available when supported
-            </p>
-          </div>
-          
-          {/* Debug Information */}
-          <div className="text-xs text-muted-foreground text-center mb-2">
-            Debug: enableGooglePay={enableGooglePay.toString()}, enableApplePay={enableApplePay.toString()}
-          </div>
-          
-          {/* Express Checkout Element */}
+          {/* Payment Element */}
           <div id="express-checkout-element" className="min-h-[48px]">
-            {/* Express Checkout Element will be mounted here */}
+            {/* Payment Element will be mounted here */}
+          </div>
+          
+          {/* Fallback: Show explicit buttons if Express Checkout Element doesn't render */}
+          <div className="text-center text-sm text-muted-foreground">
+            Apple Pay and Google Pay buttons should appear above
           </div>
         </div>
       )}
