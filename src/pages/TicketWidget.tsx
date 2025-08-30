@@ -1299,25 +1299,27 @@ const TicketWidget = () => {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
                   <h1 className="text-3xl font-bold" style={{ color: headerTextColor }}>{eventData.name}</h1>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={refreshWidgetData}
-                      className="text-xs h-8 px-2 bg-blue-50 hover:bg-blue-100"
-                      title="Refresh widget data (use after making changes)"
-                    >
-                      🔄
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={testDatabaseConnection}
-                      className="text-xs h-8 px-2"
-                    >
-                      🧪
-                    </Button>
-                  </div>
+                  {((import.meta as any)?.env?.VITE_SHOW_WIDGET_DEBUG === 'true') && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={refreshWidgetData}
+                        className="text-xs h-8 px-2 bg-blue-50 hover:bg-blue-100"
+                        title="Refresh widget data (use after making changes)"
+                      >
+                        🔄
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={testDatabaseConnection}
+                        className="text-xs h-8 px-2"
+                      >
+                        🧪
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-6" style={{ color: bodyTextColor }}>
