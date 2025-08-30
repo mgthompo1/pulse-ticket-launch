@@ -226,7 +226,7 @@ export const Payment: React.FC<PaymentProps> = ({
   return (
     <div className="space-y-6">
       {/* Customer Information Display */}
-      <Card>
+      <Card style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
         <CardHeader>
           <CardTitle style={{ color: theme.headerTextColor }}>Customer Information</CardTitle>
         </CardHeader>
@@ -249,7 +249,7 @@ export const Payment: React.FC<PaymentProps> = ({
       </Card>
 
       {/* Order Summary */}
-      <Card>
+      <Card style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
         <CardHeader>
           <CardTitle style={{ color: theme.headerTextColor }}>Order Summary</CardTitle>
         </CardHeader>

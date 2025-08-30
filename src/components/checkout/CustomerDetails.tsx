@@ -80,6 +80,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                     type={question.type === 'email' ? 'email' : question.type === 'phone' ? 'tel' : 'text'}
                     placeholder={question.question}
                     {...field} 
+                    style={{ backgroundColor: theme.inputBackgroundColor }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -105,6 +106,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                   <Textarea 
                     placeholder={question.question}
                     {...field} 
+                    style={{ backgroundColor: theme.inputBackgroundColor }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -128,7 +130,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 </FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger style={{ backgroundColor: theme.inputBackgroundColor }}>
                       <SelectValue placeholder={question.question} />
                     </SelectTrigger>
                   </FormControl>
@@ -223,7 +225,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card>
+          <Card style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
             <CardHeader>
               <CardTitle style={{ color: theme.headerTextColor }}>Contact Information</CardTitle>
             </CardHeader>
@@ -235,7 +237,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                   <FormItem>
                     <FormLabel style={{ color: theme.bodyTextColor }}>Full Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your full name" {...field} />
+                      <Input placeholder="Enter your full name" {...field} style={{ backgroundColor: theme.inputBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -249,7 +251,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                   <FormItem>
                     <FormLabel style={{ color: theme.bodyTextColor }}>Email Address *</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="Enter your email" {...field} />
+                      <Input type="email" placeholder="Enter your email" {...field} style={{ backgroundColor: theme.inputBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -263,7 +265,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                   <FormItem>
                     <FormLabel style={{ color: theme.bodyTextColor }}>Phone Number</FormLabel>
                     <FormControl>
-                      <Input type="tel" placeholder="Enter your phone number" {...field} />
+                      <Input type="tel" placeholder="Enter your phone number" {...field} style={{ backgroundColor: theme.inputBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -273,10 +275,10 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
           </Card>
 
           {safeCustomQuestions.length > 0 && (
-            <Card>
-                          <CardHeader>
-              <CardTitle style={{ color: theme.headerTextColor }}>Additional Information</CardTitle>
-            </CardHeader>
+            <Card style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
+              <CardHeader>
+                <CardTitle style={{ color: theme.headerTextColor }}>Additional Information</CardTitle>
+              </CardHeader>
               <CardContent className="space-y-4">
                 {safeCustomQuestions.map(renderCustomQuestion)}
               </CardContent>
@@ -303,7 +305,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
               className="border-0"
               style={{ 
                 backgroundColor: theme.primaryColor,
-                                    color: theme.buttonTextColor
+                color: theme.buttonTextColor
               }}
             >
               Continue to Payment

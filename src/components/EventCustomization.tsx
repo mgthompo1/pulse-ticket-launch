@@ -55,6 +55,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       buttonTextColor: "#ffffff", // White for button text
       secondaryColor: "#ffffff", // White for borders and secondary elements
       backgroundColor: "#ffffff", // White background
+      cardBackgroundColor: "#ffffff",
+      inputBackgroundColor: "#ffffff",
+      borderEnabled: false,
+      borderColor: "#e5e7eb",
       headerTextColor: "#111827", // Dark gray for headers
       bodyTextColor: "#6b7280", // Lighter gray for body text (matching GitHub)
       fontFamily: "Manrope" // Default to Manrope (matching your CSS)
@@ -376,7 +380,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           .select("role, permissions")
           .eq("organization_id", currentEvent.organization_id)
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
         
         if (membershipError && membershipError.code !== 'PGRST116') {
           console.error("❌ Error checking organization membership:", membershipError);
@@ -794,6 +798,28 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   <p className="text-xs text-muted-foreground">Color for the overall background</p>
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="cardBackgroundColor">Card Background Color</Label>
+                  <Input
+                    id="cardBackgroundColor"
+                    type="color"
+                    value={widgetCustomization.theme.cardBackgroundColor}
+                    onChange={(e) => updateWidgetCustomization(['theme', 'cardBackgroundColor'], e.target.value)}
+                    className="w-full h-10"
+                  />
+                  <p className="text-xs text-muted-foreground">Background for individual cards/sections</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="inputBackgroundColor">Text Input Background</Label>
+                  <Input
+                    id="inputBackgroundColor"
+                    type="color"
+                    value={widgetCustomization.theme.inputBackgroundColor}
+                    onChange={(e) => updateWidgetCustomization(['theme', 'inputBackgroundColor'], e.target.value)}
+                    className="w-full h-10"
+                  />
+                  <p className="text-xs text-muted-foreground">Background for input fields</p>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="fontFamily">Font Family</Label>
                   <Select
                     value={widgetCustomization.theme.fontFamily}
@@ -852,6 +878,31 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       <SelectItem value="-apple-system">System Font</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="borderEnabled">Show Borders</Label>
+                    <div className="flex items-center h-10">
+                      <input
+                        id="borderEnabled"
+                        type="checkbox"
+                        checked={widgetCustomization.theme.borderEnabled}
+                        onChange={(e) => updateWidgetCustomization(['theme', 'borderEnabled'], e.target.checked)}
+                        className="h-4 w-4 mr-2"
+                      />
+                      <span className="text-sm text-muted-foreground">Apply to cards and inputs</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="borderColor">Border Color</Label>
+                    <Input
+                      id="borderColor"
+                      type="color"
+                      value={widgetCustomization.theme.borderColor}
+                      onChange={(e) => updateWidgetCustomization(['theme', 'borderColor'], e.target.value)}
+                      className="w-full h-10"
+                    />
+                  </div>
                 </div>
                   </>
                 )}

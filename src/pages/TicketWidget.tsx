@@ -136,6 +136,10 @@ const TicketWidget = () => {
         buttonTextColor: '#ffffff', // White for button text
         secondaryColor: '#ffffff', // White for borders and secondary elements
         backgroundColor: '#ffffff', // White background
+        cardBackgroundColor: '#ffffff',
+        inputBackgroundColor: '#ffffff',
+        borderEnabled: false,
+        borderColor: '#e5e7eb',
         headerTextColor: '#111827', // Dark gray for headers
         bodyTextColor: '#6b7280', // Lighter gray for body text (matching GitHub)
         fontFamily: 'Manrope' // Default to Manrope
@@ -148,6 +152,10 @@ const TicketWidget = () => {
         buttonTextColor: themeData.buttonTextColor || '#ffffff', // White for button text
         secondaryColor: themeData.secondaryColor || '#ffffff', // White for borders and secondary elements
         backgroundColor: themeData.backgroundColor || '#ffffff', // White background
+        cardBackgroundColor: themeData.cardBackgroundColor || themeData.backgroundColor || '#ffffff',
+        inputBackgroundColor: themeData.inputBackgroundColor || '#ffffff',
+        borderEnabled: themeData.borderEnabled ?? false,
+        borderColor: themeData.borderColor || '#e5e7eb',
         headerTextColor: themeData.headerTextColor || '#111827', // Dark gray for headers
         bodyTextColor: themeData.bodyTextColor || '#6b7280', // Lighter gray for body text (matching GitHub)
         fontFamily: themeData.fontFamily || 'Manrope'
@@ -1354,7 +1362,7 @@ const TicketWidget = () => {
             {/* Main Content */}
             <div className="xl:col-span-2 space-y-6">
               {/* Customer Information - First */}
-              <Card className="animate-in fade-in-0">
+              <Card className="animate-in fade-in-0" style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2" style={{ color: headerTextColor }}>
                     <Ticket className="h-5 w-5" />
@@ -1371,6 +1379,7 @@ const TicketWidget = () => {
                         onChange={(e) => setCustomerInfo(prev => ({ ...prev, name: e.target.value }))}
                         placeholder="John Doe"
                         className="mt-1"
+                        style={{ backgroundColor: theme.inputBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}
                       />
                     </div>
                     <div>
@@ -1382,6 +1391,7 @@ const TicketWidget = () => {
                         onChange={(e) => setCustomerInfo(prev => ({ ...prev, email: e.target.value }))}
                         placeholder="john@example.com"
                         className="mt-1"
+                        style={{ backgroundColor: theme.inputBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}
                       />
                     </div>
                     <div className="md:col-span-2">
@@ -1392,6 +1402,7 @@ const TicketWidget = () => {
                         onChange={(e) => setCustomerInfo(prev => ({ ...prev, phone: e.target.value }))}
                         placeholder="+1 (555) 123-4567"
                         className="mt-1"
+                        style={{ backgroundColor: theme.inputBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}
                       />
                     </div>
                   </div>
@@ -1400,7 +1411,7 @@ const TicketWidget = () => {
 
               {/* Custom Questions - Second */}
               {customQuestions.length > 0 && (
-                <Card className="animate-in fade-in-0">
+                <Card className="animate-in fade-in-0" style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2" style={{ color: headerTextColor }}>
                       <HelpCircle className="h-5 w-5" />
@@ -1422,6 +1433,7 @@ const TicketWidget = () => {
                               value={customAnswers[q.id] || ''}
                               onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
                               placeholder={q.label}
+                              style={{ backgroundColor: theme.inputBackgroundColor }}
                             />
                           )}
                           {q.type === 'textarea' && (
@@ -1431,6 +1443,7 @@ const TicketWidget = () => {
                               onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
                               placeholder={q.label}
                               rows={3}
+                              style={{ backgroundColor: theme.inputBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}
                             />
                           )}
                           {(q.type === 'select' || q.type === 'radio') && (
@@ -1438,7 +1451,7 @@ const TicketWidget = () => {
                               value={customAnswers[q.id] || ''}
                               onValueChange={(value) => setCustomAnswers(a => ({ ...a, [q.id]: value }))}
                             >
-                              <SelectTrigger>
+                              <SelectTrigger style={{ backgroundColor: theme.inputBackgroundColor, border: theme.borderEnabled ? `2px solid ${theme.borderColor}` : undefined }}>
                                 <SelectValue placeholder="Select..." />
                               </SelectTrigger>
                               <SelectContent>
@@ -1479,6 +1492,7 @@ const TicketWidget = () => {
                               value={customAnswers[q.id] || ''}
                               onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
                               placeholder={q.label}
+                              style={{ backgroundColor: theme.inputBackgroundColor }}
                             />
                           )}
                           {q.type === 'phone' && (
@@ -1487,6 +1501,7 @@ const TicketWidget = () => {
                               value={customAnswers[q.id] || ''}
                               onChange={e => setCustomAnswers(a => ({ ...a, [q.id]: e.target.value }))}
                               placeholder={q.label}
+                              style={{ backgroundColor: theme.inputBackgroundColor }}
                             />
                           )}
                           {customErrors[q.id] && (
@@ -1500,7 +1515,7 @@ const TicketWidget = () => {
               )}
 
               {/* Ticket Selection */}
-              <Card className="animate-in fade-in-0">
+              <Card className="animate-in fade-in-0" style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2" style={{ color: headerTextColor }}>
                     <Ticket className="h-5 w-5" />
@@ -1560,7 +1575,7 @@ const TicketWidget = () => {
 
               {/* Seat Selection - Fourth (only if seats are in cart and seat maps are enabled) */}
               {eventData?.widget_customization?.seatMaps?.enabled && cart.some(item => item.selectedSeats) && (
-                <Card className="animate-in fade-in-0">
+                <Card className="animate-in fade-in-0" style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <MapPin className="h-5 w-5" />
@@ -1586,7 +1601,7 @@ const TicketWidget = () => {
             {/* Sidebar */}
             <div className="space-y-6">
               {/* Cart Summary */}
-              <Card className="animate-in fade-in-0">
+              <Card className="animate-in fade-in-0" style={{ backgroundColor: theme.cardBackgroundColor }}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2" style={{ color: headerTextColor }}>
                     <ShoppingCart className="h-5 w-5" />
@@ -1800,7 +1815,7 @@ const TicketWidget = () => {
           {showPayment && paymentProvider === "stripe" && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
               <div className="w-full max-w-md">
-                <Card>
+                <Card style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <CreditCard className="h-5 w-5" />
@@ -1893,7 +1908,7 @@ const TicketWidget = () => {
           {showSuccess && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
               <div className="w-full max-w-md">
-                <Card>
+                <Card style={{ backgroundColor: theme.cardBackgroundColor }}>
                   <CardContent className="text-center p-8">
                     <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                       <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

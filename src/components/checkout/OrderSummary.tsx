@@ -136,7 +136,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   return (
     <>
       {/* Order Summary Card */}
-      <Card className="w-full max-w-sm">
+      <Card className="w-full max-w-sm" style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
       <CardHeader className="pb-4">
         <CardTitle className="text-lg" style={{ color: theme.headerTextColor }}>Order Summary</CardTitle>
       </CardHeader>

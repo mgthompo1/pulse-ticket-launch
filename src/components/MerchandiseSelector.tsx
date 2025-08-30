@@ -119,7 +119,7 @@ const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCa
   }
 
   return (
-    <Card className="animate-in fade-in-0">
+    <Card className="animate-in fade-in-0" style={{ backgroundColor: theme?.cardBackgroundColor, border: theme?.borderEnabled ? `1px solid ${theme?.borderColor}` : undefined }}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2" style={{ color: theme?.headerTextColor || '#111827' }}>
           <ShoppingCart className="h-5 w-5" />
@@ -135,7 +135,11 @@ const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCa
         ) : (
           <div className="space-y-4">
             {merchandise.map((item) => (
-              <div key={item.id} className="border rounded-lg p-4 hover:shadow-md transition-all duration-200 hover-lift animate-in fade-in-0">
+              <div 
+                key={item.id} 
+                className="border rounded-lg p-4 hover:shadow-md transition-all duration-200 hover-lift animate-in fade-in-0"
+                style={{ backgroundColor: theme?.cardBackgroundColor, border: theme?.borderEnabled ? `1px solid ${theme?.borderColor}` : undefined }}
+              >
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                   <div className="flex gap-4 flex-1">
                     {item.image_url && (
@@ -165,6 +169,7 @@ const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCa
                   <MerchandiseCardControls
                     item={item}
                     onAddToCart={addToCart}
+                    theme={theme}
                   />
                 </div>
               </div>
@@ -180,9 +185,10 @@ const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCa
 interface MerchandiseCardControlsProps {
   item: MerchandiseItem;
   onAddToCart: (item: MerchandiseItem, size?: string, color?: string) => void;
+  theme?: Theme;
 }
 
-const MerchandiseCardControls: React.FC<MerchandiseCardControlsProps> = ({ item, onAddToCart }) => {
+const MerchandiseCardControls: React.FC<MerchandiseCardControlsProps> = ({ item, onAddToCart, theme }) => {
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [quantity, setQuantity] = useState(0);
@@ -213,7 +219,7 @@ const MerchandiseCardControls: React.FC<MerchandiseCardControlsProps> = ({ item,
         <div>
           <label className="text-sm font-medium">Size:</label>
           <Select value={selectedSize} onValueChange={setSelectedSize}>
-            <SelectTrigger className="mt-1 h-8">
+            <SelectTrigger className="mt-1 h-8" style={{ backgroundColor: theme?.inputBackgroundColor, border: theme?.borderEnabled ? `1px solid ${theme?.borderColor}` : undefined }}>
               <SelectValue placeholder="Select size" />
             </SelectTrigger>
             <SelectContent>
@@ -232,7 +238,7 @@ const MerchandiseCardControls: React.FC<MerchandiseCardControlsProps> = ({ item,
         <div>
           <label className="text-sm font-medium">Color:</label>
           <Select value={selectedColor} onValueChange={setSelectedColor}>
-            <SelectTrigger className="mt-1 h-8">
+            <SelectTrigger className="mt-1 h-8" style={{ backgroundColor: theme?.inputBackgroundColor, border: theme?.borderEnabled ? `1px solid ${theme?.borderColor}` : undefined }}>
               <SelectValue placeholder="Select color" />
             </SelectTrigger>
             <SelectContent>
@@ -276,7 +282,8 @@ const MerchandiseCardControls: React.FC<MerchandiseCardControlsProps> = ({ item,
           variant="secondary"
           onClick={handleAddToCart}
           disabled={!canAddToCart() || item.stock_quantity === 0}
-          className="w-full bg-neutral-900 hover:bg-neutral-800 text-white border-0"
+          className="w-full border-0"
+          style={{ backgroundColor: theme?.primaryColor, color: theme?.buttonTextColor }}
         >
           Add {quantity} to Cart
         </Button>

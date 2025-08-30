@@ -127,7 +127,11 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
           const isAvailable = ticketType.quantity_available > ticketType.quantity_sold;
           
           return (
-            <Card key={ticketType.id} className={!isAvailable ? 'opacity-50' : ''}>
+            <Card 
+              key={ticketType.id} 
+              className={!isAvailable ? 'opacity-50' : ''}
+              style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}
+            >
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
