@@ -38,6 +38,7 @@ interface Invitation {
 interface OrganizationUserManagementProps {
   organizationId: string;
   organizationName: string;
+  currentUserRole?: 'owner' | 'admin' | 'editor' | 'viewer';
 }
 
 const PERMISSIONS = [
@@ -50,11 +51,12 @@ const PERMISSIONS = [
   { id: 'view_analytics', label: 'View Analytics', description: 'View event analytics and reports' },
 ];
 
-export const OrganizationUserManagement = ({ organizationId, organizationName }: OrganizationUserManagementProps) => {
+export const OrganizationUserManagement = ({ organizationId, organizationName, currentUserRole }: OrganizationUserManagementProps) => {
   const { toast } = useToast();
   const [users, setUsers] = useState<OrganizationUser[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentRole, setCurrentRole] = useState<'owner'|'admin'|'editor'|'viewer'|'unknown'>('unknown');
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'editor' | 'viewer'>('viewer');
@@ -67,33 +69,34 @@ export const OrganizationUserManagement = ({ organizationId, organizationName }:
       loadInvitations();
     }
   }, [organizationId]);
+  
+  // Keep current role in sync with parent-provided role
+  useEffect(() => {
+    if (currentUserRole) {
+      setCurrentRole(currentUserRole);
+    }
+  }, [currentUserRole]);
+  const canManageUsers = currentRole === 'owner' || currentRole === 'admin';
+
 
   const loadUsers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('organization_users')
-        .select('*')
-        .eq('organization_id', organizationId);
-
+      // Ensure the auth token is forwarded so the Edge Function can verify membership
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      const { data, error } = await supabase.functions.invoke('list-org-users', {
+        body: { organizationId },
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+      });
       if (error) throw error;
-      
-      // Get user emails separately to avoid auth.users join issues
-      const userEmails: Record<string, string> = {};
-      if (data?.length) {
-        const userIds = data.map(u => u.user_id);
-        const { data: authUsers } = await supabase.auth.admin.listUsers();
-        authUsers?.users?.forEach(user => {
-          if (userIds.includes(user.id)) {
-            userEmails[user.id] = user.email || 'Unknown';
-          }
-        });
-      }
-      
-      setUsers((data || []).map(user => ({
-        ...user,
-        permissions: user.permissions || [],
-        joined_at: user.joined_at || new Date().toISOString(),
-        users: userEmails[user.user_id] ? { email: userEmails[user.user_id] } : null
+      const rows = (data?.users || []) as any[];
+      setUsers(rows.map(row => ({
+        id: row.id,
+        user_id: row.user_id,
+        role: row.role,
+        permissions: row.permissions || [],
+        joined_at: row.joined_at || new Date().toISOString(),
+        users: row.email ? { email: row.email } : null
       })) as OrganizationUser[]);
     } catch (error: any) {
       console.error('Error loading users:', error);
@@ -277,6 +280,7 @@ export const OrganizationUserManagement = ({ organizationId, organizationName }:
           </p>
         </div>
 
+        {canManageUsers && (
         <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -361,6 +365,7 @@ export const OrganizationUserManagement = ({ organizationId, organizationName }:
             </div>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {/* Active Users */}
@@ -409,7 +414,7 @@ export const OrganizationUserManagement = ({ organizationId, organizationName }:
                     {format(new Date(orgUser.joined_at), 'MMM d, yyyy')}
                   </TableCell>
                   <TableCell>
-                    {orgUser.role !== 'owner' && (
+                    {canManageUsers && orgUser.role !== 'owner' && (
                       <Button
                         variant="ghost"
                         size="sm"

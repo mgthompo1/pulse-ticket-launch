@@ -144,11 +144,14 @@ export const BillingManagement: React.FC<BillingManagementProps> = ({ organizati
   const [upcomingCharges, setUpcomingCharges] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showUpdatePayment, setShowUpdatePayment] = useState(false);
+  const [paymentMethods, setPaymentMethods] = useState<Array<any>>([]);
+  const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<string | null>(null);
 
   useEffect(() => {
     if (organizationId) {
       loadBillingData();
       loadUpcomingCharges();
+      loadPaymentMethods();
     }
   }, [organizationId]);
 
@@ -183,6 +186,45 @@ export const BillingManagement: React.FC<BillingManagementProps> = ({ organizati
       setUpcomingCharges(data);
     } catch (error) {
       console.error('Error loading upcoming charges:', error);
+    }
+  };
+
+  const loadPaymentMethods = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-billing', {
+        body: { action: 'list_payment_methods' }
+      });
+      if (error) throw error;
+      setPaymentMethods(data.payment_methods || []);
+      setDefaultPaymentMethod(data.default_payment_method || null);
+    } catch (error) {
+      console.error('Error loading payment methods:', error);
+    }
+  };
+
+  const setDefault = async (pmId: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('manage-billing', {
+        body: { action: 'set_default_payment_method', pm_id: pmId }
+      });
+      if (error) throw error;
+      await loadPaymentMethods();
+      toast({ title: 'Updated', description: 'Default payment method updated' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to set default', variant: 'destructive' });
+    }
+  };
+
+  const removePm = async (pmId: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('manage-billing', {
+        body: { action: 'detach_payment_method', pm_id: pmId }
+      });
+      if (error) throw error;
+      await loadPaymentMethods();
+      toast({ title: 'Removed', description: 'Payment method removed' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to remove method', variant: 'destructive' });
     }
   };
 
@@ -354,6 +396,47 @@ export const BillingManagement: React.FC<BillingManagementProps> = ({ organizati
                 </AlertDialogContent>
               </AlertDialog>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Payment Methods */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Payment Methods</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {paymentMethods.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No payment methods on file.</p>
+          ) : (
+            <div className="space-y-2">
+              {paymentMethods.map(pm => (
+                <div key={pm.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <div className="font-medium">{pm.brand?.toUpperCase()} •••• {pm.last4}</div>
+                    <div className="text-xs text-muted-foreground">Exp {pm.exp_month}/{pm.exp_year}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {defaultPaymentMethod === pm.id ? (
+                      <Badge>Default</Badge>
+                    ) : (
+                      <Button variant="outline" size="sm" onClick={() => setDefault(pm.id)}>Set Default</Button>
+                    )}
+                    <Button variant="outline" size="sm" onClick={() => removePm(pm.id)} disabled>
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2 pt-2">
+            <Button onClick={() => setShowUpdatePayment(true)} className="flex-1">
+              Add/Update Card
+            </Button>
+            <Button onClick={handleManagePaymentMethods} variant="outline" className="flex-1">
+              Open Stripe Portal
+            </Button>
           </div>
         </CardContent>
       </Card>

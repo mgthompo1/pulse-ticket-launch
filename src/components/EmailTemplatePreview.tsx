@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import type { EmailTemplate } from '@/types/email-template';
 
 interface EmailTemplatePreviewProps {
   emailCustomization: {
@@ -30,6 +31,8 @@ interface EmailTemplatePreviewProps {
       footerStyle: string;
     };
   };
+  // Optional: render from new block-based template
+  blocksTemplate?: EmailTemplate;
   eventDetails: {
     name: string;
     venue?: string;
@@ -45,7 +48,8 @@ interface EmailTemplatePreviewProps {
 export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
   emailCustomization,
   eventDetails,
-  organizationDetails
+  organizationDetails,
+  blocksTemplate
 }) => {
   const { template, content, branding, layout = { headerStyle: 'standard', contentLayout: 'standard', footerStyle: 'standard' } } = emailCustomization;
   
@@ -69,6 +73,97 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
     }
   };
 
+  // If blocks provided, render simplified preview of blocks
+  if (blocksTemplate && Array.isArray(blocksTemplate.blocks)) {
+    return (
+      <Card className="w-full max-w-2xl">
+        <CardHeader>
+          <CardTitle>Email Preview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="border rounded-lg overflow-hidden bg-gray-50 p-4">
+            <div
+              data-email-preview-root
+              style={{
+                fontFamily: blocksTemplate.theme.fontFamily || 'Arial, sans-serif',
+                maxWidth: '600px',
+                margin: '0 auto',
+                backgroundColor: blocksTemplate.theme.backgroundColor,
+                border: `1px solid ${blocksTemplate.theme.borderColor || '#e5e7eb'}`,
+              }}
+            >
+              {blocksTemplate.blocks.map((b) => {
+                if (b.type === 'header') {
+                  const title = (b as any).title || 'Header';
+                  return (
+                    <div key={b.id} style={{ backgroundColor: blocksTemplate.theme.headerColor, color: '#fff', padding: '20px' }}>
+                      <h1 style={{ margin: 0, textAlign: 'center' }}>{title}</h1>
+                    </div>
+                  );
+                }
+                if (b.type === 'text') {
+                  return (
+                    <div key={b.id} style={{ padding: '16px 20px', color: blocksTemplate.theme.textColor }}
+                      dangerouslySetInnerHTML={{ __html: (b as any).html || '' }} />
+                  );
+                }
+                if (b.type === 'event_details') {
+                  return (
+                    <div key={b.id} style={{ background: blocksTemplate.theme.accentColor, border: `1px solid ${blocksTemplate.theme.borderColor}`, margin: '16px 20px', padding: '16px', borderRadius: 8 }}>
+                      <strong style={{ color: blocksTemplate.theme.textColor }}>{eventDetails.name}</strong>
+                      <div style={{ color: blocksTemplate.theme.textColor, fontSize: 14 }}>
+                        📅 {new Date(eventDetails.event_date).toLocaleDateString()}<br />
+                        📍 {eventDetails.venue || 'TBA'}
+                      </div>
+                    </div>
+                  );
+                }
+                if (b.type === 'ticket_list') {
+                  return (
+                    <div key={b.id} style={{ padding: '0 20px', color: blocksTemplate.theme.textColor }}>
+                      <h3>Your Tickets</h3>
+                      <div style={{ border: `1px solid ${blocksTemplate.theme.borderColor}`, padding: 16, borderRadius: 8, background: '#fff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>General Admission</span>
+                          <code style={{ background: blocksTemplate.theme.accentColor, padding: '4px 8px' }}>TCK-XXXXXX</code>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                if (b.type === 'button') {
+                  return (
+                    <div key={b.id} style={{ textAlign: (b as any).align || 'center', padding: 20 }}>
+                      <a href="#" style={{ background: blocksTemplate.theme.buttonColor, color: '#fff', padding: '10px 16px', borderRadius: 6, textDecoration: 'none' }}>{(b as any).label || 'Button'}</a>
+                    </div>
+                  );
+                }
+                if (b.type === 'divider') {
+                  return <hr key={b.id} style={{ border: 0, borderTop: `1px solid ${blocksTemplate.theme.borderColor}`, margin: '16px 20px' }} />;
+                }
+                if (b.type === 'image') {
+                  return (
+                    <div key={b.id} style={{ textAlign: (b as any).align || 'center', padding: 20 }}>
+                      {(b as any).src ? <img src={(b as any).src} alt={(b as any).alt || ''} style={{ maxWidth: '100%' }} /> : <em style={{ color: '#999' }}>No image</em>}
+                    </div>
+                  );
+                }
+                if (b.type === 'footer') {
+                  return (
+                    <div key={b.id} style={{ background: blocksTemplate.theme.accentColor, padding: 16, textAlign: 'center', borderTop: `1px solid ${blocksTemplate.theme.borderColor}` }}>
+                      <small style={{ color: '#999' }}>{(b as any).text || ''}</small>
+                    </div>
+                  );
+                }
+                return null;
+              })}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="w-full max-w-2xl">
       <CardHeader>
@@ -77,6 +172,7 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
       <CardContent>
         <div className="border rounded-lg overflow-hidden bg-gray-50 p-4">
           <div 
+            data-email-preview-root
             style={{
               fontFamily: template.fontFamily || 'Arial, sans-serif',
               maxWidth: '600px',

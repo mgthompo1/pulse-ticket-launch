@@ -19,6 +19,8 @@ const corsHeaders = {
 interface TestEmailRequest {
   to: string;
   subject?: string;
+  html?: string; // optional custom html to send
+  from?: string; // optional custom from header
 }
 
 serve(async (req) => {
@@ -34,7 +36,7 @@ serve(async (req) => {
       throw new Error("RESEND_API_KEY is not configured. Please set it in your Supabase project environment variables.");
     }
     
-    const { to, subject = "Resend API Test Email" }: TestEmailRequest = await req.json();
+    const { to, subject = "Resend API Test Email", html, from }: TestEmailRequest = await req.json();
     
     console.log("Test email request:", { to, subject });
 
@@ -44,8 +46,8 @@ serve(async (req) => {
       throw new Error("Invalid email address format");
     }
 
-    // Test email content
-    const htmlContent = `
+    // Test email content (use provided html if supplied)
+    const htmlContent = html ?? `
       <!DOCTYPE html>
       <html>
         <head>
@@ -89,10 +91,11 @@ serve(async (req) => {
 
     // Try different sender options
     const senderOptions = [
+      from,
       "TicketFlo <hello@ticketflo.org>",
       "TicketFlo Support <support@ticketflo.org>",
       "TicketFlo <noreply@ticketflo.org>"
-    ];
+    ].filter(Boolean) as string[];
 
     let emailResponse;
     let lastError;

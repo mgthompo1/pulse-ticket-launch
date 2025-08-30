@@ -130,11 +130,23 @@ serve(async (req) => {
     })
 
     if (!postResponse.ok) {
-      const errorText = await postResponse.text()
+      let details: any
+      try {
+        details = await postResponse.json()
+      } catch {
+        details = await postResponse.text()
+      }
+      // Mark token invalid on 401
+      if (postResponse.status === 401) {
+        await supabase
+          .from('social_connections')
+          .update({ is_connected: false })
+          .eq('id', connection.id)
+      }
       return new Response(
         JSON.stringify({ 
           error: 'LinkedIn posting failed',
-          details: errorText,
+          details,
           status: postResponse.status 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

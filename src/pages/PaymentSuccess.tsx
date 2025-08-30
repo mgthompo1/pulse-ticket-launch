@@ -17,7 +17,7 @@ const PaymentSuccess = () => {
   const [tickets, setTickets] = useState<any[]>([]);
   const [showTickets, setShowTickets] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [isDownloadingOfficialPDF, setIsDownloadingOfficialPDF] = useState(false);
+  // Removed official PDF download; users can print or save the on-screen tickets
 
   const loadTickets = async () => {
     if (!orderDetails) return;
@@ -44,16 +44,23 @@ const PaymentSuccess = () => {
         return;
       }
 
-      const formattedTickets = orderItems.flatMap(item => 
-        (item.tickets || []).map((ticket: any) => ({
+      console.log('Processing order items:', orderItems);
+      
+      const formattedTickets = orderItems.flatMap(item => {
+        console.log('Processing item:', item);
+        console.log('Item tickets:', item.tickets);
+        console.log('Item ticket_types:', item.ticket_types);
+        
+        return (item.tickets || []).map((ticket: any) => ({
           ...ticket,
           ticketTypeName: item.ticket_types?.name ?? "Ticket",
           eventName: orderDetails.events?.name,
           eventDate: orderDetails.events?.event_date,
           customerName: orderDetails.customer_name
-        }))
-      );
+        }));
+      });
 
+      console.log('Formatted tickets:', formattedTickets);
       setTickets(formattedTickets);
     } catch (error) {
       console.error('Error loading tickets:', error);
@@ -152,44 +159,7 @@ const PaymentSuccess = () => {
     alert('To add tickets to your mobile wallet:\n\n1. Take a screenshot of your tickets\n2. Save the QR codes to your photos\n3. Show the QR codes at the event entrance\n\nWallet integration coming soon!');
   };
 
-  const downloadOfficialPDF = async () => {
-    if (!orderDetails?.id) return;
-    
-    setIsDownloadingOfficialPDF(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-ticket-pdf', {
-        body: { orderId: orderDetails.id }
-      });
-
-      if (error || !data?.pdf) {
-        throw new Error(error?.message || 'Failed to generate PDF');
-      }
-
-      // Convert base64 to blob and download
-      const base64Data = data.pdf;
-      const byteCharacters = atob(base64Data);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'application/pdf' });
-      
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = data.filename || 'tickets.pdf';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
-      alert('Failed to download PDF. Please try again.');
-    } finally {
-      setIsDownloadingOfficialPDF(false);
-    }
-  };
+  // Removed official PDF download function
 
   useEffect(() => {
     const updateOrderStatus = async () => {
@@ -205,19 +175,48 @@ const PaymentSuccess = () => {
 
         if (sessionId || merchantReference || orderId) {
           // Try to find the order by different parameters
-          let order = null;
+          let order: any = null;
           
           // First try to find by orderId (for Stripe payments)
           if (orderId) {
+            console.log('Attempting to fetch order by ID:', orderId);
             const { data: orderById, error: orderError } = await supabase
               .from('orders')
-              .select('*, events(name, event_date, venue, logo_url, description, organization_id, ticket_customization, widget_customization, organizations(logo_url, name))')
+              .select('id, created_at, customer_email, customer_name, customer_phone, event_id, status, total_amount, updated_at')
               .eq('id', orderId)
               .single();
+
+            console.log('Order query result:', { orderById, orderError });
 
             if (!orderError && orderById) {
               order = orderById;
               console.log('Found order by order ID:', order.id);
+              
+              // Fetch event details separately
+              if (order.event_id) {
+                const { data: eventData, error: eventError } = await supabase
+                  .from('events')
+                  .select('name, event_date, venue, logo_url, description, organization_id, ticket_customization, widget_customization')
+                  .eq('id', order.event_id)
+                  .single();
+                
+                if (!eventError && eventData) {
+                  order.events = eventData;
+                  
+                  // Fetch organization details separately
+                  if (eventData.organization_id) {
+                    const { data: orgData, error: orgError } = await supabase
+                      .from('organizations')
+                      .select('logo_url, name')
+                      .eq('id', eventData.organization_id)
+                      .single();
+                    
+                    if (!orgError && orgData) {
+                      order.events.organizations = orgData;
+                    }
+                  }
+                }
+              }
             }
           }
           
@@ -225,13 +224,39 @@ const PaymentSuccess = () => {
           if (sessionId) {
             const { data: orderBySession, error: sessionError } = await supabase
               .from('orders')
-              .select('*, events(name, event_date, venue, logo_url, description, organization_id, ticket_customization, widget_customization, organizations(logo_url, name))')
+              .select('id, created_at, customer_email, customer_name, customer_phone, event_id, status, total_amount, updated_at')
               .eq('windcave_session_id', sessionId)
               .single();
 
             if (!sessionError && orderBySession) {
               order = orderBySession;
               console.log('Found order by session ID:', order.id);
+              
+              // Fetch event details separately
+              if (order.event_id) {
+                const { data: eventData, error: eventError } = await supabase
+                  .from('events')
+                  .select('name, event_date, venue, logo_url, description, organization_id, ticket_customization, widget_customization')
+                  .eq('id', order.event_id)
+                  .single();
+                
+                if (!eventError && eventData) {
+                  order.events = eventData;
+                  
+                  // Fetch organization details separately
+                  if (eventData.organization_id) {
+                    const { data: orgData, error: orgError } = await supabase
+                      .from('organizations')
+                      .select('logo_url, name')
+                      .eq('id', eventData.organization_id)
+                      .single();
+                    
+                    if (!orgError && orgData) {
+                      order.events.organizations = orgData;
+                    }
+                  }
+                }
+              }
             }
           }
 
@@ -245,6 +270,29 @@ const PaymentSuccess = () => {
             console.log('Order details set:', order);
             console.log('Widget customization data:', order.events?.widget_customization);
             console.log('Success URL:', (order.events?.widget_customization as any)?.payment?.successUrl);
+            
+            // If order status is pending, call the payment success function to complete the process
+            if (order.status === 'pending') {
+              console.log('Order status is pending, calling payment success function...');
+              try {
+                const { error: successError } = await supabase.functions.invoke('stripe-payment-success', {
+                  body: { 
+                    orderId: order.id,
+                    paymentIntentId: order.stripe_session_id || null
+                  }
+                });
+                
+                if (successError) {
+                  console.error('Payment success function error:', successError);
+                } else {
+                  console.log('Payment success function called successfully');
+                  // Refresh order details to get updated status
+                  window.location.reload();
+                }
+              } catch (error) {
+                console.error('Error calling payment success function:', error);
+              }
+            }
           } else {
             console.error('No order found');
           }
@@ -315,36 +363,9 @@ const PaymentSuccess = () => {
           )}
           
           <div className="space-y-2">
-            <Button 
-              variant="outline"
-              className="w-full bg-black text-white border-black hover:bg-gray-800 hover:text-white hover:border-gray-800" 
-              onClick={() => {
-                if (orderDetails?.events?.widget_customization?.payment?.successUrl) {
-                  const successUrl = orderDetails.events.widget_customization.payment.successUrl;
-                  console.log('Redirecting to custom success URL:', successUrl);
-                  window.location.href = successUrl;
-                } else {
-                  console.log('No custom success URL, navigating to home');
-                  navigate('/');
-                }
-              }}
-            >
-              {orderDetails?.events?.widget_customization?.payment?.successUrl 
-                ? 'Return to Site' 
-                : 'Return to Home'
-              }
-            </Button>
             {orderDetails && (
               <>
-                <Button 
-                  variant="outline" 
-                  className="w-full" 
-                  onClick={downloadOfficialPDF}
-                  disabled={isDownloadingOfficialPDF}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  {isDownloadingOfficialPDF ? 'Generating PDF...' : 'Download Official PDF Tickets'}
-                </Button>
+                {/* Official PDF download removed */}
                 <Dialog open={showTickets} onOpenChange={setShowTickets}>
                   <DialogTrigger asChild>
                     <Button variant="outline" className="w-full" onClick={viewTickets}>
@@ -433,6 +454,25 @@ const PaymentSuccess = () => {
                 </Dialog>
               </>
             )}
+            <Button 
+              variant="outline"
+              className="w-full bg-black text-white border-black hover:bg-gray-800 hover:text-white hover:border-gray-800" 
+              onClick={() => {
+                if (orderDetails?.events?.widget_customization?.payment?.successUrl) {
+                  const successUrl = orderDetails.events.widget_customization.payment.successUrl;
+                  console.log('Redirecting to custom success URL:', successUrl);
+                  window.location.href = successUrl;
+                } else {
+                  console.log('No custom success URL, navigating to home');
+                  navigate('/');
+                }
+              }}
+            >
+              {orderDetails?.events?.widget_customization?.payment?.successUrl 
+                ? 'Return to Site' 
+                : 'Return to Home'
+              }
+            </Button>
           </div>
         </CardContent>
       </Card>

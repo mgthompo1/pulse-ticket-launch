@@ -194,7 +194,7 @@ const OrgDashboard = () => {
           `)
           .eq("user_id", user.id)
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (membershipError) {
           console.error("Error loading organization membership:", membershipError);
@@ -206,13 +206,13 @@ const OrgDashboard = () => {
           return;
         }
 
-        if (membershipData && membershipData.organizations) {
+        if (membershipData && (membershipData as any).organizations) {
           console.log("Organization membership found:", membershipData);
-          orgs = membershipData.organizations as any;
+          orgs = (membershipData as any).organizations as any;
           // Store the user's role
-          userRole = membershipData.role;
-          setUserRole(membershipData.role);
-          console.log("User role set to:", membershipData.role);
+          userRole = (membershipData as any).role;
+          setUserRole((membershipData as any).role);
+          console.log("User role set to:", (membershipData as any).role);
           error = null;
         }
       }
@@ -922,6 +922,7 @@ const OrgDashboard = () => {
                     <OrganizationUserManagement 
                       organizationId={organizationId} 
                       organizationName={organization?.name || 'Organization'} 
+                      currentUserRole={userRole || undefined}
                     />
                   </TabsContent>
                 )}

@@ -89,3 +89,22 @@ verify_jwt = false
 
 [functions.send-organization-invitation]
 verify_jwt = false
+
+[functions.publish-monthly-billing]
+verify_jwt = false
+
+[functions.generate-ticket-qr]
+verify_jwt = false
+
+[functions.list-org-users]
+verify_jwt = false
+
+# Optional local scheduler to trigger monthly billing once per day at 02:00
+# Note: In production, configure a Scheduled Function in the Supabase dashboard
+# to call the edge function securely with a service role token.
+[cron]
+enabled = true
+
+[[cron.job]]
+schedule = "0 2 * * *"
+command = "curl -s -X POST http://localhost:54321/functions/v1/publish-monthly-billing -H 'Authorization: Bearer $SERVICE_ROLE_KEY' -H 'Content-Type: application/json'"

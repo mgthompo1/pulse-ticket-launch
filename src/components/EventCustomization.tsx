@@ -18,6 +18,8 @@ import MerchandiseManager from "@/components/MerchandiseManager";
 import TicketTypesManager from "@/components/TicketTypesManager";
 import { EventLogoUploader } from "@/components/events/EventLogoUploader";
 import { EmailTemplatePreview } from "@/components/EmailTemplatePreview";
+import { EmailTemplateBuilder } from "@/components/EmailTemplateBuilder";
+import { createDefaultTemplate, EmailTemplate } from "@/types/email-template";
 
 interface EventCustomizationProps {
   eventId: string;
@@ -139,6 +141,9 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     useCustomColors: false // New toggle for custom vs theme colors
   });
 
+  // New block-based template state (backward compatible)
+  const [emailBlocksTemplate, setEmailBlocksTemplate] = useState<EmailTemplate>(createDefaultTemplate());
+
   // Email theme presets
   const emailThemePresets = {
     professional: {
@@ -239,6 +244,24 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       if (data?.ticket_customization) {
         setTicketCustomization(data.ticket_customization as typeof ticketCustomization);
       }
+      // Load blocks if present on event's email_customization
+      const maybeBlocks = (data?.email_customization as any)?.blocks;
+      if (maybeBlocks && Array.isArray(maybeBlocks)) {
+        setEmailBlocksTemplate({
+          version: 1,
+          subject: ((data?.email_customization as any)?.content?.subject) || "Your ticket confirmation",
+          theme: {
+            headerColor: ((data?.email_customization as any)?.template?.headerColor) || "#1f2937",
+            backgroundColor: ((data?.email_customization as any)?.template?.backgroundColor) || "#ffffff",
+            textColor: ((data?.email_customization as any)?.template?.textColor) || "#374151",
+            buttonColor: ((data?.email_customization as any)?.template?.buttonColor) || "#1f2937",
+            accentColor: ((data?.email_customization as any)?.template?.accentColor) || "#f9fafb",
+            borderColor: ((data?.email_customization as any)?.template?.borderColor) || "#e5e7eb",
+            fontFamily: ((data?.email_customization as any)?.template?.fontFamily) || "Arial, sans-serif",
+          },
+          blocks: maybeBlocks,
+        });
+      }
       if (data?.email_customization) {
         const savedCustomization = data.email_customization as any;
         setEmailCustomization(prev => ({
@@ -265,6 +288,47 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
   useEffect(() => {
     loadCustomizations();
   }, [loadCustomizations]);
+
+  // Helper: render HTML from current block template for test emails
+  const renderBlocksHtml = useCallback(() => {
+    const t = emailBlocksTemplate;
+    const theme = t.theme;
+    const parts: string[] = [];
+    parts.push(`<div style="font-family:${theme.fontFamily || 'Arial, sans-serif'};max-width:600px;margin:0 auto;background:${theme.backgroundColor};border:1px solid ${theme.borderColor || '#e5e7eb'}">`);
+    for (const b of t.blocks) {
+      if ((b as any).hidden) continue;
+      switch (b.type) {
+        case 'header':
+          parts.push(`<div style="background:${theme.headerColor};color:#fff;padding:20px"><h1 style="margin:0;text-align:center">${(b as any).title || 'Thank you'}</h1></div>`);
+          break;
+        case 'text':
+          parts.push(`<div style="padding:16px 20px;color:${theme.textColor}">${(b as any).html || ''}</div>`);
+          break;
+        case 'event_details':
+          parts.push(`<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px"><strong style="color:${theme.textColor}">Sample Event Name</strong><div style="color:${theme.textColor};font-size:14px">📅 ${new Date().toLocaleDateString()}<br/>📍 Sample Venue<br/>👤 Sample Customer</div></div>`);
+          break;
+        case 'ticket_list':
+          parts.push(`<div style="padding:0 20px;color:${theme.textColor}"><h3>Your Tickets</h3><div style="border:1px solid ${theme.borderColor};padding:16px;border-radius:8px;background:#fff;margin:12px 0"><div style="display:flex;justify-content:space-between;align-items:center"><span>General Admission</span><code style="background:${theme.accentColor};padding:4px 8px">TCK-XXXXXX</code></div></div></div>`);
+          break;
+        case 'button':
+          parts.push(`<div style="text-align:${(b as any).align || 'center'};padding:20px"><a href="#" style="background:${theme.buttonColor};color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none">${(b as any).label || 'View Order'}</a></div>`);
+          break;
+        case 'divider':
+          parts.push(`<hr style="border:0;border-top:1px solid ${theme.borderColor};margin:16px 20px"/>`);
+          break;
+        case 'image':
+          parts.push(`<div style="text-align:${(b as any).align || 'center'};padding:20px">${(b as any).src ? `<img src="${(b as any).src}" style="max-width:100%"/>` : ''}</div>`);
+          break;
+        case 'footer':
+          parts.push(`<div style="background:${theme.accentColor};padding:16px;text-align:center;border-top:1px solid ${theme.borderColor}"><small style="color:#999">${(b as any).text || ''}</small></div>`);
+          break;
+        default:
+          break;
+      }
+    }
+    parts.push(`</div>`);
+    return parts.join('');
+  }, [emailBlocksTemplate]);
 
   const saveCustomizations = async () => {
     setLoading(true);
@@ -325,13 +389,28 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         console.log("❌ No authenticated user found");
       }
       
+      // Merge legacy email customization with block-based template for persistence
+      const combinedEmailCustomization = {
+        ...emailCustomization,
+        template: {
+          ...emailCustomization.template,
+          ...(emailBlocksTemplate?.theme || {})
+        },
+        content: {
+          ...emailCustomization.content,
+          subject: emailBlocksTemplate?.subject || emailCustomization.content.subject
+        },
+        // Persist blocks array for new renderer
+        blocks: emailBlocksTemplate?.blocks || []
+      } as any;
+
       // Now attempt the update
       const { data: updateResult, error: updateError } = await supabase
         .from("events")
         .update({
           widget_customization: widgetCustomization,
           ticket_customization: ticketCustomization,
-          email_customization: emailCustomization
+          email_customization: combinedEmailCustomization
         })
         .eq("id", eventId)
         .select("id, widget_customization, ticket_customization, email_customization");
@@ -1456,6 +1535,11 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         <TabsContent value="emails" className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-6">
+              {/* Block-based Email Builder */}
+              <EmailTemplateBuilder
+                template={emailBlocksTemplate}
+                onChange={(t) => setEmailBlocksTemplate(t)}
+              />
               {/* Theme Selection */}
               <Card>
                 <CardHeader>
@@ -1466,6 +1550,17 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   <CardDescription>Choose a pre-designed theme for your confirmation emails</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {/* Presets */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <Label className="font-medium">Presets</Label>
+                      <p className="text-xs text-muted-foreground">Apply or reset pre-defined layouts</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setEmailBlocksTemplate(createDefaultTemplate())}>Reset</Button>
+                      <Button variant="outline" size="sm" onClick={() => setEmailBlocksTemplate(t => ({...t, blocks: t.blocks.filter(b => b.type !== 'image' && b.type !== 'divider')}))}>Minimal</Button>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 gap-3">
                     {[
                       { value: 'professional', label: 'Professional', description: 'Clean and corporate design' },
@@ -1765,6 +1860,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
             <div className="lg:sticky lg:top-6">
               <EmailTemplatePreview
                 emailCustomization={emailCustomization}
+                blocksTemplate={emailBlocksTemplate}
                 eventDetails={{
                   name: "Sample Event Name",
                   venue: "Sample Venue",
@@ -1776,6 +1872,25 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   logo_url: undefined
                 }}
               />
+              {/* Send Test Email */}
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle>Send Test Email</CardTitle>
+                  <CardDescription>Send the current template to your inbox</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex gap-2">
+                    <Input placeholder="you@example.com" value={(emailCustomization as any)._testRecipient || ''} onChange={(e) => setEmailCustomization((prev:any) => ({...prev, _testRecipient: e.target.value}))} />
+                    <Button onClick={async () => {
+                      const to = (emailCustomization as any)._testRecipient;
+                      if (!to) return;
+                      const html = renderBlocksHtml();
+                      await supabase.functions.invoke('test-resend-email', { body: { to, subject: emailBlocksTemplate.subject, html } });
+                      toast({ title: 'Sent', description: `Test email sent to ${to}` });
+                    }}>Send</Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </TabsContent>

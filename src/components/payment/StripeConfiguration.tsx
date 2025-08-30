@@ -75,56 +75,7 @@ export const StripeConfiguration = ({
         </CardContent>
       </Card>
 
-      {/* Express Payment Methods */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Apple className="h-5 w-5" />
-            Express Payment Methods
-          </CardTitle>
-          <CardDescription>
-            Enable or disable Apple Pay and Google Pay for faster checkout
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label htmlFor="applePay">Apple Pay</Label>
-              <p className="text-sm text-muted-foreground">
-                Allow customers to pay with Apple Pay (iOS, Safari, Chrome)
-              </p>
-            </div>
-            <Switch
-              id="applePay"
-              checked={enableApplePay}
-              onCheckedChange={onEnableApplePayChange}
-              disabled={!onEnableApplePayChange}
-            />
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label htmlFor="googlePay">Google Pay</Label>
-              <p className="text-sm text-muted-foreground">
-                Allow customers to pay with Google Pay (Android, Chrome)
-              </p>
-            </div>
-            <Switch
-              id="googlePay"
-              checked={enableGooglePay}
-              onCheckedChange={onEnableGooglePayChange}
-              disabled={!onEnableGooglePayChange}
-            />
-          </div>
-
-          <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-            <p className="text-sm text-blue-800">
-              💡 <strong>Note:</strong> Apple Pay and Google Pay require HTTPS to work. 
-              They will automatically appear for supported devices and browsers.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Express Payment Methods removed */}
     </div>
   );
 };

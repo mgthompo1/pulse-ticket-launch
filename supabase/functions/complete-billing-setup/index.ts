@@ -92,13 +92,14 @@ serve(async (req) => {
       throw new Error('Organization ID not found in setup intent metadata');
     }
 
-    // Update billing customer with payment method
+    // Update billing customer with payment method and set cycle anchor on first activation
     // Use explicit error handling and simpler query structure
     const { data: billingData, error: updateError } = await supabaseClient
       .from('billing_customers')
       .update({
         payment_method_id: paymentMethodId,
         billing_status: 'active',
+        next_billing_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('stripe_customer_id', customerId)

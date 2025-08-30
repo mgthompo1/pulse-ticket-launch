@@ -205,19 +205,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
               />
             )}
 
-            {paymentProvider === 'stripe' && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Digital Wallets</h3>
-                <ApplePayConfiguration 
-                  isEnabled={enableApplePay}
-                  onToggle={setEnableApplePay}
-                />
-                <GooglePayConfiguration 
-                  isEnabled={enableGooglePay}
-                  onToggle={setEnableGooglePay}
-                />
-              </div>
-            )}
+            {paymentProvider === 'stripe' && null}
 
 
 

@@ -596,6 +596,7 @@ const MasterAdmin = () => {
             <TabsTrigger value="content">Content</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="system">System</TabsTrigger>
+            <TabsTrigger value="billing">Billing</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -702,6 +703,48 @@ const MasterAdmin = () => {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          {/* Billing Tab - Scheduler status and manual run */}
+          <TabsContent value="billing" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Monthly Billing Scheduler</CardTitle>
+                <CardDescription>View status and run the billing processor for testing</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <div className="text-sm text-muted-foreground">Next Billing Due (sample)</div>
+                    <div className="text-lg font-semibold">{new Date().toLocaleDateString()}</div>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <div className="text-sm text-muted-foreground">Last Run (sample)</div>
+                    <div className="text-lg font-semibold">—</div>
+                  </div>
+                  <div className="p-4 border rounded-lg">
+                    <div className="text-sm text-muted-foreground">Schedule</div>
+                    <div className="text-lg font-semibold">Daily 02:00</div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const { error } = await supabase.functions.invoke('publish-monthly-billing', { body: {} });
+                        if (error) throw error;
+                        toast({ title: 'Billing run started', description: 'Check logs for results.' });
+                      } catch (e) {
+                        toast({ title: 'Error', description: 'Failed to start billing run', variant: 'destructive' });
+                      }
+                    }}
+                  >
+                    Run Now (Test)
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Organizations Tab */}

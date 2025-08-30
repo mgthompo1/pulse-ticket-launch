@@ -373,52 +373,51 @@ export const Payment: React.FC<PaymentProps> = ({
       )}
 
       {/* Stripe Payment Form Modal */}
-      {showStripePayment && (
-        <Dialog open={showStripePayment} onOpenChange={setShowStripePayment}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle style={{ color: theme.headerTextColor }}>Complete Payment</DialogTitle>
-            </DialogHeader>
-            {stripePublishableKey ? (
-              <>
-                {/* Debug logging */}
-                {(() => {
-                  console.log('=== RENDERING STRIPE FORM ===', { 
-                    stripePublishableKey, 
-                    showStripePayment,
-                    hasKey: !!stripePublishableKey,
-                    keyLength: stripePublishableKey?.length 
+      <Dialog open={showStripePayment} onOpenChange={setShowStripePayment}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle style={{ color: theme.headerTextColor }}>Complete Payment</DialogTitle>
+          </DialogHeader>
+          {stripePublishableKey ? (
+            <>
+              {/* Debug logging */}
+              {(() => {
+                console.log('=== RENDERING STRIPE FORM ===', { 
+                  stripePublishableKey, 
+                  showStripePayment,
+                  hasKey: !!stripePublishableKey,
+                  keyLength: stripePublishableKey?.length 
+                });
+                return null;
+              })()}
+              <StripePaymentForm
+                key={`stripe-${eventData.id}-${stripePublishableKey}`} // More stable key
+                publishableKey={stripePublishableKey}
+                eventId={eventData.id}
+                cart={cartItems as any}
+                merchandiseCart={merchandiseCart as any}
+                customerInfo={customerInfo}
+                total={total}
+                onSuccess={(orderId: string) => {
+                  setShowStripePayment(false);
+                  toast({
+                    title: "Payment Successful",
+                    description: "Your payment has been processed successfully.",
                   });
-                  return null;
-                })()}
-                <StripePaymentForm
-                  publishableKey={stripePublishableKey}
-                  eventId={eventData.id}
-                  cart={cartItems as any}
-                  merchandiseCart={merchandiseCart as any}
-                  customerInfo={customerInfo}
-                  total={total}
-                  onSuccess={(orderId: string) => {
-                    setShowStripePayment(false);
-                    toast({
-                      title: "Payment Successful",
-                      description: "Your payment has been processed successfully.",
-                    });
-                    // Redirect to payment success page with the order ID
-                    window.location.href = `/payment-success?orderId=${orderId}`;
-                  }}
-                  onCancel={() => setShowStripePayment(false)}
-                />
-              </>
-            ) : (
-              <div className="p-4 text-center">
-                <p>Loading payment form...</p>
-                <p className="text-sm text-muted-foreground">Stripe key: {stripePublishableKey || 'Not loaded'}</p>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      )}
+                  // Redirect to payment success page with the order ID
+                  window.location.href = `/payment-success?orderId=${orderId}`;
+                }}
+                onCancel={() => setShowStripePayment(false)}
+              />
+            </>
+          ) : (
+            <div className="p-4 text-center">
+              <p>Loading payment form...</p>
+              <p className="text-sm text-muted-foreground">Stripe key: {stripePublishableKey || 'Not loaded'}</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

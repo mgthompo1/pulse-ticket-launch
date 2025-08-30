@@ -15,7 +15,7 @@ serve(async (req) => {
   try {
     console.log('=== MANAGE BILLING FUNCTION STARTED ===');
 
-    const { action, setup_intent_id } = await req.json();
+    const { action, setup_intent_id, pm_id } = await req.json();
     console.log('Action requested:', action);
 
     // Initialize Supabase client with service role
@@ -78,6 +78,47 @@ serve(async (req) => {
     console.log('Billing customer found:', billingCustomer.stripe_customer_id);
 
     switch (action) {
+      case 'list_payment_methods':
+        // Retrieve default payment method from Stripe and list all card methods
+        const customer = await stripe.customers.retrieve(billingCustomer.stripe_customer_id);
+        const defaultPmId = (customer as any)?.invoice_settings?.default_payment_method || billingCustomer.payment_method_id || null;
+        const list = await stripe.paymentMethods.list({ customer: billingCustomer.stripe_customer_id, type: 'card' });
+        return new Response(JSON.stringify({
+          default_payment_method: defaultPmId,
+          payment_methods: list.data.map(pm => ({
+            id: pm.id,
+            brand: (pm.card && pm.card.brand) || undefined,
+            last4: (pm.card && pm.card.last4) || undefined,
+            exp_month: (pm.card && pm.card.exp_month) || undefined,
+            exp_year: (pm.card && pm.card.exp_year) || undefined,
+          }))
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        });
+
+      case 'set_default_payment_method':
+        if (!pm_id) {
+          throw new Error('pm_id is required');
+        }
+        await stripe.customers.update(billingCustomer.stripe_customer_id, {
+          invoice_settings: { default_payment_method: pm_id },
+        });
+        await supabaseClient
+          .from('billing_customers')
+          .update({ payment_method_id: pm_id, updated_at: new Date().toISOString() })
+          .eq('id', billingCustomer.id);
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        });
+
+      case 'detach_payment_method':
+        // Disallow removing the only/default payment method to ensure continuous billing.
+        return new Response(JSON.stringify({
+          error: 'Removing payment methods is disabled. Add a new card and set it as default to change.'
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+
       case 'create_portal_session':
         // Create Stripe Customer Portal session for managing payment methods
         const portalSession = await stripe.billingPortal.sessions.create({

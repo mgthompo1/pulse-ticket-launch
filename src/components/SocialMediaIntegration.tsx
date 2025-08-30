@@ -117,7 +117,14 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
   };
 
   const connectLinkedIn = () => {
-    const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(LINKEDIN_REDIRECT_URI)}&scope=r_basicprofile%20w_member_social&state=${user?.id}`;
+    // Use modern scopes; r_basicprofile is deprecated
+    // Request offline_access for refresh tokens so posts continue after expiry
+    const scopes = [
+      'r_liteprofile',
+      'w_member_social',
+      'offline_access'
+    ].join('%20');
+    const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(LINKEDIN_REDIRECT_URI)}&scope=${scopes}&state=${user?.id}`;
     window.location.href = linkedinAuthUrl; // Use location.href instead of popup
   };
 

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, useStripe, useElements } from '@stripe/react-stripe-js';
+import { supabase } from '@/integrations/supabase/client';
 
 interface StripePaymentFormProps {
   eventId: string;
@@ -10,8 +11,6 @@ interface StripePaymentFormProps {
   merchandiseCart: any[];
   customerInfo: any;
   total: number;
-  enableApplePay?: boolean;
-  enableGooglePay?: boolean;
   onSuccess: (orderId: string) => void;
   onCancel: () => void;
 }
@@ -22,8 +21,6 @@ const CheckoutForm = ({
   merchandiseCart, 
   customerInfo, 
   total, 
-  enableApplePay = false, 
-  enableGooglePay = false, 
   onSuccess, 
   onCancel
 }: StripePaymentFormProps) => {
@@ -38,9 +35,7 @@ const CheckoutForm = ({
     console.log("=== CHECKOUT FORM MOUNTED ===");
     console.log("Stripe available:", !!stripe);
     console.log("Elements available:", !!elements);
-    console.log("Apple Pay enabled:", enableApplePay);
-    console.log("Google Pay enabled:", enableGooglePay);
-  }, [stripe, elements, enableApplePay, enableGooglePay]);
+  }, [stripe, elements]);
 
 
 
@@ -52,8 +47,9 @@ const CheckoutForm = ({
     const cardElement = elements.create('card', {
       style: {
         base: {
-          fontSize: '16px',
+          fontSize: '15px',
           color: 'hsl(var(--foreground))',
+          lineHeight: '1.4',
           '::placeholder': {
             color: 'hsl(var(--muted-foreground))',
           },
@@ -79,20 +75,70 @@ const CheckoutForm = ({
 
     setLoading(true);
     try {
-      // Handle card payment submission
-      const { error } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}/payment-success?orderId=${eventId}`,
-        },
+      // For Card Element, we need to create a payment method first
+      const { error: paymentMethodError, paymentMethod } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: elements.getElement('card')!,
       });
 
-      if (error) {
+      if (paymentMethodError) {
         toast({
           title: "Payment Error",
-          description: error.message || "Payment failed",
+          description: paymentMethodError.message || "Failed to create payment method",
           variant: "destructive"
         });
+        return;
+      }
+
+      // Now create the payment intent and confirm with the payment method
+      const { data, error } = await supabase.functions.invoke("create-payment-intent", {
+        body: { 
+          eventId, 
+          items: [
+            ...cart.map(item => ({
+              id: item.id,
+              ticket_type_id: item.id,
+              quantity: item.quantity,
+              unit_price: item.price,
+              type: 'ticket'
+            })),
+            ...merchandiseCart.map(item => ({ 
+              id: item.merchandise.id,
+              merchandise_id: item.merchandise.id,
+              quantity: item.quantity,
+              unit_price: item.merchandise.price,
+              type: 'merchandise',
+              selectedSize: (item as any).selectedSize,
+              selectedColor: (item as any).selectedColor
+            }))
+          ],
+          customerInfo,
+          paymentMethod: 'card'
+        }
+      });
+
+      if (error) throw error;
+
+      // Confirm the payment with the payment method
+      const { error: confirmError } = await stripe.confirmCardPayment(data.clientSecret, {
+        payment_method: paymentMethod.id,
+      });
+
+      if (confirmError) {
+        toast({
+          title: "Payment Error",
+          description: confirmError.message || "Payment failed",
+          variant: "destructive"
+        });
+      } else {
+        // Payment successful
+        toast({
+          title: "Payment Successful",
+          description: "Your payment has been processed successfully.",
+        });
+        // Redirect to success page with the ACTUAL order ID from the response
+        const orderId = data.orderId || data.id;
+        window.location.href = `/payment-success?orderId=${orderId}`;
       }
     } catch (error: any) {
       console.error("Payment error:", error);
@@ -109,11 +155,8 @@ const CheckoutForm = ({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Card Payment Form */}
-      <div className="p-3 border rounded-lg">
-        <div className="text-center mb-2">
-          <p className="text-sm text-muted-foreground">Card Payment</p>
-        </div>
-        <div id="card-element" className="min-h-[40px]">
+      <div className="border rounded-lg bg-gray-50/50">
+        <div id="card-element" className="min-h-[40px] p-3">
           {/* Card element will be mounted here */}
         </div>
       </div>
@@ -138,7 +181,8 @@ export const StripePaymentForm = ({ publishableKey, ...props }: StripePaymentFor
   console.log('Publishable key length:', publishableKey?.length);
   console.log('Props passed to CheckoutForm:', props);
   
-  const stripePromise = loadStripe(publishableKey);
+  // Use useMemo to prevent recreating the stripe promise on every render
+  const stripePromise = React.useMemo(() => loadStripe(publishableKey), [publishableKey]);
 
   return (
     <Elements stripe={stripePromise} options={{

@@ -87,11 +87,13 @@ serve(async (req) => {
     }
 
     // Return the token data along with profile information
+    // Include expires_at for easier expiry checks
     return new Response(
       JSON.stringify({
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token,
         expires_in: tokenData.expires_in,
+        expires_at: tokenData.expires_in ? Date.now() + tokenData.expires_in * 1000 : null,
         scope: tokenData.scope,
         profile: profileData,
       }),

@@ -237,33 +237,7 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
     loadBillingData();
   };
 
-  const generateInvoice = async () => {
-    try {
-      const { error } = await supabase.functions.invoke('generate-invoice', {
-        body: { 
-          organization_id: organizationId,
-          billing_period: new Date().toISOString().slice(0, 7) // YYYY-MM format
-        }
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Success",
-        description: "Invoice generated successfully!"
-      });
-      
-      // Reload billing data to show new invoice
-      loadBillingData();
-    } catch (error) {
-      console.error('Error generating invoice:', error);
-      toast({
-        title: "Error",
-        description: "Failed to generate invoice",
-        variant: "destructive"
-      });
-    }
-  };
+  // Manual invoice generation removed in favor of scheduled monthly billing
 
   const downloadInvoice = async (invoiceId?: string) => {
     try {
@@ -464,48 +438,23 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
           </Card>
         </div>
 
-        {/* Quick Actions */}
+        {/* Billing schedule info */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Quick Actions</span>
-              <Button 
-                onClick={generateInvoice}
-                disabled={currentMonthUsage.transactions === 0}
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <Receipt className="h-4 w-4" />
-                Generate Invoice
-              </Button>
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Generate invoices and manage your billing
-            </p>
+            <CardTitle>Billing Schedule</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 border rounded-lg">
-                <Receipt className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <h4 className="font-medium">Current Month</h4>
-                <p className="text-sm text-muted-foreground">
-                  ${currentMonthUsage.fees.toFixed(2)} in fees
-                </p>
-              </div>
-              <div className="text-center p-4 border rounded-lg">
-                <TrendingUp className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <h4 className="font-medium">Transactions</h4>
-                <p className="text-sm text-muted-foreground">
-                  {currentMonthUsage.transactions} this month
-                </p>
-              </div>
-              <div className="text-center p-4 border rounded-lg">
-                <DollarSign className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <h4 className="font-medium">Volume</h4>
-                <p className="text-sm text-muted-foreground">
-                  ${currentMonthUsage.volume.toFixed(2)} processed
-                </p>
-              </div>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 border rounded-lg">
+              <div className="text-sm text-muted-foreground">Next billing date</div>
+              <div className="text-lg font-semibold">{billingData?.next_billing_at ? new Date(billingData.next_billing_at).toLocaleDateString() : '—'}</div>
+            </div>
+            <div className="p-4 border rounded-lg">
+              <div className="text-sm text-muted-foreground">Last billed</div>
+              <div className="text-lg font-semibold">{billingData?.last_billed_at ? new Date(billingData.last_billed_at).toLocaleDateString() : '—'}</div>
+            </div>
+            <div className="p-4 border rounded-lg">
+              <div className="text-sm text-muted-foreground">Interval</div>
+              <div className="text-lg font-semibold">{billingData?.billing_interval_days || 30} days</div>
             </div>
           </CardContent>
         </Card>
@@ -631,14 +580,6 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
             </div>
             
             <div className="flex gap-3 pt-4">
-              <Button 
-                onClick={generateInvoice}
-                disabled={currentMonthUsage.transactions === 0}
-                className="flex items-center gap-2"
-              >
-                <Receipt className="h-4 w-4" />
-                Generate Invoice
-              </Button>
               <Button 
                 variant="outline"
                 onClick={() => downloadInvoice()}
