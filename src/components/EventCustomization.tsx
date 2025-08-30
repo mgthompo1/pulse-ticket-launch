@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle } from "lucide-react";
+import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog } from "lucide-react";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import MerchandiseManager from "@/components/MerchandiseManager";
@@ -44,6 +44,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     status: string;
     logo_url: string | null;
     venue: string | null;
+    description: string | null;
+    event_date: string;
+    capacity: number;
+    requires_approval: boolean | null;
     widget_customization?: Record<string, unknown>;
     ticket_customization?: Record<string, unknown>;
     email_customization?: Record<string, unknown>;
@@ -149,47 +153,61 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
   // New block-based template state (backward compatible)
   const [emailBlocksTemplate, setEmailBlocksTemplate] = useState<EmailTemplate>(createDefaultTemplate());
 
-  // Email theme presets
+  // Modern Professional Email Theme Presets - matching backend
   const emailThemePresets = {
     professional: {
-      headerColor: "#1f2937",
+      headerColor: "#0f172a",
       backgroundColor: "#ffffff", 
-      textColor: "#374151",
-      buttonColor: "#1f2937",
-      accentColor: "#f9fafb",
-      borderColor: "#d1d5db"
+      textColor: "#334155",
+      buttonColor: "#0f172a",
+      accentColor: "#f8fafc",
+      borderColor: "#e2e8f0",
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
     },
     modern: {
-      headerColor: "#3b82f6",
+      headerColor: "#1e40af",
       backgroundColor: "#ffffff",
-      textColor: "#1f2937", 
-      buttonColor: "#3b82f6",
+      textColor: "#1e293b", 
+      buttonColor: "#2563eb",
       accentColor: "#eff6ff",
-      borderColor: "#dbeafe"
+      borderColor: "#bfdbfe",
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
     },
     elegant: {
-      headerColor: "#7c3aed",
+      headerColor: "#581c87",
       backgroundColor: "#ffffff",
       textColor: "#374151",
       buttonColor: "#7c3aed", 
-      accentColor: "#f5f3ff",
-      borderColor: "#e0e7ff"
+      accentColor: "#faf5ff",
+      borderColor: "#d8b4fe",
+      fontFamily: "'Georgia', serif"
     },
     minimal: {
-      headerColor: "#000000",
+      headerColor: "#18181b",
       backgroundColor: "#ffffff",
-      textColor: "#000000",
-      buttonColor: "#000000",
-      accentColor: "#f8f9fa",
-      borderColor: "#e9ecef"
+      textColor: "#3f3f46",
+      buttonColor: "#18181b",
+      accentColor: "#fafafa",
+      borderColor: "#e4e4e7",
+      fontFamily: "'system-ui', -apple-system, sans-serif"
     },
     creative: {
-      headerColor: "#ec4899",
+      headerColor: "#be185d",
       backgroundColor: "#ffffff",
-      textColor: "#1f2937",
+      textColor: "#374151",
       buttonColor: "#ec4899",
       accentColor: "#fdf2f8", 
-      borderColor: "#f9a8d4"
+      borderColor: "#f9a8d4",
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+    },
+    corporate: {
+      headerColor: "#1e3a8a",
+      backgroundColor: "#ffffff",
+      textColor: "#1e293b",
+      buttonColor: "#1d4ed8",
+      accentColor: "#f1f5f9",
+      borderColor: "#cbd5e1",
+      fontFamily: "'system-ui', -apple-system, sans-serif"
     }
   };
 
@@ -199,7 +217,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       
       const { data, error } = await supabase
         .from("events")
-        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, organization_id")
+        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, organization_id, description, event_date, capacity, requires_approval")
         .eq("id", eventId)
         .single();
 
@@ -224,6 +242,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         status: data.status,
         logo_url: data.logo_url,
         venue: data.venue,
+        description: data.description,
+        event_date: data.event_date,
+        capacity: data.capacity,
+        requires_approval: data.requires_approval,
         widget_customization: {
           ...(data.widget_customization as Record<string, unknown>),
           // Ensure checkoutMode is preserved if it exists
@@ -608,6 +630,21 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         const preset = emailThemePresets[value as keyof typeof emailThemePresets];
         if (preset) {
           updated.template = { ...updated.template, ...preset };
+          
+          // Also update the blocks template theme to sync the preview
+          setEmailBlocksTemplate(prev => ({
+            ...prev,
+            theme: {
+              ...prev.theme,
+              headerColor: preset.headerColor,
+              backgroundColor: preset.backgroundColor,
+              textColor: preset.textColor,
+              buttonColor: preset.buttonColor,
+              accentColor: preset.accentColor,
+              borderColor: preset.borderColor,
+              fontFamily: preset.fontFamily
+            }
+          }));
         }
       }
       
@@ -706,7 +743,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
             Attendees
           </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
+            <Cog className="h-4 w-4" />
             Settings
           </TabsTrigger>
         </TabsList>
@@ -1629,11 +1666,12 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   </div>
                   <div className="grid grid-cols-1 gap-3">
                     {[
-                      { value: 'professional', label: 'Professional', description: 'Clean and corporate design' },
-                      { value: 'modern', label: 'Modern', description: 'Contemporary with rounded corners' },
-                      { value: 'elegant', label: 'Elegant', description: 'Sophisticated with subtle borders' },
-                      { value: 'minimal', label: 'Minimal', description: 'Simple and clean layout' },
-                      { value: 'creative', label: 'Creative', description: 'Vibrant with gradients' }
+                      { value: 'professional', label: 'Professional', description: 'Clean slate design with refined typography' },
+                      { value: 'modern', label: 'Modern', description: 'Contemporary blue with polished spacing' },
+                      { value: 'elegant', label: 'Elegant', description: 'Sophisticated purple with serif typography' },
+                      { value: 'minimal', label: 'Minimal', description: 'Ultra-clean monochrome design' },
+                      { value: 'creative', label: 'Creative', description: 'Vibrant pink with modern styling' },
+                      { value: 'corporate', label: 'Corporate', description: 'Traditional business blue theme' }
                     ].map(theme => (
                       <div 
                         key={theme.value}
@@ -1952,6 +1990,135 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                Basic Event Information
+              </CardTitle>
+              <CardDescription>Edit your event's core details</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="event-name">Event Name *</Label>
+                  <Input
+                    id="event-name"
+                    value={eventData?.name || ""}
+                    onChange={(e) => {
+                      setEventData(prev => prev ? { ...prev, name: e.target.value } : null);
+                    }}
+                    placeholder="Enter event name"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="event-venue">Venue</Label>
+                  <Input
+                    id="event-venue"
+                    value={eventData?.venue || ""}
+                    onChange={(e) => {
+                      setEventData(prev => prev ? { ...prev, venue: e.target.value } : null);
+                    }}
+                    placeholder="Enter venue name"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="event-date">Event Date & Time *</Label>
+                  <Input
+                    id="event-date"
+                    type="datetime-local"
+                    value={eventData?.event_date ? new Date(eventData.event_date).toISOString().slice(0, 16) : ""}
+                    onChange={(e) => {
+                      setEventData(prev => prev ? { ...prev, event_date: e.target.value } : null);
+                    }}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="event-capacity">Capacity</Label>
+                  <Input
+                    id="event-capacity"
+                    type="number"
+                    min="1"
+                    value={eventData?.capacity || ""}
+                    onChange={(e) => {
+                      setEventData(prev => prev ? { ...prev, capacity: parseInt(e.target.value) || 0 } : null);
+                    }}
+                    placeholder="Maximum attendees"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="event-description">Description</Label>
+                <Textarea
+                  id="event-description"
+                  value={eventData?.description || ""}
+                  onChange={(e) => {
+                    setEventData(prev => prev ? { ...prev, description: e.target.value } : null);
+                  }}
+                  placeholder="Describe your event..."
+                  rows={4}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="requires-approval"
+                  checked={eventData?.requires_approval || false}
+                  onCheckedChange={(checked) => {
+                    setEventData(prev => prev ? { ...prev, requires_approval: checked } : null);
+                  }}
+                />
+                <Label htmlFor="requires-approval">Require approval for ticket purchases</Label>
+              </div>
+
+              <div className="pt-4">
+                <Button 
+                  onClick={async () => {
+                    if (!eventData) return;
+                    
+                    try {
+                      const { error } = await supabase
+                        .from("events")
+                        .update({
+                          name: eventData.name,
+                          venue: eventData.venue,
+                          description: eventData.description,
+                          event_date: eventData.event_date,
+                          capacity: eventData.capacity,
+                          requires_approval: eventData.requires_approval
+                        })
+                        .eq("id", eventId);
+
+                      if (error) throw error;
+
+                      toast({
+                        title: "Success",
+                        description: "Event details updated successfully"
+                      });
+                    } catch (error) {
+                      console.error("Error updating event details:", error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to update event details",
+                        variant: "destructive"
+                      });
+                    }
+                  }}
+                  className="w-full md:w-auto"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Event Details
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           <EventLogoUploader
             eventId={eventId}
             currentLogoUrl={currentLogoUrl || undefined}

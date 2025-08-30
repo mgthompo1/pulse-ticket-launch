@@ -150,47 +150,61 @@ Deno.serve(async (req) => {
     const getThemeStyles = (theme: string) => {
       const template = emailCustomization?.template || {};
       
-      // Theme color presets matching the frontend
+      // Modern Professional Theme Presets with improved typography and spacing
       const themePresets = {
         professional: {
-          headerColor: "#1f2937",
+          headerColor: "#0f172a",
           backgroundColor: "#ffffff", 
-          textColor: "#374151",
-          buttonColor: "#1f2937",
-          accentColor: "#f9fafb",
-          borderColor: "#d1d5db"
+          textColor: "#334155",
+          buttonColor: "#0f172a",
+          accentColor: "#f8fafc",
+          borderColor: "#e2e8f0",
+          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
         },
         modern: {
-          headerColor: "#3b82f6",
+          headerColor: "#1e40af",
           backgroundColor: "#ffffff",
-          textColor: "#1f2937", 
-          buttonColor: "#3b82f6",
+          textColor: "#1e293b", 
+          buttonColor: "#2563eb",
           accentColor: "#eff6ff",
-          borderColor: "#dbeafe"
+          borderColor: "#bfdbfe",
+          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
         },
         elegant: {
-          headerColor: "#7c3aed",
+          headerColor: "#581c87",
           backgroundColor: "#ffffff",
           textColor: "#374151",
           buttonColor: "#7c3aed", 
-          accentColor: "#f5f3ff",
-          borderColor: "#e0e7ff"
+          accentColor: "#faf5ff",
+          borderColor: "#d8b4fe",
+          fontFamily: "'Georgia', serif"
         },
         minimal: {
-          headerColor: "#000000",
+          headerColor: "#18181b",
           backgroundColor: "#ffffff",
-          textColor: "#000000",
-          buttonColor: "#000000",
-          accentColor: "#f8f9fa",
-          borderColor: "#e9ecef"
+          textColor: "#3f3f46",
+          buttonColor: "#18181b",
+          accentColor: "#fafafa",
+          borderColor: "#e4e4e7",
+          fontFamily: "'system-ui', -apple-system, sans-serif"
         },
         creative: {
-          headerColor: "#ec4899",
+          headerColor: "#be185d",
           backgroundColor: "#ffffff",
-          textColor: "#1f2937",
+          textColor: "#374151",
           buttonColor: "#ec4899",
           accentColor: "#fdf2f8", 
-          borderColor: "#f9a8d4"
+          borderColor: "#f9a8d4",
+          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+        },
+        corporate: {
+          headerColor: "#1e3a8a",
+          backgroundColor: "#ffffff",
+          textColor: "#1e293b",
+          buttonColor: "#1d4ed8",
+          accentColor: "#f1f5f9",
+          borderColor: "#cbd5e1",
+          fontFamily: "'system-ui', -apple-system, sans-serif"
         }
       };
 
@@ -205,8 +219,8 @@ Deno.serve(async (req) => {
       };
 
       const baseStyles = {
-        fontFamily: template.fontFamily || 'Arial, sans-serif',
-        ...themeColors
+        ...themeColors,
+        fontFamily: themeColors.fontFamily || template.fontFamily || "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
       };
 
       switch (theme) {
@@ -303,7 +317,29 @@ Deno.serve(async (req) => {
           case 'event_details':
             parts.push(`<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px;">
               <strong style="color:${theme.textColor}">${order.events.name}</strong>
-              <div style="color:${theme.textColor};font-size:14px;">📅 ${new Date(order.events.event_date).toLocaleDateString()}<br/>📍 ${order.events.venue || 'TBA'}<br/>👤 ${order.customer_name}</div>
+              <div style="color:${theme.textColor};font-size:14px;line-height:1.6;margin-top:16px;">
+                <div style="display:flex;align-items:flex-start;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;border-left:3px solid ${theme.buttonColor};">
+                  <div style="background:${theme.buttonColor};color:white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;font-size:14px;">🗓</div>
+                  <div style="flex:1;">
+                    <div style="font-weight:600;color:${theme.textColor};margin-bottom:2px;">${new Date(order.events.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                    <div style="color:${theme.textColor}CC;font-size:13px;">${new Date(order.events.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:flex-start;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;border-left:3px solid ${theme.buttonColor};">
+                  <div style="background:${theme.buttonColor};color:white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;font-size:14px;">📍</div>
+                  <div style="flex:1;">
+                    <div style="color:${theme.textColor}88;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Venue</div>
+                    <div style="font-weight:600;color:${theme.textColor};">${order.events.venue || 'TBA'}</div>
+                  </div>
+                </div>
+                <div style="display:flex;align-items:flex-start;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;border-left:3px solid ${theme.buttonColor};">
+                  <div style="background:${theme.buttonColor};color:white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;font-size:14px;">👤</div>
+                  <div style="flex:1;">
+                    <div style="color:${theme.textColor}88;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Attendee</div>
+                    <div style="font-weight:600;color:${theme.textColor};">${order.customer_name}</div>
+                  </div>
+                </div>
+              </div>
             </div>`);
             break;
           case 'ticket_list':
@@ -371,12 +407,30 @@ Deno.serve(async (req) => {
           <div style="text-align:center;border-bottom:1px solid #e5e7eb;padding-bottom:12px;margin-bottom:12px;">
             ${orgLogo ? `<img src="${orgLogo}" alt="Logo" style="height:48px;max-width:200px;object-fit:contain;margin:0 auto 8px;display:block;"/>` : ''}
             <div style="font-size:18px;font-weight:700;color:#111827;">${order.events.name}</div>
-            ${order.events.venue ? `<div style=\"font-size:12px;color:#6b7280;display:flex;justify-content:center;gap:4px;\">📍 <span>${order.events.venue}</span></div>` : ''}
+            ${order.events.venue ? `<div style=\"font-size:12px;color:#6b7280;text-align:center;margin-top:4px;\"><strong>VENUE:</strong> ${order.events.venue}</div>` : ''}
           </div>
           <div style="display:flex;flex-direction:column;gap:8px;color:#111827;">
-            <div style="display:flex;align-items:center;gap:8px;"><span>📅</span><div><div style="font-weight:600;">${new Date(order.events.event_date).toLocaleDateString(undefined,{ weekday:'long', month:'long', day:'numeric', year:'numeric'})}</div><div style="font-size:12px;color:#6b7280;">${new Date(order.events.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit'})}</div></div></div>
-            <div style="display:flex;align-items:center;gap:8px;"><span>🎟️</span><div><div style="font-weight:600;">${t.type}</div><div style="font-size:12px;color:#6b7280;">Ticket Type</div></div></div>
-            <div style="display:flex;align-items:center;gap:8px;"><span>👤</span><div><div style="font-weight:600;">${order.customer_name}</div><div style="font-size:12px;color:#6b7280;">Attendee</div></div></div>
+            <div style="display:flex;align-items:center;margin:8px 0;padding:8px;background:#f8fafc;border-radius:6px;">
+              <div style="background:#4f46e5;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin-right:10px;flex-shrink:0;font-size:12px;">🗓</div>
+              <div style="flex:1;">
+                <div style="font-weight:600;color:#111827;">${new Date(order.events.event_date).toLocaleDateString(undefined,{ weekday:'long', month:'long', day:'numeric', year:'numeric'})}</div>
+                <div style="font-size:12px;color:#6b7280;">${new Date(order.events.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit'})}</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;margin:8px 0;padding:8px;background:#f8fafc;border-radius:6px;">
+              <div style="background:#4f46e5;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin-right:10px;flex-shrink:0;font-size:12px;">🎫</div>
+              <div style="flex:1;">
+                <div style="font-weight:600;color:#111827;">${t.type}</div>
+                <div style="font-size:12px;color:#6b7280;">Ticket Type</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;margin:8px 0;padding:8px;background:#f8fafc;border-radius:6px;">
+              <div style="background:#4f46e5;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin-right:10px;flex-shrink:0;font-size:12px;">👤</div>
+              <div style="flex:1;">
+                <div style="font-weight:600;color:#111827;">${order.customer_name}</div>
+                <div style="font-size:12px;color:#6b7280;">Attendee</div>
+              </div>
+            </div>
           </div>
           <div style="border-top:1px solid #e5e7eb;margin-top:12px;padding-top:12px;text-align:center;">
             <div style="font-size:13px;color:#6b7280;margin-bottom:8px;">Scan QR Code at Event</div>
@@ -422,11 +476,11 @@ Deno.serve(async (req) => {
               
               <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
                 <h2 style="margin-top: 0; color: #333;">${order.events.name}</h2>
-                <p><strong>📅 Date & Time:</strong> ${new Date(order.events.event_date).toLocaleDateString()} at ${new Date(order.events.event_date).toLocaleTimeString()}</p>
-                <p><strong>📍 Venue:</strong> ${order.events.venue || 'TBA'}</p>
-                <p><strong>👤 Attendee:</strong> ${order.customer_name}</p>
-                <p><strong>📧 Email:</strong> ${order.customer_email}</p>
-                ${order.customer_phone ? `<p><strong>📞 Phone:</strong> ${order.customer_phone}</p>` : ''}
+                <p><strong>Date & Time:</strong> ${new Date(order.events.event_date).toLocaleDateString()} at ${new Date(order.events.event_date).toLocaleTimeString()}</p>
+                <p><strong>Venue:</strong> ${order.events.venue || 'TBA'}</p>
+                <p><strong>Attendee:</strong> ${order.customer_name}</p>
+                <p><strong>Email:</strong> ${order.customer_email}</p>
+                ${order.customer_phone ? `<p><strong>Phone:</strong> ${order.customer_phone}</p>` : ''}
               </div>
 
               ${order.events.description ? `

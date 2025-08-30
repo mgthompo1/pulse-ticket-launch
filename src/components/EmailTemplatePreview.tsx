@@ -141,9 +141,21 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                   return (
                     <div key={b.id} style={{ background: blocksTemplate.theme.accentColor, border: `1px solid ${blocksTemplate.theme.borderColor}`, margin: '16px 20px', padding: '16px', borderRadius: 8 }}>
                       <strong style={{ color: blocksTemplate.theme.textColor }}>{eventDetails.name}</strong>
-                      <div style={{ color: blocksTemplate.theme.textColor, fontSize: 14 }}>
-                        📅 {new Date(eventDetails.event_date).toLocaleDateString()}<br />
-                        📍 {eventDetails.venue || 'TBA'}
+                      <div style={{ color: blocksTemplate.theme.textColor, fontSize: 14, lineHeight: 1.6, marginTop: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: blocksTemplate.theme.accentColor, borderRadius: '8px', borderLeft: `3px solid ${blocksTemplate.theme.buttonColor}` }}>
+                          <div style={{ background: blocksTemplate.theme.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>🗓</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, color: blocksTemplate.theme.textColor, marginBottom: '2px' }}>{new Date(eventDetails.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                            <div style={{ color: blocksTemplate.theme.textColor + 'CC', fontSize: '13px' }}>{new Date(eventDetails.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: blocksTemplate.theme.accentColor, borderRadius: '8px', borderLeft: `3px solid ${blocksTemplate.theme.buttonColor}` }}>
+                          <div style={{ background: blocksTemplate.theme.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>📍</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ color: blocksTemplate.theme.textColor + '88', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Venue</div>
+                            <div style={{ fontWeight: 600, color: blocksTemplate.theme.textColor }}>{eventDetails.venue || 'TBA'}</div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -297,15 +309,29 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                 }}>
                   {eventDetails.name}
                 </h2>
-                <p style={{ margin: '5px 0', fontSize: '14px', color: template.textColor }}>
-                  📅 {formatDate(eventDetails.event_date)}
-                </p>
-                <p style={{ margin: '5px 0', fontSize: '14px', color: template.textColor }}>
-                  📍 {eventDetails.venue || 'TBA'}
-                </p>
-                <p style={{ margin: '5px 0', fontSize: '14px', color: template.textColor }}>
-                  👤 Sample Customer
-                </p>
+                <div style={{ fontSize: '14px', lineHeight: 1.6, marginTop: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: template.accentColor, borderRadius: '8px', borderLeft: `3px solid ${template.buttonColor}` }}>
+                    <div style={{ background: template.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>🗓</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, color: template.textColor, marginBottom: '2px' }}>{formatDate(eventDetails.event_date)}</div>
+                      <div style={{ color: template.textColor + 'CC', fontSize: '13px' }}>Sample Time</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: template.accentColor, borderRadius: '8px', borderLeft: `3px solid ${template.buttonColor}` }}>
+                    <div style={{ background: template.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>📍</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ color: template.textColor + '88', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Venue</div>
+                      <div style={{ fontWeight: 600, color: template.textColor }}>{eventDetails.venue || 'TBA'}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: template.accentColor, borderRadius: '8px', borderLeft: `3px solid ${template.buttonColor}` }}>
+                    <div style={{ background: template.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>👤</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ color: template.textColor + '88', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Attendee</div>
+                      <div style={{ fontWeight: 600, color: template.textColor }}>Sample Customer</div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Body Text - Matches actual email template */}
