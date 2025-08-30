@@ -176,11 +176,13 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
                 stripeSecretKey={stripeSecretKey}
                 enableApplePay={enableApplePay}
                 enableGooglePay={enableGooglePay}
+                currency={currency}
                 onStripeAccountIdChange={setStripeAccountId}
                 onStripePublishableKeyChange={setStripePublishableKey}
                 onStripeSecretKeyChange={setStripeSecretKey}
                 onEnableApplePayChange={setEnableApplePay}
                 onEnableGooglePayChange={setEnableGooglePay}
+                onCurrencyChange={setCurrency}
               />
             )}
 

@@ -37,7 +37,8 @@ serve(async (req) => {
       .select(`
         *,
         organizations!inner(
-          payment_provider
+          payment_provider,
+          currency
         )
       `)
       .eq("id", eventId)
@@ -105,10 +106,11 @@ serve(async (req) => {
       : "https://uat.windcave.com/api/v1/sessions";
 
     // Create Windcave session - following documentation format
+    const orgCurrency = event.organizations.currency || "NZD";
     const sessionData = {
       type: "purchase",
       amount: totalAmount.toFixed(2), // Windcave expects decimal format, not cents
-      currency: "NZD", // Default to NZD, could be configurable
+      currency: orgCurrency,
       merchantReference: `event-${eventId}-${Date.now()}`,
       language: "en",
       callbackUrls: {

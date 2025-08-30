@@ -25,7 +25,25 @@ serve(async (req) => {
 
     switch (action) {
       case "create_payment_intent":
-        const { amount, currency = "usd", eventId, items, customerInfo } = data;
+        const { amount, eventId, items, customerInfo } = data;
+        
+        // Get organization currency from the database
+        const { data: eventData, error: eventError } = await supabase
+          .from("events")
+          .select(`
+            id,
+            organizations!inner(
+              currency
+            )
+          `)
+          .eq("id", eventId)
+          .single();
+          
+        if (eventError || !eventData) {
+          throw new Error("Event not found or organization currency not configured");
+        }
+        
+        const currency = eventData.organizations.currency?.toLowerCase() || "usd";
         
         const paymentIntent = await stripe.paymentIntents.create({
           amount: Math.round(amount * 100), // Convert to cents

@@ -72,7 +72,11 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
 
   // LinkedIn OAuth URLs - Using registered redirect URI
   const LINKEDIN_CLIENT_ID = "780xcbz4f2nchj"; // Your correct LinkedIn Client ID
-  const LINKEDIN_REDIRECT_URI = "https://ticketflo.org/dashboard/auth/linkedin/callback"; // Must match LinkedIn app config
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  // Use only registered redirect URIs to avoid mismatch
+  const LINKEDIN_REDIRECT_URI = isLocalhost
+    ? 'http://localhost:8080/auth/linkedin/callback'
+    : 'https://ticketflo.org/dashboard/auth/linkedin/callback';
   
   // Facebook OAuth URLs (hardcoded for testing)
   const FACEBOOK_CLIENT_ID = "your_facebook_client_id";
@@ -116,16 +120,48 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
     }
   };
 
-  const connectLinkedIn = () => {
-    // Use modern scopes; r_basicprofile is deprecated
-    // Request offline_access for refresh tokens so posts continue after expiry
-    const scopes = [
-      'r_liteprofile',
-      'w_member_social',
-      'offline_access'
-    ].join('%20');
-    const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(LINKEDIN_REDIRECT_URI)}&scope=${scopes}&state=${user?.id}`;
-    window.location.href = linkedinAuthUrl; // Use location.href instead of popup
+  const connectLinkedIn = async () => {
+    // Always use backend to build the authorization URL with server-side client_id
+    try {
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const suggestedRedirect = isLocal
+        ? 'http://localhost:8080/auth/linkedin/callback'
+        : 'https://ticketflo.org/dashboard/auth/linkedin/callback';
+
+      const { data, error } = await supabase.functions.invoke('linkedin-token', {
+        body: { action: 'getAuthUrl', redirect_uri: suggestedRedirect, state: user?.id || '' }
+      });
+
+      if (error || !data?.authUrl) {
+        // Fallback: build client-side auth URL so user can proceed
+        const scopes = [
+          'r_basicprofile',
+          'w_member_social'
+        ].join('%20');
+        const clientAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(suggestedRedirect)}&scope=${scopes}&state=${user?.id || ''}`;
+        try { localStorage.setItem('linkedin_redirect_uri', suggestedRedirect); } catch {}
+        window.location.href = clientAuthUrl;
+        return;
+      }
+
+      try {
+        localStorage.setItem('linkedin_redirect_uri', data.redirect_uri || suggestedRedirect);
+      } catch {}
+      window.location.href = data.authUrl;
+    } catch (err) {
+      // Fallback on unexpected failure
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const suggestedRedirect = isLocal
+        ? 'http://localhost:8080/auth/linkedin/callback'
+        : 'https://ticketflo.org/dashboard/auth/linkedin/callback';
+      const scopes = [
+        'r_basicprofile',
+        'w_member_social'
+      ].join('%20');
+      const clientAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(suggestedRedirect)}&scope=${scopes}&state=${user?.id || ''}`;
+      try { localStorage.setItem('linkedin_redirect_uri', suggestedRedirect); } catch {}
+      window.location.href = clientAuthUrl;
+    }
   };
 
   const connectFacebook = () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,15 @@ export default function LinkedInCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
+  const exchangingRef = useRef(false);
 
   useEffect(() => {
     const handleCallback = async () => {
+      if (exchangingRef.current) return; // prevent duplicate exchanges
+
       const code = searchParams.get('code');
       const state = searchParams.get('state');
       const error = searchParams.get('error');
@@ -34,18 +37,49 @@ export default function LinkedInCallback() {
         return;
       }
 
-      if (!user) {
-        setStatus('error');
-        setErrorMessage('User not authenticated');
+      // Wait for auth to initialize and user to be available
+      if (loading || !user) {
+        setStatus('loading');
         return;
       }
 
       try {
+        // Determine the exact redirect_uri used during auth
+        let storedRedirect = null as string | null;
+        try {
+          storedRedirect = localStorage.getItem('linkedin_redirect_uri');
+        } catch {}
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const fallbackRedirect = isLocalhost
+          ? 'http://localhost:8080/auth/linkedin/callback'
+          : 'https://ticketflo.org/dashboard/auth/linkedin/callback';
+        
+        // Validate stored redirect to avoid cross-environment mismatches
+        let redirectUri = fallbackRedirect;
+        if (storedRedirect) {
+          try {
+            const u = new URL(storedRedirect);
+            const isStoredLocal = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+            if (isStoredLocal === isLocalhost) {
+              redirectUri = storedRedirect;
+            }
+          } catch {
+            // ignore parse errors and use fallback
+          }
+        }
+
+        console.log('[LinkedInCallback] Exchanging code for token', { code, redirectUri });
+
+        // Start exchange (set guard only now)
+        exchangingRef.current = true;
+
         // Exchange authorization code for access token using Supabase edge function
         const { data: tokenData, error: tokenError } = await supabase.functions.invoke('linkedin-token', {
           body: {
             code,
-            redirect_uri: `${window.location.origin}/dashboard/auth/linkedin/callback`,
+            state, // allow backend to derive redirect from packed state
+            // we still pass redirect_uri as a fallback if state not packed
+            redirect_uri: redirectUri,
           },
         });
 
@@ -53,13 +87,11 @@ export default function LinkedInCallback() {
           throw new Error('Failed to exchange authorization code for access token');
         }
 
-        // The edge function should return both token data and profile data
         const profileData = tokenData.profile || {
           localizedFirstName: 'LinkedIn',
           localizedLastName: 'User'
         };
 
-        // Store the connection in the database - first try to update existing, then insert
         const connectionData = {
           user_id: user.id,
           platform: 'linkedin',
@@ -71,7 +103,6 @@ export default function LinkedInCallback() {
           expires_at: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString() : null,
         };
 
-        // Try to update existing connection first
         const { data: existing } = await supabase
           .from('social_connections')
           .select('id')
@@ -81,14 +112,12 @@ export default function LinkedInCallback() {
 
         let dbError;
         if (existing) {
-          // Update existing connection
           const { error } = await supabase
             .from('social_connections')
             .update(connectionData)
             .eq('id', existing.id);
           dbError = error;
         } else {
-          // Insert new connection
           const { error } = await supabase
             .from('social_connections')
             .insert(connectionData);
@@ -100,17 +129,8 @@ export default function LinkedInCallback() {
         }
 
         setStatus('success');
-        
-        toast({
-          title: "LinkedIn Connected!",
-          description: "Your LinkedIn account has been successfully connected.",
-        });
-
-        // Redirect back to marketing tab after a short delay
-        setTimeout(() => {
-          navigate('/dashboard?tab=marketing&subtab=social');
-        }, 2000);
-
+        toast({ title: 'LinkedIn Connected!', description: 'Your LinkedIn account has been successfully connected.' });
+        setTimeout(() => navigate('/dashboard?tab=marketing&subtab=social'), 2000);
       } catch (error) {
         console.error('LinkedIn callback error:', error);
         setStatus('error');
@@ -119,7 +139,7 @@ export default function LinkedInCallback() {
     };
 
     handleCallback();
-  }, [searchParams, user, navigate, toast]);
+  }, [searchParams, user, loading, navigate, toast]);
 
   if (status === 'loading') {
     return (

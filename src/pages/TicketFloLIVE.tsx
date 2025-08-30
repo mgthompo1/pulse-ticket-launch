@@ -38,6 +38,13 @@ interface CartItem extends ConcessionItem {
   quantity: number;
 }
 
+interface WindcaveHITConfig {
+  windcave_enabled: boolean;
+  windcave_hit_username: string | null;
+  windcave_hit_key: string | null;
+  windcave_station_id: string | null;
+}
+
 const TicketFloLIVE = () => {
   const { eventId } = useParams();
   const { toast } = useToast();
@@ -74,7 +81,7 @@ const TicketFloLIVE = () => {
   });
   
   // Organization configuration
-  const [organizationConfig, setOrganizationConfig] = useState<any>(null);
+  const [organizationConfig, setOrganizationConfig] = useState<WindcaveHITConfig | null>(null);
 
   // Analytics state
 const [analytics, setAnalytics] = useState<{
@@ -104,35 +111,50 @@ const [analytics, setAnalytics] = useState<{
     }
   }, [eventId]);
 
-const loadOrganizationConfig = async () => {
-  if (!eventId) return;
-  try {
-    const { data: event, error } = await supabase
-      .from("events")
-      .select(`
-        *,
-        organizations!inner(
-          windcave_hit_username,
-          windcave_hit_key,
-          windcave_station_id,
-          windcave_enabled
-        )
-      `)
-      .eq("id", eventId)
-      .single();
+  const loadOrganizationConfig = async () => {
+    if (!eventId) return;
+    try {
+      // Get event to find organization_id
+      const { data: event, error: eventError } = await supabase
+        .from("events")
+        .select("id, organization_id")
+        .eq("id", eventId)
+        .single();
 
-    if (error) throw error;
-    console.log("Organization config loaded:", event?.organizations);
-    setOrganizationConfig(event?.organizations);
-  } catch (error) {
-    console.error("Error loading organization config:", error);
-    toast({
-      title: "Configuration Error",
-      description: "Failed to load Windcave configuration",
-      variant: "destructive"
-    });
-  }
-};
+      if (eventError || !event) {
+        throw new Error("Event not found");
+      }
+
+      // Get payment credentials from the correct table
+      const { data: credentials, error: credError } = await supabase
+        .from("payment_credentials")
+        .select("windcave_hit_username, windcave_hit_key, windcave_station_id, windcave_enabled")
+        .eq("organization_id", event.organization_id)
+        .single();
+
+      if (credError) {
+        console.error("Error loading payment credentials:", credError);
+        // Set empty config if no credentials found
+        setOrganizationConfig({ 
+          windcave_enabled: false,
+          windcave_hit_username: null,
+          windcave_hit_key: null,
+          windcave_station_id: null
+        });
+        return;
+      }
+
+      console.log("Windcave HIT config loaded:", credentials);
+      setOrganizationConfig(credentials);
+    } catch (error) {
+      console.error("Error loading organization config:", error);
+      toast({
+        title: "Configuration Error",
+        description: "Failed to load Windcave HIT configuration",
+        variant: "destructive"
+      });
+    }
+  };
 
 const loadGuests = async () => {
   if (!eventId) return;
