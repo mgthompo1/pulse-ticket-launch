@@ -343,13 +343,39 @@ Deno.serve(async (req) => {
             </div>`);
             break;
           case 'ticket_list':
-            parts.push(`<div style="padding:0 20px;color:${theme.textColor}"><h3>Your Tickets</h3>${allTickets.map((t:any)=>`
+            // Group tickets by type and show summary with quantity and price
+            const ticketSummary = ticketItems.reduce((acc: any, item: any) => {
+              const ticketType = item.ticket_types?.name || 'General Admission';
+              if (!acc[ticketType]) {
+                acc[ticketType] = {
+                  name: ticketType,
+                  quantity: 0,
+                  price: item.unit_price,
+                  total: 0
+                };
+              }
+              acc[ticketType].quantity += item.quantity;
+              acc[ticketType].total += item.unit_price * item.quantity;
+              return acc;
+            }, {});
+            
+            const ticketSummaryHtml = Object.values(ticketSummary).map((summary: any) => `
               <div style="border:1px solid ${theme.borderColor};padding:16px;border-radius:8px;background:#fff;margin:12px 0;">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                  <span>${t.type}</span>
-                  <code style="background:${theme.accentColor};padding:4px 8px;">${t.code}</code>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                  <span style="font-weight:600;color:${theme.textColor};">${summary.name}</span>
+                  <span style="color:${theme.textColor}88;font-size:14px;">$${summary.price.toFixed(2)} each</span>
                 </div>
-              </div>`).join('')}</div>`);
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                  <span style="color:${theme.textColor}88;font-size:14px;">Quantity: ${summary.quantity}</span>
+                  <span style="font-weight:600;color:${theme.textColor};">Total: $${summary.total.toFixed(2)}</span>
+                </div>
+              </div>
+            `).join('');
+            
+            parts.push(`<div style="padding:0 20px;color:${theme.textColor}">
+              <h3 style="margin:20px 0 16px 0;color:${theme.textColor};">Your Tickets</h3>
+              ${ticketSummaryHtml}
+            </div>`);
             break;
           case 'button':
             // Replace dynamic placeholders in button URLs
@@ -363,6 +389,12 @@ Deno.serve(async (req) => {
             if (buttonUrl.includes('{{CUSTOMER_EMAIL}}')) {
               buttonUrl = buttonUrl.replace(/\{\{CUSTOMER_EMAIL\}\}/g, encodeURIComponent(order.customer_email));
             }
+            
+            // Default VIEW TICKETS button to payment success page if no URL specified
+            if (b.label?.toLowerCase().includes('ticket') && (!buttonUrl || buttonUrl === '#')) {
+              buttonUrl = `/payment-success?orderId=${orderId}`;
+            }
+            
             // Convert relative URLs to absolute URLs for email compatibility
             if (buttonUrl.startsWith('/') && !buttonUrl.startsWith('//')) {
               const origin = 'https://app.ticketflo.com'; // Default production domain
@@ -454,7 +486,31 @@ Deno.serve(async (req) => {
               <h1 style="margin:0;font-size:22px;">${emailCustomization?.content?.headerText || 'Thank you for your purchase!'}</h1>
             </div>
             <div style="padding:20px;">
+              <!-- Ticket Summary Section -->
+              <div style="background:${themeStyles.accentColor};border:1px solid ${themeStyles.borderColor};border-radius:8px;padding:16px;margin-bottom:20px;">
+                <h3 style="margin:0 0 12px 0;color:${themeStyles.textColor};font-size:16px;">Your Ticket Summary</h3>
+                ${ticketItems.map(item => `
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid ${themeStyles.borderColor}40;">
+                    <div>
+                      <span style="font-weight:600;color:${themeStyles.textColor};">${item.ticket_types?.name || 'General Admission'}</span>
+                      <span style="color:${themeStyles.textColor}88;font-size:14px;margin-left:8px;">× ${item.quantity}</span>
+                    </div>
+                    <span style="font-weight:600;color:${themeStyles.textColor};">$${(item.unit_price * item.quantity).toFixed(2)}</span>
+                  </div>
+                `).join('')}
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:2px solid ${themeStyles.borderColor};margin-top:8px;">
+                  <span style="font-weight:700;color:${themeStyles.textColor};font-size:16px;">Total</span>
+                  <span style="font-weight:700;color:${themeStyles.textColor};font-size:16px;">$${order.total_amount.toFixed(2)}</span>
+                </div>
+              </div>
+              
               ${ticketHtml}
+              
+              <!-- VIEW TICKETS Button -->
+              <div style="text-align:center;margin:20px 0;">
+                <a href="https://app.ticketflo.com/payment-success?orderId=${orderId}" style="background:${themeStyles.buttonColor};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block;">View Your Tickets</a>
+              </div>
+              
               <div style="background:${themeStyles.accentColor};border-top:1px solid ${themeStyles.borderColor};padding:16px;margin-top:20px;text-align:center;border-radius:0 0 8px 8px;">
                 <p style="color:#999;font-size:12px;margin:0;">${emailCustomization?.content?.footerText || 'Questions? Contact us anytime.'}</p>
               </div>
@@ -497,6 +553,10 @@ Deno.serve(async (req) => {
                   <small>Total: $${(item.unit_price * item.quantity).toFixed(2)}</small>
                 </div>
               `).join('')}
+
+              <div style="text-align: center; margin: 20px 0;">
+                <a href="https://app.ticketflo.com/payment-success?orderId=${orderId}" style="background: ${emailCustomization?.template?.buttonColor || '#007bff'}; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">View Your Tickets</a>
+              </div>
 
               <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0;">
                 <h4 style="margin-top: 0; color: #2e7d32;">What to Expect:</h4>
