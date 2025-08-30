@@ -48,7 +48,7 @@ export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({ temp
         : type === "ticket_list"
         ? { ...(base as TicketListBlock), showCode: true, showPrice: true }
         : type === "button"
-        ? { ...(base as ButtonBlock), label: "View Order", url: "#", align: "center" }
+        ? { ...(base as ButtonBlock), label: "View Order", url: "/payment-success?orderId={{ORDER_ID}}", align: "center" }
         : type === "divider"
         ? ({ ...(base as DividerBlock) } as DividerBlock)
         : type === "image"
@@ -157,7 +157,14 @@ export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({ temp
                   </div>
                   <div className="space-y-2">
                     <Label>URL</Label>
-                    <Input value={(block as ButtonBlock).url} onChange={(e) => updateBlock(block.id, { url: e.target.value })} />
+                    <Input 
+                      value={(block as ButtonBlock).url} 
+                      onChange={(e) => updateBlock(block.id, { url: e.target.value })} 
+                      placeholder="/payment-success?orderId={{ORDER_ID}}"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Links to the order details page where customers can view their tickets.
+                    </p>
                   </div>
                 </div>
               )}

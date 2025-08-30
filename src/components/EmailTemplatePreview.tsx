@@ -14,7 +14,7 @@ interface EmailTemplatePreviewProps {
       borderColor: string;
       fontFamily: string;
     };
-    content: {
+    content?: {
       subject: string;
       headerText: string;
       bodyText: string;
@@ -24,6 +24,8 @@ interface EmailTemplatePreviewProps {
       showLogo: boolean;
       logoPosition: string;
       logoSize: string;
+      logoSource?: string;
+      customLogoUrl?: string;
     };
     layout?: {
       headerStyle: string;
@@ -54,8 +56,20 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
   const { template, content, branding, layout = { headerStyle: 'standard', contentLayout: 'standard', footerStyle: 'standard' } } = emailCustomization;
   
   const getLogoUrl = () => {
+    
     if (!branding.showLogo) return null;
-    return eventDetails.logo_url || organizationDetails.logo_url;
+    
+    const logoSource = branding.logoSource || 'event';
+    
+    switch (logoSource) {
+      case 'organization':
+        return organizationDetails.logo_url;
+      case 'custom':
+        return branding.customLogoUrl;
+      case 'event':
+      default:
+        return eventDetails.logo_url;
+    }
   };
 
   const logoUrl = getLogoUrl();
@@ -92,6 +106,22 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                 border: `1px solid ${blocksTemplate.theme.borderColor || '#e5e7eb'}`,
               }}
             >
+              {/* Logo - Header Position */}
+              {logoUrl && branding.showLogo && branding.logoPosition === 'header' && (
+                <div style={{ textAlign: 'center', marginBottom: '15px', padding: '20px 20px 0 20px' }}>
+                  <img 
+                    src={logoUrl} 
+                    alt="Logo" 
+                    style={{ 
+                      maxWidth: branding.logoSize === 'small' ? '80px' : branding.logoSize === 'large' ? '150px' : '120px',
+                      height: 'auto',
+                      display: 'block',
+                      margin: '0 auto'
+                    }}
+                  />
+                </div>
+              )}
+              
               {blocksTemplate.blocks.map((b) => {
                 if (b.type === 'header') {
                   const title = (b as any).title || 'Header';
@@ -157,6 +187,22 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                 }
                 return null;
               })}
+              
+              {/* Logo - Content Position */}
+              {logoUrl && branding.showLogo && branding.logoPosition === 'content' && (
+                <div style={{ textAlign: 'center', marginTop: '15px', padding: '0 20px 20px 20px' }}>
+                  <img 
+                    src={logoUrl} 
+                    alt="Logo" 
+                    style={{ 
+                      maxWidth: branding.logoSize === 'small' ? '80px' : branding.logoSize === 'large' ? '150px' : '120px',
+                      height: 'auto',
+                      display: 'block',
+                      margin: '0 auto'
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
@@ -201,9 +247,11 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                       maxWidth: '200px',
                       height: 'auto'
                     }}
+
                   />
                 </div>
               )}
+
               <h1 style={{
                 margin: 0,
                 fontSize: '24px',
@@ -227,9 +275,11 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                       maxWidth: '200px',
                       height: 'auto'
                     }}
+
                   />
                 </div>
               )}
+
               
               {/* Event Details Card - Matches actual email template */}
               <div style={{

@@ -262,8 +262,35 @@ Deno.serve(async (req) => {
         fontFamily: emailCustomization?.template?.fontFamily || 'Arial, sans-serif'
       };
 
+      // Get logo configuration from email customization
+      const branding = emailCustomization?.branding || {};
+      const getLogoUrl = () => {
+        if (!branding.showLogo) return null;
+        
+        const logoSource = branding.logoSource || 'event';
+        
+        switch (logoSource) {
+          case 'organization':
+            return order.events.organizations.logo_url;
+          case 'custom':
+            return branding.customLogoUrl;
+          case 'event':
+          default:
+            return order.events.logo_url;
+        }
+      };
+
+      const logoUrl = getLogoUrl();
+      const logoSize = branding.logoSize === 'small' ? '80px' : branding.logoSize === 'large' ? '150px' : '120px';
+
       const parts: string[] = [];
       parts.push(`<div style="font-family:${theme.fontFamily};max-width:600px;margin:0 auto;background:${theme.backgroundColor};border:1px solid ${theme.borderColor};">`);
+      
+      // Add logo in header position
+      if (logoUrl && branding.showLogo && branding.logoPosition === 'header') {
+        parts.push(`<div style="text-align:center;margin-bottom:15px;padding:20px 20px 0 20px;"><img src="${logoUrl}" alt="Logo" style="max-width:${logoSize};height:auto;display:block;margin:0 auto;"/></div>`);
+      }
+      
       for (const b of blocks) {
         if (b.hidden) continue;
         switch (b.type) {
@@ -289,7 +316,23 @@ Deno.serve(async (req) => {
               </div>`).join('')}</div>`);
             break;
           case 'button':
-            parts.push(`<div style="text-align:${b.align || 'center'};padding:20px;"><a href="${b.url || '#'}" style="background:${theme.buttonColor};color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">${b.label || 'View Order'}</a></div>`);
+            // Replace dynamic placeholders in button URLs
+            let buttonUrl = b.url || '#';
+            if (buttonUrl.includes('{{ORDER_ID}}')) {
+              buttonUrl = buttonUrl.replace(/\{\{ORDER_ID\}\}/g, orderId);
+            }
+            if (buttonUrl.includes('{{EVENT_ID}}')) {
+              buttonUrl = buttonUrl.replace(/\{\{EVENT_ID\}\}/g, order.events?.id || '');
+            }
+            if (buttonUrl.includes('{{CUSTOMER_EMAIL}}')) {
+              buttonUrl = buttonUrl.replace(/\{\{CUSTOMER_EMAIL\}\}/g, encodeURIComponent(order.customer_email));
+            }
+            // Convert relative URLs to absolute URLs for email compatibility
+            if (buttonUrl.startsWith('/') && !buttonUrl.startsWith('//')) {
+              const origin = 'https://app.ticketflo.com'; // Default production domain
+              buttonUrl = origin + buttonUrl;
+            }
+            parts.push(`<div style="text-align:${b.align || 'center'};padding:20px;"><a href="${buttonUrl}" style="background:${theme.buttonColor};color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none;">${b.label || 'View Order'}</a></div>`);
             break;
           case 'divider':
             parts.push(`<hr style="border:0;border-top:1px solid ${theme.borderColor};margin:16px 20px;"/>`);
@@ -304,6 +347,12 @@ Deno.serve(async (req) => {
             break;
         }
       }
+      
+      // Add logo in content position
+      if (logoUrl && branding.showLogo && branding.logoPosition === 'content') {
+        parts.push(`<div style="text-align:center;margin-top:15px;padding:0 20px 20px 20px;"><img src="${logoUrl}" alt="Logo" style="max-width:${logoSize};height:auto;display:block;margin:0 auto;"/></div>`);
+      }
+      
       parts.push(`</div>`);
       return parts.join('');
     };
@@ -312,7 +361,7 @@ Deno.serve(async (req) => {
       // Prefer new block renderer regardless of delivery method
       emailContent = {
         to: order.customer_email,
-        subject: emailCustomization?.content?.subject || `Your tickets for ${order.events.name}`,
+        subject: emailCustomization?.subject || `Your tickets for ${order.events.name}`,
         html: renderBlocks(),
       };
     } else if (deliveryMethod === 'qr_ticket') {
@@ -344,7 +393,7 @@ Deno.serve(async (req) => {
 
       emailContent = {
         to: order.customer_email,
-        subject: emailCustomization?.content?.subject || `Your tickets for ${order.events.name}`,
+        subject: emailCustomization?.subject || `Your tickets for ${order.events.name}`,
         html: `
           <div style="font-family:${themeStyles.fontFamily};max-width:600px;margin:0 auto;background:${themeStyles.backgroundColor};">
             <div style="background:${themeStyles.headerColor};color:#fff;padding:20px;text-align:center;border-radius:8px 8px 0 0;">
@@ -363,7 +412,7 @@ Deno.serve(async (req) => {
       // Confirmation email with detailed event information
       emailContent = {
         to: order.customer_email,
-        subject: emailCustomization?.content?.subject || `Event Confirmation: ${order.events.name}`,
+        subject: emailCustomization?.subject || `Event Confirmation: ${order.events.name}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: ${emailCustomization?.template?.backgroundColor || '#ffffff'};">
             ${orgLogo ? `<div style="text-align: center; padding: 20px 0;"><img src="${orgLogo}" alt="Organization Logo" style="max-width: 200px; height: auto;"></div>` : ''}

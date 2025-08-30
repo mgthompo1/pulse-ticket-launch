@@ -4,6 +4,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, useStripe, useElements } from '@stripe/react-stripe-js';
 import { supabase } from '@/integrations/supabase/client';
+import { Theme } from '@/types/theme';
 
 interface StripePaymentFormProps {
   eventId: string;
@@ -11,6 +12,7 @@ interface StripePaymentFormProps {
   merchandiseCart: any[];
   customerInfo: any;
   total: number;
+  theme: Theme;
   onSuccess: (orderId: string) => void;
   onCancel: () => void;
 }
@@ -21,6 +23,7 @@ const CheckoutForm = ({
   merchandiseCart, 
   customerInfo, 
   total, 
+  theme,
   onSuccess, 
   onCancel
 }: StripePaymentFormProps) => {
@@ -166,7 +169,16 @@ const CheckoutForm = ({
         <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
           Cancel
         </Button>
-        <Button type="submit" disabled={!stripe || loading} className="flex-1">
+        <Button 
+          type="submit" 
+          disabled={!stripe || loading} 
+          className="flex-1"
+          style={{ 
+            backgroundColor: theme.primaryColor,
+            color: theme.buttonTextColor,
+            borderColor: theme.primaryColor
+          }}
+        >
           {loading ? "Processing..." : `Pay`}
         </Button>
       </div>

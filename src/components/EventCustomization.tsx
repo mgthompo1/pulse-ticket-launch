@@ -32,6 +32,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
   const [loading, setLoading] = useState(false);
   const [showSeatMapDesigner, setShowSeatMapDesigner] = useState(false);
   const [organizationId, setOrganizationId] = useState<string>("");
+  const [organizationData, setOrganizationData] = useState<{
+    name: string;
+    logo_url?: string | null;
+  } | null>(null);
   
   // Remove any remaining test_mode references and add publish button
   const [eventData, setEventData] = useState<{
@@ -122,16 +126,13 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       borderColor: "#e5e7eb",
       fontFamily: "Arial, sans-serif"
     },
-    content: {
-      subject: "Your ticket confirmation",
-      headerText: "Thank you for your purchase!",
-      bodyText: "We are excited to see you at the event.",
-      footerText: "Questions? Contact us anytime."
-    },
+
     branding: {
       showLogo: true,
       logoPosition: "header", // header, content
-      logoSize: "medium" // small, medium, large
+      logoSize: "medium", // small, medium, large
+      logoSource: "event" as "event" | "organization" | "custom",
+      customLogoUrl: ""
     },
     layout: {
       headerStyle: "standard", // standard, compact, gradient, center
@@ -232,6 +233,23 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         email_customization: data.email_customization as Record<string, unknown>
       });
       setCurrentLogoUrl(data?.logo_url || null);
+
+      // Load organization data for the email preview
+      if (data.organization_id) {
+        try {
+          const { data: orgData, error: orgError } = await supabase
+            .from("organizations")
+            .select("name, logo_url")
+            .eq("id", data.organization_id)
+            .single();
+
+          if (!orgError && orgData) {
+            setOrganizationData(orgData);
+          }
+        } catch (orgError) {
+          console.warn("Could not load organization data for preview:", orgError);
+        }
+      }
       setEventVenue(data?.venue || "");
 
       if (data?.widget_customization) {
@@ -253,7 +271,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       if (maybeBlocks && Array.isArray(maybeBlocks)) {
         setEmailBlocksTemplate({
           version: 1,
-          subject: ((data?.email_customization as any)?.content?.subject) || "Your ticket confirmation",
+          subject: ((data?.email_customization as any)?.subject) || "Your ticket confirmation",
           theme: {
             headerColor: ((data?.email_customization as any)?.template?.headerColor) || "#1f2937",
             backgroundColor: ((data?.email_customization as any)?.template?.backgroundColor) || "#ffffff",
@@ -400,10 +418,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           ...emailCustomization.template,
           ...(emailBlocksTemplate?.theme || {})
         },
-        content: {
-          ...emailCustomization.content,
-          subject: emailBlocksTemplate?.subject || emailCustomization.content.subject
-        },
+        subject: emailBlocksTemplate?.subject || "Your ticket confirmation",
         // Persist blocks array for new renderer
         blocks: emailBlocksTemplate?.blocks || []
       } as any;
@@ -1762,52 +1777,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 </CardContent>
               </Card>
 
-              {/* Content Customization */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Email Content</CardTitle>
-                  <CardDescription>Customize the text and messaging</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="emailSubject">Subject Line</Label>
-                    <Input
-                      id="emailSubject"
-                      value={emailCustomization.content.subject}
-                      onChange={(e) => updateEmailCustomization(['content', 'subject'], e.target.value)}
-                      placeholder="Your ticket confirmation"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="emailHeaderText">Header Text</Label>
-                    <Input
-                      id="emailHeaderText"
-                      value={emailCustomization.content.headerText}
-                      onChange={(e) => updateEmailCustomization(['content', 'headerText'], e.target.value)}
-                      placeholder="Thank you for your purchase!"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="emailBodyText">Body Text</Label>
-                    <Textarea
-                      id="emailBodyText"
-                      value={emailCustomization.content.bodyText}
-                      onChange={(e) => updateEmailCustomization(['content', 'bodyText'], e.target.value)}
-                      placeholder="We are excited to see you at the event."
-                      rows={3}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="emailFooterText">Footer Text</Label>
-                    <Input
-                      id="emailFooterText"
-                      value={emailCustomization.content.footerText}
-                      onChange={(e) => updateEmailCustomization(['content', 'footerText'], e.target.value)}
-                      placeholder="Questions? Contact us anytime."
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+
 
               {/* Branding Options */}
               <Card>
@@ -1853,6 +1823,33 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                           </SelectContent>
                         </Select>
                       </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="logoSource">Logo Source</Label>
+                        <Select value={emailCustomization.branding.logoSource || 'event'} onValueChange={(value) => updateEmailCustomization(['branding', 'logoSource'], value)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="event">Event Logo</SelectItem>
+                            <SelectItem value="organization">Organization Logo</SelectItem>
+                            <SelectItem value="custom">Custom URL</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {emailCustomization.branding.logoSource === 'custom' && (
+                        <div className="space-y-2">
+                          <Label htmlFor="customEmailLogo">Custom Logo URL</Label>
+                          <Input
+                            id="customEmailLogo"
+                            type="url"
+                            placeholder="https://example.com/logo.png"
+                            value={emailCustomization.branding.customLogoUrl || ''}
+                            onChange={(e) => updateEmailCustomization(['branding', 'customLogoUrl'], e.target.value)}
+                          />
+                        </div>
+                      )}
                     </>
                   )}
 
@@ -1913,14 +1910,14 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 emailCustomization={emailCustomization}
                 blocksTemplate={emailBlocksTemplate}
                 eventDetails={{
-                  name: "Sample Event Name",
-                  venue: "Sample Venue",
+                  name: eventData?.name || "Sample Event Name",
+                  venue: eventData?.venue || "Sample Venue",
                   event_date: new Date().toISOString(),
-                  logo_url: undefined
+                  logo_url: eventData?.logo_url || currentLogoUrl || undefined
                 }}
                 organizationDetails={{
-                  name: "Your Organization",
-                  logo_url: undefined
+                  name: organizationData?.name || "Your Organization",
+                  logo_url: organizationData?.logo_url || undefined
                 }}
               />
               {/* Send Test Email */}

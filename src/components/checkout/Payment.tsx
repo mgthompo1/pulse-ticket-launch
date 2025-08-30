@@ -398,6 +398,7 @@ export const Payment: React.FC<PaymentProps> = ({
                 merchandiseCart={merchandiseCart as any}
                 customerInfo={customerInfo}
                 total={total}
+                theme={theme}
                 onSuccess={(orderId: string) => {
                   setShowStripePayment(false);
                   toast({

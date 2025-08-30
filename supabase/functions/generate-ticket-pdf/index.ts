@@ -22,10 +22,11 @@ interface TicketData {
   status: string;
 }
 
-// Helper function to safely sanitize text
+// Helper function to safely sanitize text for PDF
 function sanitizeText(text: string, fallback: string = 'N/A'): string {
   if (!text || typeof text !== 'string') return fallback;
-  return text.replace(/[^\w\s.-]/g, '').replace(/\s+/g, ' ').trim() || fallback;
+  // Only remove control characters and null bytes, but keep most printable characters
+  return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').replace(/\s+/g, ' ').trim() || fallback;
 }
 
 // Generate QR code as base64
@@ -415,24 +416,31 @@ async function createTicketPageFromReact(pdf: jsPDF, ticket: TicketData, logoUrl
   let currentY = cardY + 24;
   const contentWidth = cardWidth - 48;
 
-  // Header section
+  // Header section - Event Logo
+  console.log('Processing logo:', logoUrl);
   if (logoUrl && logoUrl.length > 10) {
     try {
+      console.log('Fetching logo from URL:', logoUrl);
       const fetched = await fetchImageAsDataUrl(logoUrl);
       if (fetched) {
-        const desiredHeight = 20; // approx 48px
-        const maxWidth = contentWidth; // keep within card
-        // Width will be derived from height to preserve aspect ratio; jsPDF lacks auto-scale, so use a conservative width
-        const imgWidth = Math.min(maxWidth, 60);
+        console.log('Logo fetched successfully, format:', fetched.format);
+        const desiredHeight = 24; // Increased from 20 to 24 for better visibility
+        const maxWidth = contentWidth * 0.8; // Use 80% of content width
+        const imgWidth = Math.min(maxWidth, 80); // Increased from 60 to 80
         const imgX = contentX + (contentWidth - imgWidth) / 2;
         pdf.addImage(fetched.dataUrl, fetched.format, imgX, currentY, imgWidth, desiredHeight);
-        currentY += desiredHeight + 6; // margin-bottom: 12px
+        currentY += desiredHeight + 8; // margin-bottom: 12px
+        console.log('Logo added to PDF successfully');
       } else {
-        currentY += 26; // reserve space even if missing
+        console.log('Failed to fetch logo, reserving space');
+        currentY += 8; // minimal space if missing
       }
-    } catch {
-      currentY += 26;
+    } catch (logoError) {
+      console.error('Logo processing error:', logoError);
+      currentY += 8; // minimal space on error
     }
+  } else {
+    console.log('No logo URL provided or URL too short');
   }
 
   // Event name (fontSize: 20px, fontWeight: bold, color: #0f172a)
@@ -448,7 +456,7 @@ async function createTicketPageFromReact(pdf: jsPDF, ticket: TicketData, logoUrl
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(10);
     pdf.setTextColor(100, 116, 139); // #64748b
-    const venueText = `📍 ${ticket.venue}`;
+    const venueText = `Location: ${ticket.venue}`;
     pdf.text(venueText, contentX + contentWidth / 2, currentY, { align: 'center' });
     currentY += 8;
   }
@@ -461,10 +469,16 @@ async function createTicketPageFromReact(pdf: jsPDF, ticket: TicketData, logoUrl
   currentY += 20;
 
   // Event details section (marginBottom: 24px)
-  const itemSpacing = 18; // gap: 12px + marginBottom: 12px
-  const iconOffset = 18;
-
-  // Date text (fontWeight: 500, color: #0f172a) - avoid emojis for PDF font compatibility
+  const itemSpacing = 20; // gap: 12px + marginBottom: 12px
+  
+  // Date and time section
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  pdf.setTextColor(100, 116, 139);
+  pdf.text("DATE & TIME", contentX, currentY);
+  currentY += 10;
+  
+  // Date text (fontWeight: 500, color: #0f172a)
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(12);
   pdf.setTextColor(15, 23, 42);
@@ -474,35 +488,36 @@ async function createTicketPageFromReact(pdf: jsPDF, ticket: TicketData, logoUrl
   const timeStr = formatTime(ticket.event_date);
   if (timeStr) {
     pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(9);
+    pdf.setFontSize(10);
     pdf.setTextColor(100, 116, 139);
-    pdf.text(timeStr, contentX, currentY + 8);
+    pdf.text(timeStr, contentX, currentY + 10);
   }
   currentY += itemSpacing;
 
   // Ticket type section
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  pdf.setTextColor(100, 116, 139);
+  pdf.text("TICKET TYPE", contentX, currentY);
+  currentY += 10;
+  
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(12);
   pdf.setTextColor(15, 23, 42);
   pdf.text(ticket.ticket_type_name, contentX, currentY);
-  
-  // Label (fontSize: 12px, color: #64748b)
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(8);
-  pdf.setTextColor(100, 116, 139);
-  pdf.text("Ticket Type", contentX, currentY + 8);
   currentY += itemSpacing;
 
   // Customer name section
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  pdf.setTextColor(100, 116, 139);
+  pdf.text("ATTENDEE", contentX, currentY);
+  currentY += 10;
+  
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(12);
   pdf.setTextColor(15, 23, 42);
   pdf.text(ticket.customer_name, contentX, currentY);
-  
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(8);
-  pdf.setTextColor(100, 116, 139);
-  pdf.text("Attendee", contentX, currentY + 8);
   currentY += 24;
 
   // QR Code section (borderTop: 1px solid #e5e7eb, paddingTop: 16px, marginBottom: 16px)
