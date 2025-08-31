@@ -89,17 +89,24 @@ interface WindcaveDropInInstance {
   close: () => void;
 }
 
-// Create an anonymous Supabase client for external users - moved outside component
-const createAnonymousSupabaseClient = () => createClient(
-  "https://yoxsewbpoqxscsutqlcb.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlveHNld2Jwb3F4c2NzdXRxbGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0MzU4NDgsImV4cCI6MjA2ODAxMTg0OH0.CrW53mnoXiatBWePensSroh0yfmVALpcWxX2dXYde5k",
-  {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false
-    }
+// Create an anonymous Supabase client for external users using environment variables
+const createAnonymousSupabaseClient = () => {
+  const url = (import.meta as any)?.env?.VITE_SUPABASE_URL as string;
+  const key = (import.meta as any)?.env?.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+  if (!url || !key) {
+    throw new Error('Supabase env vars missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.');
   }
-);
+  return createClient(
+    url,
+    key,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      }
+    }
+  );
+};
 
 const TicketWidget = () => {
   const { eventId } = useParams();
