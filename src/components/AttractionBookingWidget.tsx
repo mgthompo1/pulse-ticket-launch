@@ -610,21 +610,45 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
       });
       console.log("About to create booking via Edge Function...");
 
-      const { data, error } = await supabase.functions.invoke('create-attraction-booking', {
-        body: bookingData
-      });
+      let createdBookingId: string;
 
-      if (error) throw error;
-      
-      if (!data.booking) {
-        throw new Error('No booking data returned from function');
+      try {
+        // Try Edge Function first
+        const { data, error } = await supabase.functions.invoke('create-attraction-booking', {
+          body: bookingData
+        });
+
+        if (error) throw error;
+        
+        if (!data.booking) {
+          throw new Error('No booking data returned from function');
+        }
+
+        createdBookingId = data.booking.id;
+        setPendingBookingId(createdBookingId);
+      } catch (functionError) {
+        console.warn("Edge Function failed, falling back to direct database insert:", functionError);
+        
+        // Fallback to direct database insert
+        const { data: directData, error: directError } = await supabase
+          .from("attraction_bookings")
+          .insert(bookingData)
+          .select()
+          .single();
+
+        if (directError) {
+          console.error("Direct database insert also failed:", directError);
+          throw new Error(`Booking creation failed. Please try again or contact support. Error: ${directError.message}`);
+        }
+
+        createdBookingId = directData.id;
+        setPendingBookingId(createdBookingId);
+        console.log("Fallback booking creation successful");
       }
-
-      setPendingBookingId(data.booking.id);
       
       if (paymentProvider === "windcave") {
         // For Windcave, create session with the booking ID
-        await createWindcaveSessionForBooking(data.booking.id);
+        await createWindcaveSessionForBooking(createdBookingId);
       } else {
         // For Stripe, go directly to payment step
         setBookingStep('payment');
