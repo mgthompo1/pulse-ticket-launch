@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar, MapPin, Ticket } from 'lucide-react';
 import { TicketSelection } from './TicketSelection';
 import { AddOnsSelection } from './AddOnsSelection';
 import { CustomerDetails } from './CustomerDetails';
@@ -17,14 +20,14 @@ interface MultiStepCheckoutProps {
 
 
 
-type CheckoutStep = 'tickets' | 'addons' | 'details' | 'payment';
+type CheckoutStep = 'event' | 'tickets' | 'details' | 'payment';
 
 export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   eventData,
   ticketTypes,
   customQuestions,
 }) => {
-  const [currentStep, setCurrentStep] = useState<CheckoutStep>('tickets');
+  const [currentStep, setCurrentStep] = useState<CheckoutStep>('event');
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [merchandiseCart, setMerchandiseCart] = useState<MerchandiseCartItem[]>([]);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
@@ -39,14 +42,18 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
         buttonTextColor: isEnabled ? (themeData?.buttonTextColor || '#ffffff') : '#ffffff',
         secondaryColor: isEnabled ? (themeData?.secondaryColor || '#ffffff') : '#ffffff',
         backgroundColor: isEnabled ? (themeData?.backgroundColor || '#ffffff') : '#ffffff',
+        cardBackgroundColor: isEnabled ? (themeData?.cardBackgroundColor || themeData?.backgroundColor || '#ffffff') : '#ffffff',
+        inputBackgroundColor: isEnabled ? (themeData?.inputBackgroundColor || '#ffffff') : '#ffffff',
+        borderEnabled: isEnabled ? (themeData?.borderEnabled ?? false) : false,
+        borderColor: isEnabled ? (themeData?.borderColor || '#e5e7eb') : '#e5e7eb',
         headerTextColor: isEnabled ? (themeData?.headerTextColor || '#111827') : '#111827',
         bodyTextColor: isEnabled ? (themeData?.bodyTextColor || '#6b7280') : '#6b7280',
         fontFamily: isEnabled ? (themeData?.fontFamily || 'Manrope') : 'Manrope'
       };
 
   const steps = [
-    { key: 'tickets', label: 'Tickets', progress: 25 },
-    { key: 'addons', label: 'Add-ons', progress: 50 },
+    { key: 'event', label: 'Event', progress: 25 },
+    { key: 'tickets', label: 'Tickets', progress: 50 },
     { key: 'details', label: 'Details', progress: 75 },
     { key: 'payment', label: 'Payment', progress: 100 }
   ];
@@ -85,7 +92,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   };
 
   const nextStep = () => {
-    const stepOrder: CheckoutStep[] = ['tickets', 'addons', 'details', 'payment'];
+    const stepOrder: CheckoutStep[] = ['event', 'tickets', 'details', 'payment'];
     const currentIndex = stepOrder.indexOf(currentStep);
     if (currentIndex < stepOrder.length - 1) {
       setCurrentStep(stepOrder[currentIndex + 1]);
@@ -93,7 +100,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   };
 
   const prevStep = () => {
-    const stepOrder: CheckoutStep[] = ['tickets', 'addons', 'details', 'payment'];
+    const stepOrder: CheckoutStep[] = ['event', 'tickets', 'details', 'payment'];
     const currentIndex = stepOrder.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(stepOrder[currentIndex - 1]);
@@ -107,86 +114,236 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
 
   return (
     <div 
-      className="min-h-screen"
+      className="min-h-screen bg-white"
       style={{ 
-        backgroundColor: theme.backgroundColor,
-        fontFamily: theme.fontFamily,
-                        color: theme.headerTextColor
+        fontFamily: theme.fontFamily
       }}
     >
-      <div className="container mx-auto px-4 py-8">
-        {/* Event Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold" style={{ color: theme.headerTextColor }}>{eventData.name}</h1>
-              {eventData.venue && (
-                                  <p className="mt-2" style={{ color: theme.bodyTextColor }}>{eventData.venue}</p>
-              )}
-            </div>
-            {eventData.logo_url && (
+      {/* Logo/Image Hero Section */}
+      <div className="bg-white py-8 px-4">
+        {/* Logo Container - Centered */}
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            {(eventData as any).logo_url ? (
               <img 
-                src={eventData.logo_url} 
-                alt={`${eventData.name} logo`}
-                className="h-16 w-auto"
+                src={(eventData as any).logo_url} 
+                alt={`${eventData.name} Logo`}
+                className="mx-auto max-h-64 w-auto object-contain rounded-lg shadow-lg"
               />
+            ) : (
+              /* Fallback with event icon if no logo */
+              <div className="w-32 h-32 mx-auto bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center">
+                <Ticket className="h-16 w-16" style={{ color: theme.primaryColor }} />
+              </div>
+            )}
+
+            {/* Organization Logo (if enabled and different from main logo) */}
+            {eventData.widget_customization?.branding?.showOrgLogo && 
+             (eventData.organizations as any)?.logo_url && 
+             (eventData.organizations as any).logo_url !== (eventData as any).logo_url && (
+              <div className="mt-6">
+                <img 
+                  src={(eventData.organizations as any).logo_url} 
+                  alt={`${(eventData.organizations as any)?.name || 'Organization'} Logo`}
+                  className="h-12 mx-auto object-contain"
+                />
+              </div>
             )}
           </div>
         </div>
 
+        {/* Text Container with Button - Using container width to match main content */}
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6 text-left ml-4">
+              {/* Event Name */}
+              <h1 className="text-3xl md:text-4xl font-bold leading-tight" style={{ color: theme.headerTextColor }}>
+                {eventData.name}
+              </h1>
 
-
-        {/* Progress Bar - Full Width */}
-        <div className="mb-8">
-          <div className="flex justify-between mb-2">
-            {steps.map((step) => (
-              <div
-                key={step.key}
-                className="text-sm font-medium"
-                style={{
-                  color: currentStep === step.key 
-                    ? theme.headerTextColor
-                    : steps.findIndex(s => s.key === currentStep) > steps.findIndex(s => s.key === step.key)
-                      ? theme.headerTextColor
-                      : theme.headerTextColor + '80' // 50% opacity
+            {/* Date with Add to Calendar */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 text-lg" style={{ color: theme.bodyTextColor }}>
+                <Calendar className="h-6 w-6" style={{ color: theme.primaryColor }} />
+                <span className="font-medium">
+                  {new Date(eventData.event_date).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                  {(eventData as any).event_time && `, ${(eventData as any).event_time}`}
+                </span>
+              </div>
+              
+              {/* Add to Calendar Button */}
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="text-sm"
+                style={{ borderColor: theme.primaryColor, color: theme.primaryColor }}
+                onClick={() => {
+                  // Create calendar event
+                  const startDate = new Date(eventData.event_date);
+                  const endDate = new Date(startDate.getTime() + 3 * 60 * 60 * 1000); // Default 3 hours
+                  
+                  const title = encodeURIComponent(eventData.name);
+                  const details = encodeURIComponent(eventData.description?.replace(/<[^>]*>/g, '') || '');
+                  const location = encodeURIComponent(eventData.venue || '');
+                  const startTime = startDate.toISOString().replace(/-|:|\.\d\d\d/g, '');
+                  const endTime = endDate.toISOString().replace(/-|:|\.\d\d\d/g, '');
+                  
+                  const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startTime}/${endTime}&details=${details}&location=${location}`;
+                  window.open(googleUrl, '_blank');
                 }}
               >
-                {step.label}
-              </div>
-            ))}
-          </div>
-          <Progress 
-            value={currentStepData?.progress || 0} 
-            className="h-2" 
-            style={{ 
-              '--progress-bg': theme.primaryColor || '#000000'
-            } as React.CSSProperties}
-          />
-        </div>
+                Add to calendar
+              </Button>
+            </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2">
-            {/* Step Content */}
-            {currentStep === 'tickets' && (
-              <TicketSelection
-                ticketTypes={ticketTypes}
-                cartItems={cartItems}
-                onAddToCart={addToCart}
-                onNext={nextStep}
-                theme={theme}
-              />
+                      {/* Venue */}
+          {eventData.venue && (
+            <div className="flex items-center gap-3 text-lg" style={{ color: theme.bodyTextColor }}>
+                <MapPin className="h-6 w-6" style={{ color: theme.primaryColor }} />
+                <span className="font-medium">{eventData.venue}</span>
+              </div>
             )}
 
-            {currentStep === 'addons' && (
-              <AddOnsSelection
-                eventId={eventData.id}
-                merchandiseCart={merchandiseCart}
-                onMerchandiseCartUpdate={setMerchandiseCart}
-                onNext={nextStep}
-                onBack={prevStep}
-                theme={theme}
+                      {/* Host/Organization */}
+          {(eventData.organizations as any)?.name && (
+            <div className="flex items-center gap-3 text-base" style={{ color: theme.bodyTextColor }}>
+                <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: theme.primaryColor }}>
+                  <span className="text-xs text-white font-bold">H</span>
+                </div>
+                <span>Hosted by <span className="font-medium">{(eventData.organizations as any).name}</span></span>
+              </div>
+            )}
+
+            {/* Custom Header Text */}
+            {eventData.widget_customization?.branding?.customHeaderText && (
+              <div 
+                className="text-lg leading-relaxed"
+                style={{ color: theme.bodyTextColor }}
+                dangerouslySetInnerHTML={{ __html: eventData.widget_customization.branding.customHeaderText }}
               />
+            )}
+            </div>
+            
+            {/* Empty space for alignment */}
+            <div className="lg:col-span-1"></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-6 min-h-screen">
+        {/* Progress Bar with Get Tickets Button */}
+        <div className="flex flex-col lg:flex-row gap-8 mb-4">
+          <div className="flex-1 lg:w-2/3">
+            <div className="flex justify-between mb-3">
+              {steps.map((step) => (
+                <div
+                  key={step.key}
+                  className="text-sm font-medium"
+                  style={{
+                    color: currentStep === step.key 
+                      ? theme.headerTextColor
+                      : steps.findIndex(s => s.key === currentStep) > steps.findIndex(s => s.key === step.key)
+                        ? theme.headerTextColor
+                        : theme.headerTextColor + '80' // 50% opacity
+                  }}
+                >
+                  {step.label}
+                </div>
+              ))}
+            </div>
+            <Progress 
+              value={currentStepData?.progress || 0} 
+              className="h-1.5" 
+              style={{ 
+                '--progress-bg': theme.primaryColor || '#000000'
+              } as React.CSSProperties}
+            />
+          </div>
+          
+          {/* Get Tickets Button - Bottom aligned with progress bar */}
+          <div className="lg:w-1/3 flex items-end">
+            {currentStep === 'event' && (
+              <div className="bg-white rounded-lg border p-3 w-full max-w-sm" style={{ borderColor: '#d1d5db', transform: 'translateY(-16px)' }}>
+                <Button 
+                  onClick={nextStep}
+                  size="default"
+                  className="font-semibold px-6 py-3 text-base shadow-none hover:shadow-sm transition-all duration-200 w-full border-0 rounded-md"
+                  style={{ 
+                    backgroundColor: theme.primaryColor, 
+                    color: theme.buttonTextColor
+                  }}
+                >
+                  Get Tickets
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Main Content */}
+          <div className="flex-1 lg:w-2/3">
+            {/* Step Content */}
+            {currentStep === 'event' && (
+              <Card style={{ backgroundColor: theme.backgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
+                <CardHeader>
+                  <CardTitle className="text-2xl font-bold" style={{ color: theme.headerTextColor }}>
+                    Event description
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {eventData.description && (
+                    <div 
+                      className="prose prose-lg max-w-none"
+                      style={{ color: theme.bodyTextColor }}
+                      dangerouslySetInnerHTML={{ __html: eventData.description }}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {currentStep === 'tickets' && (
+              <div className="space-y-8">
+                {/* Combined Tickets & Add-ons Section */}
+                <Card style={{ backgroundColor: theme.backgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
+                  <CardHeader>
+                    <CardTitle className="text-2xl font-bold" style={{ color: theme.headerTextColor }}>
+                      Select Your Tickets
+                    </CardTitle>
+                    <p style={{ color: theme.bodyTextColor }}>Choose your tickets and any additional items</p>
+                  </CardHeader>
+                  <CardContent className="space-y-8">
+                    {/* Ticket Selection */}
+                    <TicketSelection
+                      ticketTypes={ticketTypes}
+                      cartItems={cartItems}
+                      onAddToCart={addToCart}
+                      onNext={() => {}} // We handle navigation manually
+                      theme={theme}
+                      hideHeader={true}
+                      hideContinueButton={true}
+                    />
+                    
+                    {/* Add-ons Section */}
+                    <div className="border-t pt-8" style={{ borderColor: theme.borderEnabled ? theme.borderColor : '#e5e7eb' }}>
+                      <AddOnsSelection
+                        eventId={eventData.id}
+                        merchandiseCart={merchandiseCart}
+                        onMerchandiseCartUpdate={setMerchandiseCart}
+                        onNext={nextStep}
+                        onBack={prevStep}
+                        theme={theme}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             )}
 
             {currentStep === 'details' && (
@@ -209,19 +366,19 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
             )}
           </div>
 
-          {/* Order Summary Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-8">
-                <OrderSummary
-                  eventData={eventData}
-                  cartItems={cartItems}
-                  merchandiseCart={merchandiseCart}
-                  currentStep={currentStep}
-                  customerInfo={customerInfo}
-                  onUpdateTicketQuantity={updateTicketQuantity}
-                  onBack={prevStep}
-                  theme={theme}
-                />
+          {/* Order Summary Sidebar - Sticky */}
+          <div className="lg:w-1/3">
+            <div className="sticky top-4">
+              <OrderSummary
+                eventData={eventData}
+                cartItems={cartItems}
+                merchandiseCart={merchandiseCart}
+                currentStep={currentStep}
+                customerInfo={customerInfo}
+                onUpdateTicketQuantity={updateTicketQuantity}
+                onBack={prevStep}
+                theme={theme}
+              />
             </div>
           </div>
         </div>

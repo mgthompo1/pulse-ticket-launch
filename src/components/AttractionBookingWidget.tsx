@@ -10,7 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Calendar,
   Clock, 
-  Users, 
   DollarSign,
   ChevronLeft,
   ChevronRight,
@@ -39,7 +38,8 @@ interface AttractionData {
   logo_url: string | null;
   widget_customization: any;
   organization_id: string;
-  resource_label: string | null; // User-configurable label for resources (e.g., "Simulator", "Room", "Lane")
+  resource_label?: string | null; // User-configurable label for resources (e.g., "Simulator", "Room", "Lane")
+  organizations?: any; // Organization data
 }
 
 interface BookingSlot {
@@ -429,7 +429,7 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
         .single();
 
       if (error) throw error;
-      setAttractionData(data as AttractionData);
+      setAttractionData(data);
       
       // Set payment provider from organization data
       if (data.organizations) {
@@ -778,46 +778,141 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
   }
 
   return (
-    <div className={compact ? "space-y-4" : "max-w-4xl mx-auto p-4 space-y-6"} style={{ fontFamily: fontFamily }}>
-      {/* Header (hidden in compact mode) */}
+    <div className={compact ? "space-y-4" : "max-w-6xl mx-auto bg-white"} style={{ fontFamily: fontFamily }}>
+      {/* Logo/Image Hero Section */}
       {!compact && (
-        <Card style={{ borderColor: primaryColor + '20' }}>
-          <CardHeader>
-            <div className="flex items-center gap-4">
-              {onBack && (
+        <div className="bg-white py-8 px-4">
+          {/* Back Button */}
+          {onBack && (
+            <div className="max-w-4xl">
+              <div className="flex justify-start mb-6">
                 <Button variant="outline" size="sm" onClick={onBack}>
-                  <ArrowLeft className="h-4 w-4" />
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
                 </Button>
-              )}
-              <div className="flex-1">
-                <CardTitle className="text-2xl" style={{ color: primaryColor }}>
-                  {attractionData.name}
-                </CardTitle>
-                {attractionData.description && (
-                  <p className="text-muted-foreground mt-1">{attractionData.description}</p>
-                )}
-                <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4" />
-                    {attractionData.venue}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    {attractionData.duration_minutes} minutes
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <DollarSign className="h-4 w-4" />
-                    From ${attractionData.base_price}
-                  </span>
-                </div>
               </div>
             </div>
-          </CardHeader>
-        </Card>
+          )}
+
+          {/* Logo Container - Centered */}
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-8">
+              {attractionData.logo_url ? (
+                <img 
+                  src={attractionData.logo_url} 
+                  alt={`${attractionData.name} Logo`}
+                  className="mx-auto max-h-64 w-auto object-contain rounded-lg shadow-lg"
+                />
+              ) : (
+                /* Fallback with attraction type icon if no logo */
+                <div className="w-32 h-32 mx-auto bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center">
+                  <Calendar className="h-16 w-16" style={{ color: primaryColor }} />
+                </div>
+              )}
+
+              {/* Organization Logo (if enabled and different from main logo) */}
+              {attractionData.widget_customization?.branding?.showOrgLogo && 
+               attractionData.organizations?.logo_url && 
+               attractionData.organizations.logo_url !== attractionData.logo_url && (
+                <div className="mt-6">
+                  <img 
+                    src={attractionData.organizations.logo_url} 
+                    alt={`${attractionData.organizations?.name || 'Organization'} Logo`}
+                    className="h-12 mx-auto object-contain"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Text Container - Left Aligned */}
+          <div className="max-w-4xl">
+            <div className="space-y-6 text-left max-w-2xl">
+              {/* Attraction Name */}
+              <h1 className="text-4xl md:text-5xl font-bold leading-tight" style={{ color: headerTextColor }}>
+                {attractionData.name}
+              </h1>
+
+              {/* Venue */}
+              {attractionData.venue && (
+                <div className="flex items-center gap-3 text-xl" style={{ color: bodyTextColor }}>
+                  <MapPin className="h-6 w-6" style={{ color: primaryColor }} />
+                  <span className="font-medium">{attractionData.venue}</span>
+                </div>
+              )}
+
+              {/* Duration */}
+              <div className="flex items-center gap-3 text-lg" style={{ color: bodyTextColor }}>
+                <Clock className="h-5 w-5" style={{ color: primaryColor }} />
+                <span className="font-medium">{attractionData.duration_minutes} minute sessions</span>
+              </div>
+
+              {/* Pricing */}
+              <div className="flex items-center gap-3 text-lg" style={{ color: bodyTextColor }}>
+                <DollarSign className="h-5 w-5" style={{ color: primaryColor }} />
+                <span className="font-medium">From ${attractionData.base_price}</span>
+              </div>
+
+              {/* Host/Organization */}
+              {attractionData.organizations?.name && (
+                <div className="flex items-center gap-3 text-lg" style={{ color: bodyTextColor }}>
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: primaryColor }}>
+                    <span className="text-xs text-white font-bold">H</span>
+                  </div>
+                  <span>Hosted by <span className="font-medium">{attractionData.organizations.name}</span></span>
+                </div>
+              )}
+
+              {/* Custom Header Text */}
+              {attractionData.widget_customization?.branding?.customHeaderText && (
+                <div 
+                  className="text-xl leading-relaxed"
+                  style={{ color: bodyTextColor }}
+                  dangerouslySetInnerHTML={{ __html: attractionData.widget_customization.branding.customHeaderText }}
+                />
+              )}
+
+              {/* Book Now CTA */}
+              <div className="pt-4">
+                <Button 
+                  size="lg"
+                  className="font-semibold px-12 py-4 text-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                  style={{ backgroundColor: primaryColor, color: buttonTextColor }}
+                  onClick={() => {
+                    const bookingSection = document.getElementById('booking-section');
+                    if (bookingSection) {
+                      bookingSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                  }}
+                >
+                  Book Now
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Attraction Description Section - Like Humanitix */}
+      {!compact && attractionData.description && (
+        <div className="bg-white py-12 px-4">
+          <div className="max-w-4xl">
+            <div className="bg-white">
+              <h2 className="text-2xl font-bold mb-6" style={{ color: headerTextColor }}>
+                Experience description
+              </h2>
+              <div 
+                className="text-lg leading-relaxed prose prose-lg max-w-none [&>p]:mb-4 [&>p]:leading-relaxed [&>h1]:text-2xl [&>h2]:text-xl [&>h3]:text-lg [&>ul]:ml-6 [&>ol]:ml-6 [&>li]:mb-2"
+                style={{ color: bodyTextColor }}
+                dangerouslySetInnerHTML={{ __html: attractionData.description }}
+              />
+            </div>
+          </div>
+        </div>
       )}
 
       {bookingStep === 'booking' && (
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div id="booking-section" className={`grid gap-6 lg:grid-cols-3 ${compact ? 'pt-0' : 'pt-8 px-4'}`}>
           {/* Date & Resource Selection */}
           <Card className="lg:col-span-2">
             <CardHeader>
@@ -1208,7 +1303,7 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
               ) : (
                 <div className="space-y-4">
                   {/* Session Times Grid - Enhanced */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     {availableSlots.map((slot) => (
                       <button
                         key={slot.id}
@@ -1216,62 +1311,45 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
                           ...prev, 
                           selectedSlotId: slot.id 
                         }))}
-                        className={`group relative p-5 border-2 rounded-xl text-center transition-all duration-300 transform hover:scale-105 ${
+                        className={`group relative p-4 border-2 rounded-lg text-center transition-all duration-200 hover:scale-102 ${
                           bookingForm.selectedSlotId === slot.id
-                            ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-lg scale-105 ring-2 ring-blue-200' 
-                            : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md hover:bg-gray-50'
+                            ? 'border-blue-500 bg-blue-500 text-white shadow-lg' 
+                            : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md hover:bg-blue-50'
                         }`}
                       >
-                        {/* Selected Indicator */}
-                        {bookingForm.selectedSlotId === slot.id && (
-                          <div className="absolute -top-2 -right-2 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-full w-7 h-7 flex items-center justify-center shadow-lg">
-                            <CheckCircle className="h-4 w-4" />
-                          </div>
-                        )}
-                        
-                        {/* Time Display */}
-                        <div className="space-y-3">
-                          <div className="space-y-1">
-                            <div className={`text-xl font-bold ${
-                              bookingForm.selectedSlotId === slot.id ? 'text-blue-700' : 'text-gray-900'
-                            }`}>
-                              {formatTime(slot.start_time)}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              to {formatTime(slot.end_time)}
-                            </div>
-                          </div>
-                          
-                          {/* Resource Info */}
-                          {slot.resource_id && (
-                            <div className="text-xs text-gray-600 bg-gray-100 px-3 py-1 rounded-full inline-block">
-                              {getResourceName(slot.resource_id)}
-                            </div>
-                          )}
-                          
-                          {/* Price Badge */}
-                          <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${
-                            bookingForm.selectedSlotId === slot.id 
-                              ? 'bg-blue-100 text-blue-700' 
-                              : 'bg-green-100 text-green-700'
+                        {/* Clean Time Display - Humanitix Style */}
+                        <div className="space-y-2">
+                          <div className={`text-lg font-bold ${
+                            bookingForm.selectedSlotId === slot.id ? 'text-white' : 'text-gray-900'
                           }`}>
-                            <DollarSign className="h-3 w-3 mr-1" />
+                            {formatTime(slot.start_time)}
+                          </div>
+                          
+                          {/* Price */}
+                          <div className={`text-sm font-medium ${
+                            bookingForm.selectedSlotId === slot.id ? 'text-white/90' : 'text-gray-600'
+                          }`}>
                             ${slot.price_override || attractionData.base_price}
                           </div>
                           
-                          {/* Availability */}
-                          <div className="flex items-center justify-center gap-1 text-xs text-gray-500">
-                            <Users className="h-3 w-3" />
-                            <span>{slot.max_capacity - slot.current_bookings} spots left</span>
+                          {/* Availability indicator */}
+                          <div className={`text-xs ${
+                            bookingForm.selectedSlotId === slot.id ? 'text-white/80' : 'text-gray-500'
+                          }`}>
+                            {slot.max_capacity - slot.current_bookings} left
                           </div>
+                          
+                          {/* Resource Info (if applicable) */}
+                          {slot.resource_id && (
+                            <div className={`text-xs px-2 py-1 rounded ${
+                              bookingForm.selectedSlotId === slot.id 
+                                ? 'bg-white/20 text-white/90' 
+                                : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {getResourceName(slot.resource_id)}
+                            </div>
+                          )}
                         </div>
-
-                        {/* Hover Effect */}
-                        <div className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${
-                          bookingForm.selectedSlotId === slot.id 
-                            ? 'bg-gradient-to-br from-blue-500/10 to-indigo-500/10' 
-                            : 'bg-gradient-to-br from-blue-500/0 to-indigo-500/0 group-hover:from-blue-500/5 group-hover:to-indigo-500/5'
-                        }`} />
                       </button>
                     ))}
                   </div>
@@ -1292,10 +1370,10 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
 
       {/* Customer Details Form - Now part of booking step */}
       {bookingStep === 'booking' && bookingForm.selectedSlotId && (
-        <Card id="customer-details-form" className="scroll-mt-8">
+        <Card id="customer-details-form" className={`scroll-mt-8 ${compact ? '' : 'mx-4'}`}>
           <CardHeader>
-            <CardTitle className="text-xl font-bold">Almost There! 🎉</CardTitle>
-            <p className="text-gray-600">Just a few details to complete your booking</p>
+            <CardTitle className="text-xl font-bold">Complete Your Booking</CardTitle>
+            <p className="text-gray-600">Just a few details and you're all set</p>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2">
@@ -1506,30 +1584,56 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
       )}
 
       {bookingStep === 'confirmation' && (
-        <Card style={{ borderColor: primaryColor }}>
-          <CardContent className="p-6 text-center">
-            <CheckCircle className="h-16 w-16 mx-auto mb-4" style={{ color: primaryColor }} />
-            <h2 className="text-2xl font-bold mb-2" style={{ color: primaryColor }}>
-              Booking Confirmed!
-            </h2>
-            <p className="text-muted-foreground mb-4">
-              Your booking for {attractionData.name} has been confirmed.
-            </p>
-            <div className="bg-gray-50 p-4 rounded-lg text-left max-w-md mx-auto">
-              <h3 className="font-medium mb-2">Booking Details:</h3>
-              <div className="space-y-1 text-sm">
-                <p><strong>Date:</strong> {formatDate(bookingForm.selectedDate)}</p>
-                <p><strong>Time:</strong> {selectedSlot && formatTime(selectedSlot.start_time)} - {selectedSlot && formatTime(selectedSlot.end_time)}</p>
-                <p><strong>Party Size:</strong> {bookingForm.partySize}</p>
-                <p><strong>{getResourceLabel()}:</strong> {getResourceName(selectedSlot?.resource_id || null)}</p>
-                <p><strong>Total:</strong> ${totalPrice.toFixed(2)}</p>
+        <div className={`${compact ? '' : 'px-4'}`}>
+          <Card className="border-green-200 bg-green-50">
+            <CardContent className="p-8 text-center">
+              <div className="mb-6">
+                <CheckCircle className="h-20 w-20 mx-auto text-green-500" />
+              </div>
+              <h2 className="text-3xl font-bold mb-3 text-green-700">
+                Booking Confirmed!
+              </h2>
+              <p className="text-lg text-gray-600 mb-6">
+                Your booking for <strong>{attractionData.name}</strong> has been confirmed.
+              </p>
+            <div className="bg-white p-6 rounded-lg shadow-sm border max-w-lg mx-auto">
+              <h3 className="font-semibold mb-4 text-gray-900">Your Booking Details</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-gray-600">Date</span>
+                  <span className="font-medium">{formatDate(bookingForm.selectedDate)}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-gray-600">Time</span>
+                  <span className="font-medium">
+                    {selectedSlot && formatTime(selectedSlot.start_time)} - {selectedSlot && formatTime(selectedSlot.end_time)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-gray-600">Party Size</span>
+                  <span className="font-medium">{bookingForm.partySize} {bookingForm.partySize === 1 ? 'person' : 'people'}</span>
+                </div>
+                {selectedSlot?.resource_id && (
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">{getResourceLabel()}</span>
+                    <span className="font-medium">{getResourceName(selectedSlot.resource_id)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center py-3 bg-green-50 px-4 rounded-lg">
+                  <span className="font-semibold text-green-700">Total Paid</span>
+                  <span className="font-bold text-lg text-green-700">${totalPrice.toFixed(2)}</span>
+                </div>
               </div>
             </div>
-            <p className="text-sm text-muted-foreground mt-4">
-              A confirmation email will be sent to {bookingForm.customerEmail}
-            </p>
-          </CardContent>
-        </Card>
+            
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-700 text-center">
+                📧 A confirmation email has been sent to <strong>{bookingForm.customerEmail}</strong>
+              </p>
+            </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

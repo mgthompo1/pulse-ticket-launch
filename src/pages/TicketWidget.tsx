@@ -1278,96 +1278,172 @@ const TicketWidget = () => {
           </div>
         </div>
       ) : (
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          {/* Header Section with Logos and Event Title */}
-          <div className="relative mb-8">
-            {/* Top Right Corner Logos */}
-            <div className="absolute top-0 right-0 flex flex-col items-end gap-3">
-              {/* Organization Logo */}
-              {eventData.widget_customization?.branding?.showOrgLogo && (eventData.organizations as any)?.logo_url && (
-                <img 
-                  src={(eventData.organizations as any).logo_url} 
-                  alt={`${eventData.organizations?.name || 'Organization'} Logo`}
-                  className="h-16 object-contain"
-                />
-              )}
-              
-              {/* Event Logo */}
-              {eventData.widget_customization?.layout?.showEventImage && (eventData as any).logo_url && (
-                <img 
-                  src={(eventData as any).logo_url} 
-                  alt={`${eventData.name} Logo`}
-                  className="h-20 object-contain rounded-lg"
-                />
-              )}
-            </div>
-            
-            {/* Event Title - Left aligned with right padding to avoid logo overlap */}
-            <div className="text-left pr-32">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-3xl font-bold" style={{ color: headerTextColor }}>{eventData.name}</h1>
-                  {((import.meta as any)?.env?.VITE_SHOW_WIDGET_DEBUG === 'true') && (
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={refreshWidgetData}
-                        className="text-xs h-8 px-2 bg-blue-50 hover:bg-blue-100"
-                        title="Refresh widget data (use after making changes)"
-                      >
-                        🔄
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={testDatabaseConnection}
-                        className="text-xs h-8 px-2"
-                      >
-                        🧪
-                      </Button>
-                    </div>
-                  )}
+        <div className="max-w-7xl mx-auto bg-white">
+          {/* Logo/Image Hero Section */}
+          <div className="bg-white py-8 px-4">
+            {/* Debug Controls */}
+            {((import.meta as any)?.env?.VITE_SHOW_WIDGET_DEBUG === 'true') && (
+              <div className="max-w-4xl">
+                <div className="flex justify-start gap-2 mb-6">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={refreshWidgetData}
+                    className="text-xs h-8 px-2"
+                    title="Refresh widget data (use after making changes)"
+                  >
+                    🔄
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={testDatabaseConnection}
+                    className="text-xs h-8 px-2"
+                  >
+                    🧪
+                  </Button>
                 </div>
               </div>
-              <div className="flex items-center gap-6" style={{ color: bodyTextColor }}>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  <span>{new Date(eventData.event_date).toLocaleDateString()}</span>
-                </div>
-                {eventData.venue && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5" />
-                    <span>{eventData.venue}</span>
+            )}
+
+            {/* Logo Container - Centered */}
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-8">
+                {(eventData as any).logo_url ? (
+                  <img 
+                    src={(eventData as any).logo_url} 
+                    alt={`${eventData.name} Logo`}
+                    className="mx-auto max-h-64 w-auto object-contain rounded-lg shadow-lg"
+                  />
+                ) : (
+                  /* Fallback with event icon if no logo */
+                  <div className="w-32 h-32 mx-auto bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center">
+                    <Ticket className="h-16 w-16" style={{ color: primaryColor }} />
+                  </div>
+                )}
+
+                {/* Organization Logo (if enabled and different from main logo) */}
+                {eventData.widget_customization?.branding?.showOrgLogo && 
+                 (eventData.organizations as any)?.logo_url && 
+                 (eventData.organizations as any).logo_url !== (eventData as any).logo_url && (
+                  <div className="mt-6">
+                    <img 
+                      src={(eventData.organizations as any).logo_url} 
+                      alt={`${eventData.organizations?.name || 'Organization'} Logo`}
+                      className="h-12 mx-auto object-contain"
+                    />
                   </div>
                 )}
               </div>
-              
-              {/* Custom Header Text - Now positioned under the date/location */}
-              {eventData.widget_customization?.branding?.customHeaderText && (
-                <div className="mt-4">
-                  <div 
-                    className="text-lg font-medium"
-                    style={{ color: eventData.widget_customization?.theme?.headerTextColor }}
-                    dangerouslySetInnerHTML={{ __html: eventData.widget_customization.branding.customHeaderText }}
-                  />
-                </div>
-              )}
-              
+            </div>
 
+            {/* Text Container - Left Aligned */}
+            <div className="max-w-4xl">
+              <div className="space-y-6 text-left max-w-2xl">
+            {/* Event Name */}
+            <h1 className="text-4xl md:text-5xl font-bold leading-tight" style={{ color: headerTextColor }}>
+              {eventData.name}
+            </h1>
+
+            {/* Date with Add to Calendar */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 text-xl" style={{ color: bodyTextColor }}>
+                <Calendar className="h-6 w-6" style={{ color: primaryColor }} />
+                <span className="font-medium">
+                  {new Date(eventData.event_date).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                  {(eventData as any).event_time && `, ${(eventData as any).event_time}`}
+                </span>
+              </div>
+              
+              {/* Add to Calendar Button */}
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="text-sm"
+                style={{ borderColor: primaryColor, color: primaryColor }}
+                onClick={() => {
+                  // Create calendar event
+                  const startDate = new Date(eventData.event_date);
+                  const endDate = new Date(startDate.getTime() + 3 * 60 * 60 * 1000); // Default 3 hours
+                  
+                  const title = encodeURIComponent(eventData.name);
+                  const details = encodeURIComponent(eventData.description?.replace(/<[^>]*>/g, '') || '');
+                  const location = encodeURIComponent(eventData.venue || '');
+                  const startTime = startDate.toISOString().replace(/-|:|\.\d\d\d/g, '');
+                  const endTime = endDate.toISOString().replace(/-|:|\.\d\d\d/g, '');
+                  
+                  const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startTime}/${endTime}&details=${details}&location=${location}`;
+                  window.open(googleUrl, '_blank');
+                }}
+              >
+                Add to calendar
+              </Button>
+            </div>
+
+            {/* Venue */}
+            {eventData.venue && (
+              <div className="flex items-center gap-3 text-xl" style={{ color: bodyTextColor }}>
+                <MapPin className="h-6 w-6" style={{ color: primaryColor }} />
+                <span className="font-medium">{eventData.venue}</span>
+              </div>
+            )}
+
+            {/* Host/Organization */}
+            {eventData.organizations?.name && (
+              <div className="flex items-center gap-3 text-lg" style={{ color: bodyTextColor }}>
+                <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: primaryColor }}>
+                  <span className="text-xs text-white font-bold">H</span>
+                </div>
+                <span>Hosted by <span className="font-medium">{eventData.organizations.name}</span></span>
+              </div>
+            )}
+
+            {/* Custom Header Text */}
+            {eventData.widget_customization?.branding?.customHeaderText && (
+              <div 
+                className="text-xl leading-relaxed"
+                style={{ color: bodyTextColor }}
+                dangerouslySetInnerHTML={{ __html: eventData.widget_customization.branding.customHeaderText }}
+              />
+            )}
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          {/* Event Description Section - Like Humanitix */}
+          {eventData.description && (
+            <div className="bg-white py-12 px-4">
+              <div className="max-w-4xl">
+                <div className="bg-white">
+                  <h2 className="text-2xl font-bold mb-6" style={{ color: headerTextColor }}>
+                    Event description
+                  </h2>
+                  <div 
+                    className="text-lg leading-relaxed prose prose-lg max-w-none [&>p]:mb-4 [&>p]:leading-relaxed [&>h1]:text-2xl [&>h2]:text-xl [&>h3]:text-lg [&>ul]:ml-6 [&>ol]:ml-6 [&>li]:mb-2"
+                    style={{ color: bodyTextColor }}
+                    dangerouslySetInnerHTML={{ __html: eventData.description }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div id="tickets-section" className="grid grid-cols-1 xl:grid-cols-3 gap-8 px-4 pb-8">
             {/* Main Content */}
             <div className="xl:col-span-2 space-y-6">
               {/* Customer Information - First */}
               <Card className="animate-in fade-in-0" style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2" style={{ color: headerTextColor }}>
-                    <Ticket className="h-5 w-5" />
+                  <CardTitle className="flex items-center gap-2 text-2xl font-bold" style={{ color: headerTextColor }}>
+                    <Ticket className="h-6 w-6" />
                     Your Information
                   </CardTitle>
+                  <p className="text-gray-600 mt-2">We'll use this to send you your tickets</p>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1413,11 +1489,11 @@ const TicketWidget = () => {
               {customQuestions.length > 0 && (
                 <Card className="animate-in fade-in-0" style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2" style={{ color: headerTextColor }}>
-                      <HelpCircle className="h-5 w-5" />
-                      Required Information
+                    <CardTitle className="flex items-center gap-2 text-2xl font-bold" style={{ color: headerTextColor }}>
+                      <HelpCircle className="h-6 w-6" />
+                      Additional Information
                     </CardTitle>
-                    <p className="text-sm" style={{ color: bodyTextColor }}>
+                    <p className="text-gray-600 mt-2">
                       Please provide the following information before selecting your tickets.
                     </p>
                   </CardHeader>
@@ -1517,10 +1593,11 @@ const TicketWidget = () => {
               {/* Ticket Selection */}
               <Card className="animate-in fade-in-0" style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2" style={{ color: headerTextColor }}>
-                    <Ticket className="h-5 w-5" />
+                  <CardTitle className="flex items-center gap-2 text-2xl font-bold" style={{ color: headerTextColor }}>
+                    <Ticket className="h-6 w-6" />
                     Select Your Tickets
                   </CardTitle>
+                  <p className="text-gray-600 mt-2">Choose the tickets you'd like to purchase</p>
                 </CardHeader>
                 <CardContent>
                   {ticketTypes.length === 0 ? (
@@ -1531,33 +1608,42 @@ const TicketWidget = () => {
                   ) : (
                     <div className="space-y-4">
                       {ticketTypes.map((ticketType) => (
-                        <div key={ticketType.id} className="border rounded-lg p-4 hover:shadow-md transition-all duration-200 hover-lift animate-in fade-in-0">
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                        <div key={ticketType.id} className="group border-2 border-gray-200 rounded-2xl p-8 hover:border-blue-300 hover:shadow-xl transition-all duration-300 bg-white">
+                          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                             <div className="flex-1">
-                              <h3 className="font-semibold text-lg" style={{ color: headerTextColor }}>{ticketType.name}</h3>
-                              {ticketType.description && (
-                                <p className="text-sm mt-1" style={{ color: bodyTextColor }}>{ticketType.description}</p>
-                              )}
-                              <div className="flex items-center gap-4 mt-2">
-                                <span className="text-2xl font-bold" style={{ color: headerTextColor }}>${ticketType.price}</span>
-                                <span className="text-sm" style={{ color: bodyTextColor }}>
-                                  {ticketType.quantity_available - ticketType.quantity_sold} available
-                                </span>
+                              <div className="flex items-start justify-between mb-3">
+                                <h3 className="font-bold text-2xl text-gray-900 leading-tight">{ticketType.name}</h3>
+                                <div className="text-right">
+                                  <div className="text-3xl font-bold text-gray-900">${ticketType.price}</div>
+                                  <div className="text-sm text-gray-500 font-medium">
+                                    {ticketType.quantity_available - ticketType.quantity_sold} available
+                                  </div>
+                                </div>
                               </div>
+                              {ticketType.description && (
+                                <p className="text-gray-600 text-lg leading-relaxed">{ticketType.description}</p>
+                              )}
                             </div>
-                            <Button 
-                              onClick={() => addToCart(ticketType)}
-                              variant="secondary"
-                              className="sm:w-auto w-full hover-scale border-0"
-                              disabled={ticketType.quantity_available - ticketType.quantity_sold <= 0}
-                              style={{ 
-                                backgroundColor: primaryColor,
-                                color: buttonTextColor
-                              }}
-                            >
-                              <Plus className="h-4 w-4 mr-2" />
-                              Add to Cart
-                            </Button>
+                            
+                            {/* Add to Cart Button - Side by side on larger screens */}
+                            <div className="lg:ml-8">
+                              <Button 
+                                onClick={() => addToCart(ticketType)}
+                                className="w-full lg:w-auto font-semibold py-4 px-8 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform group-hover:scale-105"
+                                style={{ backgroundColor: primaryColor, color: buttonTextColor }}
+                                disabled={ticketType.quantity_available - ticketType.quantity_sold <= 0}
+                                size="lg"
+                              >
+                                {ticketType.quantity_available - ticketType.quantity_sold <= 0 ? (
+                                  "Sold Out"
+                                ) : (
+                                  <>
+                                    <Plus className="h-5 w-5 mr-2" />
+                                    Add to Cart
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -1603,11 +1689,11 @@ const TicketWidget = () => {
               {/* Cart Summary */}
               <Card className="animate-in fade-in-0" style={{ backgroundColor: theme.cardBackgroundColor }}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2" style={{ color: headerTextColor }}>
-                    <ShoppingCart className="h-5 w-5" />
+                  <CardTitle className="flex items-center gap-2 text-xl font-bold" style={{ color: headerTextColor }}>
+                    <ShoppingCart className="h-6 w-6" />
                     Order Summary
                     {(cart.length > 0 || merchandiseCart.length > 0) && (
-                      <Badge variant="secondary" className="ml-auto">
+                      <Badge variant="secondary" className="ml-auto text-sm">
                         {cart.reduce((sum, item) => sum + item.quantity, 0) + merchandiseCart.reduce((sum, item) => sum + item.quantity, 0)}
                       </Badge>
                     )}
@@ -1860,6 +1946,10 @@ const TicketWidget = () => {
                         merchandiseCart={merchandiseCart as any}
                         customerInfo={customerInfo}
                         total={getTotalAmount()}
+                        theme={{
+                          primary: primaryColor,
+                          secondary: primaryColor
+                        }}
                         onSuccess={(orderId: string) => {
                           setCart([]);
                           setMerchandiseCart([]);

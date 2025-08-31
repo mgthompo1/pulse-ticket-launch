@@ -14,6 +14,8 @@ interface TicketSelectionProps {
   onAddToCart: (ticketType: TicketType) => void;
   onNext: () => void;
   theme: Theme;
+  hideHeader?: boolean;
+  hideContinueButton?: boolean;
 }
 
 export const TicketSelection: React.FC<TicketSelectionProps> = ({
@@ -21,7 +23,9 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
   cartItems,
   onAddToCart,
   onNext,
-  theme
+  theme,
+  hideHeader = false,
+  hideContinueButton = false
 }) => {
   const [showSeatSelection, setShowSeatSelection] = useState(false);
   const [pendingSeatSelection, setPendingSeatSelection] = useState<TicketType | null>(null);
@@ -117,10 +121,12 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold mb-2" style={{ color: theme.headerTextColor }}>Select Your Tickets</h2>
-        <p style={{ color: theme.bodyTextColor }}>Choose the tickets you'd like to purchase</p>
-      </div>
+      {!hideHeader && (
+        <div>
+          <h2 className="text-2xl font-bold mb-2" style={{ color: theme.headerTextColor }}>Select Your Tickets</h2>
+          <p style={{ color: theme.bodyTextColor }}>Choose the tickets you'd like to purchase</p>
+        </div>
+      )}
 
       <div className="space-y-4">
         {ticketTypes.map((ticketType) => {
@@ -179,20 +185,22 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
       </div>
 
       {/* Navigation Button Below Content */}
-      <div className="flex justify-end pt-6">
-        <Button 
-          onClick={onNext} 
-          disabled={!hasSelectedTickets}
-          size="lg"
-          className="border-0"
-          style={{ 
-            backgroundColor: theme.primaryColor,
-                                color: theme.buttonTextColor
-          }}
-        >
-          Continue to Add-ons
-        </Button>
-      </div>
+      {!hideContinueButton && (
+        <div className="flex justify-end pt-6">
+          <Button 
+            onClick={onNext} 
+            disabled={!hasSelectedTickets}
+            size="lg"
+            className="border-0"
+            style={{ 
+              backgroundColor: theme.primaryColor,
+              color: theme.buttonTextColor
+            }}
+          >
+            Continue to Add-ons
+          </Button>
+        </div>
+      )}
 
       {/* Seat Selection Modal */}
       {showSeatSelection && pendingSeatSelection && (
