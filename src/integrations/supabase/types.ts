@@ -811,6 +811,7 @@ export type Database = {
           payment_provider: string | null
           phone: string | null
           postal_code: string | null
+          system_type: string | null
           updated_at: string
           user_id: string
           website: string | null
@@ -833,6 +834,7 @@ export type Database = {
           payment_provider?: string | null
           phone?: string | null
           postal_code?: string | null
+          system_type?: string | null
           updated_at?: string
           user_id: string
           website?: string | null
@@ -855,6 +857,7 @@ export type Database = {
           payment_provider?: string | null
           phone?: string | null
           postal_code?: string | null
+          system_type?: string | null
           updated_at?: string
           user_id?: string
           website?: string | null
@@ -1473,6 +1476,316 @@ export type Database = {
             referencedRelation: "xero_connections"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      attractions: {
+        Row: {
+          id: string
+          organization_id: string
+          name: string
+          description: string | null
+          venue: string | null
+          logo_url: string | null
+          featured_image_url: string | null
+          status: string
+          attraction_type: string
+          duration_minutes: number
+          advance_booking_days: number | null
+          max_concurrent_bookings: number
+          base_price: number
+          currency: string | null
+          operating_hours: Json | null
+          blackout_dates: Json | null
+          widget_customization: Json | null
+          email_customization: Json | null
+          booking_customization: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          name: string
+          description?: string | null
+          venue?: string | null
+          logo_url?: string | null
+          featured_image_url?: string | null
+          status?: string
+          attraction_type: string
+          duration_minutes?: number
+          advance_booking_days?: number | null
+          max_concurrent_bookings?: number
+          base_price: number
+          currency?: string | null
+          operating_hours?: Json | null
+          blackout_dates?: Json | null
+          widget_customization?: Json | null
+          email_customization?: Json | null
+          booking_customization?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          name?: string
+          description?: string | null
+          venue?: string | null
+          logo_url?: string | null
+          featured_image_url?: string | null
+          status?: string
+          attraction_type?: string
+          duration_minutes?: number
+          advance_booking_days?: number | null
+          max_concurrent_bookings?: number
+          base_price?: number
+          currency?: string | null
+          operating_hours?: Json | null
+          blackout_dates?: Json | null
+          widget_customization?: Json | null
+          email_customization?: Json | null
+          booking_customization?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attractions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      attraction_resources: {
+        Row: {
+          id: string
+          attraction_id: string
+          name: string
+          description: string | null
+          capacity: number
+          is_active: boolean
+          resource_data: Json | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          attraction_id: string
+          name: string
+          description?: string | null
+          capacity?: number
+          is_active?: boolean
+          resource_data?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          attraction_id?: string
+          name?: string
+          description?: string | null
+          capacity?: number
+          is_active?: boolean
+          resource_data?: Json | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attraction_resources_attraction_id_fkey"
+            columns: ["attraction_id"]
+            isOneToOne: false
+            referencedRelation: "attractions"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      booking_slots: {
+        Row: {
+          id: string
+          attraction_id: string
+          resource_id: string | null
+          start_time: string
+          end_time: string
+          status: string
+          max_capacity: number
+          current_bookings: number
+          price_override: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          attraction_id: string
+          resource_id?: string | null
+          start_time: string
+          end_time: string
+          status?: string
+          max_capacity?: number
+          current_bookings?: number
+          price_override?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          attraction_id?: string
+          resource_id?: string | null
+          start_time?: string
+          end_time?: string
+          status?: string
+          max_capacity?: number
+          current_bookings?: number
+          price_override?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_slots_attraction_id_fkey"
+            columns: ["attraction_id"]
+            isOneToOne: false
+            referencedRelation: "attractions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_slots_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "attraction_resources"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      attraction_bookings: {
+        Row: {
+          id: string
+          attraction_id: string
+          booking_slot_id: string
+          organization_id: string
+          customer_name: string
+          customer_email: string
+          customer_phone: string | null
+          party_size: number
+          special_requests: string | null
+          total_amount: number
+          currency: string | null
+          payment_status: string
+          payment_method: string | null
+          stripe_payment_intent_id: string | null
+          booking_status: string
+          booking_reference: string
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          attraction_id: string
+          booking_slot_id: string
+          organization_id: string
+          customer_name: string
+          customer_email: string
+          customer_phone?: string | null
+          party_size?: number
+          special_requests?: string | null
+          total_amount: number
+          currency?: string | null
+          payment_status?: string
+          payment_method?: string | null
+          stripe_payment_intent_id?: string | null
+          booking_status?: string
+          booking_reference: string
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          attraction_id?: string
+          booking_slot_id?: string
+          organization_id?: string
+          customer_name?: string
+          customer_email?: string
+          customer_phone?: string | null
+          party_size?: number
+          special_requests?: string | null
+          total_amount?: number
+          currency?: string | null
+          payment_status?: string
+          payment_method?: string | null
+          stripe_payment_intent_id?: string | null
+          booking_status?: string
+          booking_reference?: string
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attraction_bookings_attraction_id_fkey"
+            columns: ["attraction_id"]
+            isOneToOne: false
+            referencedRelation: "attractions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attraction_bookings_booking_slot_id_fkey"
+            columns: ["booking_slot_id"]
+            isOneToOne: false
+            referencedRelation: "booking_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attraction_bookings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      booking_add_ons: {
+        Row: {
+          id: string
+          booking_id: string
+          name: string
+          description: string | null
+          quantity: number
+          unit_price: number
+          total_price: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          booking_id: string
+          name: string
+          description?: string | null
+          quantity?: number
+          unit_price: number
+          total_price: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          booking_id?: string
+          name?: string
+          description?: string | null
+          quantity?: number
+          unit_price?: number
+          total_price?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_add_ons_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "attraction_bookings"
+            referencedColumns: ["id"]
+          }
         ]
       }
     }

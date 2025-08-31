@@ -19,8 +19,12 @@ import type {
 } from "@/types/email-template";
 
 interface EmailTemplateBuilderProps {
-  template: EmailTemplate;
-  onChange: (template: EmailTemplate) => void;
+  template?: EmailTemplate;
+  onChange?: (template: EmailTemplate) => void;
+  emailCustomization?: any;
+  onEmailCustomizationChange?: (customization: any) => void;
+  isAttractionMode?: boolean;
+  templateType?: 'ticket_confirmation' | 'booking_confirmation';
 }
 
 const blockLabel: Record<EmailBlockType, string> = {
@@ -34,7 +38,43 @@ const blockLabel: Record<EmailBlockType, string> = {
   footer: "Footer",
 };
 
-export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({ template, onChange }) => {
+export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({ 
+  template, 
+  onChange, 
+  emailCustomization, 
+  onEmailCustomizationChange, 
+  isAttractionMode
+}) => {
+  // Determine which data source to use
+  const isUsingEmailCustomization = isAttractionMode && emailCustomization && onEmailCustomizationChange;
+  
+  // Provide default template if none provided
+  const currentTemplate = template || (isUsingEmailCustomization ? emailCustomization.template : null) || {
+    version: 1 as const,
+    subject: '',
+    blocks: [],
+    theme: {
+      backgroundColor: '#ffffff',
+      headerColor: '#000000',
+      textColor: '#333333',
+      buttonColor: '#007bff',
+      accentColor: '#f8f9fa',
+      borderColor: '#e5e7eb',
+      fontFamily: 'Arial, sans-serif'
+    }
+  };
+
+  // Unified change handler
+  const handleTemplateChange = (newTemplate: any) => {
+    if (isUsingEmailCustomization && onEmailCustomizationChange) {
+      onEmailCustomizationChange({
+        ...emailCustomization,
+        template: newTemplate
+      });
+    } else if (onChange) {
+      onChange(newTemplate);
+    }
+  };
   const addBlock = (type: EmailBlockType) => {
     const id = Math.random().toString(36).slice(2, 9);
     const base = { id, type } as EmailBlock;
@@ -55,29 +95,29 @@ export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({ temp
         ? { ...(base as ImageBlock), src: "", alt: "", align: "center", width: 560 }
         : ({ ...(base as FooterBlock), text: "Footer" } as FooterBlock);
 
-    onChange({ ...template, blocks: [...template.blocks, block] });
+    handleTemplateChange({ ...currentTemplate, blocks: [...currentTemplate.blocks, block] });
   };
 
   const updateBlock = (id: string, patch: Partial<EmailBlock>) => {
-    onChange({
-      ...template,
-      blocks: template.blocks.map((b) => (b.id === id ? { ...b, ...patch } as EmailBlock : b)),
+    handleTemplateChange({
+      ...currentTemplate,
+      blocks: currentTemplate.blocks.map((b: EmailBlock) => (b.id === id ? { ...b, ...patch } as EmailBlock : b)),
     });
   };
 
   const removeBlock = (id: string) => {
-    onChange({ ...template, blocks: template.blocks.filter((b) => b.id !== id) });
+    handleTemplateChange({ ...currentTemplate, blocks: currentTemplate.blocks.filter((b: EmailBlock) => b.id !== id) });
   };
 
   const moveBlock = (id: string, direction: -1 | 1) => {
-    const idx = template.blocks.findIndex((b) => b.id === id);
+    const idx = currentTemplate.blocks.findIndex((b: EmailBlock) => b.id === id);
     if (idx < 0) return;
     const next = idx + direction;
-    if (next < 0 || next >= template.blocks.length) return;
-    const blocks = [...template.blocks];
+    if (next < 0 || next >= currentTemplate.blocks.length) return;
+    const blocks = [...currentTemplate.blocks];
     const [item] = blocks.splice(idx, 1);
     blocks.splice(next, 0, item);
-    onChange({ ...template, blocks });
+    handleTemplateChange({ ...currentTemplate, blocks });
   };
 
   const controls = useMemo(
@@ -90,7 +130,7 @@ export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({ temp
         ))}
       </div>
     ),
-    [template]
+    [currentTemplate]
   );
 
   return (
@@ -102,8 +142,8 @@ export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({ temp
         <div className="space-y-2">
           <Label>Subject</Label>
           <Input
-            value={template.subject}
-            onChange={(e) => onChange({ ...template, subject: e.target.value })}
+            value={currentTemplate.subject}
+            onChange={(e) => handleTemplateChange({ ...currentTemplate, subject: e.target.value })}
             placeholder="Your ticket confirmation"
           />
         </div>
@@ -114,10 +154,10 @@ export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({ temp
         </div>
 
         <div className="space-y-4">
-          {template.blocks.map((block) => (
+          {currentTemplate.blocks.map((block: EmailBlock) => (
             <div key={block.id} className="border rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
-                <strong>{blockLabel[block.type]}</strong>
+                <strong>{blockLabel[block.type as EmailBlockType]}</strong>
                 <div className="flex gap-2">
                   <Button variant="outline" type="button" onClick={() => moveBlock(block.id, -1)}>
                     ↑

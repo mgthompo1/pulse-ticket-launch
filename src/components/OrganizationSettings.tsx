@@ -4,12 +4,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useTheme } from "@/contexts/ThemeContext";
-import { Building2, Mail, Globe, Phone, MapPin, Upload, Save, Sun, Moon } from "lucide-react";
+import { Building2, Mail, Globe, Phone, MapPin, Upload, Save, Settings, Calendar, MapPin as Attraction } from "lucide-react";
 
 interface OrganizationData {
   id: string;
@@ -22,12 +23,13 @@ interface OrganizationData {
   postal_code: string | null;
   country: string | null;
   phone: string | null;
+  system_type: string | null;
 }
 
 const OrganizationSettings: React.FC = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [organizationData, setOrganizationData] = useState<OrganizationData>({
@@ -41,6 +43,7 @@ const OrganizationSettings: React.FC = () => {
     postal_code: "",
     country: "New Zealand",
     phone: "",
+    system_type: "EVENTS",
   });
 
   useEffect(() => {
@@ -99,6 +102,7 @@ const OrganizationSettings: React.FC = () => {
           postal_code: data.postal_code || "",
           country: data.country || "New Zealand",
           phone: data.phone || "",
+          system_type: data.system_type || "EVENTS",
         });
       }
     } catch (error) {
@@ -110,6 +114,13 @@ const OrganizationSettings: React.FC = () => {
     setOrganizationData(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  const handleSystemTypeChange = (value: string) => {
+    setOrganizationData(prev => ({
+      ...prev,
+      system_type: value
     }));
   };
 
@@ -197,6 +208,10 @@ const OrganizationSettings: React.FC = () => {
     if (!organizationData.id) return;
 
     setLoading(true);
+    
+    // Store the current system_type to check if it changed
+    const originalSystemType = organizationData.system_type;
+    
     try {
       const { error } = await supabase
         .from("organizations")
@@ -209,6 +224,7 @@ const OrganizationSettings: React.FC = () => {
           postal_code: organizationData.postal_code,
           country: organizationData.country,
           phone: organizationData.phone,
+          system_type: organizationData.system_type,
         })
         .eq("id", organizationData.id);
 
@@ -220,6 +236,12 @@ const OrganizationSettings: React.FC = () => {
         title: "Success",
         description: "Organization settings saved successfully!"
       });
+
+      // If system_type was changed, refresh the page to update the UI
+      // We need to refresh because the OrgDashboard component needs to reload with the new system type
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
 
     } catch (error) {
       console.error("Error saving organization:", error);
@@ -239,7 +261,7 @@ const OrganizationSettings: React.FC = () => {
         <div>
           <h2 className="text-2xl font-bold">Organization Settings</h2>
           <p className="text-muted-foreground">
-            Manage your organization's profile and contact information
+            Manage your organization's profile and system configuration
           </p>
         </div>
         <Button onClick={handleSaveOrganization} disabled={loading}>
@@ -247,6 +269,20 @@ const OrganizationSettings: React.FC = () => {
           {loading ? "Saving..." : "Save Changes"}
         </Button>
       </div>
+
+      <Tabs defaultValue="general" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="general" className="flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            General Settings
+          </TabsTrigger>
+          <TabsTrigger value="system" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            System Configuration
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="general" className="space-y-6">
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Company Logo */}
@@ -415,48 +451,62 @@ const OrganizationSettings: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+        </div>
+        </TabsContent>
 
-        {/* Theme Settings */}
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {theme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
-              Theme Settings
-            </CardTitle>
-            <CardDescription>
-              Customize the appearance of your dashboard
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="space-y-1">
-                <Label htmlFor="theme-toggle" className="text-base font-medium">
-                  Dark Mode
+        <TabsContent value="system" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5" />
+                System Configuration
+              </CardTitle>
+              <CardDescription>
+                Choose between Events or Attractions mode for your organization
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <Label htmlFor="system-type" className="text-base font-medium">
+                  System Type
                 </Label>
-                <p className="text-sm text-muted-foreground">
-                  Switch between light and dark themes for the dashboard
-                </p>
+                <Select
+                  value={organizationData.system_type || "EVENTS"}
+                  onValueChange={handleSystemTypeChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select system type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="EVENTS">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <div>
+                          <div className="font-medium">Events</div>
+                          <div className="text-sm text-muted-foreground">Ticketing for specific date events</div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="ATTRACTIONS">
+                      <div className="flex items-center gap-2">
+                        <Attraction className="h-4 w-4" />
+                        <div>
+                          <div className="font-medium">Attractions</div>
+                          <div className="text-sm text-muted-foreground">Booking system for ongoing attractions</div>
+                        </div>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="text-sm text-muted-foreground space-y-2">
+                  <p><strong>Events Mode:</strong> Perfect for concerts, conferences, and time-specific events with fixed dates.</p>
+                  <p><strong>Attractions Mode:</strong> Ideal for golf simulators, karaoke rooms, tours, and bookable experiences.</p>
+                </div>
               </div>
-              <Switch
-                id="theme-toggle"
-                checked={theme === 'dark'}
-                onCheckedChange={toggleTheme}
-              />
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Sun className="h-4 w-4" />
-                <span>Light</span>
-              </div>
-              <span>•</span>
-              <div className="flex items-center gap-1">
-                <Moon className="h-4 w-4" />
-                <span>Dark</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

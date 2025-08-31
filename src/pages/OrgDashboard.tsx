@@ -29,6 +29,8 @@ import { AnalyticsCharts } from "@/components/AnalyticsCharts";
 import Support from "@/pages/Support";
 import { DashboardHelp } from "@/components/DashboardHelp";
 import { OrganizationUserManagement } from "@/components/OrganizationUserManagement";
+import AttractionManagement from "@/components/AttractionManagement";
+import AttractionCustomization from "@/components/AttractionCustomization";
 import { useNavigate } from "react-router-dom";
 
 // Types
@@ -58,6 +60,7 @@ interface Organization {
   id: string;
   name: string;
   user_id: string;
+  system_type?: string;
 }
 
 // Custom mobile sidebar trigger component
@@ -81,6 +84,7 @@ const OrgDashboard = () => {
   console.log("=== OrgDashboard component rendering ===");
   const [events, setEvents] = useState<DashboardEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<DashboardEvent | null>(null);
+  const [selectedAttraction, setSelectedAttraction] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [organizationId, setOrganizationId] = useState<string>("");
   const [organization, setOrganization] = useState<Organization | null>(null);
@@ -93,6 +97,9 @@ const OrgDashboard = () => {
   const canAccessSecurity = () => userRole === 'owner' || userRole === 'admin';
   const canAccessSettings = () => userRole === 'owner' || userRole === 'admin';
   const canAccessIntegrations = () => userRole === 'owner' || userRole === 'admin';
+  
+  // System type checking
+  const isEventsMode = () => !organization?.system_type || organization?.system_type === 'EVENTS';
   
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -767,8 +774,9 @@ const OrgDashboard = () => {
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="events" className="space-y-6">
-                  {/* Events List - Now at the top */}
+                {isEventsMode() ? (
+                  <TabsContent value="events" className="space-y-6">
+                    {/* Events List - Now at the top */}
                   <Card className="border-gray-200/60 shadow-sm">
                     <CardHeader className="pb-3">
                       <CardTitle className="font-manrope font-semibold text-lg text-gray-900">Your Events</CardTitle>
@@ -881,19 +889,44 @@ const OrgDashboard = () => {
                       </Button>
                     </CardContent>
                   </Card>
-                </TabsContent>
+                  </TabsContent>
+                ) : (
+                  <TabsContent value="events" className="space-y-6">
+                    <AttractionManagement 
+                      organizationId={organizationId}
+                      onAttractionSelect={(attraction) => {
+                        setSelectedAttraction(attraction);
+                        setActiveTab("event-details");
+                      }}
+                    />
+                  </TabsContent>
+                )}
 
                 <TabsContent value="event-details" className="space-y-6">
-                  {selectedEvent ? (
-                    <div className="space-y-6">
-                      <EventCustomization eventId={selectedEvent.id} />
-                    </div>
+                  {isEventsMode() ? (
+                    selectedEvent ? (
+                      <div className="space-y-6">
+                        <EventCustomization eventId={selectedEvent.id} />
+                      </div>
+                    ) : (
+                      <Card>
+                        <CardContent className="p-6">
+                          <p className="text-muted-foreground text-center">Select an event from the events tab to view details</p>
+                        </CardContent>
+                      </Card>
+                    )
                   ) : (
-                    <Card>
-                      <CardContent className="p-6">
-                        <p className="text-muted-foreground text-center">Select an event from the events tab to view details</p>
-                      </CardContent>
-                    </Card>
+                    selectedAttraction ? (
+                      <div className="space-y-6">
+                        <AttractionCustomization attractionId={selectedAttraction.id} />
+                      </div>
+                    ) : (
+                      <Card>
+                        <CardContent className="p-6">
+                          <p className="text-muted-foreground text-center">Select an attraction from the attractions tab to view details</p>
+                        </CardContent>
+                      </Card>
+                    )
                   )}
                 </TabsContent>
 

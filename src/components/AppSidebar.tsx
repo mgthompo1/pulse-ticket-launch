@@ -8,7 +8,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Calendar, Users, Settings, BarChart3, Mail, CreditCard, TrendingUp, Link, Shield } from "lucide-react";
+import { Calendar, Users, Settings, BarChart3, Mail, CreditCard, TrendingUp, Link, Shield, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,10 +26,19 @@ interface AppSidebarProps {
   selectedEvent: Event | null;
 }
 
-const sidebarItems = [
+const getSidebarItems = (systemType: string) => [
   { id: "overview", title: "Overview", icon: BarChart3 },
-  { id: "events", title: "Events", icon: Calendar },
-  { id: "event-details", title: "Event Details", icon: Users, requiresEvent: true },
+  { 
+    id: "events", 
+    title: systemType === "ATTRACTIONS" ? "Attractions" : "Events", 
+    icon: systemType === "ATTRACTIONS" ? MapPin : Calendar 
+  },
+  { 
+    id: "event-details", 
+    title: systemType === "ATTRACTIONS" ? "Attraction Details" : "Event Details", 
+    icon: Users, 
+    requiresEvent: true 
+  },
   { id: "analytics", title: "Analytics", icon: TrendingUp },
   { id: "payments", title: "Payments", icon: CreditCard },
   { id: "marketing", title: "Marketing", icon: Mail },
@@ -47,6 +56,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
   const { user } = useAuth();
   const [organizationLogo, setOrganizationLogo] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState<string>("");
+  const [systemType, setSystemType] = useState<string>("EVENTS");
 
   useEffect(() => {
     const loadOrganization = async () => {
@@ -55,7 +65,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
       try {
         const { data, error } = await supabase
           .from("organizations")
-          .select("logo_url, name")
+          .select("logo_url, name, system_type")
           .eq("user_id", user.id)
           .single();
 
@@ -67,6 +77,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
         if (data) {
           setOrganizationLogo(data.logo_url);
           setOrganizationName(data.name || "");
+          setSystemType(data.system_type || "EVENTS");
         }
       } catch (error) {
         console.error("Error loading organization:", error);
@@ -119,7 +130,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
         <SidebarGroup className="px-3 py-4">
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {sidebarItems.map((item) => {
+              {getSidebarItems(systemType).map((item) => {
                 const isDisabled = item.requiresEvent && !selectedEvent;
                 const isActive = activeTab === item.id;
                 

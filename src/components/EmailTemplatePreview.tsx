@@ -35,16 +35,25 @@ interface EmailTemplatePreviewProps {
   };
   // Optional: render from new block-based template
   blocksTemplate?: EmailTemplate;
-  eventDetails: {
+  eventDetails?: {
     name: string;
     venue?: string;
     event_date: string;
+    logo_url?: string;
+  };
+  attractionDetails?: {
+    name: string;
+    venue?: string;
+    attraction_type: string;
+    duration_minutes: number;
+    base_price: number;
     logo_url?: string;
   };
   organizationDetails: {
     name: string;
     logo_url?: string;
   };
+  isAttractionMode?: boolean;
 }
 
 export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
@@ -53,22 +62,50 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
   organizationDetails,
   blocksTemplate
 }) => {
-  const { template, content, branding, layout = { headerStyle: 'standard', contentLayout: 'standard', footerStyle: 'standard' } } = emailCustomization;
+  const { template, content, branding, layout = { headerStyle: 'standard', contentLayout: 'standard', footerStyle: 'standard' } } = emailCustomization || {};
+  
+  // Provide default values if content is undefined
+  const safeContent = content || {
+    subject: 'Email Confirmation',
+    headerText: 'Thank you for your booking!',
+    bodyText: 'We have received your booking and will send you a confirmation shortly.',
+    footerText: 'This email was sent by our automated system. Please do not reply.'
+  };
+
+  // Provide default template if undefined
+  const safeTemplate = template || {
+    backgroundColor: '#ffffff',
+    headerColor: '#000000',
+    textColor: '#333333',
+    buttonColor: '#007bff',
+    accentColor: '#f8f9fa',
+    borderColor: '#e5e7eb',
+    fontFamily: 'Arial, sans-serif',
+    theme: 'standard'
+  };
+
+  // Provide default event details if undefined
+  const safeEventDetails = eventDetails || {
+    name: 'Sample Event',
+    venue: 'Sample Venue',
+    event_date: new Date().toISOString(),
+    logo_url: ''
+  };
   
   const getLogoUrl = () => {
     
-    if (!branding.showLogo) return null;
+    if (!branding?.showLogo) return null;
     
-    const logoSource = branding.logoSource || 'event';
+    const logoSource = branding?.logoSource || 'event';
     
     switch (logoSource) {
       case 'organization':
-        return organizationDetails.logo_url;
+        return organizationDetails?.logo_url;
       case 'custom':
-        return branding.customLogoUrl;
+        return branding?.customLogoUrl;
       case 'event':
       default:
-        return eventDetails.logo_url;
+        return safeEventDetails.logo_url;
     }
   };
 
@@ -107,13 +144,13 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
               }}
             >
               {/* Logo - Header Position */}
-              {logoUrl && branding.showLogo && branding.logoPosition === 'header' && (
+              {logoUrl && branding?.showLogo && branding?.logoPosition === 'header' && (
                 <div style={{ textAlign: 'center', marginBottom: '15px', padding: '20px 20px 0 20px' }}>
                   <img 
                     src={logoUrl} 
                     alt="Logo" 
                     style={{ 
-                      maxWidth: branding.logoSize === 'small' ? '80px' : branding.logoSize === 'large' ? '150px' : '120px',
+                      maxWidth: branding?.logoSize === 'small' ? '80px' : branding?.logoSize === 'large' ? '150px' : '120px',
                       height: 'auto',
                       display: 'block',
                       margin: '0 auto'
@@ -140,20 +177,20 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                 if (b.type === 'event_details') {
                   return (
                     <div key={b.id} style={{ background: blocksTemplate.theme.accentColor, border: `1px solid ${blocksTemplate.theme.borderColor}`, margin: '16px 20px', padding: '16px', borderRadius: 8 }}>
-                      <strong style={{ color: blocksTemplate.theme.textColor }}>{eventDetails.name}</strong>
+                      <strong style={{ color: blocksTemplate.theme.textColor }}>{safeEventDetails.name}</strong>
                       <div style={{ color: blocksTemplate.theme.textColor, fontSize: 14, lineHeight: 1.6, marginTop: 16 }}>
                         <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: blocksTemplate.theme.accentColor, borderRadius: '8px', borderLeft: `3px solid ${blocksTemplate.theme.buttonColor}` }}>
                           <div style={{ background: blocksTemplate.theme.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>🗓</div>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, color: blocksTemplate.theme.textColor, marginBottom: '2px' }}>{new Date(eventDetails.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                            <div style={{ color: blocksTemplate.theme.textColor + 'CC', fontSize: '13px' }}>{new Date(eventDetails.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
+                            <div style={{ fontWeight: 600, color: blocksTemplate.theme.textColor, marginBottom: '2px' }}>{new Date(safeEventDetails.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                            <div style={{ color: blocksTemplate.theme.textColor + 'CC', fontSize: '13px' }}>{new Date(safeEventDetails.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: blocksTemplate.theme.accentColor, borderRadius: '8px', borderLeft: `3px solid ${blocksTemplate.theme.buttonColor}` }}>
                           <div style={{ background: blocksTemplate.theme.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>📍</div>
                           <div style={{ flex: 1 }}>
                             <div style={{ color: blocksTemplate.theme.textColor + '88', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Venue</div>
-                            <div style={{ fontWeight: 600, color: blocksTemplate.theme.textColor }}>{eventDetails.venue || 'TBA'}</div>
+                            <div style={{ fontWeight: 600, color: blocksTemplate.theme.textColor }}>{safeEventDetails.venue || 'TBA'}</div>
                           </div>
                         </div>
                       </div>
@@ -201,13 +238,13 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
               })}
               
               {/* Logo - Content Position */}
-              {logoUrl && branding.showLogo && branding.logoPosition === 'content' && (
+              {logoUrl && branding?.showLogo && branding?.logoPosition === 'content' && (
                 <div style={{ textAlign: 'center', marginTop: '15px', padding: '0 20px 20px 20px' }}>
                   <img 
                     src={logoUrl} 
                     alt="Logo" 
                     style={{ 
-                      maxWidth: branding.logoSize === 'small' ? '80px' : branding.logoSize === 'large' ? '150px' : '120px',
+                      maxWidth: branding?.logoSize === 'small' ? '80px' : branding?.logoSize === 'large' ? '150px' : '120px',
                       height: 'auto',
                       display: 'block',
                       margin: '0 auto'
@@ -232,30 +269,30 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
           <div 
             data-email-preview-root
             style={{
-              fontFamily: template.fontFamily || 'Arial, sans-serif',
+              fontFamily: safeTemplate.fontFamily || 'Arial, sans-serif',
               maxWidth: '600px',
               margin: '0 auto',
-              backgroundColor: template.backgroundColor,
-              borderRadius: template.theme === 'modern' ? '12px' : template.theme === 'elegant' ? '8px' : template.theme === 'minimal' ? '4px' : template.theme === 'creative' ? '16px' : '0px',
-              boxShadow: template.theme === 'modern' ? '0 4px 6px rgba(0, 0, 0, 0.1)' : 'none',
-              border: template.theme === 'elegant' ? `2px solid ${template.borderColor}` : template.theme === 'minimal' ? `1px solid ${template.borderColor}` : 'none',
-              background: template.theme === 'creative' ? `linear-gradient(135deg, ${template.backgroundColor}, ${template.accentColor}15)` : template.backgroundColor
+              backgroundColor: safeTemplate.backgroundColor,
+              borderRadius: safeTemplate.theme === 'modern' ? '12px' : safeTemplate.theme === 'elegant' ? '8px' : safeTemplate.theme === 'minimal' ? '4px' : safeTemplate.theme === 'creative' ? '16px' : '0px',
+              boxShadow: safeTemplate.theme === 'modern' ? '0 4px 6px rgba(0, 0, 0, 0.1)' : 'none',
+              border: safeTemplate.theme === 'elegant' ? `2px solid ${safeTemplate.borderColor}` : safeTemplate.theme === 'minimal' ? `1px solid ${safeTemplate.borderColor}` : 'none',
+              background: safeTemplate.theme === 'creative' ? `linear-gradient(135deg, ${safeTemplate.backgroundColor}, ${safeTemplate.accentColor}15)` : safeTemplate.backgroundColor
             }}
           >
             {/* Header Section - Matches actual email template */}
             <div style={{
-              backgroundColor: template.headerColor,
+              backgroundColor: safeTemplate.headerColor,
               color: '#ffffff',
               padding: layout?.headerStyle === 'compact' ? '15px 20px' : '25px 20px',
-              borderRadius: template.theme === 'modern' ? '12px 12px 0 0' : template.theme === 'elegant' ? '8px 8px 0 0' : template.theme === 'minimal' ? '4px 4px 0 0' : template.theme === 'creative' ? '16px 16px 0 0' : '0'
+              borderRadius: safeTemplate.theme === 'modern' ? '12px 12px 0 0' : safeTemplate.theme === 'elegant' ? '8px 8px 0 0' : safeTemplate.theme === 'minimal' ? '4px 4px 0 0' : safeTemplate.theme === 'creative' ? '16px 16px 0 0' : '0'
             }}>
-              {logoUrl && branding.showLogo && branding.logoPosition === 'header' && (
+              {logoUrl && branding?.showLogo && branding?.logoPosition === 'header' && (
                 <div style={{ textAlign: 'center', marginBottom: '15px' }}>
                   <img 
                     src={logoUrl} 
                     alt="Logo" 
                     style={{
-                      maxHeight: branding.logoSize === 'small' ? '40px' : branding.logoSize === 'large' ? '80px' : '60px',
+                      maxHeight: branding?.logoSize === 'small' ? '40px' : branding?.logoSize === 'large' ? '80px' : '60px',
                       maxWidth: '200px',
                       height: 'auto'
                     }}
@@ -271,19 +308,19 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                 textAlign: layout?.headerStyle === 'center' ? 'center' : 'left',
                 color: '#ffffff'
               }}>
-                {content.headerText}
+                {safeContent.headerText}
               </h1>
             </div>
             
             {/* Content Section - Matches actual email template */}
             <div style={{ padding: '30px 20px' }}>
-              {logoUrl && branding.showLogo && branding.logoPosition === 'content' && (
+              {logoUrl && branding?.showLogo && branding?.logoPosition === 'content' && (
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                   <img 
                     src={logoUrl} 
                     alt="Logo" 
                     style={{
-                      maxHeight: branding.logoSize === 'small' ? '40px' : branding.logoSize === 'large' ? '80px' : '60px',
+                      maxHeight: branding?.logoSize === 'small' ? '40px' : branding?.logoSize === 'large' ? '80px' : '60px',
                       maxWidth: '200px',
                       height: 'auto'
                     }}
@@ -295,40 +332,40 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
               
               {/* Event Details Card - Matches actual email template */}
               <div style={{
-                backgroundColor: template.accentColor,
+                backgroundColor: safeTemplate.accentColor,
                 padding: '20px',
                 borderRadius: '8px',
                 marginBottom: '25px',
-                border: `1px solid ${template.borderColor}`
+                border: `1px solid ${safeTemplate.borderColor}`
               }}>
                 <h2 style={{
                   margin: '0 0 15px 0',
-                  color: template.textColor,
+                  color: safeTemplate.textColor,
                   fontSize: '20px',
                   fontWeight: '600'
                 }}>
-                  {eventDetails.name}
+                  {safeEventDetails.name}
                 </h2>
                 <div style={{ fontSize: '14px', lineHeight: 1.6, marginTop: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: template.accentColor, borderRadius: '8px', borderLeft: `3px solid ${template.buttonColor}` }}>
-                    <div style={{ background: template.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>🗓</div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: safeTemplate.accentColor, borderRadius: '8px', borderLeft: `3px solid ${safeTemplate.buttonColor}` }}>
+                    <div style={{ background: safeTemplate.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>🗓</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, color: template.textColor, marginBottom: '2px' }}>{formatDate(eventDetails.event_date)}</div>
-                      <div style={{ color: template.textColor + 'CC', fontSize: '13px' }}>Sample Time</div>
+                      <div style={{ fontWeight: 600, color: safeTemplate.textColor, marginBottom: '2px' }}>{formatDate(safeEventDetails.event_date)}</div>
+                      <div style={{ color: safeTemplate.textColor + 'CC', fontSize: '13px' }}>Sample Time</div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: template.accentColor, borderRadius: '8px', borderLeft: `3px solid ${template.buttonColor}` }}>
-                    <div style={{ background: template.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>📍</div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: safeTemplate.accentColor, borderRadius: '8px', borderLeft: `3px solid ${safeTemplate.buttonColor}` }}>
+                    <div style={{ background: safeTemplate.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>📍</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ color: template.textColor + '88', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Venue</div>
-                      <div style={{ fontWeight: 600, color: template.textColor }}>{eventDetails.venue || 'TBA'}</div>
+                      <div style={{ color: safeTemplate.textColor + '88', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Venue</div>
+                      <div style={{ fontWeight: 600, color: safeTemplate.textColor }}>{safeEventDetails.venue || 'TBA'}</div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: template.accentColor, borderRadius: '8px', borderLeft: `3px solid ${template.buttonColor}` }}>
-                    <div style={{ background: template.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>👤</div>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: safeTemplate.accentColor, borderRadius: '8px', borderLeft: `3px solid ${safeTemplate.buttonColor}` }}>
+                    <div style={{ background: safeTemplate.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>👤</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ color: template.textColor + '88', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Attendee</div>
-                      <div style={{ fontWeight: 600, color: template.textColor }}>Sample Customer</div>
+                      <div style={{ color: safeTemplate.textColor + '88', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Attendee</div>
+                      <div style={{ fontWeight: 600, color: safeTemplate.textColor }}>Sample Customer</div>
                     </div>
                   </div>
                 </div>
@@ -336,17 +373,17 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
 
               {/* Body Text - Matches actual email template */}
               <div style={{
-                color: template.textColor,
+                color: safeTemplate.textColor,
                 lineHeight: '1.6',
                 marginBottom: '25px',
                 fontSize: '16px'
               }}>
-                {content.bodyText}
+                {safeContent.bodyText}
               </div>
 
               {/* Tickets Section - Matches actual email template structure */}
               <h3 style={{
-                color: template.textColor,
+                color: safeTemplate.textColor,
                 marginBottom: '15px',
                 fontSize: '18px'
               }}>
@@ -355,7 +392,7 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
               
               {/* Sample ticket - matches actual email template */}
               <div style={{
-                border: `1px solid ${template.borderColor}`,
+                border: `1px solid ${safeTemplate.borderColor}`,
                 padding: '20px',
                 margin: '15px 0',
                 borderRadius: '8px',
@@ -370,13 +407,13 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                   <div>
                     <strong style={{
                       fontSize: '16px',
-                      color: template.textColor
+                      color: safeTemplate.textColor
                     }}>
                       General Admission
                     </strong>
                     <br />
                     <code style={{
-                      background: template.accentColor,
+                      background: safeTemplate.accentColor,
                       padding: '8px 12px',
                       fontSize: '14px',
                       borderRadius: '4px',
@@ -390,7 +427,7 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                   <div style={{ textAlign: 'right' }}>
                     <strong style={{
                       fontSize: '16px',
-                      color: template.textColor
+                      color: safeTemplate.textColor
                     }}>
                       $25.00
                     </strong>
@@ -400,22 +437,22 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
 
               {/* Important Information - Matches actual email template */}
               <div style={{
-                background: template.accentColor,
+                background: safeTemplate.accentColor,
                 padding: '20px',
                 borderRadius: '8px',
                 margin: '25px 0',
-                borderLeft: `4px solid ${template.buttonColor}`
+                borderLeft: `4px solid ${safeTemplate.buttonColor}`
               }}>
                 <h4 style={{
                   margin: '0 0 10px 0',
-                  color: template.textColor
+                  color: safeTemplate.textColor
                 }}>
                   Important Information:
                 </h4>
                 <ul style={{
                   margin: 0,
                   paddingLeft: '20px',
-                  color: template.textColor
+                  color: safeTemplate.textColor
                 }}>
                   <li>Present your ticket codes at the event entrance</li>
                   <li>Screenshots or printed versions are accepted</li>
@@ -431,7 +468,7 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                 margin: '20px 0'
               }}>
                 Questions? Contact the event organizer: <a href="#" style={{
-                  color: template.buttonColor
+                  color: safeTemplate.buttonColor
                 }}>
                   organizer@example.com
                 </a>
@@ -440,18 +477,18 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
             
             {/* Footer - Matches actual email template */}
             <div style={{
-              backgroundColor: template.accentColor,
+              backgroundColor: safeTemplate.accentColor,
               padding: '20px',
               textAlign: 'center',
-              borderRadius: template.theme === 'modern' ? '0 0 12px 12px' : template.theme === 'elegant' ? '0 0 8px 8px' : template.theme === 'minimal' ? '0 0 4px 4px' : template.theme === 'creative' ? '0 0 16px 16px' : '0',
-              borderTop: `1px solid ${template.borderColor}`
+              borderRadius: safeTemplate.theme === 'modern' ? '0 0 12px 12px' : safeTemplate.theme === 'elegant' ? '0 0 8px 8px' : safeTemplate.theme === 'minimal' ? '0 0 4px 4px' : safeTemplate.theme === 'creative' ? '0 0 16px 16px' : '0',
+              borderTop: `1px solid ${safeTemplate.borderColor}`
             }}>
               <p style={{
                 color: '#999',
                 fontSize: '12px',
                 margin: 0
               }}>
-                {content.footerText}
+                {safeContent.footerText}
               </p>
             </div>
           </div>

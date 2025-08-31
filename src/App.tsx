@@ -13,6 +13,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import OrgDashboard from "./pages/OrgDashboard";
 import TicketWidget from "./pages/TicketWidget";
+import AttractionWidget from "./pages/AttractionWidget";
 import MasterAdmin from "./pages/MasterAdmin";
 import AdminAuth from "./pages/AdminAuth";
 import SecureAdminAuth from "./pages/SecureAdminAuth";
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/widget/:eventId" element={<TicketWidget />} />
+            <Route path="/attraction/:attractionId" element={<AttractionWidget />} />
             <Route path="/admin-auth" element={<AdminAuth />} />
             <Route path="/secure-admin" element={<SecureAdminAuth />} />
             <Route path="/ticketflolive/:eventId" element={<TicketFloLIVE />} />

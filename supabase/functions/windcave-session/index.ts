@@ -19,48 +19,90 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { eventId, items, customerInfo } = await req.json();
+    const requestBody = await req.json();
+    console.log("=== RAW REQUEST BODY ===");
+    console.log("Full request body:", JSON.stringify(requestBody, null, 2));
     
-    console.log("=== RECEIVED REQUEST DATA ===");
+    const { eventId, attractionId, bookingId, items, customerInfo, isAttraction } = requestBody;
+    
+    console.log("=== PARSED REQUEST DATA ===");
     console.log("eventId:", eventId);
+    console.log("attractionId:", attractionId);
+    console.log("bookingId:", bookingId);
+    console.log("isAttraction:", isAttraction, "(type:", typeof isAttraction, ")");
     console.log("items:", JSON.stringify(items, null, 2));
     console.log("customerInfo:", JSON.stringify(customerInfo, null, 2));
 
-    if (!eventId || !items || !Array.isArray(items) || items.length === 0) {
-      console.error("Missing required parameters:", { eventId, items: items ? items.length : 'null', isArray: Array.isArray(items) });
-      throw new Error("Missing required parameters: eventId, items");
+    // Validate parameters based on mode
+    if (isAttraction) {
+      if (!attractionId || !bookingId || !items || !Array.isArray(items) || items.length === 0) {
+        console.error("Missing required parameters for attraction:", { attractionId, bookingId, items: items ? items.length : 'null', isArray: Array.isArray(items) });
+        throw new Error("Missing required parameters: attractionId, bookingId, items");
+      }
+    } else {
+      if (!eventId || !items || !Array.isArray(items) || items.length === 0) {
+        console.error("Missing required parameters for event:", { eventId, items: items ? items.length : 'null', isArray: Array.isArray(items) });
+        throw new Error("Missing required parameters: eventId, items");
+      }
     }
 
-    // Get event and organization details
-    const { data: event, error: eventError } = await supabaseClient
-      .from("events")
-      .select(`
-        *,
-        organizations!inner(
-          payment_provider,
-          currency
-        )
-      `)
-      .eq("id", eventId)
-      .single();
+    let organizationData;
+    let organizationId;
 
-    if (eventError || !event) {
-      throw new Error("Event not found");
+    if (isAttraction) {
+      // Get attraction and organization details
+      const { data: attraction, error: attractionError } = await supabaseClient
+        .from("attractions")
+        .select(`
+          *,
+          organizations!inner(
+            payment_provider,
+            currency
+          )
+        `)
+        .eq("id", attractionId)
+        .single();
+
+      if (attractionError || !attraction) {
+        throw new Error("Attraction not found");
+      }
+
+      organizationData = attraction.organizations;
+      organizationId = attraction.organization_id;
+    } else {
+      // Get event and organization details
+      const { data: event, error: eventError } = await supabaseClient
+        .from("events")
+        .select(`
+          *,
+          organizations!inner(
+            payment_provider,
+            currency
+          )
+        `)
+        .eq("id", eventId)
+        .single();
+
+      if (eventError || !event) {
+        throw new Error("Event not found");
+      }
+
+      organizationData = event.organizations;
+      organizationId = event.organization_id;
     }
 
     // Get payment credentials
     const { data: credentials, error: credError } = await supabaseClient
       .from("payment_credentials")
       .select("windcave_username, windcave_api_key, windcave_endpoint, windcave_enabled")
-      .eq("organization_id", event.organization_id)
+      .eq("organization_id", organizationId)
       .single();
 
     if (credError || !credentials) {
       throw new Error("Payment credentials not found");
     }
 
-    const org = event.organizations;
-    if (!credentials.windcave_enabled || org.payment_provider !== "windcave") {
+    if (!credentials.windcave_enabled || organizationData.payment_provider !== "windcave") {
       throw new Error("Windcave not configured for this organization");
     }
 
@@ -106,12 +148,15 @@ serve(async (req) => {
       : "https://uat.windcave.com/api/v1/sessions";
 
     // Create Windcave session - following documentation format
-    const orgCurrency = event.organizations.currency || "NZD";
+    const orgCurrency = organizationData.currency || "NZD";
+    const merchantRef = isAttraction 
+      ? `attraction-${attractionId}-${Date.now()}`
+      : `event-${eventId}-${Date.now()}`;
     const sessionData = {
       type: "purchase",
       amount: totalAmount.toFixed(2), // Windcave expects decimal format, not cents
       currency: orgCurrency,
-      merchantReference: `event-${eventId}-${Date.now()}`,
+      merchantReference: merchantRef,
       language: "en",
       callbackUrls: {
         approved: `${req.headers.get("origin")}/payment-success`,
@@ -165,29 +210,88 @@ serve(async (req) => {
 
     console.log("Links array received:", JSON.stringify(windcaveResult.links, null, 2));
 
-    // Store the order in the database with custom answers
-    const { data: order, error: orderError } = await supabaseClient
-      .from("orders")
-      .insert({
-        event_id: eventId,
-        customer_name: customerInfo?.name || "Anonymous",
-        customer_email: customerInfo?.email || "noemail@example.com",
-        customer_phone: customerInfo?.phone || null,
-        total_amount: totalAmount,
-        status: "pending",
-        custom_answers: customerInfo?.customAnswers || {},
-        windcave_session_id: windcaveResult.id // Store Windcave session ID in the correct field
-      })
-      .select()
-      .single();
+    let recordId; // Will store either booking ID or order ID
 
-    if (orderError) {
-      console.error("Error creating order:", orderError);
-      throw new Error("Failed to create order record");
+    if (isAttraction) {
+      // For attractions, try to update the existing booking with Windcave session ID
+      // Handle case where windcave_session_id column might not exist yet
+      try {
+        const { data: booking, error: bookingError } = await supabaseClient
+          .from("attraction_bookings")
+          .update({
+            windcave_session_id: windcaveResult.id
+          })
+          .eq("id", bookingId)
+          .select()
+          .single();
+
+        if (bookingError) {
+          console.error("Error updating attraction booking:", bookingError);
+          // If the column doesn't exist, we'll continue without storing the session ID in the booking
+          if (bookingError.message?.includes('column "windcave_session_id" of relation "attraction_bookings" does not exist')) {
+            console.warn("windcave_session_id column does not exist in attraction_bookings table. Continuing without storing session ID.");
+            // Get the booking without updating it
+            const { data: existingBooking, error: fetchError } = await supabaseClient
+              .from("attraction_bookings")
+              .select()
+              .eq("id", bookingId)
+              .single();
+            
+            if (fetchError) {
+              throw new Error("Failed to fetch booking details");
+            }
+            recordId = existingBooking.id;
+          } else {
+            throw new Error("Failed to update booking with session ID");
+          }
+        } else {
+          console.log("Attraction booking updated with session ID:", booking);
+          recordId = booking.id;
+        }
+      } catch (updateError) {
+        console.error("Exception updating attraction booking:", updateError);
+        // Fallback: just get the booking ID without updating
+        const { data: existingBooking, error: fetchError } = await supabaseClient
+          .from("attraction_bookings")
+          .select()
+          .eq("id", bookingId)
+          .single();
+        
+        if (fetchError) {
+          throw new Error("Failed to fetch booking details");
+        }
+        recordId = existingBooking.id;
+        console.warn("Continuing without storing windcave session ID in booking record");
+      }
+    } else {
+      // For events, store the order in the database with custom answers
+      const { data: order, error: orderError } = await supabaseClient
+        .from("orders")
+        .insert({
+          event_id: eventId,
+          customer_name: customerInfo?.name || "Anonymous",
+          customer_email: customerInfo?.email || "noemail@example.com",
+          customer_phone: customerInfo?.phone || null,
+          total_amount: totalAmount,
+          status: "pending",
+          custom_answers: customerInfo?.customAnswers || {},
+          windcave_session_id: windcaveResult.id // Store Windcave session ID in the correct field
+        })
+        .select()
+        .single();
+
+      if (orderError) {
+        console.error("Error creating order:", orderError);
+        throw new Error("Failed to create order");
+      }
+
+      console.log("Order created:", order);
+      recordId = order.id;
     }
 
-    // Create order items for both tickets and merchandise
-    const orderItems = [];
+    // Create order items for events only (attractions don't need order items)
+    if (!isAttraction) {
+      const orderItems = [];
     
     for (const item of items) {
       const price = item.price || item.unit_price || 0;
@@ -195,7 +299,7 @@ serve(async (req) => {
       if (item.type === 'merchandise') {
         // Merchandise item
         orderItems.push({
-          order_id: order.id,
+          order_id: recordId,
           merchandise_id: item.merchandise_id || item.id,
           item_type: 'merchandise',
           quantity: parseInt(item.quantity),
@@ -208,7 +312,7 @@ serve(async (req) => {
       } else {
         // Ticket item (default/legacy)
         orderItems.push({
-          order_id: order.id,
+          order_id: recordId,
           ticket_type_id: item.ticket_type_id || item.id,
           item_type: 'ticket',
           quantity: parseInt(item.quantity),
@@ -221,24 +325,25 @@ serve(async (req) => {
       .from("order_items")
       .insert(orderItems);
 
-    if (orderItemsError) {
-      console.error("Error creating order items:", orderItemsError);
-      throw new Error("Failed to create order items");
-    }
+      if (orderItemsError) {
+        console.error("Error creating order items:", orderItemsError);
+        throw new Error("Failed to create order items");
+      }
 
-    // Track usage for billing (platform fees)
-    try {
-      await supabaseClient.functions.invoke('track-usage', {
-        body: {
-          order_id: order.id,
-          organization_id: event.organization_id,
-          transaction_amount: totalAmount
-        }
-      });
-      console.log('Usage tracked for billing');
-    } catch (usageError) {
-      console.error('Error tracking usage:', usageError);
-      // Don't fail the order creation if usage tracking fails
+      // Track usage for billing (platform fees) - events only
+      try {
+        await supabaseClient.functions.invoke('track-usage', {
+          body: {
+            order_id: recordId,
+            organization_id: organizationId,
+            transaction_amount: totalAmount
+          }
+        });
+        console.log('Usage tracked for billing');
+      } catch (usageError) {
+        console.error('Error tracking usage:', usageError);
+        // Don't fail the order creation if usage tracking fails
+      }
     }
 
     return new Response(JSON.stringify({
@@ -247,7 +352,7 @@ serve(async (req) => {
         ...link,
         sessionId: windcaveResult.id // Add session ID to each link for easy access
       })),
-      orderId: order.id,
+      orderId: recordId, // Use recordId which works for both orders and bookings
       totalAmount: totalAmount,
       windcaveResponse: windcaveResult,
       debug: {

@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom utility classes */
+@layer utilities {
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
@@ -450,4 +460,9 @@ All colors MUST be HSL.
   .skip-to-content:focus {
     top: 6px;
   }
+}
+
+/* Custom hover scale effect */
+.hover\:scale-102:hover {
+  transform: scale(1.02);
 }
