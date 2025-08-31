@@ -20,6 +20,9 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
+    minify: 'esbuild',
+    // Drop console and debugger in production to reduce noise and bundle size
+    esbuild: mode === 'production' ? { drop: ['console', 'debugger'] } : undefined,
     rollupOptions: {
       output: {
         manualChunks: {

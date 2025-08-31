@@ -2,11 +2,11 @@ import React from 'react';
 
 // Performance optimization utilities
 
-export const preloadRoute = (routeModule: () => Promise<any>) => {
-  const link = document.createElement('link');
-  link.rel = 'modulepreload';
-  link.href = routeModule.toString();
-  document.head.appendChild(link);
+export const preloadRoute = (importFunc: () => Promise<any>) => {
+  // Kick off the dynamic import to warm the module in the browser cache
+  // without blocking render. The imported module is intentionally ignored.
+  // Consumers can still lazy-load the same chunk with React.lazy later.
+  void importFunc();
 };
 
 export const lazyLoad = (importFunc: () => Promise<any>) => {
