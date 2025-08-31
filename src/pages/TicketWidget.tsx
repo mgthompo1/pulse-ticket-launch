@@ -24,6 +24,7 @@ import {
   CustomQuestion
 } from "@/types/widget";
 import { MultiStepCheckout } from "@/components/checkout/MultiStepCheckout";
+import { SEOHead } from "@/components/SEOHead";
 
 // Extend the global Window interface to include WindcavePayments
 declare global {
@@ -1216,12 +1217,48 @@ const TicketWidget = () => {
 
   // Render multi-step checkout if enabled
   if (shouldRenderMultiStep && eventData) {
+    // Create structured data for the event
+    const eventStructuredData = {
+      "@context": "https://schema.org",
+      "@type": "Event",
+      "name": eventData.name,
+      "description": eventData.description ? eventData.description.replace(/<[^>]*>/g, '') : `Get tickets for ${eventData.name}`,
+      "image": (eventData as any).logo_url || "https://www.ticketflo.org/og-image.jpg",
+      "startDate": eventData.event_date,
+      "location": eventData.venue ? {
+        "@type": "Place",
+        "name": eventData.venue
+      } : undefined,
+      "organizer": {
+        "@type": "Organization",
+        "name": (eventData.organizations as any)?.name || "Event Organizer"
+      },
+      "offers": ticketTypes.map(ticket => ({
+        "@type": "Offer",
+        "name": ticket.name,
+        "price": ticket.price,
+        "priceCurrency": "USD",
+        "availability": "https://schema.org/InStock",
+        "url": `https://www.ticketflo.org/widget/${eventId}`
+      }))
+    };
+
     return (
-      <MultiStepCheckout
-        eventData={eventData!}
-        ticketTypes={ticketTypes}
-        customQuestions={customQuestions}
-      />
+      <>
+        <SEOHead
+          title={`${eventData.name} - Get Tickets | TicketFlo`}
+          description={eventData.description ? eventData.description.replace(/<[^>]*>/g, '').substring(0, 155) + '...' : `Get tickets for ${eventData.name}. Secure online ticket purchasing with TicketFlo.`}
+          ogTitle={eventData.name}
+          ogDescription={eventData.description ? eventData.description.replace(/<[^>]*>/g, '').substring(0, 155) + '...' : `Get tickets for ${eventData.name}`}
+          ogImage={(eventData as any).logo_url || "https://www.ticketflo.org/og-image.jpg"}
+          structuredData={eventStructuredData}
+        />
+        <MultiStepCheckout
+          eventData={eventData!}
+          ticketTypes={ticketTypes}
+          customQuestions={customQuestions}
+        />
+      </>
     );
   }
 
@@ -1250,15 +1287,50 @@ const TicketWidget = () => {
     isReady: isReady
   });
   
+  // Create structured data for the event (single-page checkout)
+  const eventStructuredDataSinglePage = eventData ? {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": eventData.name,
+    "description": eventData.description ? eventData.description.replace(/<[^>]*>/g, '') : `Get tickets for ${eventData.name}`,
+    "image": (eventData as any).logo_url || "https://www.ticketflo.org/og-image.jpg",
+    "startDate": eventData.event_date,
+    "location": eventData.venue ? {
+      "@type": "Place",
+      "name": eventData.venue
+    } : undefined,
+    "organizer": {
+      "@type": "Organization",
+      "name": (eventData.organizations as any)?.name || "Event Organizer"
+    },
+    "offers": ticketTypes.map(ticket => ({
+      "@type": "Offer",
+      "name": ticket.name,
+      "price": ticket.price,
+      "priceCurrency": "USD",
+      "availability": "https://schema.org/InStock",
+      "url": `https://www.ticketflo.org/widget/${eventId}`
+    }))
+  } : undefined;
+
   return (
-    <div 
-      className="min-h-screen"
-      style={{ 
-        backgroundColor: backgroundColor,
-        fontFamily: fontFamily,
-        color: headerTextColor
-      }}
-    >
+    <>
+      <SEOHead
+        title={`${eventData?.name || 'Event'} - Get Tickets | TicketFlo`}
+        description={eventData?.description ? eventData.description.replace(/<[^>]*>/g, '').substring(0, 155) + '...' : `Get tickets for ${eventData?.name || 'this event'}. Secure online ticket purchasing with TicketFlo.`}
+        ogTitle={eventData?.name || 'Event Tickets'}
+        ogDescription={eventData?.description ? eventData.description.replace(/<[^>]*>/g, '').substring(0, 155) + '...' : `Get tickets for ${eventData?.name || 'this event'}`}
+        ogImage={(eventData as any)?.logo_url || "https://www.ticketflo.org/og-image.jpg"}
+        structuredData={eventStructuredDataSinglePage}
+      />
+      <div 
+        className="min-h-screen"
+        style={{ 
+          backgroundColor: backgroundColor,
+          fontFamily: fontFamily,
+          color: headerTextColor
+        }}
+      >
       {loading || !isReady ? (
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
@@ -1341,72 +1413,98 @@ const TicketWidget = () => {
             <div className="max-w-4xl">
               <div className="space-y-6 text-left max-w-2xl">
             {/* Event Name */}
-            <h1 className="text-4xl md:text-5xl font-bold leading-tight" style={{ color: headerTextColor }}>
+            <h1 className="text-3xl md:text-4xl font-bold leading-tight" style={{ color: headerTextColor }}>
               {eventData.name}
             </h1>
 
-            {/* Date with Add to Calendar */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-3 text-xl" style={{ color: bodyTextColor }}>
-                <Calendar className="h-6 w-6" style={{ color: primaryColor }} />
-                <span className="font-medium">
-                  {new Date(eventData.event_date).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                  {(eventData as any).event_time && `, ${(eventData as any).event_time}`}
-                </span>
+            {/* Event Details - Horizontal Layout */}
+            <div className="space-y-3">
+              {/* Main event details in one line */}
+              <div className="flex flex-wrap items-center gap-3 text-base" style={{ color: bodyTextColor }}>
+                {/* Date */}
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="h-4 w-4" style={{ color: primaryColor }} />
+                  <span className="font-medium">
+                    {new Date(eventData.event_date).toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })}
+                    {(eventData as any).event_time && `, ${(eventData as any).event_time}`}
+                  </span>
+                </div>
+
+                {/* Venue */}
+                {eventData.venue && (
+                  <>
+                    <div className="hidden sm:block w-px h-3 bg-gray-300"></div>
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4" style={{ color: primaryColor }} />
+                      <span className="font-medium">{eventData.venue}</span>
+                    </div>
+                  </>
+                )}
+
+                {/* Host/Organization */}
+                {eventData.organizations?.name && (
+                  <>
+                    <div className="hidden sm:block w-px h-3 bg-gray-300"></div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: primaryColor }}>
+                        <span className="text-xs text-white font-bold">H</span>
+                      </div>
+                      <span><span className="font-medium">{eventData.organizations.name}</span></span>
+                    </div>
+                  </>
+                )}
               </div>
               
-              {/* Add to Calendar Button */}
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="text-sm"
-                style={{ borderColor: primaryColor, color: primaryColor }}
-                onClick={() => {
-                  // Create calendar event
-                  const startDate = new Date(eventData.event_date);
-                  const endDate = new Date(startDate.getTime() + 3 * 60 * 60 * 1000); // Default 3 hours
-                  
-                  const title = encodeURIComponent(eventData.name);
-                  const details = encodeURIComponent(eventData.description?.replace(/<[^>]*>/g, '') || '');
-                  const location = encodeURIComponent(eventData.venue || '');
-                  const startTime = startDate.toISOString().replace(/-|:|\.\d\d\d/g, '');
-                  const endTime = endDate.toISOString().replace(/-|:|\.\d\d\d/g, '');
-                  
-                  const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startTime}/${endTime}&details=${details}&location=${location}`;
-                  window.open(googleUrl, '_blank');
-                }}
-              >
-                Add to calendar
-              </Button>
-            </div>
-
-            {/* Venue */}
-            {eventData.venue && (
-              <div className="flex items-center gap-3 text-xl" style={{ color: bodyTextColor }}>
-                <MapPin className="h-6 w-6" style={{ color: primaryColor }} />
-                <span className="font-medium">{eventData.venue}</span>
+              {/* Add to Calendar Button - Below the main line */}
+              <div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="text-sm"
+                  style={{ borderColor: primaryColor, color: primaryColor }}
+                  onClick={() => {
+                    // Create calendar event
+                    const startDate = new Date(eventData.event_date);
+                    const endDate = new Date(startDate.getTime() + 3 * 60 * 60 * 1000); // Default 3 hours
+                    
+                    const title = encodeURIComponent(eventData.name);
+                    const details = encodeURIComponent(eventData.description?.replace(/<[^>]*>/g, '') || '');
+                    const location = encodeURIComponent(eventData.venue || '');
+                    const startTime = startDate.toISOString().replace(/-|:|\.\d\d\d/g, '');
+                    const endTime = endDate.toISOString().replace(/-|:|\.\d\d\d/g, '');
+                    
+                    const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startTime}/${endTime}&details=${details}&location=${location}`;
+                    window.open(googleUrl, '_blank');
+                  }}
+                >
+                  Add to calendar
+                </Button>
               </div>
-            )}
 
-            {/* Host/Organization */}
-            {eventData.organizations?.name && (
-              <div className="flex items-center gap-3 text-lg" style={{ color: bodyTextColor }}>
-                <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: primaryColor }}>
-                  <span className="text-xs text-white font-bold">H</span>
+              {/* Event Description Section - Moved closer */}
+              {eventData.description && (
+                <div className="mt-6">
+                  <h2 className="text-2xl font-bold mb-4" style={{ color: headerTextColor }}>
+                    Event description
+                  </h2>
+                  <div 
+                    className="text-base leading-relaxed prose max-w-none [&>p]:mb-3 [&>p]:leading-relaxed [&>h1]:text-xl [&>h2]:text-lg [&>h3]:text-base [&>ul]:ml-4 [&>ol]:ml-4 [&>li]:mb-1"
+                    style={{ color: bodyTextColor }}
+                    dangerouslySetInnerHTML={{ __html: eventData.description }}
+                  />
                 </div>
-                <span>Hosted by <span className="font-medium">{eventData.organizations.name}</span></span>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Custom Header Text */}
             {eventData.widget_customization?.branding?.customHeaderText && (
               <div 
-                className="text-xl leading-relaxed"
+                className="text-lg leading-relaxed"
                 style={{ color: bodyTextColor }}
                 dangerouslySetInnerHTML={{ __html: eventData.widget_customization.branding.customHeaderText }}
               />
@@ -1414,24 +1512,6 @@ const TicketWidget = () => {
               </div>
             </div>
           </div>
-
-          {/* Event Description Section - Like Humanitix */}
-          {eventData.description && (
-            <div className="bg-white py-12 px-4">
-              <div className="max-w-4xl">
-                <div className="bg-white">
-                  <h2 className="text-2xl font-bold mb-6" style={{ color: headerTextColor }}>
-                    Event description
-                  </h2>
-                  <div 
-                    className="text-lg leading-relaxed prose prose-lg max-w-none [&>p]:mb-4 [&>p]:leading-relaxed [&>h1]:text-2xl [&>h2]:text-xl [&>h3]:text-lg [&>ul]:ml-6 [&>ol]:ml-6 [&>li]:mb-2"
-                    style={{ color: bodyTextColor }}
-                    dangerouslySetInnerHTML={{ __html: eventData.description }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
 
           <div id="tickets-section" className="grid grid-cols-1 xl:grid-cols-3 gap-8 px-4 pb-8">
             {/* Main Content */}
@@ -1608,20 +1688,20 @@ const TicketWidget = () => {
                   ) : (
                     <div className="space-y-4">
                       {ticketTypes.map((ticketType) => (
-                        <div key={ticketType.id} className="group border-2 border-gray-200 rounded-2xl p-8 hover:border-blue-300 hover:shadow-xl transition-all duration-300 bg-white">
-                          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                        <div key={ticketType.id} className="group border-2 border-gray-200 rounded-2xl p-6 hover:border-blue-300 hover:shadow-xl transition-all duration-300 bg-white">
+                          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                             <div className="flex-1">
                               <div className="flex items-start justify-between mb-3">
-                                <h3 className="font-bold text-2xl text-gray-900 leading-tight">{ticketType.name}</h3>
+                                <h3 className="font-bold text-lg text-gray-900 leading-tight">{ticketType.name}</h3>
                                 <div className="text-right">
-                                  <div className="text-3xl font-bold text-gray-900">${ticketType.price}</div>
+                                  <div className="text-xl font-bold text-gray-900">${ticketType.price}</div>
                                   <div className="text-sm text-gray-500 font-medium">
                                     {ticketType.quantity_available - ticketType.quantity_sold} available
                                   </div>
                                 </div>
                               </div>
                               {ticketType.description && (
-                                <p className="text-gray-600 text-lg leading-relaxed">{ticketType.description}</p>
+                                <p className="text-gray-600 text-sm leading-relaxed">{ticketType.description}</p>
                               )}
                             </div>
                             
@@ -1629,16 +1709,16 @@ const TicketWidget = () => {
                             <div className="lg:ml-8">
                               <Button 
                                 onClick={() => addToCart(ticketType)}
-                                className="w-full lg:w-auto font-semibold py-4 px-8 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform group-hover:scale-105"
+                                className="w-full lg:w-auto font-semibold rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
                                 style={{ backgroundColor: primaryColor, color: buttonTextColor }}
                                 disabled={ticketType.quantity_available - ticketType.quantity_sold <= 0}
-                                size="lg"
+                                size="default"
                               >
                                 {ticketType.quantity_available - ticketType.quantity_sold <= 0 ? (
                                   "Sold Out"
                                 ) : (
                                   <>
-                                    <Plus className="h-5 w-5 mr-2" />
+                                    <Plus className="h-4 w-4 mr-2" />
                                     Add to Cart
                                   </>
                                 )}
@@ -1946,10 +2026,7 @@ const TicketWidget = () => {
                         merchandiseCart={merchandiseCart as any}
                         customerInfo={customerInfo}
                         total={getTotalAmount()}
-                        theme={{
-                          primary: primaryColor,
-                          secondary: primaryColor
-                        }}
+                        theme={theme}
                         onSuccess={(orderId: string) => {
                           setCart([]);
                           setMerchandiseCart([]);
@@ -2052,7 +2129,8 @@ const TicketWidget = () => {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 };
 

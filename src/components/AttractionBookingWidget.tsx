@@ -20,6 +20,7 @@ import {
   Loader2
 } from "lucide-react";
 import { AttractionStripePayment } from "@/components/payment/AttractionStripePayment";
+import { SEOHead } from "@/components/SEOHead";
 
 interface AttractionBookingWidgetProps {
   attractionId: string;
@@ -778,7 +779,17 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
   }
 
   return (
-    <div className={compact ? "space-y-4" : "max-w-6xl mx-auto bg-white"} style={{ fontFamily: fontFamily }}>
+    <>
+      {!compact && (
+        <SEOHead
+          title={`${attractionData?.name || 'Attraction'} - Book Now | TicketFlo`}
+          description={attractionData?.description ? attractionData.description.replace(/<[^>]*>/g, '').substring(0, 155) + '...' : `Book ${attractionData?.name || 'this attraction'}. Secure online booking with TicketFlo.`}
+          ogTitle={attractionData?.name || 'Attraction Booking'}
+          ogDescription={attractionData?.description ? attractionData.description.replace(/<[^>]*>/g, '').substring(0, 155) + '...' : `Book ${attractionData?.name || 'this attraction'}`}
+          ogImage={(attractionData as any)?.logo_url || "https://www.ticketflo.org/og-image.jpg"}
+        />
+      )}
+      <div className={compact ? "space-y-4" : "max-w-6xl mx-auto bg-white"} style={{ fontFamily: fontFamily }}>
       {/* Logo/Image Hero Section */}
       {!compact && (
         <div className="bg-white py-8 px-4">
@@ -1627,15 +1638,20 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
             </div>
             
             <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-700 text-center">
-                📧 A confirmation email has been sent to <strong>{bookingForm.customerEmail}</strong>
+              <p className="text-sm text-blue-700 text-center flex items-center justify-center gap-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+                A confirmation email has been sent to <strong>{bookingForm.customerEmail}</strong>
               </p>
             </div>
             </CardContent>
           </Card>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 };
 

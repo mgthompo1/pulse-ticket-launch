@@ -28,6 +28,7 @@ import { EmailTemplateBuilder } from "./EmailTemplateBuilder";
 import { EmailTemplatePreview } from "./EmailTemplatePreview";
 import CalendarBookingSystem from "./CalendarBookingSystem";
 import ResourceManager from "./ResourceManager";
+import { AttractionLogoUploader } from "./attractions/AttractionLogoUploader";
 
 interface AttractionCustomizationProps {
   attractionId: string;
@@ -79,7 +80,6 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState("settings");
   
   const [attractionData, setAttractionData] = useState<AttractionData | null>(null);
@@ -276,67 +276,7 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
     }
   };
 
-  const handleLogoUpload = async (file: File) => {
-    if (!attractionData) return;
-    
-    setUploading(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      // Fix the file path structure to match RLS policies
-      const filePath = `attractions/${attractionData.id}/logo.${fileExt}`;
 
-      console.log('=== UPLOADING LOGO ===');
-      console.log('File path:', filePath);
-      console.log('Attraction ID:', attractionData.id);
-
-      const { error: uploadError } = await supabase.storage
-        .from('event-logos')
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw uploadError;
-      }
-
-      console.log('=== LOGO UPLOADED SUCCESSFULLY ===');
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('event-logos')
-        .getPublicUrl(filePath);
-
-      console.log('=== UPDATING ATTRACTION RECORD ===');
-      console.log('Public URL:', publicUrl);
-
-      const { error: updateError } = await supabase
-        .from('attractions')
-        .update({ logo_url: publicUrl })
-        .eq('id', attractionData.id);
-
-      if (updateError) {
-        console.error('Update error:', updateError);
-        throw updateError;
-      }
-
-      console.log('=== ATTRACTION RECORD UPDATED ===');
-
-      setCurrentLogoUrl(publicUrl);
-      setAttractionData(prev => prev ? { ...prev, logo_url: publicUrl } : null);
-
-      toast({
-        title: "Success",
-        description: "Logo uploaded successfully!"
-      });
-    } catch (error) {
-      console.error('Error uploading logo:', error);
-      toast({
-        title: "Error",
-        description: "Failed to upload logo",
-        variant: "destructive"
-      });
-    } finally {
-      setUploading(false);
-    }
-  };
 
   const getAttractionTypeLabel = (type: string) => {
     const attractionType = ATTRACTION_TYPES.find(t => t.value === type);
@@ -496,42 +436,59 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
               </CardContent>
             </Card>
 
-            <Card className="md:col-span-2">
+            <AttractionLogoUploader
+              attractionId={attractionId}
+              currentLogoUrl={currentLogoUrl}
+              onLogoChange={(logoUrl) => {
+                setCurrentLogoUrl(logoUrl);
+                setAttractionData(prev => prev ? { ...prev, logo_url: logoUrl } : null);
+              }}
+            />
+
+            {/* Hero Banner Preview */}
+            <Card>
               <CardHeader>
-                <CardTitle>Attraction Logo</CardTitle>
-                <CardDescription>Upload a logo for your attraction</CardDescription>
+                <CardTitle>Hero Banner Preview</CardTitle>
+                <CardDescription>See how your logo will appear as a hero banner on the booking widget</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center gap-4">
-                  {currentLogoUrl && (
-                    <img 
-                      src={currentLogoUrl} 
-                      alt="Attraction logo" 
-                      className="w-16 h-16 object-cover rounded-lg border"
-                    />
-                  )}
-                  <div className="flex-1">
-                    <Label htmlFor="logo-upload" className="cursor-pointer">
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
-                        <Upload className="h-6 w-6 mx-auto mb-2 text-gray-400" />
-                        <p className="text-sm text-gray-600">
-                          {uploading ? "Uploading..." : "Click to upload logo"}
-                        </p>
+                <div className="border rounded-lg overflow-hidden bg-gray-50">
+                  <div className="bg-white p-6">
+                    <div className="max-w-4xl mx-auto">
+                      <div className="text-center mb-8">
+                        {currentLogoUrl ? (
+                          <img 
+                            src={currentLogoUrl} 
+                            alt={`${attractionData?.name} Logo`}
+                            className="mx-auto max-h-64 w-auto object-contain rounded-lg shadow-lg"
+                          />
+                        ) : (
+                          /* Fallback with attraction icon if no logo */
+                          <div className="w-32 h-32 mx-auto bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center">
+                            <MapPin className="h-16 w-16 text-blue-600" />
+                          </div>
+                        )}
                       </div>
-                    </Label>
-                    <input
-                      id="logo-upload"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          handleLogoUpload(file);
-                        }
-                      }}
-                      className="hidden"
-                      disabled={uploading}
-                    />
+                      
+                      <div className="max-w-2xl mx-auto text-center">
+                        <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                          {attractionData?.name}
+                        </h1>
+                        <p className="text-gray-600 mb-4">
+                          {attractionData?.description || "Book your session now"}
+                        </p>
+                        <div className="flex items-center justify-center gap-4 text-sm text-gray-500">
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-4 w-4" />
+                            <span>{attractionData?.duration_minutes} min</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <DollarSign className="h-4 w-4" />
+                            <span>From ${attractionData?.base_price}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>

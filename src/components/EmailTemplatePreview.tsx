@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar, MapPin, User } from 'lucide-react';
 import type { EmailTemplate } from '@/types/email-template';
 
 interface EmailTemplatePreviewProps {
@@ -180,14 +181,26 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                       <strong style={{ color: blocksTemplate.theme.textColor }}>{safeEventDetails.name}</strong>
                       <div style={{ color: blocksTemplate.theme.textColor, fontSize: 14, lineHeight: 1.6, marginTop: 16 }}>
                         <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: blocksTemplate.theme.accentColor, borderRadius: '8px', borderLeft: `3px solid ${blocksTemplate.theme.buttonColor}` }}>
-                          <div style={{ background: blocksTemplate.theme.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>🗓</div>
+                          <div style={{ background: blocksTemplate.theme.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0 }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                              <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+                              <line x1="16" x2="16" y1="2" y2="6"/>
+                              <line x1="8" x2="8" y1="2" y2="6"/>
+                              <line x1="3" x2="21" y1="10" y2="10"/>
+                            </svg>
+                          </div>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 600, color: blocksTemplate.theme.textColor, marginBottom: '2px' }}>{new Date(safeEventDetails.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                             <div style={{ color: blocksTemplate.theme.textColor + 'CC', fontSize: '13px' }}>{new Date(safeEventDetails.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: blocksTemplate.theme.accentColor, borderRadius: '8px', borderLeft: `3px solid ${blocksTemplate.theme.buttonColor}` }}>
-                          <div style={{ background: blocksTemplate.theme.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>📍</div>
+                          <div style={{ background: blocksTemplate.theme.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0 }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                              <circle cx="12" cy="10" r="3"/>
+                            </svg>
+                          </div>
                           <div style={{ flex: 1 }}>
                             <div style={{ color: blocksTemplate.theme.textColor + '88', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Venue</div>
                             <div style={{ fontWeight: 600, color: blocksTemplate.theme.textColor }}>{safeEventDetails.venue || 'TBA'}</div>
@@ -348,22 +361,39 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                 </h2>
                 <div style={{ fontSize: '14px', lineHeight: 1.6, marginTop: '16px' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: safeTemplate.accentColor, borderRadius: '8px', borderLeft: `3px solid ${safeTemplate.buttonColor}` }}>
-                    <div style={{ background: safeTemplate.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>🗓</div>
+                    <div style={{ background: safeTemplate.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+                        <line x1="16" x2="16" y1="2" y2="6"/>
+                        <line x1="8" x2="8" y1="2" y2="6"/>
+                        <line x1="3" x2="21" y1="10" y2="10"/>
+                      </svg>
+                    </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, color: safeTemplate.textColor, marginBottom: '2px' }}>{formatDate(safeEventDetails.event_date)}</div>
                       <div style={{ color: safeTemplate.textColor + 'CC', fontSize: '13px' }}>Sample Time</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: safeTemplate.accentColor, borderRadius: '8px', borderLeft: `3px solid ${safeTemplate.buttonColor}` }}>
-                    <div style={{ background: safeTemplate.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>📍</div>
+                    <div style={{ background: safeTemplate.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                      </svg>
+                    </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ color: safeTemplate.textColor + '88', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Venue</div>
                       <div style={{ fontWeight: 600, color: safeTemplate.textColor }}>{safeEventDetails.venue || 'TBA'}</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: safeTemplate.accentColor, borderRadius: '8px', borderLeft: `3px solid ${safeTemplate.buttonColor}` }}>
-                    <div style={{ background: safeTemplate.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0, fontSize: '14px' }}>👤</div>
-                    <div style={{ flex: 1 }}>
+                    <div style={{ background: safeTemplate.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                      </svg>
+                    </div>
+                    <div style={{ flex: '1' }}>
                       <div style={{ color: safeTemplate.textColor + '88', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Attendee</div>
                       <div style={{ fontWeight: 600, color: safeTemplate.textColor }}>Sample Customer</div>
                     </div>

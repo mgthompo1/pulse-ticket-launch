@@ -426,11 +426,12 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
               {attractions.map((attraction) => (
                 <Card
                   key={attraction.id}
-                  className={`group relative overflow-hidden transition-all duration-200 hover:shadow-lg hover:scale-[1.02] ${
+                  className={`group relative overflow-hidden transition-all duration-200 hover:shadow-lg hover:scale-[1.02] cursor-pointer ${
                     selectedAttraction?.id === attraction.id 
                       ? 'ring-2 ring-primary shadow-lg' 
                       : 'hover:shadow-md'
                   }`}
+                  onClick={() => handleAttractionClick(attraction)}
                 >
                   {/* Status Badge */}
                   <div className="absolute top-4 right-4 z-10">

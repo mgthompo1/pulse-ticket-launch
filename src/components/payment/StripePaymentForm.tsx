@@ -93,37 +93,59 @@ const CheckoutForm = ({
         return;
       }
 
+      console.log("=== PAYMENT INTENT REQUEST ===");
+      console.log("eventId:", eventId);
+      console.log("total:", total);
+      console.log("cart:", cart);
+      console.log("merchandiseCart:", merchandiseCart);
+      console.log("customerInfo:", customerInfo);
+
+      const requestBody = { 
+        eventId, 
+        total,
+        items: [
+          ...cart.map(item => ({
+            id: item.id,
+            ticket_type_id: item.id,
+            quantity: item.quantity,
+            unit_price: item.price,
+            type: 'ticket'
+          })),
+          ...merchandiseCart.map(item => ({ 
+            id: item.merchandise.id,
+            merchandise_id: item.merchandise.id,
+            quantity: item.quantity,
+            unit_price: item.merchandise.price,
+            type: 'merchandise',
+            selectedSize: (item as any).selectedSize,
+            selectedColor: (item as any).selectedColor
+          }))
+        ],
+        customerInfo,
+        paymentMethod: 'card'
+      };
+
+      console.log("=== FULL REQUEST BODY ===");
+      console.log(JSON.stringify(requestBody, null, 2));
+
       // Now create the payment intent and confirm with the payment method
       const { data, error } = await supabase.functions.invoke("create-payment-intent", {
-        body: { 
-          eventId, 
-          items: [
-            ...cart.map(item => ({
-              id: item.id,
-              ticket_type_id: item.id,
-              quantity: item.quantity,
-              unit_price: item.price,
-              type: 'ticket'
-            })),
-            ...merchandiseCart.map(item => ({ 
-              id: item.merchandise.id,
-              merchandise_id: item.merchandise.id,
-              quantity: item.quantity,
-              unit_price: item.merchandise.price,
-              type: 'merchandise',
-              selectedSize: (item as any).selectedSize,
-              selectedColor: (item as any).selectedColor
-            }))
-          ],
-          customerInfo,
-          paymentMethod: 'card'
-        }
+        body: requestBody
       });
 
       if (error) throw error;
 
+      console.log("=== PAYMENT INTENT RESPONSE ===");
+      console.log("Full response data:", data);
+      console.log("client_secret:", data.client_secret);
+      console.log("orderId:", data.orderId);
+
+      if (!data.client_secret) {
+        throw new Error("No client_secret returned from payment intent creation");
+      }
+
       // Confirm the payment with the payment method
-      const { error: confirmError } = await stripe.confirmCardPayment(data.clientSecret, {
+      const { error: confirmError } = await stripe.confirmCardPayment(data.client_secret, {
         payment_method: paymentMethod.id,
       });
 
