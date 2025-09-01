@@ -88,7 +88,7 @@ export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({
         : type === "ticket_list"
         ? { ...(base as TicketListBlock), showCode: true, showPrice: true }
         : type === "button"
-        ? { ...(base as ButtonBlock), label: "View Order", url: "/payment-success?orderId={{ORDER_ID}}", align: "center" }
+        ? { ...(base as ButtonBlock), label: "View Tickets", url: "/tickets?orderId={{ORDER_ID}}&email={{CUSTOMER_EMAIL}}", align: "center" }
         : type === "divider"
         ? ({ ...(base as DividerBlock) } as DividerBlock)
         : type === "image"
