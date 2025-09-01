@@ -117,6 +117,9 @@ const OrgDashboard = () => {
     eventTypesData: [],
     revenueData: []
   });
+  
+  // Order data for custom answers
+  const [orderData, setOrderData] = useState<any[]>([]);
 
   // Listen for help requests from child components
   React.useEffect(() => {
@@ -387,6 +390,7 @@ const OrgDashboard = () => {
         created_at, 
         event_id,
         status,
+        custom_answers,
         events(name),
         order_items(
           quantity,
@@ -398,6 +402,9 @@ const OrgDashboard = () => {
     
     console.log("Orders found:", orderData?.length || 0);
     console.log("Sample order data:", orderData?.[0]);
+    
+    // Set order data for custom answers display
+    setOrderData(orderData || []);
     
     // Get ticket data - tickets are related to orders, orders are related to events
     const { data: ticketData } = await supabase
@@ -716,6 +723,45 @@ const OrgDashboard = () => {
                       revenueData={analyticsData.revenueData}
                       isLoading={false}
                     />
+                  )}
+
+                  {/* Custom Answers Analytics */}
+                  {canAccessAnalytics() && orderData && orderData.length > 0 && (
+                    <Card className="border-gray-200/60 shadow-sm">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="font-manrope font-semibold text-lg text-gray-900">Customer Responses</CardTitle>
+                        <CardDescription className="font-manrope text-sm text-gray-600">Custom questions and answers from ticket buyers</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {orderData
+                            .filter(order => order.custom_answers && Object.keys(order.custom_answers).length > 0)
+                            .map((order, index) => (
+                              <div key={order.id} className="border border-gray-200 rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <h4 className="font-manrope font-medium text-sm text-gray-900">
+                                    Order #{order.id.slice(0, 8)} - {order.events?.name}
+                                  </h4>
+                                  <span className="text-xs text-gray-500">
+                                    {new Date(order.created_at).toLocaleDateString()}
+                                  </span>
+                                </div>
+                                <div className="space-y-2">
+                                  {Object.entries(order.custom_answers).map(([question, answer]) => (
+                                    <div key={question} className="text-sm">
+                                      <span className="font-medium text-gray-700">{question}:</span>
+                                      <span className="ml-2 text-gray-600">{answer as string}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          {orderData.filter(order => order.custom_answers && Object.keys(order.custom_answers).length > 0).length === 0 && (
+                            <p className="text-center text-gray-500 py-4">No custom questions have been answered yet.</p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
                   )}
 
                   <Card className="border-gray-200/60 shadow-sm">
