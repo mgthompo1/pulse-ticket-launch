@@ -318,23 +318,29 @@ Deno.serve(async (req) => {
             parts.push(`<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px;">
               <strong style="color:${theme.textColor}">${order.events.name}</strong>
               <div style="color:${theme.textColor};font-size:14px;line-height:1.6;margin-top:16px;">
-                <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;border-left:3px solid ${theme.buttonColor};">
-                  <div style="background:${theme.buttonColor};color:white;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;font-size:14px;font-weight:bold;font-family:Arial,sans-serif;">📅</div>
-                  <div style="flex:1;">
+                <div style="margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;border-left:3px solid ${theme.buttonColor};display:table;width:100%;">
+                  <div style="display:table-cell;vertical-align:middle;width:32px;padding-right:12px;">
+                    <div style="background:${theme.buttonColor};color:white;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;font-family:Arial,sans-serif;">📅</div>
+                  </div>
+                  <div style="display:table-cell;vertical-align:middle;">
                     <div style="font-weight:600;color:${theme.textColor};margin-bottom:2px;">${new Date(order.events.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                     <div style="color:${theme.textColor}CC;font-size:13px;">${new Date(order.events.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
                   </div>
                 </div>
-                <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;border-left:3px solid ${theme.buttonColor};">
-                  <div style="background:${theme.buttonColor};color:white;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;font-size:14px;font-weight:bold;font-family:Arial,sans-serif;">📍</div>
-                  <div style="flex:1;">
+                <div style="margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;border-left:3px solid ${theme.buttonColor};display:table;width:100%;">
+                  <div style="display:table-cell;vertical-align:middle;width:32px;padding-right:12px;">
+                    <div style="background:${theme.buttonColor};color:white;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;font-family:Arial,sans-serif;">📍</div>
+                  </div>
+                  <div style="display:table-cell;vertical-align:middle;">
                     <div style="color:${theme.textColor}88;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Venue</div>
                     <div style="font-weight:600;color:${theme.textColor};">${order.events.venue || 'TBA'}</div>
                   </div>
                 </div>
-                <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;border-left:3px solid ${theme.buttonColor};">
-                  <div style="background:${theme.buttonColor};color:white;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;font-size:14px;font-weight:bold;font-family:Arial,sans-serif;">👤</div>
-                  <div style="flex:1;">
+                <div style="margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;border-left:3px solid ${theme.buttonColor};display:table;width:100%;">
+                  <div style="display:table-cell;vertical-align:middle;width:32px;padding-right:12px;">
+                    <div style="background:${theme.buttonColor};color:white;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;font-family:Arial,sans-serif;">👤</div>
+                  </div>
+                  <div style="display:table-cell;vertical-align:middle;">
                     <div style="color:${theme.textColor}88;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Attendee</div>
                     <div style="font-weight:600;color:${theme.textColor};">${order.customer_name}</div>
                   </div>
@@ -392,7 +398,7 @@ Deno.serve(async (req) => {
             
             // Default VIEW TICKETS button to a dedicated tickets page if no URL specified
             if (b.label?.toLowerCase().includes('ticket') && (!buttonUrl || buttonUrl === '#')) {
-              buttonUrl = `/tickets?orderId=${orderId}&email=${encodeURIComponent(order.customer_email)}`;
+              buttonUrl = `https://app.ticketflo.com/tickets?orderId=${orderId}&email=${encodeURIComponent(order.customer_email)}`;
             }
             
             // Convert relative URLs to absolute URLs for email compatibility
