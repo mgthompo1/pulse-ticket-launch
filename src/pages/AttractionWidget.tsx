@@ -31,6 +31,7 @@ interface AttractionData {
   attraction_type: string;
   duration_minutes: number;
   base_price: number;
+  max_concurrent_bookings: number;
   logo_url: string | null;
   widget_customization: any;
   organization_id: string;
@@ -190,31 +191,7 @@ const AttractionWidget = () => {
     return typeLabels[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  const getAttractionTypeEmoji = (type: string) => {
-    const typeEmojis: Record<string, string> = {
-      'golf_simulator': '⛳',
-      'karaoke_room': '🎤',
-      'tour': '🗺️',
-      'workshop': '🔧',
-      'escape_room': '🚪',
-      'arcade': '🕹️',
-      'playground': '🎠',
-      'trampoline_park': '🦘',
-      'climbing_wall': '🧗',
-      'laser_tag': '🎯',
-      'mini_golf': '🏌️',
-      'bowling': '🎳',
-      'cinema': '🎬',
-      'museum': '🏛️',
-      'zoo': '🦁',
-      'aquarium': '🐠',
-      'theme_park': '🎢',
-      'water_park': '🌊',
-      'ski_resort': '⛷️',
-      'adventure_park': '🎯'
-    };
-    return typeEmojis[type] || '📍';
-  };
+
 
   if (loading) {
     return (
@@ -282,100 +259,91 @@ const AttractionWidget = () => {
         }}
       >
       <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Hero Section - Optimized for conversion */}
-        <div className="relative">
-          {/* Logo - Top right corner */}
-          {(attractionData.logo_url || organizationData?.logo_url) && (
-            <div className="absolute top-0 right-0 z-10">
+        {/* Hero Banner Section - Matching Event Widget Design */}
+        <div className="mb-8">
+          {/* Logo Container - Centered Hero Banner */}
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-8">
               {attractionData.logo_url ? (
                 <img 
                   src={attractionData.logo_url} 
                   alt={`${attractionData.name} Logo`}
-                  className="h-16 md:h-20 object-contain"
+                  className="mx-auto max-h-64 w-auto object-contain rounded-lg shadow-lg"
                 />
-              ) : organizationData?.logo_url ? (
-                <img 
-                  src={organizationData.logo_url} 
-                  alt={`${organizationData.name} Logo`}
-                  className="h-12 md:h-16 object-contain"
-                />
-              ) : null}
-            </div>
-          )}
+              ) : (
+                /* Fallback with attraction icon if no logo */
+                <div className="w-32 h-32 mx-auto bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center">
+                  <MapPin className="h-16 w-16" style={{ color: primaryColor }} />
+                </div>
+              )}
 
-          {/* Hero Content */}
-          <div className="pr-20 md:pr-24 pb-8">
-            <div className="flex items-start gap-4 mb-6">
-              <span className="text-4xl md:text-5xl flex-shrink-0 mt-1">
-                {getAttractionTypeEmoji(attractionData.attraction_type)}
-              </span>
-              <div className="flex-1">
-                <h1 className="text-3xl md:text-5xl font-bold mb-3" style={{ color: headerTextColor }}>
-                  {attractionData.name}
-                </h1>
-                <div className="flex flex-wrap items-center gap-4 mb-4">
-                  <Badge 
-                    className="text-sm px-3 py-1"
-                    style={{ 
-                      backgroundColor: primaryColor,
-                      color: buttonTextColor
-                    }}
-                  >
-                    {getAttractionTypeLabel(attractionData.attraction_type)}
-                  </Badge>
+
+            </div>
+          </div>
+
+          {/* Text Container - Left Aligned */}
+          <div className="max-w-4xl">
+            <div className="space-y-6 text-left max-w-2xl">
+              {/* Attraction Name */}
+              <h1 className="text-3xl md:text-4xl font-bold leading-tight" style={{ color: headerTextColor }}>
+                {attractionData.name}
+              </h1>
+
+              {/* Attraction Details - Horizontal Layout */}
+              <div className="space-y-3">
+                {/* Main attraction details in one line */}
+                <div className="flex flex-wrap items-center gap-3 text-base" style={{ color: bodyTextColor }}>
+                  {/* Duration */}
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-4 w-4" style={{ color: primaryColor }} />
+                    <span className="font-medium">{attractionData.duration_minutes} minutes</span>
+                  </div>
+
+                  {/* Venue */}
                   {attractionData.venue && (
-                    <div className="flex items-center gap-2" style={{ color: bodyTextColor }}>
-                      <MapPin className="h-4 w-4" />
-                      <span className="text-sm">{attractionData.venue}</span>
-                    </div>
+                    <>
+                      <div className="hidden sm:block w-px h-3 bg-gray-300"></div>
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="h-4 w-4" style={{ color: primaryColor }} />
+                        <span className="font-medium">{attractionData.venue}</span>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Organization */}
+                  {organizationData?.name && (
+                    <>
+                      <div className="hidden sm:block w-px h-3 bg-gray-300"></div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: primaryColor }}>
+                          <span className="text-xs text-white font-bold">H</span>
+                        </div>
+                        <span><span className="font-medium">{organizationData.name}</span></span>
+                      </div>
+                    </>
                   )}
                 </div>
-                {attractionData.description && (
-                  <p className="text-lg leading-relaxed mb-6" style={{ color: bodyTextColor }}>
-                    {attractionData.description}
-                  </p>
-                )}
-              </div>
-            </div>
 
-            {/* Key Info Bar - Horizontal layout for better scanning */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div className="flex items-center gap-3 p-4 rounded-lg" style={{ backgroundColor: primaryColor + '10' }}>
-                <DollarSign className="h-6 w-6 flex-shrink-0" style={{ color: primaryColor }} />
-                <div>
-                  <p className="text-xs" style={{ color: bodyTextColor }}>From</p>
-                  <p className="text-xl font-bold" style={{ color: primaryColor }}>
-                    ${attractionData.base_price}
-                  </p>
+                {/* Price and Group Size - Below the main line */}
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-1.5">
+                    <DollarSign className="h-4 w-4" style={{ color: primaryColor }} />
+                    <span className="font-medium">From ${attractionData.base_price}</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-1.5">
+                    <Users className="h-4 w-4" style={{ color: primaryColor }} />
+                    <span className="font-medium">Up to {attractionData.max_concurrent_bookings} people</span>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 p-4 rounded-lg" style={{ backgroundColor: primaryColor + '10' }}>
-                <Clock className="h-6 w-6 flex-shrink-0" style={{ color: primaryColor }} />
-                <div>
-                  <p className="text-xs" style={{ color: bodyTextColor }}>Duration</p>
-                  <p className="text-lg font-semibold" style={{ color: headerTextColor }}>
-                    {attractionData.duration_minutes}min
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-4 rounded-lg" style={{ backgroundColor: primaryColor + '10' }}>
-                <Users className="h-6 w-6 flex-shrink-0" style={{ color: primaryColor }} />
-                <div>
-                  <p className="text-xs" style={{ color: bodyTextColor }}>Group Size</p>
-                  <p className="text-lg font-semibold" style={{ color: headerTextColor }}>
-                    Any Size
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-4 rounded-lg" style={{ backgroundColor: primaryColor + '10' }}>
-                <CheckCircle className="h-6 w-6 flex-shrink-0" style={{ color: primaryColor }} />
-                <div>
-                  <p className="text-xs" style={{ color: bodyTextColor }}>Status</p>
-                  <p className="text-lg font-semibold" style={{ color: primaryColor }}>
-                    Available
-                  </p>
-                </div>
-              </div>
+
+              {/* Description */}
+              {attractionData.description && (
+                <p className="text-lg leading-relaxed" style={{ color: bodyTextColor }}>
+                  {attractionData.description}
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -394,10 +362,10 @@ const AttractionWidget = () => {
               {!showBooking ? (
                 <div className="text-center">
                   <h2 className="text-2xl font-bold mb-4" style={{ color: headerTextColor }}>
-                    Ready to Book Your Experience?
+                    {attractionData.widget_customization?.booking?.title || "Ready to Book Your Experience?"}
                   </h2>
                   <p className="text-lg mb-6" style={{ color: bodyTextColor }}>
-                    Choose your preferred date and time • Instant confirmation • Secure payment
+                    {attractionData.widget_customization?.booking?.description || "Choose your preferred date and time • Instant confirmation • Secure payment"}
                   </p>
                   <Button 
                     onClick={() => setShowBooking(true)}
@@ -409,7 +377,7 @@ const AttractionWidget = () => {
                     }}
                   >
                     <Calendar className="h-6 w-6 mr-3" />
-                    Book Now - From ${attractionData.base_price}
+                    {attractionData.widget_customization?.booking?.buttonText || `Book Now - From $${attractionData.base_price}`}
                   </Button>
                 </div>
               ) : (
@@ -448,25 +416,20 @@ const AttractionWidget = () => {
             <CardContent className="p-6">
               <h3 className="text-xl font-semibold mb-6 flex items-center gap-3" style={{ color: headerTextColor }}>
                 <Star className="h-6 w-6" style={{ color: primaryColor }} />
-                What to Expect
+                {attractionData.widget_customization?.expectations?.title || "What to Expect"}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: primaryColor }}></div>
-                  <p style={{ color: bodyTextColor }}>Arrive 15 minutes early for check-in and brief orientation</p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: primaryColor }}></div>
-                  <p style={{ color: bodyTextColor }}>All equipment and safety gear provided on-site</p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: primaryColor }}></div>
-                  <p style={{ color: bodyTextColor }}>Comfortable clothing and closed-toe shoes recommended</p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: primaryColor }}></div>
-                  <p style={{ color: bodyTextColor }}>Professional staff assistance available throughout</p>
-                </div>
+                {(attractionData.widget_customization?.expectations?.items || [
+                  "Arrive 15 minutes early for check-in and brief orientation",
+                  "All equipment and safety gear provided on-site",
+                  "Comfortable clothing and closed-toe shoes recommended",
+                  "Professional staff assistance available throughout"
+                ]).map((item: string, index: number) => (
+                  <div key={index} className="flex items-start gap-3">
+                    <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: primaryColor }}></div>
+                    <p style={{ color: bodyTextColor }}>{item}</p>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -483,7 +446,14 @@ const AttractionWidget = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <MapPin className="h-6 w-6" style={{ color: primaryColor }} />
+                    {/* Organization Logo */}
+                    {organizationData.logo_url && (
+                      <img 
+                        src={organizationData.logo_url} 
+                        alt={`${organizationData.name} Logo`}
+                        className="h-12 w-12 object-contain rounded-lg"
+                      />
+                    )}
                     <div>
                       <p className="font-semibold text-lg" style={{ color: headerTextColor }}>
                         {organizationData.name}

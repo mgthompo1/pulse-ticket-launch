@@ -27,6 +27,7 @@ import FacebookCallback from "./pages/FacebookCallback";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import Contact from "./pages/Contact";
 import Support from "./pages/Support";
+import Tickets from "./pages/Tickets";
 import NotFound from "./pages/NotFound";
 import { InvitationPasswordSetup } from "./components/InvitationPasswordSetup";
 import { InvitationAcceptance } from "./components/InvitationAcceptance";
@@ -60,6 +61,7 @@ const App = () => (
             <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/tickets" element={<Tickets />} />
             <Route path="/invite" element={<InvitationAcceptance />} />
             <Route path="/invitation-setup" element={<InvitationPasswordSetup />} />
             

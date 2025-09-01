@@ -55,7 +55,7 @@ const CalendarBookingSystem: React.FC<CalendarBookingSystemProps> = ({
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedResource, setSelectedResource] = useState<string>("all");
+  const [selectedResource, setSelectedResource] = useState<string>("");
   const [bookingSlots, setBookingSlots] = useState<BookingSlot[]>([]);
   const [resources, setResources] = useState<AttractionResource[]>([]);
   
@@ -86,6 +86,11 @@ const CalendarBookingSystem: React.FC<CalendarBookingSystemProps> = ({
       if (error) throw error;
 
       setResources(data || []);
+      
+      // Set first resource as default if none selected
+      if ((!selectedResource || selectedResource === "") && data && data.length > 0) {
+        setSelectedResource(data[0].id);
+      }
     } catch (error) {
       console.error("Error loading resources:", error);
     }
@@ -102,7 +107,7 @@ const CalendarBookingSystem: React.FC<CalendarBookingSystemProps> = ({
         .lt("start_time", `${selectedDate}T23:59:59`)
         .order("start_time");
 
-      if (selectedResource !== "all") {
+      if (selectedResource && selectedResource !== "all") {
         query = query.eq("resource_id", selectedResource);
       }
 
@@ -124,10 +129,10 @@ const CalendarBookingSystem: React.FC<CalendarBookingSystemProps> = ({
   };
 
   const createBulkSlots = async () => {
-    if (!bulkCreateForm.startDate || !bulkCreateForm.endDate || !bulkCreateForm.startTime || !bulkCreateForm.endTime) {
+    if (!bulkCreateForm.startDate || !bulkCreateForm.endDate || !bulkCreateForm.startTime || !bulkCreateForm.endTime || !bulkCreateForm.resourceId) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields including selecting a specific resource",
         variant: "destructive"
       });
       return;
@@ -156,13 +161,11 @@ const CalendarBookingSystem: React.FC<CalendarBookingSystemProps> = ({
           if (slotEndTime <= dayEndTime) {
             slotsToCreate.push({
               attraction_id: attractionId,
-              resource_id: bulkCreateForm.resourceId || null,
+              resource_id: bulkCreateForm.resourceId, // Always requires a specific resource
               start_time: currentTime.toISOString(),
               end_time: slotEndTime.toISOString(),
               status: 'available',
-              max_capacity: bulkCreateForm.resourceId 
-                ? resources.find(r => r.id === bulkCreateForm.resourceId)?.capacity || 1
-                : attractionData.max_concurrent_bookings,
+              max_capacity: resources.find(r => r.id === bulkCreateForm.resourceId)?.capacity || 1,
               current_bookings: 0,
               price_override: bulkCreateForm.priceOverride ? parseFloat(bulkCreateForm.priceOverride) : null
             });
@@ -377,16 +380,15 @@ const CalendarBookingSystem: React.FC<CalendarBookingSystemProps> = ({
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Resource (Optional)</Label>
+              <Label>Resource (Required) *</Label>
               <Select
-                value={bulkCreateForm.resourceId || "any"}
-                onValueChange={(value) => setBulkCreateForm(prev => ({ ...prev, resourceId: value === "any" ? "" : value }))}
+                value={bulkCreateForm.resourceId}
+                onValueChange={(value) => setBulkCreateForm(prev => ({ ...prev, resourceId: value }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Any resource" />
+                  <SelectValue placeholder="Select a specific resource" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="any">Any Resource</SelectItem>
                   {resources.map(resource => (
                     <SelectItem key={resource.id} value={resource.id}>
                       {resource.name} (Capacity: {resource.capacity})
@@ -394,6 +396,11 @@ const CalendarBookingSystem: React.FC<CalendarBookingSystemProps> = ({
                   ))}
                 </SelectContent>
               </Select>
+              {resources.length === 0 && (
+                <p className="text-sm text-muted-foreground text-orange-600">
+                  No resources found. Create resources first in the Resource Manager.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Price Override (Optional)</Label>

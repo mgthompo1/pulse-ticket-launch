@@ -36,7 +36,7 @@ export const AttractionLogoUploader = ({ attractionId, currentLogoUrl, onLogoCha
 
       // Upload to storage
       const { error: uploadError } = await supabase.storage
-        .from('public')
+        .from('event-logos')
         .upload(fileName, file, {
           upsert: true
         });
@@ -45,7 +45,7 @@ export const AttractionLogoUploader = ({ attractionId, currentLogoUrl, onLogoCha
 
       // Get public URL
       const { data } = supabase.storage
-        .from('public')
+        .from('event-logos')
         .getPublicUrl(fileName);
 
       const logoUrl = data.publicUrl;
@@ -82,7 +82,7 @@ export const AttractionLogoUploader = ({ attractionId, currentLogoUrl, onLogoCha
       if (currentLogoUrl) {
         const fileName = `attractions/${attractionId}/logo.${currentLogoUrl.split('.').pop()}`;
         await supabase.storage
-          .from('public')
+          .from('event-logos')
           .remove([fileName]);
       }
 
@@ -144,7 +144,7 @@ export const AttractionLogoUploader = ({ attractionId, currentLogoUrl, onLogoCha
           Attraction Logo & Hero Banner
         </CardTitle>
         <CardDescription>
-          Upload a logo for your attraction that will appear as a hero banner on the booking widget
+          Upload a logo for your attraction that will appear as a hero banner at the top of the booking widget
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -177,7 +177,7 @@ export const AttractionLogoUploader = ({ attractionId, currentLogoUrl, onLogoCha
               />
             </div>
             <div className="text-sm text-muted-foreground">
-              <p>This logo will appear as a hero banner at the top of your booking widget, similar to event widgets.</p>
+              <p>This logo will appear as a hero banner at the top of your booking widget. The organization logo will appear in the contact section at the bottom.</p>
             </div>
           </div>
         ) : (
@@ -194,7 +194,7 @@ export const AttractionLogoUploader = ({ attractionId, currentLogoUrl, onLogoCha
             <Upload className="w-10 h-10 mx-auto mb-4 text-muted-foreground" />
             <p className="text-lg font-medium mb-2">Upload Attraction Logo</p>
             <p className="text-sm text-muted-foreground mb-4">
-              Drag and drop an image file here, or click to select. This will appear as a hero banner.
+              Drag and drop an image file here, or click to select. This will appear as a hero banner at the top of your booking widget.
             </p>
             <div className="space-y-2">
               <Label htmlFor="logo-upload">

@@ -571,6 +571,8 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
           )}
         </CardContent>
       </Card>
+
+
     </div>
   );
 };

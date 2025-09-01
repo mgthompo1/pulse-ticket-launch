@@ -319,21 +319,21 @@ Deno.serve(async (req) => {
               <strong style="color:${theme.textColor}">${order.events.name}</strong>
               <div style="color:${theme.textColor};font-size:14px;line-height:1.6;margin-top:16px;">
                 <div style="display:flex;align-items:flex-start;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;border-left:3px solid ${theme.buttonColor};">
-                  <div style="background:${theme.buttonColor};color:white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;font-size:14px;">🗓</div>
+                  <div style="background:${theme.buttonColor};color:white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;font-size:12px;font-weight:bold;">📅</div>
                   <div style="flex:1;">
                     <div style="font-weight:600;color:${theme.textColor};margin-bottom:2px;">${new Date(order.events.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                     <div style="color:${theme.textColor}CC;font-size:13px;">${new Date(order.events.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
                   </div>
                 </div>
                 <div style="display:flex;align-items:flex-start;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;border-left:3px solid ${theme.buttonColor};">
-                  <div style="background:${theme.buttonColor};color:white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;font-size:14px;">📍</div>
+                  <div style="background:${theme.buttonColor};color:white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;font-size:12px;font-weight:bold;">📍</div>
                   <div style="flex:1;">
                     <div style="color:${theme.textColor}88;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Venue</div>
                     <div style="font-weight:600;color:${theme.textColor};">${order.events.venue || 'TBA'}</div>
                   </div>
                 </div>
                 <div style="display:flex;align-items:flex-start;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;border-left:3px solid ${theme.buttonColor};">
-                  <div style="background:${theme.buttonColor};color:white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;font-size:14px;">👤</div>
+                  <div style="background:${theme.buttonColor};color:white;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;font-size:12px;font-weight:bold;">👤</div>
                   <div style="flex:1;">
                     <div style="color:${theme.textColor}88;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Attendee</div>
                     <div style="font-weight:600;color:${theme.textColor};">${order.customer_name}</div>
@@ -390,9 +390,9 @@ Deno.serve(async (req) => {
               buttonUrl = buttonUrl.replace(/\{\{CUSTOMER_EMAIL\}\}/g, encodeURIComponent(order.customer_email));
             }
             
-            // Default VIEW TICKETS button to payment success page if no URL specified
+            // Default VIEW TICKETS button to a dedicated tickets page if no URL specified
             if (b.label?.toLowerCase().includes('ticket') && (!buttonUrl || buttonUrl === '#')) {
-              buttonUrl = `/payment-success?orderId=${orderId}`;
+              buttonUrl = `/tickets?orderId=${orderId}&email=${encodeURIComponent(order.customer_email)}`;
             }
             
             // Convert relative URLs to absolute URLs for email compatibility
@@ -443,21 +443,21 @@ Deno.serve(async (req) => {
           </div>
           <div style="display:flex;flex-direction:column;gap:8px;color:#111827;">
             <div style="display:flex;align-items:center;margin:8px 0;padding:8px;background:#f8fafc;border-radius:6px;">
-              <div style="background:#4f46e5;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin-right:10px;flex-shrink:0;font-size:12px;">🗓</div>
+              <div style="background:#4f46e5;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin-right:10px;flex-shrink:0;font-size:10px;font-weight:bold;">📅</div>
               <div style="flex:1;">
                 <div style="font-weight:600;color:#111827;">${new Date(order.events.event_date).toLocaleDateString(undefined,{ weekday:'long', month:'long', day:'numeric', year:'numeric'})}</div>
                 <div style="font-size:12px;color:#6b7280;">${new Date(order.events.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit'})}</div>
               </div>
             </div>
             <div style="display:flex;align-items:center;margin:8px 0;padding:8px;background:#f8fafc;border-radius:6px;">
-              <div style="background:#4f46e5;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin-right:10px;flex-shrink:0;font-size:12px;">🎫</div>
+              <div style="background:#4f46e5;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin-right:10px;flex-shrink:0;font-size:10px;font-weight:bold;">🎫</div>
               <div style="flex:1;">
                 <div style="font-weight:600;color:#111827;">${t.type}</div>
                 <div style="font-size:12px;color:#6b7280;">Ticket Type</div>
               </div>
             </div>
             <div style="display:flex;align-items:center;margin:8px 0;padding:8px;background:#f8fafc;border-radius:6px;">
-              <div style="background:#4f46e5;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin-right:10px;flex-shrink:0;font-size:12px;">👤</div>
+              <div style="background:#4f46e5;color:white;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin-right:10px;flex-shrink:0;font-size:10px;font-weight:bold;">👤</div>
               <div style="flex:1;">
                 <div style="font-weight:600;color:#111827;">${order.customer_name}</div>
                 <div style="font-size:12px;color:#6b7280;">Attendee</div>

@@ -155,7 +155,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
         {/* Text Container with Button - Using container width to match main content */}
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6 text-left ml-4">
+            <div className="lg:col-span-2 space-y-6 text-left">
               {/* Event Name */}
               <h1 className="text-3xl md:text-4xl font-bold leading-tight" style={{ color: theme.headerTextColor }}>
                 {eventData.name}

@@ -22,7 +22,8 @@ import {
   Users,
   Save,
   Upload,
-  Eye
+  Eye,
+  Star
 } from "lucide-react";
 import { EmailTemplateBuilder } from "./EmailTemplateBuilder";
 import { EmailTemplatePreview } from "./EmailTemplatePreview";
@@ -104,6 +105,25 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
       show_description: true,
       show_duration: true,
       show_price: true
+    },
+    booking: {
+      title: "Ready to Book Your Experience?",
+      description: "Choose your preferred date and time • Instant confirmation • Secure payment",
+      buttonText: "Book Now - From $40"
+    },
+    expectations: {
+      title: "What to Expect",
+      items: [
+        "Arrive 15 minutes early for check-in and brief orientation",
+        "All equipment and safety gear provided on-site",
+        "Comfortable clothing and closed-toe shoes recommended",
+        "Professional staff assistance available throughout"
+      ]
+    },
+    resourceSelection: {
+      label: "Select Resource (Optional)",
+      placeholder: "Any available resource",
+      anyOption: "Any Available Resource"
     }
   });
 
@@ -219,7 +239,19 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
         if (data.widget_customization) {
           setWidgetCustomization(prev => ({
             ...prev,
-            ...data.widget_customization
+            ...data.widget_customization,
+            booking: {
+              ...prev.booking,
+              ...(data.widget_customization as any)?.booking
+            },
+            expectations: {
+              ...prev.expectations,
+              ...(data.widget_customization as any)?.expectations
+            },
+            resourceSelection: {
+              ...prev.resourceSelection,
+              ...(data.widget_customization as any)?.resourceSelection
+            }
           }));
         }
 
@@ -470,23 +502,24 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
                         )}
                       </div>
                       
-                      <div className="max-w-2xl mx-auto text-center">
+                      <div className="max-w-2xl mx-auto text-left">
                         <h1 className="text-3xl font-bold text-gray-900 mb-4">
                           {attractionData?.name}
                         </h1>
-                        <p className="text-gray-600 mb-4">
-                          {attractionData?.description || "Book your session now"}
-                        </p>
-                        <div className="flex items-center justify-center gap-4 text-sm text-gray-500">
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            <span>{attractionData?.duration_minutes} min</span>
+                        <div className="flex flex-wrap items-center gap-3 text-base text-gray-600 mb-4">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="h-4 w-4 text-blue-600" />
+                            <span className="font-medium">{attractionData?.duration_minutes} minutes</span>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <DollarSign className="h-4 w-4" />
-                            <span>From ${attractionData?.base_price}</span>
+                          <div className="hidden sm:block w-px h-3 bg-gray-300"></div>
+                          <div className="flex items-center gap-1.5">
+                            <DollarSign className="h-4 w-4 text-blue-600" />
+                            <span className="font-medium">From ${attractionData?.base_price}</span>
                           </div>
                         </div>
+                        <p className="text-gray-600">
+                          {attractionData?.description || "Book your session now"}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -596,6 +629,153 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
                     </div>
                   </div>
                 </div>
+
+                <div className="pt-4 border-t">
+                  <h4 className="font-medium mb-3">Booking Card Text</h4>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label>Card Title</Label>
+                      <Input
+                        value={widgetCustomization.booking.title}
+                        onChange={(e) => setWidgetCustomization(prev => ({
+                          ...prev,
+                          booking: { ...prev.booking, title: e.target.value }
+                        }))}
+                        placeholder="Ready to Book Your Experience?"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Card Description</Label>
+                      <Textarea
+                        value={widgetCustomization.booking.description}
+                        onChange={(e) => setWidgetCustomization(prev => ({
+                          ...prev,
+                          booking: { ...prev.booking, description: e.target.value }
+                        }))}
+                        placeholder="Choose your preferred date and time • Instant confirmation • Secure payment"
+                        rows={2}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Button Text</Label>
+                      <Input
+                        value={widgetCustomization.booking.buttonText}
+                        onChange={(e) => setWidgetCustomization(prev => ({
+                          ...prev,
+                          booking: { ...prev.booking, buttonText: e.target.value }
+                        }))}
+                        placeholder="Book Now - From $40"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <h4 className="font-medium mb-3">What to Expect Section</h4>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label>Section Title</Label>
+                      <Input
+                        value={widgetCustomization.expectations.title}
+                        onChange={(e) => setWidgetCustomization(prev => ({
+                          ...prev,
+                          expectations: { ...prev.expectations, title: e.target.value }
+                        }))}
+                        placeholder="What to Expect"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Expectation Items</Label>
+                      <div className="space-y-2">
+                        {widgetCustomization.expectations.items.map((item, index) => (
+                          <div key={index} className="flex gap-2">
+                            <Input
+                              value={item}
+                              onChange={(e) => {
+                                const newItems = [...widgetCustomization.expectations.items];
+                                newItems[index] = e.target.value;
+                                setWidgetCustomization(prev => ({
+                                  ...prev,
+                                  expectations: { ...prev.expectations, items: newItems }
+                                }));
+                              }}
+                              placeholder={`Expectation ${index + 1}`}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const newItems = widgetCustomization.expectations.items.filter((_, i) => i !== index);
+                                setWidgetCustomization(prev => ({
+                                  ...prev,
+                                  expectations: { ...prev.expectations, items: newItems }
+                                }));
+                              }}
+                              className="px-2"
+                            >
+                              ×
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const newItems = [...widgetCustomization.expectations.items, ""];
+                            setWidgetCustomization(prev => ({
+                              ...prev,
+                              expectations: { ...prev.expectations, items: newItems }
+                            }));
+                          }}
+                          className="w-full"
+                        >
+                          + Add Item
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t">
+                  <h4 className="font-medium mb-3">Resource Selection Text</h4>
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <Label>Selection Label</Label>
+                      <Input
+                        value={widgetCustomization.resourceSelection.label}
+                        onChange={(e) => setWidgetCustomization(prev => ({
+                          ...prev,
+                          resourceSelection: { ...prev.resourceSelection, label: e.target.value }
+                        }))}
+                        placeholder="Select Resource (Optional)"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Placeholder Text</Label>
+                      <Input
+                        value={widgetCustomization.resourceSelection.placeholder}
+                        onChange={(e) => setWidgetCustomization(prev => ({
+                          ...prev,
+                          resourceSelection: { ...prev.resourceSelection, placeholder: e.target.value }
+                        }))}
+                        placeholder="Any available resource"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>"Any Available" Option Text</Label>
+                      <Input
+                        value={widgetCustomization.resourceSelection.anyOption}
+                        onChange={(e) => setWidgetCustomization(prev => ({
+                          ...prev,
+                          resourceSelection: { ...prev.resourceSelection, anyOption: e.target.value }
+                        }))}
+                        placeholder="Any Available Resource"
+                      />
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
             
@@ -615,6 +795,39 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
                       <Eye className="h-4 w-4 mr-2" />
                       Open Full Preview
                     </Button>
+                  </div>
+                </div>
+                
+                {/* Expectations Preview */}
+                <div className="mt-4 border rounded-lg p-4 bg-white">
+                  <h4 className="font-medium mb-3 text-sm">Expectations Preview:</h4>
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <Star className="h-4 w-4 text-blue-600" />
+                    {widgetCustomization.expectations.title}
+                  </h3>
+                  <div className="grid grid-cols-1 gap-2">
+                    {widgetCustomization.expectations.items.filter(item => item.trim()).map((item, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0 bg-blue-600"></div>
+                        <p className="text-sm text-gray-600">{item}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Resource Selection Preview */}
+                <div className="mt-4 border rounded-lg p-4 bg-white">
+                  <h4 className="font-medium mb-3 text-sm">Resource Selection Preview:</h4>
+                  <div className="space-y-2">
+                    <div className="text-sm">
+                      <strong>Label:</strong> {widgetCustomization.resourceSelection.label}
+                    </div>
+                    <div className="text-sm">
+                      <strong>Placeholder:</strong> {widgetCustomization.resourceSelection.placeholder}
+                    </div>
+                    <div className="text-sm">
+                      <strong>Any Option:</strong> {widgetCustomization.resourceSelection.anyOption}
+                    </div>
                   </div>
                 </div>
                 

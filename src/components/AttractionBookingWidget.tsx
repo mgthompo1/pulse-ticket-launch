@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -85,6 +86,7 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
   const [windcaveSessionData, setWindcaveSessionData] = useState<any>(null);
 
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
   
   const [attractionData, setAttractionData] = useState<AttractionData | null>(null);
@@ -709,6 +711,7 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
       }
 
       setBookingStep('confirmation');
+      setShowBookingModal(false);
       toast({
         title: "Payment Successful!",
         description: "Your booking has been confirmed!"
@@ -1039,11 +1042,15 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
                             disabled={isPast(date)}
                             className={`
                               h-10 w-10 rounded-lg text-sm font-medium transition-colors
-                              ${isToday(date) ? 'bg-blue-100 text-blue-700' : ''}
-                              ${isSelected(date) ? 'bg-blue-600 text-white' : ''}
+                              ${isSelected(date) ? 'text-white' : ''}
                               ${isPast(date) ? 'text-gray-300 cursor-not-allowed' : 'hover:bg-gray-100 cursor-pointer'}
                               ${!isToday(date) && !isSelected(date) && !isPast(date) ? 'text-gray-700' : ''}
                             `}
+                            style={{
+                              backgroundColor: isSelected(date) ? '#6B7280' : 
+                                isToday(date) ? primaryColor + '20' : undefined,
+                              color: isToday(date) && !isSelected(date) ? primaryColor : undefined
+                            }}
                           >
                             {date.getDate()}
                           </button>
@@ -1121,7 +1128,9 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
               {/* Resource Selection */}
                             {resources.length > 0 && (
                 <div className="space-y-2">
-                  <Label>Select {getResourceLabel()} (Optional)</Label>
+                  <Label>
+                    {attractionData.widget_customization?.resourceSelection?.label || `Select ${getResourceLabel()} (Optional)`}
+                  </Label>
                   <Select
                     value={bookingForm.selectedResourceId || "any"}
                     onValueChange={(value) => setBookingForm(prev => ({
@@ -1131,10 +1140,15 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
                     }))}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={`Any available ${getResourceLabel().toLowerCase()}`} />
+                      <SelectValue placeholder={
+                        attractionData.widget_customization?.resourceSelection?.placeholder || 
+                        `Any available ${getResourceLabel().toLowerCase()}`
+                      } />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="any">Any Available {getResourceLabel()}</SelectItem>
+                      <SelectItem value="any">
+                        {attractionData.widget_customization?.resourceSelection?.anyOption || `Any Available ${getResourceLabel()}`}
+                      </SelectItem>
                       {resources.map(resource => (
                         <SelectItem key={resource.id} value={resource.id}>
                           {resource.name} (Capacity: {resource.capacity})
@@ -1256,13 +1270,7 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
                 <Button 
                   className="w-full mt-4"
                   style={{ backgroundColor: primaryColor, color: buttonTextColor }}
-                  onClick={() => {
-                    // Scroll to customer details form
-                    const detailsForm = document.getElementById('customer-details-form');
-                    if (detailsForm) {
-                      detailsForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                  }}
+                  onClick={() => setShowBookingModal(true)}
                 >
                   Continue to Details
                 </Button>
@@ -1324,9 +1332,15 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
                         }))}
                         className={`group relative p-4 border-2 rounded-lg text-center transition-all duration-200 hover:scale-102 ${
                           bookingForm.selectedSlotId === slot.id
-                            ? 'border-blue-500 bg-blue-500 text-white shadow-lg' 
-                            : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md hover:bg-blue-50'
+                            ? 'text-white shadow-lg' 
+                            : 'border-gray-200 bg-white hover:shadow-md'
                         }`}
+                        style={{
+                          borderColor: bookingForm.selectedSlotId === slot.id ? '#6B7280' : undefined,
+                          backgroundColor: bookingForm.selectedSlotId === slot.id ? '#6B7280' : undefined,
+                          '--hover-border-color': primaryColor + '40',
+                          '--hover-bg-color': primaryColor + '10'
+                        } as React.CSSProperties}
                       >
                         {/* Clean Time Display - Humanitix Style */}
                         <div className="space-y-2">
@@ -1379,19 +1393,21 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
           </Card>
       )}
 
-      {/* Customer Details Form - Now part of booking step */}
-      {bookingStep === 'booking' && bookingForm.selectedSlotId && (
-        <Card id="customer-details-form" className={`scroll-mt-8 ${compact ? '' : 'mx-4'}`}>
-          <CardHeader>
-            <CardTitle className="text-xl font-bold">Complete Your Booking</CardTitle>
-            <p className="text-gray-600">Just a few details and you're all set</p>
-          </CardHeader>
-          <CardContent className="space-y-6">
+      {/* Booking Modal */}
+      <Dialog open={showBookingModal} onOpenChange={setShowBookingModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Complete Your Booking</DialogTitle>
+            <DialogDescription>Just a few details and you're all set</DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Customer Details Form */}
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name *</Label>
+                <Label htmlFor="modal-name">Full Name *</Label>
                 <Input
-                  id="name"
+                  id="modal-name"
                   value={bookingForm.customerName}
                   onChange={(e) => setBookingForm(prev => ({ 
                     ...prev, 
@@ -1401,9 +1417,9 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address *</Label>
+                <Label htmlFor="modal-email">Email Address *</Label>
                 <Input
-                  id="email"
+                  id="modal-email"
                   type="email"
                   value={bookingForm.customerEmail}
                   onChange={(e) => setBookingForm(prev => ({ 
@@ -1414,9 +1430,9 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="modal-phone">Phone Number</Label>
                 <Input
-                  id="phone"
+                  id="modal-phone"
                   type="tel"
                   value={bookingForm.customerPhone}
                   onChange={(e) => setBookingForm(prev => ({ 
@@ -1429,9 +1445,9 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="requests">Special Requests (Optional)</Label>
+              <Label htmlFor="modal-requests">Special Requests (Optional)</Label>
               <Input
-                id="requests"
+                id="modal-requests"
                 value={bookingForm.specialRequests}
                 onChange={(e) => setBookingForm(prev => ({ 
                   ...prev, 
@@ -1441,20 +1457,111 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
               />
             </div>
 
-            {/* Enhanced Action Buttons */}
-            <div className="bg-gray-50 -mx-6 -mb-6 p-6 rounded-b-lg border-t">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setBookingForm(prev => ({ ...prev, selectedSlotId: null }))}
-                  className="sm:w-auto"
-                >
-                  ← Back to Times
-                </Button>
+            {/* Payment Section */}
+            {bookingStep === 'payment' && pendingBookingId && (
+              <div className="space-y-4">
+                {/* Booking Summary */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-medium mb-3">Booking Summary</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Attraction:</span>
+                      <span className="font-medium">{attractionData?.name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Date & Time:</span>
+                      <span>{formatDate(bookingForm.selectedDate)} at {selectedSlot && formatTime(selectedSlot.start_time)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Party Size:</span>
+                      <span>{bookingForm.partySize} {bookingForm.partySize === 1 ? 'person' : 'people'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>{getResourceLabel()}:</span>
+                      <span>{getResourceName(selectedSlot?.resource_id || null)}</span>
+                    </div>
+                    <hr className="my-2" />
+                    <div className="flex justify-between font-medium text-lg">
+                      <span>Total:</span>
+                      <span style={{ color: primaryColor }}>${totalPrice.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Form */}
+                {paymentProvider === "stripe" ? (
+                  <AttractionStripePayment
+                    amount={totalPrice}
+                    currency="USD"
+                    description={`Booking for ${attractionData?.name}`}
+                    customerEmail={bookingForm.customerEmail}
+                    customerName={bookingForm.customerName}
+                    onSuccess={handlePaymentSuccess}
+                    onError={(error) => {
+                      console.error('Payment failed:', error);
+                      toast({
+                        title: "Payment Failed",
+                        description: error.message || "Please try again",
+                        variant: "destructive"
+                      });
+                    }}
+                    metadata={{
+                      booking_id: pendingBookingId || '',
+                      booking_slot_id: bookingForm.selectedSlotId || '',
+                      attraction_id: attractionId,
+                      booking_type: 'attraction',
+                      organization_id: attractionData?.organization_id || '',
+                      party_size: bookingForm.partySize.toString(),
+                      special_requests: bookingForm.specialRequests || ''
+                    }}
+                    theme={{
+                      primary: primaryColor,
+                      secondary: primaryColor
+                    }}
+                  />
+                ) : paymentProvider === "windcave" ? (
+                  <div className="space-y-4">
+                    {windcaveSessionData ? (
+                      <div>
+                        <div id="windcave-drop-in" className="min-h-[400px]"></div>
+                        <p className="text-sm text-gray-600 mt-2">
+                          Complete your payment using the secure Windcave payment form above.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="text-center">
+                          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                          <p className="text-sm text-gray-600">Setting up secure payment...</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-red-600">Unsupported payment provider: {paymentProvider}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowBookingModal(false);
+                  setBookingForm(prev => ({ ...prev, selectedSlotId: null }));
+                }}
+                className="sm:w-auto"
+              >
+                ← Back to Times
+              </Button>
+              {bookingStep === 'booking' ? (
                 <Button 
                   onClick={createPendingBooking}
                   disabled={!bookingForm.customerName || !bookingForm.customerEmail || loading}
-                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                  className="flex-1 bg-black hover:bg-gray-800 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                 >
                   {loading ? (
                     <div className="flex items-center gap-2">
@@ -1468,131 +1575,22 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
                     </div>
                   )}
                 </Button>
-              </div>
-              
-              {/* Trust Indicators */}
-              <div className="flex items-center justify-center gap-4 mt-4 text-xs text-gray-500">
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Secure Payment</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Instant Confirmation</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>Easy Cancellation</span>
-                </div>
-              </div>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  onClick={() => setBookingStep('booking')}
+                >
+                  Back to Details
+                </Button>
+              )}
             </div>
-          </CardContent>
-        </Card>
-      )}
+            
 
-      {bookingStep === 'payment' && pendingBookingId && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Payment Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Booking Summary */}
-            <div className="bg-gray-50 p-4 rounded-lg mb-6">
-              <h3 className="font-medium mb-3">Booking Summary</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Attraction:</span>
-                  <span className="font-medium">{attractionData?.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Date & Time:</span>
-                  <span>{formatDate(bookingForm.selectedDate)} at {selectedSlot && formatTime(selectedSlot.start_time)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Party Size:</span>
-                  <span>{bookingForm.partySize} {bookingForm.partySize === 1 ? 'person' : 'people'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>{getResourceLabel()}:</span>
-                  <span>{getResourceName(selectedSlot?.resource_id || null)}</span>
-                </div>
-                <hr className="my-2" />
-                <div className="flex justify-between font-medium text-lg">
-                  <span>Total:</span>
-                  <span style={{ color: primaryColor }}>${totalPrice.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-            {/* Payment Form - Conditional based on payment provider */}
-            {paymentProvider === "stripe" ? (
-              <AttractionStripePayment
-                amount={totalPrice}
-                currency="USD"
-                description={`Booking for ${attractionData?.name}`}
-                customerEmail={bookingForm.customerEmail}
-                customerName={bookingForm.customerName}
-                onSuccess={handlePaymentSuccess}
-                onError={(error) => {
-                  console.error('Payment failed:', error);
-                  toast({
-                    title: "Payment Failed",
-                    description: error.message || "Please try again",
-                    variant: "destructive"
-                  });
-                }}
-                metadata={{
-                  booking_id: pendingBookingId || '',
-                  booking_slot_id: bookingForm.selectedSlotId || '',
-                  attraction_id: attractionId,
-                  booking_type: 'attraction',
-                  organization_id: attractionData?.organization_id || '',
-                  party_size: bookingForm.partySize.toString(),
-                  special_requests: bookingForm.specialRequests || ''
-                }}
-                theme={{
-                  primary: primaryColor,
-                  secondary: primaryColor
-                }}
-              />
-            ) : paymentProvider === "windcave" ? (
-              <div className="space-y-4">
-                {windcaveSessionData ? (
-                  <div>
-                    <div id="windcave-drop-in" className="min-h-[400px]"></div>
-                    <p className="text-sm text-gray-600 mt-2">
-                      Complete your payment using the secure Windcave payment form above.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="text-center">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
-                      <p className="text-sm text-gray-600">Setting up secure payment...</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-red-600">Unsupported payment provider: {paymentProvider}</p>
-              </div>
-            )}
 
-            <div className="flex gap-3 pt-6 border-t">
-              <Button 
-                variant="outline" 
-                onClick={() => setBookingStep('booking')}
-              >
-                Back to Details
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {bookingStep === 'confirmation' && (
         <div className={`${compact ? '' : 'px-4'}`}>

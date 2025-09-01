@@ -19,13 +19,14 @@ import EventCustomization from "@/components/EventCustomization";
 import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, BarChart3, Monitor, LogOut, Menu, HelpCircle } from "lucide-react";
+import { Calendar, Users, Ticket, BarChart3, Monitor, LogOut, Menu, HelpCircle, Activity } from "lucide-react";
 import OrganizationSettings from "@/components/OrganizationSettings";
 import OrganizationOnboarding from "@/components/OrganizationOnboarding";
 
 import { SecurityDashboard } from "@/components/SecurityDashboard";
 import { MarketingTools } from "@/components/MarketingTools";
 import { AnalyticsCharts } from "@/components/AnalyticsCharts";
+import { AttractionAnalytics } from "@/components/AttractionAnalytics";
 import Support from "@/pages/Support";
 import { DashboardHelp } from "@/components/DashboardHelp";
 import { OrganizationUserManagement } from "@/components/OrganizationUserManagement";
@@ -85,6 +86,7 @@ const OrgDashboard = () => {
   const [events, setEvents] = useState<DashboardEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<DashboardEvent | null>(null);
   const [selectedAttraction, setSelectedAttraction] = useState<any>(null);
+  const [attractions, setAttractions] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
   const [organizationId, setOrganizationId] = useState<string>("");
   const [organization, setOrganization] = useState<Organization | null>(null);
@@ -245,7 +247,12 @@ const OrgDashboard = () => {
         setOrganizationId(org.id);
         setOrganization(org);
         
-        loadEvents(org.id);
+        // Load data based on system type
+        if (isEventsMode()) {
+          loadEvents(org.id);
+        } else {
+          loadAttractions(org.id);
+        }
         
         // Load analytics based on role
         console.log("🔐 User role:", userRole);
@@ -255,14 +262,58 @@ const OrgDashboard = () => {
         console.log("🔐 Can edit events:", userRole === 'owner' || userRole === 'admin' || userRole === 'editor');
         
         if (userRole === 'owner' || userRole === 'admin' || userRole === 'editor') {
-          loadAnalytics(org.id);
-          loadAnalyticsData(org.id);
+          if (isEventsMode()) {
+            loadAnalytics(org.id);
+            loadAnalyticsData(org.id);
+          } else {
+            loadAttractionAnalytics(org.id);
+            loadAttractionAnalyticsData(org.id);
+          }
         }
       }
     };
 
     loadOrganization();
   }, [user]);
+
+  const loadAttractions = useCallback(async (orgId: string) => {
+    console.log("Loading attractions for org:", orgId);
+
+    try {
+      const { data, error } = await supabase
+        .from("attractions")
+        .select(`
+          *,
+          attraction_bookings (
+            id,
+            total_amount,
+            booking_status
+          )
+        `)
+        .eq("organization_id", orgId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error loading attractions:", error);
+        throw error;
+      }
+
+      console.log("Loaded attractions:", data);
+      
+      // Calculate stats for each attraction
+      const attractionsWithStats = data?.map(attraction => ({
+        ...attraction,
+        bookings_count: attraction.attraction_bookings?.length || 0,
+        revenue: attraction.attraction_bookings?.reduce((sum: number, booking: any) => 
+          booking.booking_status === 'confirmed' ? sum + parseFloat(booking.total_amount) : sum, 0
+        ) || 0
+      })) || [];
+
+      setAttractions(attractionsWithStats);
+    } catch (error) {
+      console.error("Error loading attractions:", error);
+    }
+  }, []);
 
   const loadEvents = useCallback(async (orgId: string) => {
     console.log("Loading events for org:", orgId);
@@ -296,6 +347,65 @@ const OrgDashboard = () => {
       setEvents(mappedEvents);
     } catch (error) {
       console.error("Error loading events:", error);
+    }
+  }, []);
+
+  const loadAttractionAnalytics = useCallback(async (orgId: string, attractionId?: string) => {
+    console.log("Loading attraction analytics for org:", orgId, "attraction:", attractionId);
+
+    try {
+      let query = supabase
+        .from("attraction_bookings")
+        .select(`
+          total_amount, 
+          booking_status, 
+          created_at,
+          attractions!inner(organization_id, name, id)
+        `)
+        .eq("attractions.organization_id", orgId)
+        .in("booking_status", ["confirmed", "completed"]);
+
+      if (attractionId) {
+        query = query.eq("attractions.id", attractionId);
+      }
+
+      const { data: bookings, error: bookingsError } = await query;
+
+      console.log("=== LOAD ATTRACTION ANALYTICS QUERY DEBUG ===");
+      console.log("Query for organization_id:", orgId);
+      console.log("Attraction ID filter:", attractionId);
+      console.log("Bookings found:", bookings?.length || 0);
+      console.log("First 3 bookings:", bookings?.slice(0, 3));
+      console.log("Query error:", bookingsError);
+
+      if (bookingsError) throw bookingsError;
+
+      const totalBookings = bookings?.length || 0;
+      const totalRevenue = bookings?.reduce((sum, booking) => sum + (Number(booking.total_amount) || 0), 0) || 0;
+      const estimatedPlatformFees = totalRevenue * 0.05; // 5% platform fee
+
+      // Get attractions count
+      const { data: attractions, error: attractionsError } = await supabase
+        .from("attractions")
+        .select("id")
+        .eq("organization_id", orgId);
+
+      if (attractionsError) throw attractionsError;
+
+      console.log("=== ATTRACTION ANALYTICS CALCULATION DEBUG ===");
+      console.log("Organization ID used for analytics:", orgId);
+      console.log("Total bookings found:", totalBookings);
+      console.log("Total revenue calculated:", totalRevenue);
+      console.log("Bookings data:", bookings);
+
+      setAnalytics({
+        totalEvents: attractions?.length || 0,
+        totalOrders: totalBookings,
+        totalRevenue,
+        estimatedPlatformFees
+      });
+    } catch (error) {
+      console.error("Error loading attraction analytics:", error);
     }
   }, []);
 
@@ -349,6 +459,124 @@ const OrgDashboard = () => {
     } catch (error) {
       console.error("Error loading analytics:", error);
     }
+  }, []);
+
+  const loadAttractionAnalyticsData = useCallback(async (orgId: string, attractionId?: string) => {
+    console.log("Loading attraction analytics data for org:", orgId, "attraction:", attractionId);
+    
+    // First, get all attractions for this organization
+    let attractionQuery = supabase
+      .from("attractions")
+      .select("id, name, created_at, status")
+      .eq("organization_id", orgId);
+    
+    if (attractionId) {
+      attractionQuery = attractionQuery.eq("id", attractionId);
+    }
+    
+    const { data: attractionData, error: attractionError } = await attractionQuery;
+    
+    if (attractionError) {
+      console.error("Error fetching attractions:", attractionError);
+      return;
+    }
+    
+    console.log("Attractions found:", attractionData?.length || 0);
+    
+    if (!attractionData || attractionData.length === 0) {
+      console.log("No attractions found for organization");
+      setAnalyticsData({
+        totalTickets: 0,
+        salesData: [],
+        eventTypesData: [],
+        revenueData: []
+      });
+      return;
+    }
+    
+    // Get all bookings for these attractions
+    const attractionIds = attractionData.map(attraction => attraction.id);
+    console.log("Attraction IDs to search:", attractionIds);
+    
+    const { data: bookingData } = await supabase
+      .from("attraction_bookings")
+      .select(`
+        id, 
+        total_amount, 
+        created_at, 
+        attraction_id,
+        booking_status,
+        attractions(name)
+      `)
+      .in("attraction_id", attractionIds)
+      .in("booking_status", ["confirmed", "completed"]);
+
+    console.log("Bookings found:", bookingData?.length || 0);
+
+    if (!bookingData || bookingData.length === 0) {
+      setAnalyticsData({
+        totalTickets: 0,
+        salesData: [],
+        eventTypesData: [],
+        revenueData: []
+      });
+      return;
+    }
+
+    // Process booking data for charts
+    const totalTickets = bookingData.length;
+    
+    // Monthly sales data (last 6 months)
+    const monthlySales = new Map();
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    
+    bookingData.forEach(booking => {
+      const bookingDate = new Date(booking.created_at);
+      if (bookingDate >= sixMonthsAgo) {
+        const monthKey = bookingDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+        const current = monthlySales.get(monthKey) || { month: monthKey, sales: 0, tickets: 0 };
+        current.sales += Number(booking.total_amount) || 0;
+        current.tickets += 1;
+        monthlySales.set(monthKey, current);
+      }
+    });
+
+    // Revenue by attraction
+    const attractionRevenue = new Map();
+    bookingData.forEach(booking => {
+      const attractionName = booking.attractions?.name || 'Unknown';
+      const current = attractionRevenue.get(attractionName) || 0;
+      attractionRevenue.set(attractionName, current + (Number(booking.total_amount) || 0));
+    });
+
+    // Weekly revenue data (last 4 weeks)
+    const weeklyRevenue = new Map();
+    const fourWeeksAgo = new Date();
+    fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+    
+    bookingData.forEach(booking => {
+      const bookingDate = new Date(booking.created_at);
+      if (bookingDate >= fourWeeksAgo) {
+        const weekKey = `Week ${Math.ceil((new Date().getTime() - bookingDate.getTime()) / (7 * 24 * 60 * 60 * 1000))}`;
+        const current = weeklyRevenue.get(weekKey) || 0;
+        weeklyRevenue.set(weekKey, current + (Number(booking.total_amount) || 0));
+      }
+    });
+
+    setAnalyticsData({
+      totalTickets,
+      salesData: Array.from(monthlySales.values()),
+      eventTypesData: Array.from(attractionRevenue.entries()).map(([name, value]) => ({
+        name,
+        value: Number(value),
+        color: `hsl(${Math.random() * 360}, 70%, 50%)`
+      })),
+      revenueData: Array.from(weeklyRevenue.entries()).map(([day, revenue]) => ({
+        day,
+        revenue: Number(revenue)
+      }))
+    });
   }, []);
 
   const loadAnalyticsData = useCallback(async (orgId: string) => {
@@ -537,6 +765,15 @@ const OrgDashboard = () => {
     if (user) {
       // Force a reload by updating the user dependency
       window.location.reload();
+    }
+  };
+
+  const handleAttractionSelectForAnalytics = (attraction: any) => {
+    setSelectedAttraction(attraction);
+    // Reload analytics for the selected attraction
+    if (organizationId && userRole && (userRole === 'owner' || userRole === 'admin' || userRole === 'editor')) {
+      loadAttractionAnalytics(organizationId, attraction?.id);
+      loadAttractionAnalyticsData(organizationId, attraction?.id);
     }
   };
 
@@ -943,6 +1180,11 @@ const OrgDashboard = () => {
                       onAttractionSelect={(attraction) => {
                         setSelectedAttraction(attraction);
                         setActiveTab("event-details");
+                        // Reload analytics for the selected attraction
+                        if (organizationId && userRole && (userRole === 'owner' || userRole === 'admin' || userRole === 'editor')) {
+                          loadAttractionAnalytics(organizationId, attraction?.id);
+                          loadAttractionAnalyticsData(organizationId, attraction?.id);
+                        }
                       }}
                     />
                   </TabsContent>
@@ -978,7 +1220,11 @@ const OrgDashboard = () => {
 
                 {canAccessAnalytics() && (
                   <TabsContent value="analytics" className="space-y-6">
-                    <EventAnalytics events={events} />
+                    {isEventsMode() ? (
+                      <EventAnalytics events={events} />
+                    ) : (
+                      <AttractionAnalytics attractions={attractions} />
+                    )}
                   </TabsContent>
                 )}
 
