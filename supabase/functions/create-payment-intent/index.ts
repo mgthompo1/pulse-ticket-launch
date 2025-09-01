@@ -205,6 +205,7 @@ serve(async (req) => {
         customer_phone: customerInfo?.phone || null,
         total_amount: finalTotal,
         status: "pending",
+        custom_answers: customerInfo?.customAnswers || {},
         stripe_session_id: null // Will be updated after payment intent creation
       };
 

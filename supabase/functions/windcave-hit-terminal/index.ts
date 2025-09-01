@@ -149,6 +149,7 @@ serve(async (req) => {
         customer_phone: customerInfo.phone || null,
         total_amount: totalAmount,
         status: "pending",
+        custom_answers: customerInfo?.customAnswers || {},
         windcave_session_id: txnRef
       };
 

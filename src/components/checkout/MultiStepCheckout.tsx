@@ -8,6 +8,7 @@ import { AddOnsSelection } from './AddOnsSelection';
 import { CustomerDetails } from './CustomerDetails';
 import { Payment } from './Payment';
 import { OrderSummary } from './OrderSummary';
+import { StripePaymentModal } from './StripePaymentModal';
 import { TicketType, CartItem, MerchandiseCartItem, CustomerInfo, EventData, CustomQuestion } from '@/types/widget';
 import { Theme } from '@/types/theme';
 
@@ -31,6 +32,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [merchandiseCart, setMerchandiseCart] = useState<MerchandiseCartItem[]>([]);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
+  const [showStripeModal, setShowStripeModal] = useState(false);
 
   // Extract theme colors from event data
             const themeData = eventData.widget_customization?.theme;
@@ -51,12 +53,20 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
         fontFamily: isEnabled ? (themeData?.fontFamily || 'Manrope') : 'Manrope'
       };
 
-  const steps = [
-    { key: 'event', label: 'Event', progress: 25 },
-    { key: 'tickets', label: 'Tickets', progress: 50 },
-    { key: 'details', label: 'Details', progress: 75 },
-    { key: 'payment', label: 'Payment', progress: 100 }
-  ];
+  // Dynamic steps based on payment provider
+  const isStripePayment = eventData.organizations?.payment_provider === 'stripe';
+  const steps = isStripePayment 
+    ? [
+        { key: 'event', label: 'Event', progress: 33 },
+        { key: 'tickets', label: 'Tickets', progress: 66 },
+        { key: 'details', label: 'Details', progress: 100 }
+      ]
+    : [
+        { key: 'event', label: 'Event', progress: 25 },
+        { key: 'tickets', label: 'Tickets', progress: 50 },
+        { key: 'details', label: 'Details', progress: 75 },
+        { key: 'payment', label: 'Payment', progress: 100 }
+      ];
 
   const currentStepData = steps.find(step => step.key === currentStep);
 
@@ -92,7 +102,9 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   };
 
   const nextStep = () => {
-    const stepOrder: CheckoutStep[] = ['event', 'tickets', 'details', 'payment'];
+    const stepOrder: CheckoutStep[] = isStripePayment 
+      ? ['event', 'tickets', 'details']
+      : ['event', 'tickets', 'details', 'payment'];
     const currentIndex = stepOrder.indexOf(currentStep);
     if (currentIndex < stepOrder.length - 1) {
       setCurrentStep(stepOrder[currentIndex + 1]);
@@ -100,7 +112,9 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   };
 
   const prevStep = () => {
-    const stepOrder: CheckoutStep[] = ['event', 'tickets', 'details', 'payment'];
+    const stepOrder: CheckoutStep[] = isStripePayment 
+      ? ['event', 'tickets', 'details']
+      : ['event', 'tickets', 'details', 'payment'];
     const currentIndex = stepOrder.indexOf(currentStep);
     if (currentIndex > 0) {
       setCurrentStep(stepOrder[currentIndex - 1]);
@@ -109,7 +123,15 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
 
   const handleCustomerDetails = (info: CustomerInfo) => {
     setCustomerInfo(info);
-    nextStep();
+    
+    // Check if this is a Stripe payment provider
+    if (eventData.organizations?.payment_provider === 'stripe') {
+      // Show Stripe payment modal instead of going to payment step
+      setShowStripeModal(true);
+    } else {
+      // For other payment providers (like Windcave), continue to payment step
+      nextStep();
+    }
   };
 
   return (
@@ -352,6 +374,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                 onNext={handleCustomerDetails}
                 onBack={prevStep}
                 theme={theme}
+                isStripePayment={isStripePayment}
               />
             )}
 
@@ -383,6 +406,19 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Stripe Payment Modal */}
+      {customerInfo && (
+        <StripePaymentModal
+          isOpen={showStripeModal}
+          onClose={() => setShowStripeModal(false)}
+          eventData={eventData}
+          cartItems={cartItems}
+          merchandiseCart={merchandiseCart}
+          customerInfo={customerInfo}
+          theme={theme}
+        />
+      )}
     </div>
   );
 };

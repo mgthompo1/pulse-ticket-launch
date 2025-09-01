@@ -75,6 +75,9 @@ export const Payment: React.FC<PaymentProps> = ({
             })),
           ];
 
+          console.log("🔍 Sending customer info to windcave-session:", customerInfo);
+          console.log("📝 Custom answers being sent:", customerInfo.customAnswers);
+          
           const { data, error } = await supabase.functions.invoke('windcave-session', {
             body: {
               eventId: eventData.id,

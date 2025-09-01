@@ -224,16 +224,16 @@ const AttractionWidget = () => {
           className="min-h-screen flex items-center justify-center"
           style={{ backgroundColor, fontFamily }}
         >
-          <div className="text-center">
+        <div className="text-center">
             <Star className="h-12 w-12 mx-auto mb-4" style={{ color: headerTextColor }} />
             <h1 className="text-2xl font-bold mb-2" style={{ color: headerTextColor }}>
-              Attraction Not Found
-            </h1>
+            Attraction Not Found
+          </h1>
             <p style={{ color: bodyTextColor }}>
               The attraction you're looking for could not be found or is not active.
-            </p>
-          </div>
+          </p>
         </div>
+      </div>
       </>
     );
   }
@@ -472,7 +472,7 @@ const AttractionWidget = () => {
           )}
         </div>
       </div>
-      </div>
+    </div>
     </>
   );
 };

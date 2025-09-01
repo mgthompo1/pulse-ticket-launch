@@ -18,6 +18,7 @@ interface CustomerDetailsProps {
   onNext: (customerInfo: CustomerInfo) => void;
   onBack: () => void;
   theme: Theme;
+  isStripePayment?: boolean;
 }
 
 const customerFormSchema = z.object({
@@ -31,7 +32,8 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   customQuestions,
   onNext,
   onBack,
-  theme
+  theme,
+  isStripePayment = false
 }) => {
   // Safety check - ensure customQuestions is always an array
   const safeCustomQuestions = Array.isArray(customQuestions) ? customQuestions : [];
@@ -47,6 +49,8 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   });
 
   const onSubmit = (values: z.infer<typeof customerFormSchema>) => {
+    console.log("🔍 Form submitted with values:", values);
+    console.log("📝 Custom answers:", values.customAnswers);
     onNext(values as CustomerInfo);
   };
 
@@ -78,7 +82,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 <FormControl>
                   <Input 
                     type={question.type === 'email' ? 'email' : question.type === 'phone' ? 'tel' : 'text'}
-                    placeholder={question.question}
+                    placeholder={question.label}
                     {...field} 
                     style={{ backgroundColor: theme.inputBackgroundColor }}
                   />
@@ -104,7 +108,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 </FormLabel>
                 <FormControl>
                   <Textarea 
-                    placeholder={question.question}
+                    placeholder={question.label}
                     {...field} 
                     style={{ backgroundColor: theme.inputBackgroundColor }}
                   />
@@ -131,7 +135,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger style={{ backgroundColor: theme.inputBackgroundColor }}>
-                      <SelectValue placeholder={question.question} />
+                      <SelectValue placeholder={question.label} />
                     </SelectTrigger>
                   </FormControl>
                    <SelectContent>
@@ -308,7 +312,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 color: theme.buttonTextColor
               }}
             >
-              Continue to Payment
+              {isStripePayment ? 'Complete Purchase' : 'Continue to Payment'}
             </Button>
           </div>
         </form>

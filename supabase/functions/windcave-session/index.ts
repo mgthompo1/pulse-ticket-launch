@@ -267,6 +267,9 @@ serve(async (req) => {
       // For events, store the order in the database with custom answers
       const { data: order, error: orderError } = await supabaseClient
         .from("orders")
+        console.log("🔍 Creating order with customer info:", customerInfo);
+        console.log("📝 Custom answers being saved:", customerInfo?.customAnswers);
+        
         .insert({
           event_id: eventId,
           customer_name: customerInfo?.name || "Anonymous",
