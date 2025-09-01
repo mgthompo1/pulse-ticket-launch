@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Users, Calendar, DollarSign, Ticket, TrendingUp, MapPin, Clock } from "lucide-react";
-import { format, isValid, parseISO } from "date-fns";
+import { Download, Users, Calendar, DollarSign, TrendingUp, MapPin } from "lucide-react";
+import { format, isValid } from "date-fns";
 
 // Helper function to safely format dates
 const safeFormatDate = (dateString: string | null | undefined, formatString: string): string => {
@@ -113,7 +113,10 @@ export const AttractionAnalytics: React.FC<AttractionAnalyticsProps> = ({ attrac
         .order('created_at', { ascending: false });
 
       if (bookingsError) throw bookingsError;
-      setBookings(bookingsData || []);
+      setBookings((bookingsData || []).map((booking: any) => ({
+        ...booking,
+        booking_date: booking.booking_slots?.start_time || booking.created_at
+      })));
 
       // Calculate analytics
       if (bookingsData) {

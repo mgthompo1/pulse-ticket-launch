@@ -372,6 +372,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                     merchandiseCart={merchandiseCart as any}
                     customerInfo={customerInfo}
                     total={total}
+                    theme={theme}
                     onSuccess={() => {
                       setShowStripePayment(false);
                       toast({

@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
 import { Loader2, CreditCard, X } from 'lucide-react';
 import { CartItem, MerchandiseCartItem, EventData, CustomerInfo } from '@/types/widget';
 import { supabase } from '@/integrations/supabase/client';
