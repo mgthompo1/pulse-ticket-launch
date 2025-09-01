@@ -21,6 +21,7 @@ import {
   Loader2
 } from "lucide-react";
 import AttractionBookingWidget from "@/components/AttractionBookingWidget";
+import { SEOHead } from "@/components/SEOHead";
 
 interface AttractionData {
   id: string;
@@ -34,7 +35,7 @@ interface AttractionData {
   widget_customization: any;
   organization_id: string;
   status: string;
-  resource_label: string | null;
+  resource_label?: string | null;
 }
 
 interface OrganizationData {
@@ -217,48 +218,69 @@ const AttractionWidget = () => {
 
   if (loading) {
     return (
-      <div 
-        className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor, fontFamily }}
-      >
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin" style={{ color: primaryColor }} />
-          <p style={{ color: headerTextColor }}>Loading attraction...</p>
+      <>
+        <SEOHead
+          title="Loading Attraction - TicketFlo"
+          description="Loading attraction details..."
+        />
+        <div 
+          className="min-h-screen flex items-center justify-center"
+          style={{ backgroundColor, fontFamily }}
+        >
+          <div className="text-center">
+            <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin" style={{ color: primaryColor }} />
+            <p style={{ color: headerTextColor }}>Loading attraction...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (!attractionData) {
     return (
-      <div 
-        className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor, fontFamily }}
-      >
-        <div className="text-center">
-          <Star className="h-12 w-12 mx-auto mb-4" style={{ color: headerTextColor }} />
-          <h1 className="text-2xl font-bold mb-2" style={{ color: headerTextColor }}>
-            Attraction Not Found
-          </h1>
-          <p style={{ color: bodyTextColor }}>
-            The attraction you're looking for could not be found or is not active.
-          </p>
+      <>
+        <SEOHead
+          title="Attraction Not Found - TicketFlo"
+          description="The attraction you're looking for could not be found or is not active."
+        />
+        <div 
+          className="min-h-screen flex items-center justify-center"
+          style={{ backgroundColor, fontFamily }}
+        >
+          <div className="text-center">
+            <Star className="h-12 w-12 mx-auto mb-4" style={{ color: headerTextColor }} />
+            <h1 className="text-2xl font-bold mb-2" style={{ color: headerTextColor }}>
+              Attraction Not Found
+            </h1>
+            <p style={{ color: bodyTextColor }}>
+              The attraction you're looking for could not be found or is not active.
+            </p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
 
 
   return (
-    <div 
-      className="min-h-screen"
-      style={{ 
-        backgroundColor,
-        fontFamily,
-        color: headerTextColor
-      }}
-    >
+    <>
+      <SEOHead
+        title={`${attractionData.name} - Book Now | ${organizationData?.name || 'TicketFlo'}`}
+        description={attractionData.description || `Book your ${attractionData.name} experience. From $${attractionData.base_price} for ${attractionData.duration_minutes} minutes.`}
+        ogTitle={`${attractionData.name} - Book Now`}
+        ogDescription={attractionData.description || `Book your ${attractionData.name} experience. From $${attractionData.base_price} for ${attractionData.duration_minutes} minutes.`}
+        ogImage={attractionData.logo_url || organizationData?.logo_url || "https://www.ticketflo.org/og-image.jpg"}
+        canonical={`https://www.ticketflo.org/widget/${attractionId}`}
+      />
+      <div 
+        className="min-h-screen"
+        style={{ 
+          backgroundColor,
+          fontFamily,
+          color: headerTextColor
+        }}
+      >
       <div className="max-w-6xl mx-auto px-4 py-6">
         {/* Hero Section - Optimized for conversion */}
         <div className="relative">
@@ -480,7 +502,8 @@ const AttractionWidget = () => {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 
