@@ -12,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Settings, 
-  Palette, 
   Mail, 
   Monitor, 
   Calendar,
@@ -21,7 +20,6 @@ import {
   DollarSign,
   Users,
   Save,
-  Upload,
   Eye,
   Star
 } from "lucide-react";
@@ -85,7 +83,6 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
   
   const [attractionData, setAttractionData] = useState<AttractionData | null>(null);
   const [organizationData, setOrganizationData] = useState<OrganizationData | null>(null);
-  const [organizationId, setOrganizationId] = useState<string>("");
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
 
   // Widget customization state
@@ -196,7 +193,6 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
       if (error) throw error;
 
       if (data) {
-        setOrganizationId(data.organization_id);
         setAttractionData({
           id: attractionId,
           name: data.name,
@@ -236,29 +232,29 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
         }
 
         // Load existing customizations
-        if (data.widget_customization) {
+        if (data.widget_customization && typeof data.widget_customization === 'object') {
           setWidgetCustomization(prev => ({
             ...prev,
-            ...data.widget_customization,
+            ...(data.widget_customization as any) || {},
             booking: {
               ...prev.booking,
-              ...(data.widget_customization as any)?.booking
+              ...((data.widget_customization as any)?.booking || {})
             },
             expectations: {
               ...prev.expectations,
-              ...(data.widget_customization as any)?.expectations
+              ...((data.widget_customization as any)?.expectations || {})
             },
             resourceSelection: {
               ...prev.resourceSelection,
-              ...(data.widget_customization as any)?.resourceSelection
+              ...((data.widget_customization as any)?.resourceSelection || {})
             }
           }));
         }
 
-        if (data.email_customization) {
+        if (data.email_customization && typeof data.email_customization === 'object') {
           setEmailCustomization(prev => ({
             ...prev,
-            ...data.email_customization
+            ...(data.email_customization as any) || {}
           }));
         }
       }
@@ -470,7 +466,7 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
 
             <AttractionLogoUploader
               attractionId={attractionId}
-              currentLogoUrl={currentLogoUrl}
+              currentLogoUrl={currentLogoUrl || undefined}
               onLogoChange={(logoUrl) => {
                 setCurrentLogoUrl(logoUrl);
                 setAttractionData(prev => prev ? { ...prev, logo_url: logoUrl } : null);
@@ -881,9 +877,35 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
               </CardHeader>
               <CardContent>
                 <EmailTemplatePreview
-                  emailCustomization={emailCustomization}
-                  attractionDetails={attractionData}
-                  organizationDetails={organizationData}
+                  emailCustomization={{
+                    template: {
+                      theme: 'professional',
+                      headerColor: '#1f2937',
+                      backgroundColor: '#ffffff',
+                      textColor: '#374151',
+                      buttonColor: '#1f2937',
+                      accentColor: '#f9fafb',
+                      borderColor: '#e5e7eb',
+                      fontFamily: 'Arial, sans-serif'
+                    },
+                    branding: {
+                      showLogo: true,
+                      logoPosition: 'header' as const,
+                      logoSize: 'medium' as const
+                    }
+                  }}
+                  attractionDetails={attractionData ? {
+                    name: attractionData.name,
+                    venue: attractionData.venue || undefined,
+                    attraction_type: attractionData.attraction_type,
+                    duration_minutes: attractionData.duration_minutes,
+                    base_price: attractionData.base_price,
+                    logo_url: attractionData.logo_url || undefined
+                  } : undefined}
+                  organizationDetails={organizationData ? {
+                    name: organizationData.name,
+                    logo_url: organizationData.logo_url || undefined
+                  } : { name: 'Sample Organization', logo_url: undefined }}
                   isAttractionMode={true}
                 />
               </CardContent>

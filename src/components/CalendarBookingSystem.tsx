@@ -115,7 +115,11 @@ const CalendarBookingSystem: React.FC<CalendarBookingSystemProps> = ({
 
       if (error) throw error;
 
-      setBookingSlots(data || []);
+        setBookingSlots((data || []).map((slot: any) => ({
+          ...slot,
+          price_override: slot.price_override ?? undefined,
+          resource_id: slot.resource_id || undefined
+        })) as any);
     } catch (error) {
       console.error("Error loading booking slots:", error);
       toast({
@@ -474,7 +478,7 @@ const CalendarBookingSystem: React.FC<CalendarBookingSystemProps> = ({
                           <DollarSign className="h-4 w-4" />
                           ${slot.price_override || attractionData.base_price}
                         </span>
-                        <span>{getResourceName(slot.resource_id)}</span>
+                        <span>{getResourceName((slot as any).resource_id)}</span>
                       </div>
                     </div>
                   </div>
