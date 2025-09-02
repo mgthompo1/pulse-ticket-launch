@@ -72,6 +72,44 @@ Deno.serve(async (req) => {
       eventName: order.events.name 
     });
 
+    // Fetch payment method details from Stripe if available
+    let paymentMethodInfo = { brand: 'Card', last4: '', type: 'card' };
+    if (order.stripe_session_id) {
+      try {
+        logStep("Fetching Stripe payment details", { sessionId: order.stripe_session_id });
+        
+        // Get Stripe credentials for this organization
+        const { data: credentials } = await supabaseClient
+          .rpc('get_payment_credentials', { org_id: order.events.organizations.id });
+          
+        if (credentials && credentials.stripe_secret_key) {
+          const stripe = await import('https://esm.sh/stripe@14.21.0');
+          const stripeClient = new stripe.default(credentials.stripe_secret_key, {
+            apiVersion: '2023-10-16',
+          });
+
+          const session = await stripeClient.checkout.sessions.retrieve(order.stripe_session_id, {
+            expand: ['payment_intent.payment_method']
+          });
+
+          if (session.payment_intent && session.payment_intent.payment_method) {
+            const pm = session.payment_intent.payment_method;
+            if (pm.card) {
+              paymentMethodInfo = {
+                brand: pm.card.brand.charAt(0).toUpperCase() + pm.card.brand.slice(1),
+                last4: pm.card.last4,
+                type: 'card'
+              };
+              logStep("Payment method retrieved", paymentMethodInfo);
+            }
+          }
+        }
+      } catch (error) {
+        logStep("Failed to fetch payment method", { error: error.message });
+        // Continue with default payment info if Stripe fetch fails
+      }
+    }
+
     // Check delivery method from custom answers
     const customAnswers = order.custom_answers as any;
     const deliveryMethod = customAnswers?.deliveryMethod || 'qr_ticket';
@@ -291,12 +329,12 @@ Deno.serve(async (req) => {
         fontFamily: emailCustomization?.template?.fontFamily || 'Arial, sans-serif'
       };
 
-      // Clean monochrome Unicode symbols for professional look
+      // Clean monochrome Unicode symbols for professional look (white on dark background)
       const icons = {
-        calendar: '◐',  // Half-filled circle for date/time
-        mapPin: '◯',    // Empty circle for location pin
-        user: '◑',      // Half-filled circle for person
-        ticket: '◇'     // Diamond outline for tickets
+        calendar: '●',  // Solid circle for date/time
+        mapPin: '●',    // Solid circle for location pin  
+        user: '●',      // Solid circle for person
+        ticket: '●'     // Solid circle for tickets
       };
 
       // Get logo configuration from email customization
@@ -424,7 +462,7 @@ Deno.serve(async (req) => {
                   </div>
                   <div style="text-align:center;padding-top:16px;border-top:1px solid rgba(255,255,255,0.2);">
                     <div style="color:#ffffff;opacity:0.8;font-size:12px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">Payment Method</div>
-                    <div style="color:#ffffff;font-weight:500;font-size:14px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">💳 Card Payment</div>
+                    <div style="color:#ffffff;font-weight:500;font-size:14px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">💳 ${paymentMethodInfo.brand}${paymentMethodInfo.last4 ? ` •••• ${paymentMethodInfo.last4}` : ' Payment'}</div>
                     <div style="color:#ffffff;opacity:0.7;font-size:12px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-top:2px;">${new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${new Date(order.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
                   </div>
                 </div>
