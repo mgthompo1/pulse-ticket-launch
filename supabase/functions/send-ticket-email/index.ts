@@ -41,6 +41,7 @@ Deno.serve(async (req) => {
           description,
           email_customization,
           organizations!inner(
+            id,
             name,
             email,
             logo_url
@@ -338,12 +339,12 @@ Deno.serve(async (req) => {
         fontFamily: emailCustomization?.template?.fontFamily || 'Arial, sans-serif'
       };
 
-      // Professional letter-based icons that work well in Gmail
+      // Professional monochrome Unicode icons with text presentation (so CSS color applies)
       const icons = {
-        calendar: 'C',  // C for Calendar/Date
-        mapPin: 'L',    // L for Location
-        user: 'A',      // A for Attendee
-        ticket: 'T'     // T for Ticket
+        calendar: '📅\uFE0E', // Calendar (text variant)
+        mapPin: '⌖',         // Position indicator (monochrome)
+        user: '👤\uFE0E',    // Bust in silhouette (text variant)
+        ticket: '🎟\uFE0E'   // Admission tickets (text variant)
       };
 
       // Get logo configuration from email customization
