@@ -143,7 +143,21 @@ Deno.serve(async (req) => {
 
     // Get email customization (supports block-based schema)
     const emailCustomization = order.events.email_customization as any;
-    const blocks: any[] = Array.isArray(emailCustomization?.blocks) ? emailCustomization.blocks : [];
+    
+    // Use saved blocks when present; otherwise fall back to sane defaults
+    const blocks: any[] = Array.isArray(emailCustomization?.blocks) && emailCustomization.blocks.length > 0
+      ? emailCustomization.blocks
+      : [
+          { type: 'header', title: emailCustomization?.content?.headerText || 'Thank you for your purchase!' },
+          { type: 'event_details' },
+          { type: 'ticket_list' },
+          { type: 'button', label: 'View Tickets', url: '#', align: 'center' }
+        ];
+    
+    logStep("USING EMAIL BLOCKS", { 
+      hasCustomBlocks: Array.isArray(emailCustomization?.blocks) && emailCustomization.blocks.length > 0,
+      blocksCount: blocks.length
+    });
     const orgLogo = order.events.organizations.logo_url;
     
     // Helper function to get theme-based styles with color presets
@@ -300,9 +314,12 @@ Deno.serve(async (req) => {
       const parts: string[] = [];
       parts.push(`<div style="font-family:${theme.fontFamily};max-width:600px;margin:0 auto;background:${theme.backgroundColor};border:1px solid ${theme.borderColor};">`);
       
-      // Add logo in header position
-      if (logoUrl && branding.showLogo && branding.logoPosition === 'header') {
-        parts.push(`<div style="text-align:center;margin-bottom:15px;padding:20px 20px 0 20px;"><img src="${logoUrl}" alt="Logo" style="max-width:${logoSize};height:auto;display:block;margin:0 auto;"/></div>`);
+      // Add logo in header position (prefer event -> org -> custom per config)
+      if (branding.showLogo && branding.logoPosition === 'header') {
+        const preferredLogo = logoUrl || order.events.organizations?.logo_url || order.events.logo_url;
+        if (preferredLogo) {
+          parts.push(`<div style="text-align:center;margin-bottom:15px;padding:20px 20px 0 20px;"><img src="${preferredLogo}" alt="Logo" style="max-width:${logoSize};height:auto;display:block;margin:0 auto;"/></div>`);
+        }
       }
       
       for (const b of blocks) {
@@ -318,30 +335,24 @@ Deno.serve(async (req) => {
             parts.push(`<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px;">
               <strong style="color:${theme.textColor}">${order.events.name}</strong>
               <div style="color:${theme.textColor};font-size:14px;line-height:1.6;margin-top:16px;">
-                <div style="margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;border-left:3px solid ${theme.buttonColor};display:table;width:100%;">
-                  <div style="display:table-cell;vertical-align:middle;width:32px;padding-right:12px;">
-                    <div style="background:${theme.buttonColor};color:white;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;font-family:Arial,sans-serif;">📅</div>
-                  </div>
-                  <div style="display:table-cell;vertical-align:middle;">
+                <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;">
+                  <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:inline-block;line-height:32px;text-align:center;margin-right:12px;flex-shrink:0;font-size:16px;font-weight:bold;">📅</div>
+                  <div style="flex:1;">
                     <div style="font-weight:600;color:${theme.textColor};margin-bottom:2px;">${new Date(order.events.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                    <div style="color:${theme.textColor}CC;font-size:13px;">${new Date(order.events.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
+                    <div style="color:${theme.textColor};opacity:0.8;font-size:13px;">${new Date(order.events.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
                   </div>
                 </div>
-                <div style="margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;border-left:3px solid ${theme.buttonColor};display:table;width:100%;">
-                  <div style="display:table-cell;vertical-align:middle;width:32px;padding-right:12px;">
-                    <div style="background:${theme.buttonColor};color:white;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;font-family:Arial,sans-serif;">📍</div>
-                  </div>
-                  <div style="display:table-cell;vertical-align:middle;">
-                    <div style="color:${theme.textColor}88;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Venue</div>
+                <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;">
+                  <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:inline-block;line-height:32px;text-align:center;margin-right:12px;flex-shrink:0;font-size:16px;font-weight:bold;">📍</div>
+                  <div style="flex:1;">
+                    <div style="color:${theme.textColor};opacity:0.6;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Venue</div>
                     <div style="font-weight:600;color:${theme.textColor};">${order.events.venue || 'TBA'}</div>
                   </div>
                 </div>
-                <div style="margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;border-left:3px solid ${theme.buttonColor};display:table;width:100%;">
-                  <div style="display:table-cell;vertical-align:middle;width:32px;padding-right:12px;">
-                    <div style="background:${theme.buttonColor};color:white;border-radius:4px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;font-family:Arial,sans-serif;">👤</div>
-                  </div>
-                  <div style="display:table-cell;vertical-align:middle;">
-                    <div style="color:${theme.textColor}88;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Attendee</div>
+                <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;">
+                  <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:inline-block;line-height:32px;text-align:center;margin-right:12px;flex-shrink:0;font-size:16px;font-weight:bold;">👤</div>
+                  <div style="flex:1;">
+                    <div style="color:${theme.textColor};opacity:0.6;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Attendee</div>
                     <div style="font-weight:600;color:${theme.textColor};">${order.customer_name}</div>
                   </div>
                 </div>
@@ -349,38 +360,43 @@ Deno.serve(async (req) => {
             </div>`);
             break;
           case 'ticket_list':
-            // Group tickets by type and show summary with quantity and price
-            const ticketSummary = ticketItems.reduce((acc: any, item: any) => {
-              const ticketType = item.ticket_types?.name || 'General Admission';
-              if (!acc[ticketType]) {
-                acc[ticketType] = {
-                  name: ticketType,
-                  quantity: 0,
-                  price: item.unit_price,
-                  total: 0
-                };
-              }
-              acc[ticketType].quantity += item.quantity;
-              acc[ticketType].total += item.unit_price * item.quantity;
-              return acc;
-            }, {});
+            // Create clean item list for tickets and merchandise
+            const allItems = order.order_items.map((item: any) => {
+              const itemName = item.item_type === 'ticket' 
+                ? (item.ticket_types?.name || 'General Admission')
+                : (item.merchandise?.name || 'Merchandise');
+              
+              return {
+                name: itemName,
+                quantity: item.quantity,
+                price: item.unit_price,
+                total: item.unit_price * item.quantity,
+                type: item.item_type
+              };
+            });
             
-            const ticketSummaryHtml = Object.values(ticketSummary).map((summary: any) => `
-              <div style="border:1px solid ${theme.borderColor};padding:16px;border-radius:8px;background:#fff;margin:12px 0;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                  <span style="font-weight:600;color:${theme.textColor};">${summary.name}</span>
-                  <span style="color:${theme.textColor}88;font-size:14px;">$${summary.price.toFixed(2)} each</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                  <span style="color:${theme.textColor}88;font-size:14px;">Quantity: ${summary.quantity}</span>
-                  <span style="font-weight:600;color:${theme.textColor};">Total: $${summary.total.toFixed(2)}</span>
-                </div>
+            const itemsHtml = allItems.map((item: any) => `
+              <div style="padding:12px 0;border-bottom:1px solid ${theme.borderColor};">
+                <div style="font-weight:600;color:${theme.textColor};font-size:16px;margin-bottom:4px;">${item.name}</div>
+                <div style="color:${theme.textColor};font-size:14px;">Price: $${item.price.toFixed(2)}, Quantity: ${item.quantity}, Total = $${item.total.toFixed(2)}</div>
               </div>
             `).join('');
             
+            // Calculate grand total
+            const grandTotal = allItems.reduce((sum: number, item: any) => sum + item.total, 0);
+            
             parts.push(`<div style="padding:0 20px;color:${theme.textColor}">
-              <h3 style="margin:20px 0 16px 0;color:${theme.textColor};">Your Tickets</h3>
-              ${ticketSummaryHtml}
+              <h3 style="margin:20px 0 16px 0;color:${theme.textColor};">Your Order</h3>
+              <div style="background:#fff;border:1px solid ${theme.borderColor};border-radius:8px;padding:16px;margin-bottom:16px;">
+                ${itemsHtml}
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 0 0 0;border-top:2px solid ${theme.borderColor};margin-top:12px;">
+                  <div style="font-weight:700;color:${theme.textColor};font-size:18px;">Grand Total:</div>
+                  <div style="font-weight:700;color:${theme.textColor};font-size:18px;">$${grandTotal.toFixed(2)}</div>
+                </div>
+              </div>
+              <div style="text-align:center;padding:16px 0;color:${theme.textColor};opacity:0.8;font-size:14px;">
+                Click the link below to view your tickets
+              </div>
             </div>`);
             break;
           case 'button':
@@ -395,17 +411,38 @@ Deno.serve(async (req) => {
             if (buttonUrl.includes('{{CUSTOMER_EMAIL}}')) {
               buttonUrl = buttonUrl.replace(/\{\{CUSTOMER_EMAIL\}\}/g, encodeURIComponent(order.customer_email));
             }
+            if (buttonUrl.includes('{{success_url}}')) {
+              buttonUrl = buttonUrl.replace(/\{\{success_url\}\}/g, `/tickets?orderId=${orderId}&email=${encodeURIComponent(order.customer_email)}`);
+            }
             
             // Default VIEW TICKETS button to a dedicated tickets page if no URL specified
-            if (b.label?.toLowerCase().includes('ticket') && (!buttonUrl || buttonUrl === '#')) {
-              buttonUrl = `https://app.ticketflo.com/tickets?orderId=${orderId}&email=${encodeURIComponent(order.customer_email)}`;
+            if (!buttonUrl || buttonUrl === '#') {
+              buttonUrl = `/tickets?orderId=${orderId}&email=${encodeURIComponent(order.customer_email)}`;
             }
             
             // Convert relative URLs to absolute URLs for email compatibility
             if (buttonUrl.startsWith('/') && !buttonUrl.startsWith('//')) {
-              const origin = 'https://app.ticketflo.com'; // Default production domain
+              // Use environment variable if provided; fall back to your production domain
+              const configured = Deno.env.get('PUBLIC_APP_BASE_URL') || '';
+              const origin = configured || 'https://www.ticketflo.org';
               buttonUrl = origin + buttonUrl;
             }
+            
+            // Ensure we never use Supabase URLs in the button
+            if (buttonUrl.includes('supabase.co') || buttonUrl.includes('yoxsewbpoqxscsutqlcb')) {
+              console.error('WARNING: Supabase URL detected in button, replacing with proper URL');
+              buttonUrl = `https://www.ticketflo.org/tickets?orderId=${orderId}&email=${encodeURIComponent(order.customer_email)}`;
+            }
+            
+            logStep("Button URL generated", { 
+              originalUrl: b.url || '#',
+              finalUrl: buttonUrl,
+              buttonLabel: b.label || 'View Tickets',
+              buttonBlock: b,
+              hasSupabaseUrl: buttonUrl.includes('supabase.co'),
+              origin: Deno.env.get('PUBLIC_APP_BASE_URL') || 'https://www.ticketflo.org'
+            });
+            
             parts.push(`<div style="text-align:${b.align || 'center'};padding:20px;"><a href="${buttonUrl}" style="background:${theme.buttonColor};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;">${b.label || 'View Tickets'}</a></div>`);
             break;
           case 'divider':
@@ -423,174 +460,37 @@ Deno.serve(async (req) => {
       }
       
       // Add logo in content position
-      if (logoUrl && branding.showLogo && branding.logoPosition === 'content') {
-        parts.push(`<div style="text-align:center;margin-top:15px;padding:0 20px 20px 20px;"><img src="${logoUrl}" alt="Logo" style="max-width:${logoSize};height:auto;display:block;margin:0 auto;"/></div>`);
+      if (branding.showLogo && branding.logoPosition === 'content') {
+        const preferredLogo = logoUrl || order.events.organizations?.logo_url || order.events.logo_url;
+        if (preferredLogo) {
+          parts.push(`<div style="text-align:center;margin-top:15px;padding:0 20px 20px 20px;"><img src="${preferredLogo}" alt="Logo" style="max-width:${logoSize};height:auto;display:block;margin:0 auto;"/></div>`);
+        }
       }
       
       parts.push(`</div>`);
       return parts.join('');
     };
 
-    if (blocks.length > 0) {
-      // Prefer new block renderer regardless of delivery method
-      emailContent = {
-        to: order.customer_email,
-        subject: emailCustomization?.subject || `Your tickets for ${order.events.name}`,
-        html: renderBlocks(),
-      };
-    } else if (deliveryMethod === 'qr_ticket') {
-      // Render tickets in an email layout that mirrors TicketDisplay styles
-      const ticketHtml = allTickets.map((t:any) => `
-        <div style="border:2px solid #e5e7eb;border-radius:12px;margin:16px 0;padding:16px;background:linear-gradient(135deg,#fff,#f7fafc);">
-          <div style="text-align:center;border-bottom:1px solid #e5e7eb;padding-bottom:12px;margin-bottom:12px;">
-            ${orgLogo ? `<img src="${orgLogo}" alt="Logo" style="height:48px;max-width:200px;object-fit:contain;margin:0 auto 8px;display:block;"/>` : ''}
-            <div style="font-size:18px;font-weight:700;color:#111827;">${order.events.name}</div>
-            ${order.events.venue ? `<div style=\"font-size:12px;color:#6b7280;text-align:center;margin-top:4px;\"><strong>VENUE:</strong> ${order.events.venue}</div>` : ''}
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px;color:#111827;">
-            <div style="display:flex;align-items:center;margin:8px 0;padding:8px;background:#f8fafc;border-radius:6px;">
-              <div style="background:#4f46e5;color:white;border-radius:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin-right:10px;flex-shrink:0;font-size:12px;font-weight:bold;font-family:Arial,sans-serif;">📅</div>
-              <div style="flex:1;">
-                <div style="font-weight:600;color:#111827;">${new Date(order.events.event_date).toLocaleDateString(undefined,{ weekday:'long', month:'long', day:'numeric', year:'numeric'})}</div>
-                <div style="font-size:12px;color:#6b7280;">${new Date(order.events.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit'})}</div>
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;margin:8px 0;padding:8px;background:#f8fafc;border-radius:6px;">
-              <div style="background:#4f46e5;color:white;border-radius:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin-right:10px;flex-shrink:0;font-size:12px;font-weight:bold;font-family:Arial,sans-serif;">🎫</div>
-              <div style="flex:1;">
-                <div style="font-weight:600;color:#111827;">${t.type}</div>
-                <div style="font-size:12px;color:#6b7280;">Ticket Type</div>
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;margin:8px 0;padding:8px;background:#f8fafc;border-radius:6px;">
-              <div style="background:#4f46e5;color:white;border-radius:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin-right:10px;flex-shrink:0;font-size:12px;font-weight:bold;font-family:Arial,sans-serif;">👤</div>
-              <div style="flex:1;">
-                <div style="font-weight:600;color:#111827;">${order.customer_name}</div>
-                <div style="font-size:12px;color:#6b7280;">Attendee</div>
-              </div>
-            </div>
-          </div>
-          <div style="border-top:1px solid #e5e7eb;margin-top:12px;padding-top:12px;text-align:center;">
-            <div style="font-size:13px;color:#6b7280;margin-bottom:8px;">Scan QR Code at Event</div>
-            <div style="display:inline-block;border:1px solid #e5e7eb;border-radius:6px;padding:6px;background:#fff;">
-              <img src="${codeToQrUrl[t.code] || `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(t.code)}`}" alt="QR"/>
-            </div>
-            <div style="font-size:12px;color:#6b7280;margin-top:8px;">
-              <div>Ticket Code: <span style="font-family:monospace;font-weight:600;">${t.code}</span></div>
-              <div>Status: <span style="text-transform:capitalize;color:#16a34a;font-weight:600;">valid</span></div>
-            </div>
-          </div>
-        </div>
-      `).join('');
+    // ALWAYS use block template - force this path
+    const generatedHtml = renderBlocks();
+    logStep("=== EMAIL TEMPLATE DEBUG ===", { 
+      htmlLength: generatedHtml.length,
+      htmlPreview: generatedHtml.substring(0, 800),
+      blocksCount: blocks.length,
+      hasBlocks: blocks.length > 0,
+      containsCircularEmoji: generatedHtml.includes('border-radius:50%'),
+      containsBrackets: generatedHtml.includes('{'),
+      containsTicketsUrl: generatedHtml.includes('/tickets?orderId='),
+      bracketLocations: generatedHtml.split('').map((char, i) => char === '{' ? i : null).filter(i => i !== null).slice(0, 5)
+    });
 
       emailContent = {
         to: order.customer_email,
         subject: emailCustomization?.subject || `Your tickets for ${order.events.name}`,
-        html: `
-          <div style="font-family:${themeStyles.fontFamily};max-width:600px;margin:0 auto;background:${themeStyles.backgroundColor};">
-            <div style="background:${themeStyles.headerColor};color:#fff;padding:20px;text-align:center;border-radius:8px 8px 0 0;">
-              <h1 style="margin:0;font-size:22px;">${emailCustomization?.content?.headerText || 'Thank you for your purchase!'}</h1>
-            </div>
-            <div style="padding:20px;">
-              <!-- Ticket Summary Section -->
-              <div style="background:${themeStyles.accentColor};border:1px solid ${themeStyles.borderColor};border-radius:8px;padding:16px;margin-bottom:20px;">
-                <h3 style="margin:0 0 12px 0;color:${themeStyles.textColor};font-size:16px;">Your Ticket Summary</h3>
-                ${ticketItems.map(item => `
-                  <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid ${themeStyles.borderColor}40;">
-                    <div>
-                      <span style="font-weight:600;color:${themeStyles.textColor};">${item.ticket_types?.name || 'General Admission'}</span>
-                      <span style="color:${themeStyles.textColor}88;font-size:14px;margin-left:8px;">× ${item.quantity}</span>
-                    </div>
-                    <span style="font-weight:600;color:${themeStyles.textColor};">$${(item.unit_price * item.quantity).toFixed(2)}</span>
-                  </div>
-                `).join('')}
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:2px solid ${themeStyles.borderColor};margin-top:8px;">
-                  <span style="font-weight:700;color:${themeStyles.textColor};font-size:16px;">Total</span>
-                  <span style="font-weight:700;color:${themeStyles.textColor};font-size:16px;">$${order.total_amount.toFixed(2)}</span>
-                </div>
-              </div>
-              
-              ${ticketHtml}
-              
-              <!-- VIEW TICKETS Button -->
-              <div style="text-align:center;margin:20px 0;">
-                <a href="https://app.ticketflo.com/payment-success?orderId=${orderId}" style="background:${themeStyles.buttonColor};color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;display:inline-block;">View Your Tickets</a>
-              </div>
-              
-              <div style="background:${themeStyles.accentColor};border-top:1px solid ${themeStyles.borderColor};padding:16px;margin-top:20px;text-align:center;border-radius:0 0 8px 8px;">
-                <p style="color:#999;font-size:12px;margin:0;">${emailCustomization?.content?.footerText || 'Questions? Contact us anytime.'}</p>
-              </div>
-            </div>
-          </div>
-        `
-      };
-    } else {
-      // Confirmation email with detailed event information
-      emailContent = {
-        to: order.customer_email,
-        subject: emailCustomization?.subject || `Event Confirmation: ${order.events.name}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: ${emailCustomization?.template?.backgroundColor || '#ffffff'};">
-            ${orgLogo ? `<div style="text-align: center; padding: 20px 0;"><img src="${orgLogo}" alt="Organization Logo" style="max-width: 200px; height: auto;"></div>` : ''}
-            
-            <div style="padding: 20px;">
-              <h1 style="color: ${emailCustomization?.template?.headerColor || '#333'};">✅ ${emailCustomization?.content?.headerText || 'Registration Confirmed!'}</h1>
-              
-              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h2 style="margin-top: 0; color: #333;">${order.events.name}</h2>
-                <p><strong>Date & Time:</strong> ${new Date(order.events.event_date).toLocaleDateString()} at ${new Date(order.events.event_date).toLocaleTimeString()}</p>
-                <p><strong>Venue:</strong> ${order.events.venue || 'TBA'}</p>
-                <p><strong>Attendee:</strong> ${order.customer_name}</p>
-                <p><strong>Email:</strong> ${order.customer_email}</p>
-                ${order.customer_phone ? `<p><strong>Phone:</strong> ${order.customer_phone}</p>` : ''}
-              </div>
+      html: generatedHtml,
+    };
 
-              ${order.events.description ? `
-              <div style="background: #fff9e6; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f39c12;">
-                <h3 style="color: #333; margin-top: 0;">Event Details:</h3>
-                <p style="color: #333; line-height: 1.6;">${order.events.description}</p>
-              </div>
-              ` : ''}
 
-              <h3 style="color: ${emailCustomization?.template?.textColor || '#000000'};">Your Registration:</h3>
-              ${ticketItems.map(item => `
-                <div style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px;">
-                  <strong>${item.ticket_types?.name || 'General Admission'}</strong> - ${item.quantity} ${item.quantity === 1 ? 'person' : 'people'}<br>
-                  <small>Total: $${(item.unit_price * item.quantity).toFixed(2)}</small>
-                </div>
-              `).join('')}
-
-              <div style="text-align: center; margin: 20px 0;">
-                <a href="https://app.ticketflo.com/payment-success?orderId=${orderId}" style="background: ${emailCustomization?.template?.buttonColor || '#007bff'}; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">View Your Tickets</a>
-              </div>
-
-              <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                <h4 style="margin-top: 0; color: #2e7d32;">What to Expect:</h4>
-                <ul style="color: #2e7d32;">
-                  <li>Arrive 15-30 minutes before the event starts</li>
-                  <li>Bring a valid ID for check-in</li>
-                  <li>Check your email for any last-minute updates</li>
-                  <li>Contact us if you have any questions</li>
-                </ul>
-              </div>
-
-              <div style="color: ${emailCustomization?.template?.textColor || '#000000'}; padding: 15px; margin: 20px 0;">
-                ${emailCustomization?.content?.bodyText || 'We look forward to seeing you at the event!'}
-              </div>
-
-              <p style="color: #666; font-size: 14px;">
-                Questions? Contact the event organizer: ${order.events.organizations.email}
-              </p>
-              
-              <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-              <p style="color: #999; font-size: 12px; text-align: center;">
-                ${emailCustomization?.content?.footerText || 'Powered by TicketFlo Platform'}
-              </p>
-            </div>
-          </div>
-        `
-      };
-    }
 
     // Generate PDF tickets if delivery method is QR tickets
     let pdfAttachment = null;
@@ -603,6 +503,7 @@ Deno.serve(async (req) => {
 
         if (pdfResponse.error) {
           logStep("PDF generation failed", { error: pdfResponse.error });
+          // Continue without PDF attachment
         } else if (pdfResponse.data?.pdf) {
           pdfAttachment = {
             filename: pdfResponse.data.filename || 'tickets.pdf',
@@ -610,9 +511,14 @@ Deno.serve(async (req) => {
             content_type: 'application/pdf'
           };
           logStep("PDF generated successfully", { filename: pdfAttachment.filename });
+        } else {
+          logStep("PDF generation returned no data", { response: pdfResponse });
         }
       } catch (pdfError) {
-        logStep("PDF generation error", { error: pdfError });
+        logStep("PDF generation exception", { 
+          error: pdfError.message || String(pdfError),
+          stack: pdfError.stack 
+        });
         // Continue with email sending even if PDF fails
       }
     }

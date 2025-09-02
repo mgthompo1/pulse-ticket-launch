@@ -278,6 +278,14 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
       const { error } = await supabase
         .from("attractions")
         .update({
+          name: attractionData.name,
+          description: attractionData.description,
+          venue: attractionData.venue,
+          attraction_type: attractionData.attraction_type,
+          duration_minutes: attractionData.duration_minutes,
+          base_price: attractionData.base_price,
+          max_concurrent_bookings: attractionData.max_concurrent_bookings,
+          advance_booking_days: attractionData.advance_booking_days,
           widget_customization: widgetCustomization,
           email_customization: emailCustomization,
           booking_customization: {} // Add booking-specific customizations later
@@ -288,7 +296,7 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
 
       toast({
         title: "Success",
-        description: "Attraction customizations saved successfully!"
+        description: "Attraction details and customizations saved successfully!"
       });
 
       onSave?.();
@@ -296,7 +304,7 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
       console.error("Error saving customizations:", error);
       toast({
         title: "Error",
-        description: "Failed to save customizations",
+        description: "Failed to save attraction details and customizations",
         variant: "destructive"
       });
     } finally {
@@ -407,22 +415,45 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Attraction Name</Label>
-                  <Input value={attractionData.name} readOnly />
+                  <Input 
+                    value={attractionData.name} 
+                    onChange={(e) => setAttractionData(prev => prev ? { ...prev, name: e.target.value } : null)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Type</Label>
-                  <Input value={getAttractionTypeLabel(attractionData.attraction_type)} readOnly />
+                  <Select
+                    value={attractionData.attraction_type}
+                    onValueChange={(value) => setAttractionData(prev => prev ? { ...prev, attraction_type: value } : null)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ATTRACTION_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          <span className="mr-2">{type.icon}</span>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Venue/Location</Label>
-                  <Input value={attractionData.venue || "Not specified"} readOnly />
+                  <Input 
+                    value={attractionData.venue || ""} 
+                    onChange={(e) => setAttractionData(prev => prev ? { ...prev, venue: e.target.value } : null)}
+                    placeholder="Enter venue or location"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Description</Label>
                   <Textarea 
                     value={attractionData.description || ""} 
-                    readOnly 
+                    onChange={(e) => setAttractionData(prev => prev ? { ...prev, description: e.target.value } : null)}
                     rows={3}
+                    placeholder="Describe your attraction"
                   />
                 </div>
               </CardContent>
@@ -440,25 +471,46 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
                       <DollarSign className="h-4 w-4" />
                       Base Price
                     </Label>
-                    <Input value={`$${attractionData.base_price}`} readOnly />
+                    <Input 
+                      type="number"
+                      value={attractionData.base_price} 
+                      onChange={(e) => setAttractionData(prev => prev ? { ...prev, base_price: parseFloat(e.target.value) || 0 } : null)}
+                      min="0"
+                      step="0.01"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <Clock className="h-4 w-4" />
-                      Duration
+                      Duration (minutes)
                     </Label>
-                    <Input value={`${attractionData.duration_minutes} min`} readOnly />
+                    <Input 
+                      type="number"
+                      value={attractionData.duration_minutes} 
+                      onChange={(e) => setAttractionData(prev => prev ? { ...prev, duration_minutes: parseInt(e.target.value) || 0 } : null)}
+                      min="1"
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <Users className="h-4 w-4" />
                       Max Concurrent
                     </Label>
-                    <Input value={attractionData.max_concurrent_bookings} readOnly />
+                    <Input 
+                      type="number"
+                      value={attractionData.max_concurrent_bookings} 
+                      onChange={(e) => setAttractionData(prev => prev ? { ...prev, max_concurrent_bookings: parseInt(e.target.value) || 1 } : null)}
+                      min="1"
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label>Advance Booking</Label>
-                    <Input value={`${attractionData.advance_booking_days || 30} days`} readOnly />
+                    <Label>Advance Booking (days)</Label>
+                    <Input 
+                      type="number"
+                      value={attractionData.advance_booking_days || 30} 
+                      onChange={(e) => setAttractionData(prev => prev ? { ...prev, advance_booking_days: parseInt(e.target.value) || 30 } : null)}
+                      min="0"
+                    />
                   </div>
                 </div>
               </CardContent>

@@ -121,6 +121,43 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
       } else {
         console.log("Order marked as paid:", orderId);
         
+        // Generate tickets for the completed order first
+        try {
+          const { data: orderItems } = await supabaseClient
+            .from("order_items")
+            .select("*")
+            .eq("order_id", orderId);
+
+          if (orderItems && orderItems.length > 0) {
+            const tickets = [];
+            // Only generate tickets for ticket items, not merchandise
+            const ticketItems = orderItems.filter(item => item.item_type === 'ticket');
+            for (const item of ticketItems) {
+              for (let i = 0; i < item.quantity; i++) {
+                tickets.push({
+                  order_item_id: item.id,
+                  ticket_code: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                  status: 'valid'
+                });
+              }
+            }
+            
+            if (tickets.length > 0) {
+              const { error: ticketsError } = await supabaseClient
+                .from("tickets")
+                .insert(tickets);
+                
+              if (ticketsError) {
+                console.error("Error creating tickets:", ticketsError);
+              } else {
+                console.log("Tickets created successfully:", tickets.length);
+              }
+            }
+          }
+        } catch (ticketError) {
+          console.error("Error in ticket generation:", ticketError);
+        }
+        
         // Send ticket confirmation email
         try {
           console.log("Triggering ticket email for order:", orderId);

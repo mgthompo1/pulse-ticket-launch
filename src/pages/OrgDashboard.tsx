@@ -19,7 +19,7 @@ import EventCustomization from "@/components/EventCustomization";
 import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, BarChart3, Monitor, LogOut, Menu, HelpCircle, Activity } from "lucide-react";
+import { Calendar, Users, Ticket, BarChart3, Monitor, LogOut, Menu, HelpCircle, Activity, DollarSign, TrendingUp } from "lucide-react";
 import OrganizationSettings from "@/components/OrganizationSettings";
 import OrganizationOnboarding from "@/components/OrganizationOnboarding";
 
@@ -82,7 +82,6 @@ const MobileSidebarTrigger = () => {
 };
 
 const OrgDashboard = () => {
-  console.log("=== OrgDashboard component rendering ===");
   const [events, setEvents] = useState<DashboardEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<DashboardEvent | null>(null);
   const [selectedAttraction, setSelectedAttraction] = useState<any>(null);
@@ -103,6 +102,8 @@ const OrgDashboard = () => {
   // System type checking
   const isEventsMode = () => !organization?.system_type || organization?.system_type === 'EVENTS';
   
+
+
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [analytics, setAnalytics] = useState({
@@ -900,9 +901,91 @@ const OrgDashboard = () => {
             <div className="w-full" style={{ maxWidth: 'none', margin: '0', padding: '0', width: '100%', minWidth: '100%' }}>
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8" style={{ width: '100%', maxWidth: 'none', minWidth: '100%' }}>
                 <TabsContent value="overview" className="space-y-6">
+                  {isEventsMode() ? (
+                    // Events mode content
+                    <div className="space-y-6">
+                      {/* Overview content for events */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <BarChart3 className="h-5 w-5" />
+                            Dashboard Overview
+                          </CardTitle>
+                          <CardDescription>
+                            Welcome to your events dashboard. Create and manage your events below.
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 w-full">
+                            <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm">
+                              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                                <CardTitle className="font-manrope font-semibold text-base text-gray-900">Total Events</CardTitle>
+                                <Calendar className="h-5 w-5 text-gray-900" />
+                              </CardHeader>
+                              <CardContent>
+                                <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">{events.length}</div>
+                                <p className="font-manrope text-sm text-gray-600">Active events</p>
+                              </CardContent>
+                            </Card>
 
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 w-full">
+                            {canAccessAnalytics() && (
+                              <>
+                                <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm" style={{ animationDelay: '100ms' }}>
+                                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                                    <CardTitle className="font-manrope font-semibold text-base text-gray-900">Tickets Sold</CardTitle>
+                                    <Ticket className="h-5 w-5 text-gray-900" />
+                                  </CardHeader>
+                                  <CardContent>
+                                    <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">{analytics.totalOrders}</div>
+                                    <p className="font-manrope text-sm text-gray-600">Total orders placed</p>
+                                  </CardContent>
+                                </Card>
+
+                                <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm" style={{ animationDelay: '200ms' }}>
+                                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                                    <CardTitle className="font-manrope font-semibold text-base text-gray-900">Revenue</CardTitle>
+                                    <DollarSign className="h-5 w-5 text-gray-900" />
+                                  </CardHeader>
+                                  <CardContent>
+                                    <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">${analytics.totalRevenue.toFixed(2)}</div>
+                                    <p className="font-manrope text-sm text-gray-600">Total revenue</p>
+                                  </CardContent>
+                                </Card>
+
+                                <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm" style={{ animationDelay: '300ms' }}>
+                                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                                    <CardTitle className="font-manrope font-semibold text-base text-gray-900">Conversion Rate</CardTitle>
+                                    <TrendingUp className="h-5 w-5 text-gray-900" />
+                                  </CardHeader>
+                                  <CardContent>
+                                    <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">
+                                      {events.length > 0 ? ((analytics.totalOrders / events.length) * 100).toFixed(1) : 0}%
+                                    </div>
+                                    <p className="font-manrope text-sm text-gray-600">Average per event</p>
+                                  </CardContent>
+                                </Card>
+                              </>
+                            )}
+                          </div>
+
+
+                        </CardContent>
+                      </Card>
+
+                      {/* Analytics Charts */}
+                      {canAccessAnalytics() && (
+                        <AnalyticsCharts
+                          salesData={analyticsData.salesData.map(item => ({ month: item.month, revenue: item.sales }))}
+                          eventTypeData={analyticsData.eventTypesData}
+                          revenueData={analyticsData.revenueData}
+                          isLoading={false}
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    // Attractions mode content
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 w-full">
                     <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm">
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                         <CardTitle className="font-manrope font-semibold text-base text-gray-900">Total Events</CardTitle>
@@ -951,55 +1034,9 @@ const OrgDashboard = () => {
                       </>
                     )}
                   </div>
+                  {/* Charts temporarily disabled to resolve JSX structure issue */}
 
-                  {/* Add Analytics Charts */}
-                  {canAccessAnalytics() && (
-                    <AnalyticsCharts 
-                      salesData={analyticsData.salesData.map(item => ({ month: item.month, revenue: item.sales }))}
-                      eventTypeData={analyticsData.eventTypesData}
-                      revenueData={analyticsData.revenueData}
-                      isLoading={false}
-                    />
-                  )}
 
-                  {/* Custom Answers Analytics */}
-                  {canAccessAnalytics() && orderData && orderData.length > 0 && (
-                    <Card className="border-gray-200/60 shadow-sm">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="font-manrope font-semibold text-lg text-gray-900">Customer Responses</CardTitle>
-                        <CardDescription className="font-manrope text-sm text-gray-600">Custom questions and answers from ticket buyers</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
-                          {orderData
-                            .filter(order => order.custom_answers && Object.keys(order.custom_answers).length > 0)
-                            .map((order, index) => (
-                              <div key={order.id} className="border border-gray-200 rounded-lg p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                  <h4 className="font-manrope font-medium text-sm text-gray-900">
-                                    Order #{order.id.slice(0, 8)} - {order.events?.name}
-                                  </h4>
-                                  <span className="text-xs text-gray-500">
-                                    {new Date(order.created_at).toLocaleDateString()}
-                                  </span>
-                                </div>
-                                <div className="space-y-2">
-                                  {Object.entries(order.custom_answers).map(([question, answer]) => (
-                                    <div key={question} className="text-sm">
-                                      <span className="font-medium text-gray-700">{question}:</span>
-                                      <span className="ml-2 text-gray-600">{answer as string}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          {orderData.filter(order => order.custom_answers && Object.keys(order.custom_answers).length > 0).length === 0 && (
-                            <p className="text-center text-gray-500 py-4">No custom questions have been answered yet.</p>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
 
                   <Card className="border-gray-200/60 shadow-sm">
                     <CardHeader className="pb-3">
@@ -1055,123 +1092,134 @@ const OrgDashboard = () => {
                       </div>
                     </CardContent>
                   </Card>
+                    </div>
+                  )}
                 </TabsContent>
 
                 {isEventsMode() ? (
                   <TabsContent value="events" className="space-y-6">
                     {/* Events List - Now at the top */}
-                  <Card className="border-gray-200/60 shadow-sm">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="font-manrope font-semibold text-lg text-gray-900">Your Events</CardTitle>
-                      <CardDescription className="font-manrope text-sm text-gray-600">Manage your existing events</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {events.length === 0 ? (
-                        <p className="font-manrope text-muted-foreground text-center py-8">No events created yet. Create your first event below!</p>
-                      ) : (
-                        <div className="space-y-3 w-full">
-                          {events.map((event) => (
-                            <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-gray-200/60 rounded-lg hover:bg-gray-50/50 transition-colors gap-4 w-full" style={{ width: '100%' }}>
-                              <div className="space-y-2 flex-1">
-                                <h3 className="font-manrope font-semibold text-base text-gray-900">{event.name}</h3>
-                                <p className="font-manrope text-sm text-gray-600">{new Date(event.event_date).toLocaleDateString()} • {event.venue}</p>
-                                <Badge 
-                                  variant={event.status === "published" ? "default" : "secondary"} 
-                                  className="w-fit font-manrope font-medium text-sm"
-                                >
-                                  {event.status}
-                                </Badge>
+                    <Card className="border-gray-200/60 shadow-sm">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="font-manrope font-semibold text-lg text-gray-900">Your Events</CardTitle>
+                        <CardDescription className="font-manrope text-sm text-gray-600">Manage your existing events</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {events.length === 0 ? (
+                          <p className="font-manrope text-muted-foreground text-center py-8">No events created yet. Create your first event below!</p>
+                        ) : (
+                          <div className="space-y-3 w-full">
+                            {events.map((event) => (
+                              <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-gray-200/60 rounded-lg hover:bg-gray-50/50 transition-colors gap-4 w-full" style={{ width: '100%' }}>
+                                <div className="space-y-2 flex-1">
+                                  <h3 className="font-manrope font-semibold text-base text-gray-900">{event.name}</h3>
+                                  <p className="font-manrope text-sm text-gray-600">{new Date(event.event_date).toLocaleDateString()} • {event.venue}</p>
+                                  <Badge 
+                                    variant={event.status === "published" ? "default" : "secondary"} 
+                                    className="w-fit font-manrope font-medium text-sm"
+                                  >
+                                    {event.status}
+                                  </Badge>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="default"
+                                    onClick={() => {
+                                      setSelectedEvent(event);
+                                      setActiveTab("event-details");
+                                    }}
+                                    className="font-manrope font-medium text-sm"
+                                  >
+                                    <Users className="h-4 w-4 mr-2" />
+                                    Manage
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="default"
+                                    onClick={() => window.open(`/widget/${event.id}`, '_blank')}
+                                    className="font-manrope font-medium text-sm"
+                                  >
+                                    <Monitor className="h-4 w-4 mr-2" />
+                                    Widget
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="default"
-                                  onClick={() => {
-                                    setSelectedEvent(event);
-                                    setActiveTab("event-details");
-                                  }}
-                                  className="font-manrope font-medium text-sm"
-                                >
-                                  <Users className="h-4 w-4 mr-2" />
-                                  Manage
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
 
-                  <Card className="border-gray-200/60 shadow-sm">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="font-manrope font-semibold text-lg text-gray-900">Create New Event</CardTitle>
-                      <CardDescription className="font-manrope text-sm text-gray-600">Start selling tickets for your next event</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
+                    <Card className="border-gray-200/60 shadow-sm">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="font-manrope font-semibold text-lg text-gray-900">Create New Event</CardTitle>
+                        <CardDescription className="font-manrope text-sm text-gray-600">Start selling tickets for your next event</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
+                          <div className="space-y-2">
+                            <Label htmlFor="event-name" className="font-manrope font-medium text-sm text-gray-700">Event Name *</Label>
+                            <Input
+                              id="event-name"
+                              value={eventForm.name}
+                              onChange={(e) => setEventForm(prev => ({ ...prev, name: e.target.value }))}
+                              placeholder="Enter event name"
+                              className="font-manrope text-sm"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="event-date" className="font-manrope font-medium text-sm text-gray-700">Event Date *</Label>
+                            <Input
+                              id="event-date"
+                              type="datetime-local"
+                              value={eventForm.date}
+                              onChange={(e) => setEventForm(prev => ({ ...prev, date: e.target.value }))}
+                              className="font-manrope text-sm"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="event-venue" className="font-manrope font-medium text-sm text-gray-700">Venue *</Label>
+                            <Input
+                              id="event-venue"
+                              value={eventForm.venue}
+                              onChange={(e) => setEventForm(prev => ({ ...prev, venue: e.target.value }))}
+                              placeholder="Enter venue name"
+                              className="font-manrope text-sm"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="event-capacity" className="font-manrope font-medium text-sm text-gray-700">Capacity *</Label>
+                            <Input
+                              id="event-capacity"
+                              type="number"
+                              value={eventForm.capacity}
+                              onChange={(e) => setEventForm(prev => ({ ...prev, capacity: e.target.value }))}
+                              placeholder="Maximum attendees"
+                              className="font-manrope text-sm"
+                            />
+                          </div>
+                        </div>
                         <div className="space-y-2">
-                          <Label htmlFor="event-name" className="font-manrope font-medium text-sm text-gray-700">Event Name *</Label>
-                          <Input
-                            id="event-name"
-                            value={eventForm.name}
-                            onChange={(e) => setEventForm(prev => ({ ...prev, name: e.target.value }))}
-                            placeholder="Enter event name"
+                          <Label htmlFor="event-description" className="font-manrope font-medium text-sm text-gray-700">Description</Label>
+                          <Textarea
+                            id="event-description"
+                            value={eventForm.description}
+                            onChange={(e) => setEventForm(prev => ({ ...prev, description: e.target.value }))}
+                            placeholder="Event description"
+                            rows={4}
                             className="font-manrope text-sm"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="event-date" className="font-manrope font-medium text-sm text-gray-700">Event Date *</Label>
-                          <Input
-                            id="event-date"
-                            type="datetime-local"
-                            value={eventForm.date}
-                            onChange={(e) => setEventForm(prev => ({ ...prev, date: e.target.value }))}
-                            className="font-manrope text-sm"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="event-venue" className="font-manrope font-medium text-sm text-gray-700">Venue *</Label>
-                          <Input
-                            id="event-venue"
-                            value={eventForm.venue}
-                            onChange={(e) => setEventForm(prev => ({ ...prev, venue: e.target.value }))}
-                            placeholder="Enter venue name"
-                            className="font-manrope text-sm"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="event-capacity" className="font-manrope font-medium text-sm text-gray-700">Capacity *</Label>
-                          <Input
-                            id="event-capacity"
-                            type="number"
-                            value={eventForm.capacity}
-                            onChange={(e) => setEventForm(prev => ({ ...prev, capacity: e.target.value }))}
-                            placeholder="Maximum attendees"
-                            className="font-manrope text-sm"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="event-description" className="font-manrope font-medium text-sm text-gray-700">Description</Label>
-                        <Textarea
-                          id="event-description"
-                          value={eventForm.description}
-                          onChange={(e) => setEventForm(prev => ({ ...prev, description: e.target.value }))}
-                          placeholder="Event description"
-                          rows={4}
-                          className="font-manrope text-sm"
-                        />
-                      </div>
-                      <Button 
-                        onClick={handleCreateEvent} 
-                        disabled={isCreatingEvent}
-                        className="w-full md:w-auto font-manrope font-medium text-sm"
-                      >
-                        {isCreatingEvent ? "Creating..." : "Create Event"}
-                      </Button>
-                    </CardContent>
-                  </Card>
+                        <Button 
+                          onClick={handleCreateEvent} 
+                          disabled={isCreatingEvent}
+                          className="w-full md:w-auto font-manrope font-medium text-sm"
+                        >
+                          {isCreatingEvent ? "Creating..." : "Create Event"}
+                        </Button>
+                      </CardContent>
+                    </Card>
                   </TabsContent>
                 ) : (
                   <TabsContent value="events" className="space-y-6">
@@ -1180,11 +1228,6 @@ const OrgDashboard = () => {
                       onAttractionSelect={(attraction) => {
                         setSelectedAttraction(attraction);
                         setActiveTab("event-details");
-                        // Reload analytics for the selected attraction
-                        if (organizationId && userRole && (userRole === 'owner' || userRole === 'admin' || userRole === 'editor')) {
-                          loadAttractionAnalytics(organizationId, attraction?.id);
-                          loadAttractionAnalyticsData(organizationId, attraction?.id);
-                        }
                       }}
                     />
                   </TabsContent>

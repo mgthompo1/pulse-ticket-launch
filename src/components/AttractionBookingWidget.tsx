@@ -930,7 +930,6 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
           {/* Date & Resource Selection */}
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="text-xl font-bold">Book Your Experience</CardTitle>
               <p className="text-gray-600">Choose your preferred date and time</p>
             </CardHeader>
             <CardContent className="space-y-6">

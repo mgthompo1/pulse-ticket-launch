@@ -80,6 +80,25 @@ const Tickets: React.FC = () => {
         return;
       }
 
+      // First get order items for this order
+      const { data: orderItems, error: orderItemsError } = await supabase
+        .from('order_items')
+        .select('id')
+        .eq('order_id', orderId);
+
+      if (orderItemsError) {
+        console.error('Error loading order items:', orderItemsError);
+        setError('Failed to load order items');
+        return;
+      }
+
+      if (!orderItems || orderItems.length === 0) {
+        setError('No order items found');
+        return;
+      }
+
+      const orderItemIds = orderItems.map(item => item.id);
+
       // Load tickets with all related data
       const { data: ticketsData, error: ticketsError } = await supabase
         .from('tickets')
@@ -88,14 +107,14 @@ const Tickets: React.FC = () => {
           ticket_code,
           status,
           order_item_id,
-          order_items (
+          order_items!inner (
             id,
             order_id,
             ticket_types (
               name,
               price
             ),
-            orders (
+            orders!inner (
               id,
               customer_name,
               customer_email,
@@ -116,8 +135,7 @@ const Tickets: React.FC = () => {
             )
           )
         `)
-        .eq('order_item_id', orderId)
-        .or(`order_items.orders.id.eq.${orderId}`);
+        .in('order_item_id', orderItemIds);
 
       if (ticketsError) {
         console.error('Error loading tickets:', ticketsError);

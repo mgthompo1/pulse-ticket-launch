@@ -57,15 +57,13 @@ const ATTRACTION_TYPES = [
 ];
 
 const AttractionManagement: React.FC<AttractionManagementProps> = ({ 
-  organizationId, 
+  organizationId,
   onAttractionSelect 
 }) => {
   const { toast } = useToast();
   const [attractions, setAttractions] = useState<Attraction[]>([]);
   const [loading, setLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [selectedAttraction, setSelectedAttraction] = useState<Attraction | null>(null);
 
   // Form state for creating new attraction
   const [attractionForm, setAttractionForm] = useState({
@@ -101,7 +99,9 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
         .eq("organization_id", organizationId)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       // Calculate stats for each attraction
       const attractionsWithStats = data?.map(attraction => ({
@@ -114,7 +114,6 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
 
       setAttractions(attractionsWithStats as Attraction[]);
     } catch (error) {
-      console.error("Error loading attractions:", error);
       toast({
         title: "Error",
         description: "Failed to load attractions",
@@ -126,10 +125,20 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
   };
 
   const handleSaveAttraction = async () => {
-    if (!attractionForm.name || !attractionForm.attraction_type) {
+    // Validate required fields
+    if (!attractionForm.name.trim()) {
       toast({
         title: "Error",
-        description: "Please fill in the required fields",
+        description: "Attraction name is required",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!attractionForm.attraction_type) {
+      toast({
+        title: "Error",
+        description: "Attraction type is required",
         variant: "destructive"
       });
       return;
@@ -137,65 +146,53 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
 
     setIsCreating(true);
     try {
-      if (isEditing && selectedAttraction) {
-        // Update existing attraction
-        const { error } = await supabase
-          .from("attractions")
-          .update({
-            name: attractionForm.name,
-            description: attractionForm.description || null,
-            venue: attractionForm.venue || null,
-            attraction_type: attractionForm.attraction_type,
-            duration_minutes: attractionForm.duration_minutes,
-            base_price: attractionForm.base_price,
-            max_concurrent_bookings: attractionForm.max_concurrent_bookings,
-            resource_label: attractionForm.resource_label || null
-          })
-          .eq("id", selectedAttraction.id);
+      // Create new attraction
+      const createData = {
+        organization_id: organizationId,
+        name: attractionForm.name.trim(),
+        description: attractionForm.description?.trim() || null,
+        venue: attractionForm.venue?.trim() || null,
+        attraction_type: attractionForm.attraction_type,
+        duration_minutes: Math.max(1, attractionForm.duration_minutes),
+        base_price: Math.max(0, attractionForm.base_price),
+        max_concurrent_bookings: Math.max(1, attractionForm.max_concurrent_bookings),
+        resource_label: attractionForm.resource_label?.trim() || null,
+        status: 'active'
+      };
+      
+      const { error } = await supabase
+        .from("attractions")
+        .insert(createData)
+        .select()
+        .single();
 
-        if (error) throw error;
-
-        toast({
-          title: "Success",
-          description: "Attraction updated successfully!"
-        });
-      } else {
-        // Create new attraction
-        const { error } = await supabase
-          .from("attractions")
-          .insert({
-            organization_id: organizationId,
-            name: attractionForm.name,
-            description: attractionForm.description || null,
-            venue: attractionForm.venue || null,
-            attraction_type: attractionForm.attraction_type,
-            duration_minutes: attractionForm.duration_minutes,
-            base_price: attractionForm.base_price,
-            max_concurrent_bookings: attractionForm.max_concurrent_bookings,
-            resource_label: attractionForm.resource_label || null,
-            status: 'active'
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        toast({
-          title: "Success",
-          description: "Attraction created successfully!"
-        });
+      if (error) {
+        throw error;
       }
 
+      toast({
+        title: "Success",
+        description: "Attraction created successfully!"
+      });
+
       // Reset form
-      handleCancelEdit();
+      setAttractionForm({
+        name: "",
+        description: "",
+        venue: "",
+        attraction_type: "",
+        duration_minutes: 60,
+        base_price: 0,
+        max_concurrent_bookings: 1,
+        resource_label: ""
+      });
 
       // Reload attractions
       loadAttractions();
     } catch (error) {
-      console.error("Error saving attraction:", error);
       toast({
         title: "Error",
-        description: `Failed to ${isEditing ? 'update' : 'create'} attraction`,
+        description: "Failed to create attraction",
         variant: "destructive"
       });
     } finally {
@@ -204,38 +201,8 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
   };
 
   const handleAttractionClick = (attraction: Attraction) => {
-    setSelectedAttraction(attraction);
+    // Call the parent callback to handle attraction selection
     onAttractionSelect?.(attraction);
-  };
-
-  const handleEditAttraction = (attraction: Attraction) => {
-    setSelectedAttraction(attraction);
-    setAttractionForm({
-      name: attraction.name,
-      description: attraction.description || "",
-      venue: attraction.venue || "",
-      attraction_type: attraction.attraction_type,
-      duration_minutes: attraction.duration_minutes,
-      base_price: attraction.base_price,
-      max_concurrent_bookings: attraction.max_concurrent_bookings,
-      resource_label: attraction.resource_label || ""
-    });
-    setIsEditing(true);
-  };
-
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    setSelectedAttraction(null);
-    setAttractionForm({
-      name: "",
-      description: "",
-      venue: "",
-      attraction_type: "",
-      duration_minutes: 60,
-      base_price: 0,
-      max_concurrent_bookings: 1,
-      resource_label: ""
-    });
   };
 
   const getStatusColor = (status: string) => {
@@ -264,21 +231,11 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
-            {isEditing ? `Edit ${selectedAttraction?.name}` : 'Create New Attraction'}
+            Create New Attraction
           </CardTitle>
           <CardDescription>
-            {isEditing ? 'Update attraction details and settings' : 'Set up a new bookable attraction or experience'}
+            Set up a new bookable attraction or experience
           </CardDescription>
-          {isEditing && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleCancelEdit}
-              className="w-fit"
-            >
-              ← Back to Create New
-            </Button>
-          )}
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -289,6 +246,7 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
                 value={attractionForm.name}
                 onChange={(e) => setAttractionForm(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="e.g., Golf Simulator 1"
+                disabled={isCreating}
               />
             </div>
             <div className="space-y-2">
@@ -296,6 +254,7 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
               <Select
                 value={attractionForm.attraction_type}
                 onValueChange={(value) => setAttractionForm(prev => ({ ...prev, attraction_type: value }))}
+                disabled={isCreating}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select attraction type" />
@@ -319,6 +278,7 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
                 value={attractionForm.venue}
                 onChange={(e) => setAttractionForm(prev => ({ ...prev, venue: e.target.value }))}
                 placeholder="e.g., Britomart Auckland, Room A, Building 1"
+                disabled={isCreating}
               />
               <p className="text-xs text-muted-foreground">
                 This location will be displayed on your booking widget
@@ -331,6 +291,7 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
                 value={attractionForm.resource_label}
                 onChange={(e) => setAttractionForm(prev => ({ ...prev, resource_label: e.target.value }))}
                 placeholder="e.g., Simulator, Room, Lane, Court"
+                disabled={isCreating}
               />
               <p className="text-xs text-muted-foreground">
                 What do you call your bookable resources? (e.g., "Simulator" for golf simulators, "Room" for escape rooms)
@@ -342,8 +303,12 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
                 id="duration"
                 type="number"
                 value={attractionForm.duration_minutes}
-                onChange={(e) => setAttractionForm(prev => ({ ...prev, duration_minutes: parseInt(e.target.value) || 60 }))}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value) || 60;
+                  setAttractionForm(prev => ({ ...prev, duration_minutes: value }));
+                }}
                 placeholder="60"
+                disabled={isCreating}
               />
             </div>
             <div className="space-y-2">
@@ -353,8 +318,12 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
                 type="number"
                 step="0.01"
                 value={attractionForm.base_price}
-                onChange={(e) => setAttractionForm(prev => ({ ...prev, base_price: parseFloat(e.target.value) || 0 }))}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value) || 0;
+                  setAttractionForm(prev => ({ ...prev, base_price: value }));
+                }}
                 placeholder="0.00"
+                disabled={isCreating}
               />
             </div>
             <div className="space-y-2">
@@ -363,8 +332,12 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
                 id="concurrent"
                 type="number"
                 value={attractionForm.max_concurrent_bookings}
-                onChange={(e) => setAttractionForm(prev => ({ ...prev, max_concurrent_bookings: parseInt(e.target.value) || 1 }))}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value) || 1;
+                  setAttractionForm(prev => ({ ...prev, max_concurrent_bookings: value }));
+                }}
                 placeholder="1"
+                disabled={isCreating}
               />
             </div>
           </div>
@@ -377,27 +350,19 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
               placeholder="e.g., 5x of the latest Golf Simulators available for booking. Clubs and balls provided for a $60min session"
               rows={4}
               className="resize-none"
+              disabled={isCreating}
             />
             <p className="text-xs text-muted-foreground">
               This description will appear at the top of your booking widget to help customers understand what you offer.
             </p>
           </div>
           <div className="flex gap-3">
-            {isEditing && (
-              <Button 
-                variant="outline"
-                onClick={handleCancelEdit}
-                disabled={isCreating}
-              >
-                Cancel
-              </Button>
-            )}
             <Button 
               onClick={handleSaveAttraction} 
               disabled={isCreating}
               className="flex-1 md:flex-none"
             >
-              {isCreating ? (isEditing ? "Updating..." : "Creating...") : (isEditing ? "Update Attraction" : "Create Attraction")}
+              {isCreating ? "Creating..." : "Create Attraction"}
             </Button>
           </div>
         </CardContent>
@@ -426,11 +391,7 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
               {attractions.map((attraction) => (
                 <Card
                   key={attraction.id}
-                  className={`group relative overflow-hidden transition-all duration-200 hover:shadow-lg hover:scale-[1.02] cursor-pointer ${
-                    selectedAttraction?.id === attraction.id 
-                      ? 'ring-2 ring-primary shadow-lg' 
-                      : 'hover:shadow-md'
-                  }`}
+                  className="group relative overflow-hidden transition-all duration-200 hover:shadow-lg hover:scale-[1.02] cursor-pointer hover:shadow-md"
                   onClick={() => handleAttractionClick(attraction)}
                 >
                   {/* Status Badge */}
@@ -533,17 +494,6 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
                           className="flex-1 hover:bg-gray-50"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleEditAttraction(attraction);
-                          }}
-                        >
-                          <Settings className="h-4 w-4 mr-2" />
-                          Edit Details
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          className="flex-1 hover:bg-gray-50"
-                          onClick={(e) => {
-                            e.stopPropagation();
                             window.open(`/attraction/${attraction.id}`, '_blank');
                           }}
                         >
@@ -553,17 +503,6 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
                       </div>
                     </div>
 
-                    {/* Selected Indicator */}
-                    {selectedAttraction?.id === attraction.id && (
-                      <div className="absolute inset-0 bg-blue-500/5 pointer-events-none">
-                        <div className="absolute top-4 left-4">
-                          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Selected
-                          </Badge>
-                        </div>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               ))}
