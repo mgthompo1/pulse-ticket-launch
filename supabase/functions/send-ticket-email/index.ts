@@ -291,6 +291,14 @@ Deno.serve(async (req) => {
         fontFamily: emailCustomization?.template?.fontFamily || 'Arial, sans-serif'
       };
 
+      // Lucide-style SVG icons that work in emails
+      const icons = {
+        calendar: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`,
+        mapPin: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>`,
+        user: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`,
+        ticket: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M2 9a3 3 0 1 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path></svg>`
+      };
+
       // Get logo configuration from email customization
       const branding = emailCustomization?.branding || {};
       const getLogoUrl = () => {
@@ -341,21 +349,21 @@ Deno.serve(async (req) => {
               <strong style="color:${theme.textColor}">${order.events.name}</strong>
               <div style="color:${theme.textColor};font-size:14px;line-height:1.6;margin-top:16px;">
                 <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;">
-                  <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:inline-block;line-height:32px;text-align:center;margin-right:12px;flex-shrink:0;font-size:16px;font-weight:bold;">📅</div>
+                  <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">${icons.calendar}</div>
                   <div style="flex:1;">
                     <div style="font-weight:600;color:${theme.textColor};margin-bottom:2px;">${new Date(order.events.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                     <div style="color:${theme.textColor};opacity:0.8;font-size:13px;">${new Date(order.events.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
                   </div>
                 </div>
                 <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;">
-                  <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:inline-block;line-height:32px;text-align:center;margin-right:12px;flex-shrink:0;font-size:16px;font-weight:bold;">📍</div>
+                  <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">${icons.mapPin}</div>
                   <div style="flex:1;">
                     <div style="color:${theme.textColor};opacity:0.6;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Venue</div>
                     <div style="font-weight:600;color:${theme.textColor};">${order.events.venue || 'TBA'}</div>
                   </div>
                 </div>
                 <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;">
-                  <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:inline-block;line-height:32px;text-align:center;margin-right:12px;flex-shrink:0;font-size:16px;font-weight:bold;">👤</div>
+                  <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">${icons.user}</div>
                   <div style="flex:1;">
                     <div style="color:${theme.textColor};opacity:0.6;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Attendee</div>
                     <div style="font-weight:600;color:${theme.textColor};">${order.customer_name}</div>
