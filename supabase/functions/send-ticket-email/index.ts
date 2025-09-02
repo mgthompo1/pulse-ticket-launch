@@ -291,12 +291,12 @@ Deno.serve(async (req) => {
         fontFamily: emailCustomization?.template?.fontFamily || 'Arial, sans-serif'
       };
 
-      // Gmail-compatible Unicode emoji icons (SVG doesn't work in Gmail)
+      // Clean monochrome Unicode symbols for professional look
       const icons = {
-        calendar: '📅',
-        mapPin: '📍',
-        user: '👤',
-        ticket: '🎫'
+        calendar: '◐',  // Half-filled circle for date/time
+        mapPin: '◯',    // Empty circle for location pin
+        user: '◑',      // Half-filled circle for person
+        ticket: '◇'     // Diamond outline for tickets
       };
 
       // Get logo configuration from email customization
