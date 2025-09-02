@@ -79,9 +79,18 @@ Deno.serve(async (req) => {
         logStep("Fetching Stripe payment details", { sessionId: order.stripe_session_id });
         
         // Get Stripe credentials for this organization
-        const { data: credentials } = await supabaseClient
-          .rpc('get_payment_credentials', { org_id: order.events.organizations.id });
+        const { data: credentialsArray } = await supabaseClient
+          .rpc('get_payment_credentials_for_processing', { 
+            p_organization_id: order.events.organizations.id 
+          });
           
+        const credentials = credentialsArray?.[0];
+        logStep("Payment credentials retrieved", { 
+          hasCredentials: !!credentials, 
+          hasStripeKey: !!(credentials?.stripe_secret_key),
+          orgId: order.events.organizations.id
+        });
+        
         if (credentials && credentials.stripe_secret_key) {
           const stripe = await import('https://esm.sh/stripe@14.21.0');
           const stripeClient = new stripe.default(credentials.stripe_secret_key, {
@@ -329,12 +338,12 @@ Deno.serve(async (req) => {
         fontFamily: emailCustomization?.template?.fontFamily || 'Arial, sans-serif'
       };
 
-      // Clean monochrome Unicode symbols for professional look (white on dark background)
+      // Professional letter-based icons that work well in Gmail
       const icons = {
-        calendar: '●',  // Solid circle for date/time
-        mapPin: '●',    // Solid circle for location pin  
-        user: '●',      // Solid circle for person
-        ticket: '●'     // Solid circle for tickets
+        calendar: 'C',  // C for Calendar/Date
+        mapPin: 'L',    // L for Location
+        user: 'A',      // A for Attendee
+        ticket: 'T'     // T for Ticket
       };
 
       // Get logo configuration from email customization
