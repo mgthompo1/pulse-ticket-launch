@@ -291,12 +291,12 @@ Deno.serve(async (req) => {
         fontFamily: emailCustomization?.template?.fontFamily || 'Arial, sans-serif'
       };
 
-      // Lucide-style SVG icons that work in emails
+      // Gmail-compatible Unicode emoji icons (SVG doesn't work in Gmail)
       const icons = {
-        calendar: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`,
-        mapPin: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>`,
-        user: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`,
-        ticket: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M2 9a3 3 0 1 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 1 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v2z"></path><path d="M13 5v2"></path><path d="M13 17v2"></path><path d="M13 11v2"></path></svg>`
+        calendar: '📅',
+        mapPin: '📍',
+        user: '👤',
+        ticket: '🎫'
       };
 
       // Get logo configuration from email customization
@@ -405,10 +405,7 @@ Deno.serve(async (req) => {
                       </div>
                     </div>
                   </div>
-                  <div style="text-align:right;padding-left:20px;">
-                    <div style="font-size:12px;color:${theme.textColor};opacity:0.6;margin-bottom:4px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">Total</div>
-                    <div style="font-weight:700;color:${theme.textColor};font-size:20px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">$${item.total.toFixed(2)}</div>
-                  </div>
+                  <!-- Removed individual item totals to reduce clutter -->
                 </div>
               </div>
             `).join('');
@@ -420,10 +417,15 @@ Deno.serve(async (req) => {
               <h3 style="margin:24px 0 20px 0;color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:20px;">Your Order Summary</h3>
               <div style="background:#fff;border:2px solid ${theme.borderColor};border-radius:12px;padding:0;margin-bottom:20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
                 ${itemsHtml}
-                <div style="background:linear-gradient(135deg, ${theme.headerColor}, ${theme.buttonColor});padding:24px;border-top:1px solid ${theme.borderColor};">
-                  <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <div style="color:#ffffff;font-weight:600;font-size:16px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">Grand Total</div>
-                    <div style="color:#ffffff;font-weight:700;font-size:24px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">$${grandTotal.toFixed(2)}</div>
+                <div style="background:linear-gradient(135deg, ${theme.headerColor}, ${theme.buttonColor});padding:32px 24px;border-top:1px solid ${theme.borderColor};">
+                  <div style="text-align:center;margin-bottom:16px;">
+                    <div style="color:#ffffff;font-weight:700;font-size:28px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">$${grandTotal.toFixed(2)}</div>
+                    <div style="color:#ffffff;opacity:0.8;font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">Total Amount Paid</div>
+                  </div>
+                  <div style="text-align:center;padding-top:16px;border-top:1px solid rgba(255,255,255,0.2);">
+                    <div style="color:#ffffff;opacity:0.8;font-size:12px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">Payment Method</div>
+                    <div style="color:#ffffff;font-weight:500;font-size:14px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">💳 Card Payment</div>
+                    <div style="color:#ffffff;opacity:0.7;font-size:12px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-top:2px;">${new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${new Date(order.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
                   </div>
                 </div>
               </div>
