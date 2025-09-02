@@ -389,13 +389,26 @@ Deno.serve(async (req) => {
             });
             
             const itemsHtml = allItems.map((item: any) => `
-              <div style="padding:16px;border-bottom:1px solid ${theme.borderColor};display:flex;justify-content:space-between;align-items:center;">
-                <div style="flex:1;">
-                  <div style="font-weight:600;color:${theme.textColor};font-size:16px;margin-bottom:4px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">${item.name}</div>
-                  <div style="color:${theme.textColor};opacity:0.7;font-size:13px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">$${item.price.toFixed(2)} each × ${item.quantity}</div>
-                </div>
-                <div style="text-align:right;">
-                  <div style="font-weight:700;color:${theme.textColor};font-size:16px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">$${item.total.toFixed(2)}</div>
+              <div style="padding:20px 24px;border-bottom:1px solid ${theme.borderColor};background:${item.type === 'ticket' ? 'rgba(99, 102, 241, 0.02)' : 'rgba(34, 197, 94, 0.02)'};margin-bottom:2px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+                  <div style="flex:1;padding-right:20px;">
+                    <div style="display:flex;align-items:center;margin-bottom:8px;">
+                      <div style="background:${item.type === 'ticket' ? '#6366f1' : '#22c55e'};color:#ffffff;border-radius:4px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;margin-right:8px;font-size:12px;">${item.type === 'ticket' ? '🎫' : '🛍️'}</div>
+                      <div style="font-weight:600;color:${theme.textColor};font-size:18px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">${item.name}</div>
+                    </div>
+                    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+                      <div style="background:${theme.accentColor};padding:4px 8px;border-radius:4px;font-size:12px;color:${theme.textColor};opacity:0.8;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">
+                        <strong>Price:</strong> $${item.price.toFixed(2)}
+                      </div>
+                      <div style="background:${theme.accentColor};padding:4px 8px;border-radius:4px;font-size:12px;color:${theme.textColor};opacity:0.8;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">
+                        <strong>Qty:</strong> ${item.quantity}
+                      </div>
+                    </div>
+                  </div>
+                  <div style="text-align:right;padding-left:20px;">
+                    <div style="font-size:12px;color:${theme.textColor};opacity:0.6;margin-bottom:4px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">Total</div>
+                    <div style="font-weight:700;color:${theme.textColor};font-size:20px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">$${item.total.toFixed(2)}</div>
+                  </div>
                 </div>
               </div>
             `).join('');
@@ -404,16 +417,23 @@ Deno.serve(async (req) => {
             const grandTotal = allItems.reduce((sum: number, item: any) => sum + item.total, 0);
             
             parts.push(`<div style="padding:0 20px;color:${theme.textColor}">
-              <h3 style="margin:20px 0 16px 0;color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;">Your Order</h3>
-              <div style="background:#fff;border:1px solid ${theme.borderColor};border-radius:8px;padding:0;margin-bottom:16px;overflow:hidden;">
+              <h3 style="margin:24px 0 20px 0;color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:20px;">Your Order Summary</h3>
+              <div style="background:#fff;border:2px solid ${theme.borderColor};border-radius:12px;padding:0;margin-bottom:20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
                 ${itemsHtml}
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 16px;border-top:2px solid ${theme.borderColor};background:${theme.accentColor};">
-                  <div style="font-weight:700;color:${theme.textColor};font-size:18px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">Grand Total:</div>
-                  <div style="font-weight:700;color:${theme.textColor};font-size:18px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">$${grandTotal.toFixed(2)}</div>
+                <div style="background:linear-gradient(135deg, ${theme.headerColor}, ${theme.buttonColor});padding:24px;border-top:1px solid ${theme.borderColor};">
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div style="color:#ffffff;font-weight:600;font-size:16px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">Grand Total</div>
+                    <div style="color:#ffffff;font-weight:700;font-size:24px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">$${grandTotal.toFixed(2)}</div>
+                  </div>
                 </div>
               </div>
-              <div style="text-align:center;padding:16px 0;color:${theme.textColor};opacity:0.8;font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">
-                Click the link below to view your tickets
+              <div style="text-align:center;padding:20px;background:${theme.accentColor};border-radius:8px;margin-bottom:16px;">
+                <div style="color:${theme.textColor};font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:8px;">
+                  <strong>Ready to access your tickets?</strong>
+                </div>
+                <div style="color:${theme.textColor};opacity:0.8;font-size:13px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">
+                  Click the button below to view and download your tickets
+                </div>
               </div>
             </div>`);
             break;
