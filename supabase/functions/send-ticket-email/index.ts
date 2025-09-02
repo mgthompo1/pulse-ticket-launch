@@ -313,7 +313,11 @@ Deno.serve(async (req) => {
       const logoSize = branding.logoSize === 'small' ? '80px' : branding.logoSize === 'large' ? '150px' : '120px';
 
       const parts: string[] = [];
-      parts.push(`<div style="font-family:${theme.fontFamily};max-width:600px;margin:0 auto;background:${theme.backgroundColor};border:1px solid ${theme.borderColor};">`);
+      // Add Google Fonts import for Manrope and DM Sans
+      parts.push(`<style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+      </style>`);
+      parts.push(`<div style="font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;max-width:600px;margin:0 auto;background:${theme.backgroundColor};border:1px solid ${theme.borderColor};">`);
       
       // Add logo in header position (prefer event -> org -> custom per config)
       if (branding.showLogo && branding.logoPosition === 'header') {
@@ -327,7 +331,7 @@ Deno.serve(async (req) => {
         if (b.hidden) continue;
         switch (b.type) {
           case 'header':
-            parts.push(`<div style="background:${theme.headerColor};color:#fff;padding:20px;"><h1 style="margin:0;text-align:center;">${(b.title || 'Thank you')}</h1></div>`);
+            parts.push(`<div style="background:${theme.headerColor};color:#fff;padding:20px;"><h1 style="margin:0;text-align:center;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;">${(b.title || 'Thank you')}</h1></div>`);
             break;
           case 'text':
             parts.push(`<div style="padding:16px 20px;color:${theme.textColor};">${b.html || ''}</div>`);
@@ -377,9 +381,14 @@ Deno.serve(async (req) => {
             });
             
             const itemsHtml = allItems.map((item: any) => `
-              <div style="padding:12px 0;border-bottom:1px solid ${theme.borderColor};">
-                <div style="font-weight:600;color:${theme.textColor};font-size:16px;margin-bottom:4px;">${item.name}</div>
-                <div style="color:${theme.textColor};font-size:14px;">Price: $${item.price.toFixed(2)}, Quantity: ${item.quantity}, Total = $${item.total.toFixed(2)}</div>
+              <div style="padding:16px;border-bottom:1px solid ${theme.borderColor};display:flex;justify-content:space-between;align-items:center;">
+                <div style="flex:1;">
+                  <div style="font-weight:600;color:${theme.textColor};font-size:16px;margin-bottom:4px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">${item.name}</div>
+                  <div style="color:${theme.textColor};opacity:0.7;font-size:13px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">$${item.price.toFixed(2)} each × ${item.quantity}</div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-weight:700;color:${theme.textColor};font-size:16px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">$${item.total.toFixed(2)}</div>
+                </div>
               </div>
             `).join('');
             
@@ -387,15 +396,15 @@ Deno.serve(async (req) => {
             const grandTotal = allItems.reduce((sum: number, item: any) => sum + item.total, 0);
             
             parts.push(`<div style="padding:0 20px;color:${theme.textColor}">
-              <h3 style="margin:20px 0 16px 0;color:${theme.textColor};">Your Order</h3>
-              <div style="background:#fff;border:1px solid ${theme.borderColor};border-radius:8px;padding:16px;margin-bottom:16px;">
+              <h3 style="margin:20px 0 16px 0;color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;">Your Order</h3>
+              <div style="background:#fff;border:1px solid ${theme.borderColor};border-radius:8px;padding:0;margin-bottom:16px;overflow:hidden;">
                 ${itemsHtml}
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 0 0 0;border-top:2px solid ${theme.borderColor};margin-top:12px;">
-                  <div style="font-weight:700;color:${theme.textColor};font-size:18px;">Grand Total:</div>
-                  <div style="font-weight:700;color:${theme.textColor};font-size:18px;">$${grandTotal.toFixed(2)}</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 16px;border-top:2px solid ${theme.borderColor};background:${theme.accentColor};">
+                  <div style="font-weight:700;color:${theme.textColor};font-size:18px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">Grand Total:</div>
+                  <div style="font-weight:700;color:${theme.textColor};font-size:18px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">$${grandTotal.toFixed(2)}</div>
                 </div>
               </div>
-              <div style="text-align:center;padding:16px 0;color:${theme.textColor};opacity:0.8;font-size:14px;">
+              <div style="text-align:center;padding:16px 0;color:${theme.textColor};opacity:0.8;font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">
                 Click the link below to view your tickets
               </div>
             </div>`);
