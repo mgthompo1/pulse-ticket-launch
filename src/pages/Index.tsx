@@ -62,6 +62,9 @@ const Index = () => {
         ogImage="https://www.ticketflo.org/og-image.jpg"
         structuredData={structuredData}
         keywords="TicketFlo, event ticketing, online ticketing platform, event management software, ticket sales, seat selection, event booking, professional ticketing, event organizer tools, digital ticketing, event management platform, ticket management, event ticketing software, online event tickets, event registration, ticketing system, event planning software, ticket sales platform, event management tools, automated ticketing, best event ticketing platform, top event management software"
+        twitterSite="@ticketflo"
+        twitterCreator="@ticketflo"
+        author="TicketFlo Team"
       />
       <div className="min-h-screen bg-black text-white">
         <Navigation />

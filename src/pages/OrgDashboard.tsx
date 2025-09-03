@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import XeroIntegration from "@/components/XeroIntegration";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,6 +91,9 @@ const OrgDashboard = () => {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [userRole, setUserRole] = useState<'owner' | 'admin' | 'editor' | 'viewer' | null>(null);
   
+  // Simple loading guard to prevent duplicate organization loads
+  const organizationLoaded = useRef(false);
+  
   // Permission checking functions
   const canAccessAnalytics = () => userRole === 'owner' || userRole === 'admin' || userRole === 'editor';
   const canAccessBilling = () => userRole === 'owner' || userRole === 'admin';
@@ -177,7 +180,14 @@ const OrgDashboard = () => {
         console.log("No user found, cannot load organization");
         return;
       }
-
+      
+      // Prevent duplicate loads
+      if (organizationLoaded.current) {
+        console.log("Organization loading already initiated, skipping");
+        return;
+      }
+      
+      organizationLoaded.current = true;
       console.log("Loading organization for user:", user.id);
 
       // First, try to find an organization where the user is the owner

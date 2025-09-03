@@ -249,6 +249,8 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                 dangerouslySetInnerHTML={{ __html: eventData.widget_customization.branding.customHeaderText }}
               />
             )}
+
+            
             </div>
             
             {/* Empty space for alignment */}
@@ -287,10 +289,10 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
             />
           </div>
           
-          {/* Get Tickets Button - Bottom aligned with progress bar */}
-          <div className="lg:w-1/3 flex items-end">
+          {/* Get Tickets Button - restored to progress bar area */}
+          <div className="lg:w-1/3 flex items-end lg:-translate-y-4 translate-y-0 transition-transform">
             {currentStep === 'event' && (
-              <div className="bg-white rounded-lg border p-3 w-full max-w-sm" style={{ borderColor: '#d1d5db', transform: 'translateY(-16px)' }}>
+              <div className="bg-white rounded-lg border p-3 w-full max-w-sm" style={{ borderColor: '#d1d5db' }}>
                 <Button 
                   onClick={nextStep}
                   size="default"
@@ -390,19 +392,17 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
           </div>
 
           {/* Order Summary Sidebar - Sticky */}
-          <div className="lg:w-1/3">
-            <div className="sticky top-4">
-              <OrderSummary
-                eventData={eventData}
-                cartItems={cartItems}
-                merchandiseCart={merchandiseCart}
-                currentStep={currentStep}
-                customerInfo={customerInfo}
-                onUpdateTicketQuantity={updateTicketQuantity}
-                onBack={prevStep}
-                theme={theme}
-              />
-            </div>
+          <div className="lg:w-1/3 lg:sticky lg:top-24 h-fit">
+            <OrderSummary
+              eventData={eventData}
+              cartItems={cartItems}
+              merchandiseCart={merchandiseCart}
+              currentStep={currentStep}
+              customerInfo={customerInfo}
+              onUpdateTicketQuantity={updateTicketQuantity}
+              onBack={prevStep}
+              theme={theme}
+            />
           </div>
         </div>
       </div>

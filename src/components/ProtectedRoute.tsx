@@ -1,4 +1,4 @@
-import { useEffect, ReactNode } from 'react';
+import { useEffect, ReactNode, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
@@ -12,16 +12,28 @@ export const ProtectedRoute = ({ children, fallback = "/auth" }: ProtectedRouteP
   console.log("=== ProtectedRoute rendering ===");
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const hasRedirected = useRef(false);
 
   console.log("=== ProtectedRoute state ===", { user: !!user, loading });
+
+  // Memoize the redirect function to prevent unnecessary re-renders
+  const redirectToAuth = useCallback(() => {
+    if (!hasRedirected.current) {
+      console.log("=== Redirecting to auth ===");
+      hasRedirected.current = true;
+      navigate(fallback);
+    }
+  }, [navigate, fallback]);
 
   useEffect(() => {
     console.log("=== ProtectedRoute useEffect ===", { user: !!user, loading });
     if (!loading && !user) {
-      console.log("=== Redirecting to auth ===");
-      navigate(fallback);
+      redirectToAuth();
+    } else if (user) {
+      // Reset redirect flag when user is authenticated
+      hasRedirected.current = false;
     }
-  }, [user, loading, navigate, fallback]);
+  }, [user, loading, redirectToAuth]);
 
   if (loading) {
     return (
