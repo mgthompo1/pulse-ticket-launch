@@ -10,13 +10,12 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Plus,
-  Settings,
+  Monitor,
   Users,
   Trash2,
   Edit,
   Save,
   X,
-  Monitor,
   MapPin
 } from "lucide-react";
 
@@ -95,7 +94,7 @@ const ResourceManager: React.FC<ResourceManagerProps> = ({
 
     setCreating(true);
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("attraction_resources")
         .insert({
           attraction_id: attractionId,

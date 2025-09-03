@@ -72,11 +72,8 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
 
   // LinkedIn OAuth URLs - Using registered redirect URI
   const LINKEDIN_CLIENT_ID = "780xcbz4f2nchj"; // Your correct LinkedIn Client ID
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  
   // Use only registered redirect URIs to avoid mismatch
-  const LINKEDIN_REDIRECT_URI = isLocalhost
-    ? 'http://localhost:8080/auth/linkedin/callback'
-    : 'https://ticketflo.org/dashboard/auth/linkedin/callback';
   
   // Facebook OAuth URLs (hardcoded for testing)
   const FACEBOOK_CLIENT_ID = "your_facebook_client_id";

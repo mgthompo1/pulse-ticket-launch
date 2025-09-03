@@ -446,15 +446,15 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
           <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 border rounded-lg">
               <div className="text-sm text-muted-foreground">Next billing date</div>
-              <div className="text-lg font-semibold">{billingData?.next_billing_at ? new Date(billingData.next_billing_at).toLocaleDateString() : '—'}</div>
+              <div className="text-lg font-semibold">{(billingData as any)?.next_billing_at ? new Date((billingData as any).next_billing_at).toLocaleDateString() : '—'}</div>
             </div>
             <div className="p-4 border rounded-lg">
               <div className="text-sm text-muted-foreground">Last billed</div>
-              <div className="text-lg font-semibold">{billingData?.last_billed_at ? new Date(billingData.last_billed_at).toLocaleDateString() : '—'}</div>
+              <div className="text-lg font-semibold">{(billingData as any)?.last_billed_at ? new Date((billingData as any).last_billed_at).toLocaleDateString() : '—'}</div>
             </div>
             <div className="p-4 border rounded-lg">
               <div className="text-sm text-muted-foreground">Interval</div>
-              <div className="text-lg font-semibold">{billingData?.billing_interval_days || 30} days</div>
+              <div className="text-lg font-semibold">{(billingData as any)?.billing_interval_days || 30} days</div>
             </div>
           </CardContent>
         </Card>

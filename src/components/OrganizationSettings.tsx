@@ -210,7 +210,7 @@ const OrganizationSettings: React.FC = () => {
     setLoading(true);
     
     // Store the current system_type to check if it changed
-    const originalSystemType = organizationData.system_type;
+    
     
     try {
       const { error } = await supabase

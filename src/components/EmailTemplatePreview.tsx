@@ -1,6 +1,5 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar, MapPin, User } from 'lucide-react';
 import type { EmailTemplate } from '@/types/email-template';
 
 interface EmailTemplatePreviewProps {

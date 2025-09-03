@@ -111,13 +111,6 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
     }, 1500);
   };
 
-  const handlePaymentError = (error: string) => {
-    toast({
-      title: "Payment Failed",
-      description: error || "There was an error processing your payment",
-      variant: "destructive"
-    });
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

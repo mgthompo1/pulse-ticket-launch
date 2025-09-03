@@ -1,10 +1,10 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Apple, CreditCard } from "lucide-react";
+import { CreditCard } from "lucide-react";
 
 interface StripeConfigurationProps {
   stripeAccountId: string;
@@ -25,14 +25,10 @@ export const StripeConfiguration = ({
   stripeAccountId, 
   stripePublishableKey,
   stripeSecretKey,
-  enableApplePay = false,
-  enableGooglePay = false,
   currency,
   onStripeAccountIdChange, 
   onStripePublishableKeyChange,
   onStripeSecretKeyChange,
-  onEnableApplePayChange,
-  onEnableGooglePayChange,
   onCurrencyChange
 }: StripeConfigurationProps) => {
   return (

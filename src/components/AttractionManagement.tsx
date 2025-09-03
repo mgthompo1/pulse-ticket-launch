@@ -15,10 +15,8 @@ import {
   Users, 
   Calendar,
   Plus,
-  Settings,
   Eye,
-  Activity,
-  CheckCircle
+  Activity
 } from "lucide-react";
 
 interface Attraction {
@@ -112,7 +110,10 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
         ) || 0
       })) || [];
 
-      setAttractions(attractionsWithStats as Attraction[]);
+      setAttractions(attractionsWithStats.map((item: any) => ({
+        ...item,
+        resource_label: item.resource_label || null
+      })) as Attraction[]);
     } catch (error) {
       toast({
         title: "Error",

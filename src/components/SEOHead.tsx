@@ -69,7 +69,7 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
       const primaryFallback = "https://www.ticketflo.org/og-image.jpg";
       
       // Secondary fallback using existing large favicon
-      const secondaryFallback = "https://www.ticketflo.org/favicon-large.png";
+      
       
       // For now, return primary fallback (should be created)
       return primaryFallback;

@@ -24,7 +24,6 @@ const CheckoutForm = ({
   customerInfo, 
   total, 
   theme,
-  onSuccess, 
   onCancel
 }: StripePaymentFormProps) => {
   const [loading, setLoading] = useState(false);

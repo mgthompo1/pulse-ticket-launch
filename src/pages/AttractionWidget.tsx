@@ -1,12 +1,8 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { 
   Calendar, 
@@ -15,9 +11,7 @@ import {
   Users, 
   DollarSign, 
   ArrowLeft,
-  CheckCircle,
   Star,
-  Play,
   Loader2
 } from "lucide-react";
 import AttractionBookingWidget from "@/components/AttractionBookingWidget";
@@ -165,31 +159,6 @@ const AttractionWidget = () => {
     }
   }, [attractionId]);
 
-  const getAttractionTypeLabel = (type: string) => {
-    const typeLabels: Record<string, string> = {
-      'golf_simulator': 'Golf Simulator',
-      'karaoke_room': 'Karaoke Room',
-      'tour': 'Tour',
-      'workshop': 'Workshop',
-      'escape_room': 'Escape Room',
-      'arcade': 'Arcade',
-      'playground': 'Playground',
-      'trampoline_park': 'Trampoline Park',
-      'climbing_wall': 'Climbing Wall',
-      'laser_tag': 'Laser Tag',
-      'mini_golf': 'Mini Golf',
-      'bowling': 'Bowling',
-      'cinema': 'Cinema',
-      'museum': 'Museum',
-      'zoo': 'Zoo',
-      'aquarium': 'Aquarium',
-      'theme_park': 'Theme Park',
-      'water_park': 'Water Park',
-      'ski_resort': 'Ski Resort',
-      'adventure_park': 'Adventure Park'
-    };
-    return typeLabels[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
 
 
 

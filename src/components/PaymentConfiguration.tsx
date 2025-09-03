@@ -8,8 +8,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { PaymentProviderSelector } from './payment/PaymentProviderSelector';
 import { StripeConfiguration } from './payment/StripeConfiguration';
 import { WindcaveConfiguration } from './payment/WindcaveConfiguration';
-import { ApplePayConfiguration } from './payment/ApplePayConfiguration';
-import { GooglePayConfiguration } from './payment/GooglePayConfiguration';
 import { PaymentLog } from './PaymentLog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -72,8 +70,8 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         setStripeAccountId(credData.stripe_account_id || '');
         setStripePublishableKey(credData.stripe_publishable_key || '');
         setStripeSecretKey(credData.stripe_secret_key || '');
-        setEnableApplePay(credData.enable_apple_pay || false);
-        setEnableGooglePay(credData.enable_google_pay || false);
+        setEnableApplePay((credData as any)?.enable_apple_pay || false);
+        setEnableGooglePay((credData as any)?.enable_google_pay || false);
         setWindcaveUsername(credData.windcave_username || '');
         setWindcaveApiKey(credData.windcave_api_key || '');
         setWindcaveEndpoint(credData.windcave_endpoint || 'UAT');
