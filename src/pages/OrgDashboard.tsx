@@ -964,14 +964,12 @@ const OrgDashboard = () => {
 
                                 <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm" style={{ animationDelay: '300ms' }}>
                                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                                    <CardTitle className="font-manrope font-semibold text-base text-gray-900">Conversion Rate</CardTitle>
-                                    <TrendingUp className="h-5 w-5 text-gray-900" />
+                                    <CardTitle className="font-manrope font-semibold text-base text-gray-900">Platform Fees</CardTitle>
+                                    <Users className="h-5 w-5 text-gray-900" />
                                   </CardHeader>
                                   <CardContent>
-                                    <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">
-                                      {events.length > 0 ? ((analytics.totalOrders / events.length) * 100).toFixed(1) : 0}%
-                                    </div>
-                                    <p className="font-manrope text-sm text-gray-600">Average per event</p>
+                                    <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">${analytics.estimatedPlatformFees.toFixed(2)}</div>
+                                    <p className="font-manrope text-sm text-gray-600">Estimated fees</p>
                                   </CardContent>
                                 </Card>
                               </>
