@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,8 @@ const Auth = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [invitationValid, setInvitationValid] = useState(false);
+  const [invitationLoading, setInvitationLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("signin");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const navigate = useNavigate();
@@ -29,22 +31,41 @@ const Auth = () => {
   
   const inviteToken = searchParams.get('invite');
 
+  // Email validation function
+  const isValidEmail = useCallback((email: string): boolean => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }, []);
+
+  // Tab change handler with state cleanup
+  const handleTabChange = useCallback((value: string) => {
+    setActiveTab(value);
+    setError(""); // Clear errors when switching tabs
+    setPassword(""); // Clear password when switching tabs
+    setConfirmPassword(""); // Clear confirm password when switching tabs
+    setShowForgotPassword(false); // Reset forgot password state
+    setResetEmailSent(false); // Reset reset email state
+  }, []);
+
+  // Determine if invitation acceptance should be shown
+  const shouldShowInvitationAcceptance = useMemo(() => {
+    return inviteToken && invitationValid && !invitationLoading;
+  }, [inviteToken, invitationValid, invitationLoading]);
+
   useEffect(() => {
-    // Check if user is already logged in and redirect if no invite token
-    if (!authLoading && user && !inviteToken) {
+    // Only redirect if not loading invitation and no valid invitation
+    if (!authLoading && user && !inviteToken && !invitationLoading) {
       navigate("/dashboard");
     }
-  }, [user, authLoading, navigate, inviteToken]);
+  }, [user, authLoading, navigate, inviteToken, invitationLoading]);
 
   useEffect(() => {
-
     // Check for invitation token
     const checkInvitation = async () => {
       const inviteToken = searchParams.get('invite');
       const inviteEmail = searchParams.get('email');
       
       if (inviteToken && inviteEmail) {
-        // setInvitationLoading(true);
+        setInvitationLoading(true);
         try {
           // Validate the invitation token
           const { data: invitation, error } = await supabase
@@ -72,7 +93,7 @@ const Auth = () => {
           console.error("Error validating invitation:", error);
           setError("Error validating invitation. Please try again.");
         } finally {
-          // setInvitationLoading(false);
+          setInvitationLoading(false);
         }
       }
     };
@@ -82,6 +103,13 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Email validation
+    if (!isValidEmail(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+    
     if (password !== confirmPassword) {
       setError("Passwords don't match");
       return;
@@ -164,6 +192,13 @@ const Auth = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Email validation
+    if (!isValidEmail(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+    
     setLoading(true);
     setError("");
 
@@ -192,6 +227,16 @@ const Auth = () => {
       toast({
         title: "Error",
         description: "Please enter your email address first",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Email validation
+    if (!isValidEmail(email)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address",
         variant: "destructive"
       });
       return;
@@ -226,6 +271,12 @@ const Auth = () => {
       setError("Please enter your email address");
       return;
     }
+    
+    // Email validation
+    if (!isValidEmail(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -250,12 +301,12 @@ const Auth = () => {
     }
   };
 
-  // Show invitation acceptance if invite token is present
-  if (inviteToken) {
+  // Show invitation acceptance only after validation completes and is valid
+  if (shouldShowInvitationAcceptance) {
     return <InvitationAcceptance />;
   }
 
-  if (authLoading) {
+  if (authLoading || invitationLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
         <div className="text-center">
@@ -292,7 +343,7 @@ const Auth = () => {
             )}
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="signin" className="space-y-4">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
