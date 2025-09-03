@@ -593,12 +593,20 @@ const TicketWidget = () => {
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.id === ticketType.id);
       if (existingItem) {
+        toast({
+          title: "Ticket added",
+          description: `${ticketType.name} added to cart`,
+        });
         return prevCart.map(item =>
           item.id === ticketType.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       } else {
+        toast({
+          title: "Ticket added",
+          description: `${ticketType.name} added to cart`,
+        });
         return [...prevCart, { ...ticketType, quantity: 1, type: 'ticket' as const }];
       }
     });

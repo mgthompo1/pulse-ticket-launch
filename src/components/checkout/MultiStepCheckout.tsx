@@ -3,6 +3,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar, MapPin, Ticket } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { TicketSelection } from './TicketSelection';
 import { AddOnsSelection } from './AddOnsSelection';
 import { CustomerDetails } from './CustomerDetails';
@@ -28,6 +29,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   ticketTypes,
   customQuestions,
 }) => {
+  const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('event');
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [merchandiseCart, setMerchandiseCart] = useState<MerchandiseCartItem[]>([]);
@@ -75,10 +77,19 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
       const existingItem = prev.find(item => item.id === ticketType.id);
       
       if (existingItem) {
+        toast({
+          title: "Ticket added",
+          description: `${ticketType.name} added to cart`,
+        });
         return prev.map(item =>
           item.id === ticketType.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
+      
+      toast({
+        title: "Ticket added",
+        description: `${ticketType.name} added to cart`,
+      });
       
       return [...prev, {
         ...ticketType,

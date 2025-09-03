@@ -680,6 +680,11 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
       const selectedSlot = availableSlots.find(slot => slot.id === bookingForm.selectedSlotId);
       if (!selectedSlot) throw new Error("Selected slot not found");
 
+      toast({
+        title: "Booking confirmed!",
+        description: `Your ${attractionData?.name} booking has been confirmed. Check your email for details.`,
+      });
+
       // Update booking status
       await supabase
         .from("attraction_bookings")
