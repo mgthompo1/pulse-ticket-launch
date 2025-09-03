@@ -585,7 +585,7 @@ Deno.serve(async (req) => {
     if (deliveryMethod === 'qr_ticket' && allTickets.length > 0) {
       try {
         logStep("Generating PDF tickets");
-        const pdfResponse = await supabaseClient.functions.invoke('generate-ticket-pdf', {
+        const pdfResponse = await supabaseClient.functions.invoke('generate-ticket-pdf-v2', {
           body: { orderId: orderId }
         });
 
