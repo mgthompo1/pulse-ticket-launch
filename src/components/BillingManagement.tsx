@@ -5,8 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { 
   CreditCard, 
   Calendar,
@@ -30,121 +28,43 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// Stripe will be initialized dynamically when needed
+interface BillingData {
+  id: string;
+  organization_id: string;
+  stripe_customer_id: string;
+  billing_status: string;
+  billing_email: string;
+  payment_method_id: string | null;
+  updated_at: string;
+}
+
+interface UpcomingCharges {
+  upcoming_amount: number;
+  next_billing_date: string;
+  billing_period_start: string;
+  billing_period_end: string;
+  transaction_count: number;
+}
+
+interface PaymentMethod {
+  id: string;
+  brand?: string;
+  last4?: string;
+  exp_month?: number;
+  exp_year?: number;
+}
 
 interface BillingManagementProps {
   organizationId: string;
 }
 
-const UpdatePaymentMethod = ({ onSuccess }: { organizationId: string; onSuccess: () => void }) => {
-  const stripe = useStripe();
-  const elements = useElements();
-  const { toast } = useToast();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string>("");
-
-  useEffect(() => {
-    setupPaymentMethodUpdate();
-  }, []);
-
-  const setupPaymentMethodUpdate = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke('setup-billing');
-      if (error) throw error;
-      
-      setClientSecret(data.client_secret);
-    } catch (error) {
-      console.error('Error setting up payment method update:', error);
-      toast({
-        title: "Error",
-        description: "Failed to initialize payment method update",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    
-    if (!stripe || !elements || !clientSecret) {
-      return;
-    }
-
-    setIsProcessing(true);
-
-    try {
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) throw new Error("Card element not found");
-
-      const { error: stripeError, setupIntent } = await stripe.confirmCardSetup(clientSecret, {
-        payment_method: {
-          card: cardElement,
-        }
-      });
-
-      if (stripeError) {
-        throw new Error(stripeError.message);
-      }
-
-      // Update payment method
-      const { error: updateError } = await supabase.functions.invoke('manage-billing', {
-        body: { 
-          action: 'update_payment_method',
-          setup_intent_id: setupIntent.id 
-        }
-      });
-
-      if (updateError) throw updateError;
-
-      toast({
-        title: "Success",
-        description: "Payment method updated successfully!"
-      });
-
-      onSuccess();
-    } catch (error) {
-      console.error('Error updating payment method:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update payment method",
-        variant: "destructive"
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="p-4 border rounded-lg">
-        <CardElement 
-          options={{
-            style: {
-              base: {
-                fontSize: '16px',
-                color: 'hsl(var(--foreground))',
-                '::placeholder': {
-                  color: 'hsl(var(--muted-foreground))',
-                },
-              },
-            },
-          }}
-        />
-      </div>
-      <Button type="submit" disabled={!stripe || isProcessing} className="w-full">
-        {isProcessing ? "Updating..." : "Update Payment Method"}
-      </Button>
-    </form>
-  );
-};
 
 export const BillingManagement: React.FC<BillingManagementProps> = ({ organizationId }) => {
   const { toast } = useToast();
-  const [billingData, setBillingData] = useState<any>(null);
-  const [upcomingCharges, setUpcomingCharges] = useState<any>(null);
+  const [billingData, setBillingData] = useState<BillingData | null>(null);
+  const [upcomingCharges, setUpcomingCharges] = useState<UpcomingCharges | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showUpdatePayment, setShowUpdatePayment] = useState(false);
-  const [paymentMethods, setPaymentMethods] = useState<Array<any>>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [defaultPaymentMethod, setDefaultPaymentMethod] = useState<string | null>(null);
 
   useEffect(() => {
@@ -272,10 +192,6 @@ export const BillingManagement: React.FC<BillingManagementProps> = ({ organizati
     }
   };
 
-  const handleUpdateComplete = () => {
-    setShowUpdatePayment(false);
-    loadBillingData();
-  };
 
   if (loading) {
     return (
@@ -357,14 +273,6 @@ export const BillingManagement: React.FC<BillingManagementProps> = ({ organizati
               <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
 
-            <Button 
-              onClick={() => setShowUpdatePayment(!showUpdatePayment)} 
-              variant="outline"
-            >
-              <CreditCard className="h-4 w-4 mr-2" />
-              Update Payment Method
-            </Button>
-
             <Button onClick={loadUpcomingCharges} variant="outline" size="sm">
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
@@ -431,32 +339,15 @@ export const BillingManagement: React.FC<BillingManagementProps> = ({ organizati
             </div>
           )}
           <div className="flex gap-2 pt-2">
-            <Button onClick={() => setShowUpdatePayment(true)} className="flex-1">
-              Add/Update Card
-            </Button>
-            <Button onClick={handleManagePaymentMethods} variant="outline" className="flex-1">
-              Open Stripe Portal
+            <Button onClick={handleManagePaymentMethods} className="flex-1">
+              <CreditCard className="h-4 w-4 mr-2" />
+              Manage Cards via Stripe
+              <ExternalLink className="h-3 w-3 ml-1" />
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Update Payment Method */}
-      {showUpdatePayment && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Update Payment Method</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Elements stripe={loadStripe("pk_live_51RkWYvIkAZJOEIBEU4kM4sZ1jv3Jkdhfcr953tdGveqHA83bUo6pDA3KBSUUe9QbWbgTnT9uvXWSUO65PEFqlZ06009YvC3tjO")}>
-              <UpdatePaymentMethod 
-                organizationId={organizationId} 
-                onSuccess={handleUpdateComplete}
-              />
-            </Elements>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Upcoming Charges */}
       {upcomingCharges && (

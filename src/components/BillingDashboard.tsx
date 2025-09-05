@@ -337,7 +337,7 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             You must complete billing setup before you can publish events and accept payments.
-            Platform fees: 1.00% + $0.50 per transaction, billed monthly.
+            Platform fees: 1.00% + $0.50 per transaction, billed fortnightly (every 14 days).
           </AlertDescription>
         </Alert>
 
@@ -454,7 +454,7 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
             </div>
             <div className="p-4 border rounded-lg">
               <div className="text-sm text-muted-foreground">Interval</div>
-              <div className="text-lg font-semibold">{(billingData as any)?.billing_interval_days || 30} days</div>
+              <div className="text-lg font-semibold">{billingData?.billing_interval_days || 14} days</div>
             </div>
           </CardContent>
         </Card>
@@ -605,7 +605,7 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
                 <Receipt className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
                 <p className="text-muted-foreground">No invoices generated yet</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Invoices are generated monthly based on your platform usage
+                  Invoices are generated fortnightly (every 14 days) based on your platform usage
                 </p>
               </div>
             ) : (

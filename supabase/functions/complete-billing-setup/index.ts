@@ -92,15 +92,18 @@ serve(async (req) => {
       throw new Error('Organization ID not found in setup intent metadata');
     }
 
-    // Update billing customer with payment method and set cycle anchor on first activation
-    // Use explicit error handling and simpler query structure
+    // Update billing customer with payment method and set fortnightly cycle (14 days)
+    const now = new Date();
+    const nextBillingDate = new Date(now.getTime() + (14 * 24 * 60 * 60 * 1000)); // 14 days from now
+    
     const { data: billingData, error: updateError } = await supabaseClient
       .from('billing_customers')
       .update({
         payment_method_id: paymentMethodId,
         billing_status: 'active',
-        next_billing_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        billing_interval_days: 14, // Set fortnightly billing
+        next_billing_at: nextBillingDate.toISOString(),
+        updated_at: now.toISOString(),
       })
       .eq('stripe_customer_id', customerId)
       .select('id')
