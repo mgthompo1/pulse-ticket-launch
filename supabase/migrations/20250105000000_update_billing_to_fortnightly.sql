@@ -1,12 +1,17 @@
--- Update billing cycle to fortnightly (14 days) instead of monthly (30 days)
+-- Add billing cycle columns to support fortnightly (14 days) billing
 
--- Change the default billing interval to 14 days
+-- Add billing_interval_days column with default of 14 days (fortnightly)
 ALTER TABLE public.billing_customers 
-ALTER COLUMN billing_interval_days SET DEFAULT 14;
+ADD COLUMN billing_interval_days INTEGER NOT NULL DEFAULT 14;
 
--- Update existing customers to fortnightly billing (optional - only if you want to apply to existing customers)
--- Uncomment the line below if you want to update existing customers:
--- UPDATE public.billing_customers SET billing_interval_days = 14 WHERE billing_interval_days = 30;
+-- Add next_billing_at column to track next billing date
+ALTER TABLE public.billing_customers 
+ADD COLUMN next_billing_at TIMESTAMP WITH TIME ZONE;
+
+-- Update existing customers to have a next billing date 14 days from now
+UPDATE public.billing_customers 
+SET next_billing_at = NOW() + INTERVAL '14 days'
+WHERE next_billing_at IS NULL;
 
 -- Update the scheduled function name to reflect fortnightly billing (rename for clarity)
 -- The function can still handle any interval, but the name should reflect the new default
