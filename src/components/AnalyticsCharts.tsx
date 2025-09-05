@@ -71,7 +71,7 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
                   borderRadius: "6px",
                   boxShadow: "0 4px 12px hsl(var(--primary) / 0.15)"
                 }}
-                formatter={(value: any) => [`$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Revenue']}
+                formatter={(value: number | string) => [`$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Revenue']}
                 labelFormatter={(label) => `Event: ${label}`}
               />
               <Bar 
@@ -152,7 +152,7 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
                   borderRadius: "6px",
                   boxShadow: "0 4px 12px hsl(var(--primary) / 0.15)"
                 }}
-                formatter={(value: any) => [`$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Revenue']}
+                formatter={(value: number | string) => [`$${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Revenue']}
                 labelFormatter={(label) => `Event: ${label}`}
               />
               <Bar 

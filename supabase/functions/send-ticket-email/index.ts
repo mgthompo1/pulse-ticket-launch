@@ -73,8 +73,10 @@ Deno.serve(async (req) => {
       eventName: order.events.name 
     });
 
-    // Fetch payment method details from Stripe if available
-    let paymentMethodInfo = { brand: 'Card', last4: '', type: 'card' };
+    // Fetch payment method details from payment processors
+    let paymentMethodInfo = { brand: 'Card', last4: '', type: 'card', processor: 'unknown' };
+    
+    // Try Stripe first if session ID exists
     if (order.stripe_session_id) {
       try {
         logStep("Fetching Stripe payment details", { sessionId: order.stripe_session_id });
@@ -108,23 +110,83 @@ Deno.serve(async (req) => {
               paymentMethodInfo = {
                 brand: pm.card.brand.charAt(0).toUpperCase() + pm.card.brand.slice(1),
                 last4: pm.card.last4,
-                type: 'card'
+                type: 'card',
+                processor: 'stripe'
               };
-              logStep("Payment method retrieved", paymentMethodInfo);
+              logStep("Stripe payment method retrieved", paymentMethodInfo);
+            } else if (pm.type) {
+              // Handle other Stripe payment methods (bank transfer, etc.)
+              paymentMethodInfo = {
+                brand: pm.type.charAt(0).toUpperCase() + pm.type.slice(1),
+                last4: '',
+                type: pm.type,
+                processor: 'stripe'
+              };
+              logStep("Stripe non-card payment method retrieved", paymentMethodInfo);
             }
           }
         }
       } catch (error) {
-        logStep("Failed to fetch payment method", { error: error.message });
-        // Continue with default payment info if Stripe fetch fails
+        logStep("Failed to fetch Stripe payment method", { error: error.message });
+        // Continue with fallback logic
       }
     }
-
-    // Check delivery method from custom answers
-    const customAnswers = order.custom_answers as any;
-    const deliveryMethod = customAnswers?.deliveryMethod || 'qr_ticket';
     
-    logStep("Processing delivery method", { deliveryMethod });
+    // Try Windcave if no Stripe info and windcave session exists
+    if (paymentMethodInfo.processor === 'unknown' && (order as any).windcave_session_id) {
+      try {
+        logStep("Using Windcave payment info", { sessionId: (order as any).windcave_session_id });
+        paymentMethodInfo = {
+          brand: 'Windcave',
+          last4: '',
+          type: 'card',
+          processor: 'windcave'
+        };
+      } catch (error) {
+        logStep("Failed to process Windcave payment info", { error: error.message });
+      }
+    }
+    
+    // Fallback for cash or other payment methods
+    if (paymentMethodInfo.processor === 'unknown' && (order as any).payment_method) {
+      const method = (order as any).payment_method;
+      paymentMethodInfo = {
+        brand: method.charAt(0).toUpperCase() + method.slice(1),
+        last4: '',
+        type: method,
+        processor: 'other'
+      };
+      logStep("Alternative payment method used", paymentMethodInfo);
+    }
+    
+    // Final validation
+    if (!paymentMethodInfo.brand || paymentMethodInfo.brand === 'Card') {
+      paymentMethodInfo.brand = 'Payment';
+      logStep("Using default payment method info", paymentMethodInfo);
+    }
+
+    // Check delivery method from custom answers or event settings
+    const customAnswers = order.custom_answers as any;
+    const eventSettings = order.events.email_customization as any;
+    
+    // Determine delivery method with enhanced logic
+    let deliveryMethod = customAnswers?.deliveryMethod || 'qr_ticket';
+    
+    // Check if event is configured as registration-only (e.g. conference)
+    if (eventSettings?.emailMode === 'registration_confirmation') {
+      deliveryMethod = 'registration_confirmation';
+    }
+    
+    // Support multiple delivery method names for compatibility
+    if (['confirmation', 'registration', 'registration_only', 'no_tickets'].includes(deliveryMethod)) {
+      deliveryMethod = 'registration_confirmation';
+    }
+    
+    logStep("Processing delivery method", { 
+      deliveryMethod, 
+      originalMethod: customAnswers?.deliveryMethod,
+      emailMode: eventSettings?.emailMode 
+    });
 
     // Get existing tickets or generate new ones if none exist
     const ticketItems = order.order_items.filter((item: any) => item.item_type === 'ticket');
@@ -186,8 +248,24 @@ Deno.serve(async (req) => {
         allTickets = (await Promise.all(ticketPromises)).flat();
         logStep("Tickets generated", { count: allTickets.length });
       }
+    } else if (deliveryMethod === 'registration_confirmation') {
+      logStep("Registration confirmation mode - no QR tickets needed");
+      // Create virtual ticket representations for email display without QR codes
+      allTickets = ticketItems.flatMap((item: any) => {
+        const tickets = [];
+        for (let i = 0; i < item.quantity; i++) {
+          tickets.push({
+            code: `REG-${order.id.slice(0, 8).toUpperCase()}-${i + 1}`,
+            type: item.ticket_types?.name || 'Registration',
+            price: item.unit_price,
+            isRegistration: true
+          });
+        }
+        return tickets;
+      });
+      logStep("Registration entries created", { count: allTickets.length });
     } else {
-      logStep("Skipping ticket generation for confirmation email");
+      logStep("Unknown delivery method - using registration confirmation fallback");
     }
 
     // Get email customization (supports block-based schema)
@@ -339,12 +417,19 @@ Deno.serve(async (req) => {
         fontFamily: emailCustomization?.template?.fontFamily || 'Arial, sans-serif'
       };
 
-      // Professional monochrome Unicode icons with text presentation (so CSS color applies)
+      // Email-safe icons using inline SVG with base64 encoding (compatible with all email clients)
       const icons = {
-        calendar: '📅\uFE0E', // Calendar (text variant)
-        mapPin: '⌖',         // Position indicator (monochrome)
-        user: '👤\uFE0E',    // Bust in silhouette (text variant)
-        ticket: '🎟\uFE0E'   // Admission tickets (text variant)
+        calendar: '📅', // Calendar emoji fallback
+        mapPin: '📍',   // Location pin emoji  
+        user: '👤',     // User emoji
+        ticket: '🎫'    // Ticket emoji
+      };
+      
+      // Advanced SVG icons as data URIs for better email compatibility
+      const svgIcons = {
+        calendar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxyZWN0IHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgeD0iMyIgeT0iNCIgcng9IjIiIHJ5PSIyIi8+PGxpbmUgeDE9IjE2IiB4Mj0iMTYiIHkxPSIyIiB5Mj0iNiIvPjxsaW5lIHgxPSI4IiB4Mj0iOCIgeTE9IjIiIHkyPSI2Ii8+PGxpbmUgeDE9IjMiIHgyPSIyMSIgeTE9IjEwIiB5Mj0iMTAiLz48L3N2Zz4=',
+        mapPin: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0yMCAxMGMwIDYtOCAxMi04IDEycy04LTYtOC0xMmE4IDggMCAwIDEgMTYgMFoiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjEwIiByPSIzIi8+PC9zdmc+',
+        user: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik0yMCAyMXYtMmE0IDQgMCAwIDAtNC00SDhhNCA0IDAgMCAwLTQgNHYyIi8+PGNpcmNsZSBjeD0iMTIiIGN5PSI3IiByPSI0Ii8+PC9zdmc+'
       };
 
       // Get logo configuration from email customization
@@ -356,12 +441,13 @@ Deno.serve(async (req) => {
         
         switch (logoSource) {
           case 'organization':
-            return order.events.organizations.logo_url;
+            return order.events.organizations.logo_url || null;
           case 'custom':
-            return branding.customLogoUrl;
+            return branding.customLogoUrl || null;
           case 'event':
           default:
-            return order.events.logo_url;
+            // Fallback from event logo to organization logo if event logo is not available
+            return order.events.logo_url || order.events.organizations.logo_url || null;
         }
       };
 
@@ -375,12 +461,9 @@ Deno.serve(async (req) => {
       </style>`);
       parts.push(`<div style="font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;max-width:600px;margin:0 auto;background:${theme.backgroundColor};border:1px solid ${theme.borderColor};">`);
       
-      // Add logo in header position (prefer event -> org -> custom per config)
-      if (branding.showLogo && branding.logoPosition === 'header') {
-        const preferredLogo = logoUrl || order.events.organizations?.logo_url || order.events.logo_url;
-        if (preferredLogo) {
-          parts.push(`<div style="text-align:center;margin-bottom:15px;padding:20px 20px 0 20px;"><img src="${preferredLogo}" alt="Logo" style="max-width:${logoSize};height:auto;display:block;margin:0 auto;"/></div>`);
-        }
+      // Add logo in header position
+      if (branding.showLogo && branding.logoPosition === 'header' && logoUrl) {
+        parts.push(`<div style="text-align:center;margin-bottom:15px;padding:20px 20px 0 20px;"><img src="${logoUrl}" alt="Logo" style="max-width:${logoSize};height:auto;display:block;margin:0 auto;"/></div>`);
       }
       
       for (const b of blocks) {
@@ -397,21 +480,30 @@ Deno.serve(async (req) => {
               <strong style="color:${theme.textColor}">${order.events.name}</strong>
               <div style="color:${theme.textColor};font-size:14px;line-height:1.6;margin-top:16px;">
                 <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;">
-                  <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">${icons.calendar}</div>
+                  <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">
+                    <img src="${svgIcons.calendar}" alt="Calendar" style="width:16px;height:16px;" onerror="this.style.display='none';this.nextSibling.style.display='inline';">
+                    <span style="display:none;font-size:16px;">${icons.calendar}</span>
+                  </div>
                   <div style="flex:1;">
                     <div style="font-weight:600;color:${theme.textColor};margin-bottom:2px;">${new Date(order.events.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
                     <div style="color:${theme.textColor};opacity:0.8;font-size:13px;">${new Date(order.events.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
                   </div>
                 </div>
                 <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;">
-                  <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">${icons.mapPin}</div>
+                  <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">
+                    <img src="${svgIcons.mapPin}" alt="Location" style="width:16px;height:16px;" onerror="this.style.display='none';this.nextSibling.style.display='inline';">
+                    <span style="display:none;font-size:16px;">${icons.mapPin}</span>
+                  </div>
                   <div style="flex:1;">
                     <div style="color:${theme.textColor};opacity:0.6;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Venue</div>
                     <div style="font-weight:600;color:${theme.textColor};">${order.events.venue || 'TBA'}</div>
                   </div>
                 </div>
                 <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;">
-                  <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">${icons.user}</div>
+                  <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">
+                    <img src="${svgIcons.user}" alt="User" style="width:16px;height:16px;" onerror="this.style.display='none';this.nextSibling.style.display='inline';">
+                    <span style="display:none;font-size:16px;">${icons.user}</span>
+                  </div>
                   <div style="flex:1;">
                     <div style="color:${theme.textColor};opacity:0.6;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Attendee</div>
                     <div style="font-weight:600;color:${theme.textColor};">${order.customer_name}</div>
@@ -421,71 +513,128 @@ Deno.serve(async (req) => {
             </div>`);
             break;
           case 'ticket_list':
-            // Create clean item list for tickets and merchandise
-            const allItems = order.order_items.map((item: any) => {
-              const itemName = item.item_type === 'ticket' 
-                ? (item.ticket_types?.name || 'General Admission')
-                : (item.merchandise?.name || 'Merchandise');
+            // Handle different rendering for QR tickets vs registration confirmation
+            if (deliveryMethod === 'registration_confirmation') {
+              // Registration confirmation mode - show attendance confirmation
+              const registrationItems = order.order_items.filter((item: any) => item.item_type === 'ticket').map((item: any) => {
+                return {
+                  name: item.ticket_types?.name || 'General Admission',
+                  quantity: item.quantity,
+                  price: item.unit_price,
+                  total: item.unit_price * item.quantity,
+                  type: 'registration'
+                };
+              });
               
-              return {
-                name: itemName,
-                quantity: item.quantity,
-                price: item.unit_price,
-                total: item.unit_price * item.quantity,
-                type: item.item_type
-              };
-            });
-            
-            const itemsHtml = allItems.map((item: any) => `
-              <div style="padding:20px 24px;border-bottom:1px solid ${theme.borderColor};background:${item.type === 'ticket' ? 'rgba(99, 102, 241, 0.02)' : 'rgba(34, 197, 94, 0.02)'};margin-bottom:2px;">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
-                  <div style="flex:1;padding-right:20px;">
-                    <div style="display:flex;align-items:center;margin-bottom:8px;">
-                      <div style="background:${item.type === 'ticket' ? '#6366f1' : '#22c55e'};color:#ffffff;border-radius:4px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;margin-right:8px;font-size:12px;">${item.type === 'ticket' ? '🎫' : '🛍️'}</div>
-                      <div style="font-weight:600;color:${theme.textColor};font-size:18px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">${item.name}</div>
-                    </div>
-                    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
-                      <div style="background:${theme.accentColor};padding:4px 8px;border-radius:4px;font-size:12px;color:${theme.textColor};opacity:0.8;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">
-                        <strong>Price:</strong> $${item.price.toFixed(2)}
+              const registrationHtml = registrationItems.map((item: any) => `
+                <div style="padding:20px 24px;border-bottom:1px solid ${theme.borderColor};background:rgba(34, 197, 94, 0.02);margin-bottom:2px;">
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div style="flex:1;padding-right:20px;">
+                      <div style="display:flex;align-items:center;margin-bottom:8px;">
+                        <div style="background:#22c55e;color:#ffffff;border-radius:4px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;margin-right:12px;font-size:14px;">✓</div>
+                        <div style="font-weight:600;color:${theme.textColor};font-size:18px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">${item.name} Registration</div>
                       </div>
-                      <div style="background:${theme.accentColor};padding:4px 8px;border-radius:4px;font-size:12px;color:${theme.textColor};opacity:0.8;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">
-                        <strong>Qty:</strong> ${item.quantity}
+                      <div style="color:${theme.textColor};opacity:0.8;font-size:14px;margin-bottom:8px;">
+                        Registered attendees: ${item.quantity}
                       </div>
                     </div>
                   </div>
-                  <!-- Removed individual item totals to reduce clutter -->
                 </div>
-              </div>
-            `).join('');
-            
-            // Calculate grand total
-            const grandTotal = allItems.reduce((sum: number, item: any) => sum + item.total, 0);
-            
-            parts.push(`<div style="padding:0 20px;color:${theme.textColor}">
-              <h3 style="margin:24px 0 20px 0;color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:20px;">Your Order Summary</h3>
-              <div style="background:#fff;border:2px solid ${theme.borderColor};border-radius:12px;padding:0;margin-bottom:20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-                ${itemsHtml}
-                <div style="background:linear-gradient(135deg, ${theme.headerColor}, ${theme.buttonColor});padding:32px 24px;border-top:1px solid ${theme.borderColor};">
-                  <div style="text-align:center;margin-bottom:16px;">
-                    <div style="color:#ffffff;font-weight:700;font-size:28px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">$${grandTotal.toFixed(2)}</div>
-                    <div style="color:#ffffff;opacity:0.8;font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">Total Amount Paid</div>
-                  </div>
-                  <div style="text-align:center;padding-top:16px;border-top:1px solid rgba(255,255,255,0.2);">
-                    <div style="color:#ffffff;opacity:0.8;font-size:12px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">Payment Method</div>
-                    <div style="color:#ffffff;font-weight:500;font-size:14px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">💳 ${paymentMethodInfo.brand}${paymentMethodInfo.last4 ? ` •••• ${paymentMethodInfo.last4}` : ' Payment'}</div>
-                    <div style="color:#ffffff;opacity:0.7;font-size:12px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-top:2px;">${new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${new Date(order.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
+              `).join('');
+              
+              const grandTotal = registrationItems.reduce((sum: number, item: any) => sum + item.total, 0);
+              
+              parts.push(`<div style="padding:0 20px;color:${theme.textColor}">
+                <h3 style="margin:24px 0 20px 0;color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:20px;">Registration Confirmation</h3>
+                <div style="background:#fff;border:2px solid ${theme.borderColor};border-radius:12px;padding:0;margin-bottom:20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                  ${registrationHtml}
+                  <div style="background:linear-gradient(135deg, #22c55e, #16a34a);padding:32px 24px;border-top:1px solid ${theme.borderColor};">
+                    <div style="text-align:center;margin-bottom:16px;">
+                      <div style="color:#ffffff;font-weight:700;font-size:28px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">$${grandTotal.toFixed(2)}</div>
+                      <div style="color:#ffffff;opacity:0.8;font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">Total Amount Paid</div>
+                    </div>
+                    <div style="text-align:center;padding-top:16px;border-top:1px solid rgba(255,255,255,0.2);">
+                      <div style="color:#ffffff;opacity:0.8;font-size:12px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">Payment Method</div>
+                      <div style="color:#ffffff;font-weight:500;font-size:14px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">💳 ${paymentMethodInfo.brand}${paymentMethodInfo.last4 ? ` •••• ${paymentMethodInfo.last4}` : ' Payment'}</div>
+                      <div style="color:#ffffff;opacity:0.7;font-size:12px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-top:2px;">${new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${new Date(order.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div style="text-align:center;padding:20px;background:${theme.accentColor};border-radius:8px;margin-bottom:16px;">
-                <div style="color:${theme.textColor};font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:8px;">
-                  <strong>Ready to access your tickets?</strong>
+                <div style="text-align:center;padding:20px;background:${theme.accentColor};border-radius:8px;margin-bottom:16px;">
+                  <div style="color:${theme.textColor};font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:8px;">
+                    <strong>Your registration is confirmed!</strong>
+                  </div>
+                  <div style="color:${theme.textColor};opacity:0.8;font-size:13px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">
+                    No physical tickets required. Just bring a valid ID to the event.
+                  </div>
                 </div>
-                <div style="color:${theme.textColor};opacity:0.8;font-size:13px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">
-                  Click the button below to view and download your tickets
+              </div>`);
+            } else {
+              // QR ticket mode - show full ticket details with QR codes
+              const allItems = order.order_items.map((item: any) => {
+                const itemName = item.item_type === 'ticket' 
+                  ? (item.ticket_types?.name || 'General Admission')
+                  : (item.merchandise?.name || 'Merchandise');
+                
+                return {
+                  name: itemName,
+                  quantity: item.quantity,
+                  price: item.unit_price,
+                  total: item.unit_price * item.quantity,
+                  type: item.item_type
+                };
+              });
+            
+              const itemsHtml = allItems.map((item: any) => `
+                <div style="padding:20px 24px;border-bottom:1px solid ${theme.borderColor};background:${item.type === 'ticket' ? 'rgba(99, 102, 241, 0.02)' : 'rgba(34, 197, 94, 0.02)'};margin-bottom:2px;">
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+                    <div style="flex:1;padding-right:20px;">
+                      <div style="display:flex;align-items:center;margin-bottom:8px;">
+                        <div style="background:${item.type === 'ticket' ? '#6366f1' : '#22c55e'};color:#ffffff;border-radius:4px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;margin-right:8px;font-size:12px;">${item.type === 'ticket' ? '🎫' : '🛍️'}</div>
+                        <div style="font-weight:600;color:${theme.textColor};font-size:18px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">${item.name}</div>
+                      </div>
+                      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+                        <div style="background:${theme.accentColor};padding:4px 8px;border-radius:4px;font-size:12px;color:${theme.textColor};opacity:0.8;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">
+                          <strong>Price:</strong> $${item.price.toFixed(2)}
+                        </div>
+                        <div style="background:${theme.accentColor};padding:4px 8px;border-radius:4px;font-size:12px;color:${theme.textColor};opacity:0.8;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">
+                          <strong>Qty:</strong> ${item.quantity}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>`);
+              `).join('');
+              
+              // Calculate grand total
+              const grandTotal = allItems.reduce((sum: number, item: any) => sum + item.total, 0);
+              
+              parts.push(`<div style="padding:0 20px;color:${theme.textColor}">
+                <h3 style="margin:24px 0 20px 0;color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:20px;">Your Order Summary</h3>
+                <div style="background:#fff;border:2px solid ${theme.borderColor};border-radius:12px;padding:0;margin-bottom:20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                  ${itemsHtml}
+                  <div style="background:linear-gradient(135deg, ${theme.headerColor}, ${theme.buttonColor});padding:32px 24px;border-top:1px solid ${theme.borderColor};">
+                    <div style="text-align:center;margin-bottom:16px;">
+                      <div style="color:#ffffff;font-weight:700;font-size:28px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">$${grandTotal.toFixed(2)}</div>
+                      <div style="color:#ffffff;opacity:0.8;font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">Total Amount Paid</div>
+                    </div>
+                    <div style="text-align:center;padding-top:16px;border-top:1px solid rgba(255,255,255,0.2);">
+                      <div style="color:#ffffff;opacity:0.8;font-size:12px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">Payment Method</div>
+                      <div style="color:#ffffff;font-weight:500;font-size:14px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;">💳 ${paymentMethodInfo.brand}${paymentMethodInfo.last4 ? ` •••• ${paymentMethodInfo.last4}` : ' Payment'}</div>
+                      <div style="color:#ffffff;opacity:0.7;font-size:12px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-top:2px;">${new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${new Date(order.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
+                    </div>
+                  </div>
+                </div>
+                <div style="text-align:center;padding:20px;background:${theme.accentColor};border-radius:8px;margin-bottom:16px;">
+                  <div style="color:${theme.textColor};font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:8px;">
+                    <strong>Ready to access your tickets?</strong>
+                  </div>
+                  <div style="color:${theme.textColor};opacity:0.8;font-size:13px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">
+                    Click the button below to view and download your tickets
+                  </div>
+                </div>
+              </div>`);
+            }
             break;
           case 'button':
             // Replace dynamic placeholders in button URLs
@@ -547,12 +696,9 @@ Deno.serve(async (req) => {
         }
       }
       
-      // Add logo in content position
-      if (branding.showLogo && branding.logoPosition === 'content') {
-        const preferredLogo = logoUrl || order.events.organizations?.logo_url || order.events.logo_url;
-        if (preferredLogo) {
-          parts.push(`<div style="text-align:center;margin-top:15px;padding:0 20px 20px 20px;"><img src="${preferredLogo}" alt="Logo" style="max-width:${logoSize};height:auto;display:block;margin:0 auto;"/></div>`);
-        }
+      // Add logo in footer position
+      if (branding.showLogo && branding.logoPosition === 'footer' && logoUrl) {
+        parts.push(`<div style="text-align:center;margin-top:15px;padding:0 20px 20px 20px;"><img src="${logoUrl}" alt="Logo" style="max-width:${logoSize};height:auto;display:block;margin:0 auto;"/></div>`);
       }
       
       parts.push(`</div>`);
@@ -572,15 +718,24 @@ Deno.serve(async (req) => {
       bracketLocations: generatedHtml.split('').map((char, i) => char === '{' ? i : null).filter(i => i !== null).slice(0, 5)
     });
 
+      // Generate appropriate subject line based on delivery method
+      let defaultSubject;
+      if (deliveryMethod === 'registration_confirmation') {
+        defaultSubject = `Registration confirmed for ${order.events.name}`;
+      } else {
+        defaultSubject = `Your tickets for ${order.events.name}`;
+      }
+      
       emailContent = {
         to: order.customer_email,
-        subject: emailCustomization?.subject || `Your tickets for ${order.events.name}`,
-      html: generatedHtml,
-    };
+        subject: emailCustomization?.subject || defaultSubject,
+        html: generatedHtml,
+        deliveryMethod: deliveryMethod
+      };
 
 
 
-    // Generate PDF tickets if delivery method is QR tickets
+    // Generate PDF tickets only for QR ticket mode (not for registration confirmation)
     let pdfAttachment = null;
     if (deliveryMethod === 'qr_ticket' && allTickets.length > 0) {
       try {

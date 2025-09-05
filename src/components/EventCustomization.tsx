@@ -18,6 +18,45 @@ import MerchandiseManager from "@/components/MerchandiseManager";
 import TicketTypesManager from "@/components/TicketTypesManager";
 import { EventLogoUploader } from "@/components/events/EventLogoUploader";
 import { EmailTemplatePreview } from "@/components/EmailTemplatePreview";
+
+// Type definitions for better type safety
+interface EmailBlock {
+  type: string;
+  id?: string;
+  hidden?: boolean;
+  title?: string;
+  html?: string;
+  [key: string]: unknown;
+}
+
+interface EmailCustomization {
+  subject?: string;
+  template?: {
+    headerColor?: string;
+    backgroundColor?: string;
+    textColor?: string;
+    buttonColor?: string;
+    accentColor?: string;
+    borderColor?: string;
+    fontFamily?: string;
+  };
+  blocks?: EmailBlock[];
+}
+
+interface EventData {
+  widget_customization?: Record<string, unknown>;
+  ticket_customization?: Record<string, unknown>;
+  email_customization?: EmailCustomization;
+  organization_id?: string;
+  logo_url?: string;
+  venue?: string;
+  name?: string;
+  status?: string;
+  description?: string;
+  event_date?: string;
+  capacity?: number;
+  requires_approval?: boolean;
+}
 import { EmailTemplateBuilder } from "@/components/EmailTemplateBuilder";
 import { createDefaultTemplate, EmailTemplate } from "@/types/email-template";
 
@@ -249,7 +288,9 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         widget_customization: {
           ...(data.widget_customization as Record<string, unknown>),
           // Ensure checkoutMode is preserved if it exists
-          ...((data.widget_customization as any)?.checkoutMode && { checkoutMode: (data.widget_customization as any).checkoutMode })
+          ...((data.widget_customization as Record<string, unknown>)?.checkoutMode && { 
+            checkoutMode: (data.widget_customization as Record<string, unknown>).checkoutMode 
+          })
         },
         ticket_customization: data.ticket_customization as Record<string, unknown>,
         email_customization: data.email_customization as Record<string, unknown>
@@ -276,10 +317,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
       if (data?.widget_customization) {
         // Preserve checkoutMode if it's already set in local state
-        const currentCheckoutMode = (widgetCustomization as any).checkoutMode;
+        const currentCheckoutMode = (widgetCustomization as Record<string, unknown>).checkoutMode;
         const newWidgetCustomization = {
           ...widgetCustomization,
-          ...(data.widget_customization as any),
+          ...(data.widget_customization as Record<string, unknown>),
           // Keep the current checkoutMode if it exists
           ...(currentCheckoutMode && { checkoutMode: currentCheckoutMode })
         };
@@ -289,25 +330,26 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         setTicketCustomization(data.ticket_customization as typeof ticketCustomization);
       }
       // Load blocks if present on event's email_customization
-      const maybeBlocks = (data?.email_customization as any)?.blocks;
+      const emailCustomization = data?.email_customization as EmailCustomization;
+      const maybeBlocks = emailCustomization?.blocks;
       if (maybeBlocks && Array.isArray(maybeBlocks)) {
         setEmailBlocksTemplate({
           version: 1,
-          subject: ((data?.email_customization as any)?.subject) || "Your ticket confirmation",
+          subject: emailCustomization?.subject || "Your ticket confirmation",
           theme: {
-            headerColor: ((data?.email_customization as any)?.template?.headerColor) || "#1f2937",
-            backgroundColor: ((data?.email_customization as any)?.template?.backgroundColor) || "#ffffff",
-            textColor: ((data?.email_customization as any)?.template?.textColor) || "#374151",
-            buttonColor: ((data?.email_customization as any)?.template?.buttonColor) || "#1f2937",
-            accentColor: ((data?.email_customization as any)?.template?.accentColor) || "#f9fafb",
-            borderColor: ((data?.email_customization as any)?.template?.borderColor) || "#e5e7eb",
-            fontFamily: ((data?.email_customization as any)?.template?.fontFamily) || "Arial, sans-serif",
+            headerColor: emailCustomization?.template?.headerColor || "#1f2937",
+            backgroundColor: emailCustomization?.template?.backgroundColor || "#ffffff",
+            textColor: emailCustomization?.template?.textColor || "#374151",
+            buttonColor: emailCustomization?.template?.buttonColor || "#1f2937",
+            accentColor: emailCustomization?.template?.accentColor || "#f9fafb",
+            borderColor: emailCustomization?.template?.borderColor || "#e5e7eb",
+            fontFamily: emailCustomization?.template?.fontFamily || "Arial, sans-serif",
           },
           blocks: maybeBlocks,
         });
       }
       if (data?.email_customization) {
-        const savedCustomization = data.email_customization as any;
+        const savedCustomization = data.email_customization as EmailCustomization;
         setEmailCustomization(prev => ({
           ...prev,
           ...savedCustomization,
@@ -339,14 +381,14 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     const theme = t.theme;
     const parts: string[] = [];
     parts.push(`<div style="font-family:${theme.fontFamily || 'Arial, sans-serif'};max-width:600px;margin:0 auto;background:${theme.backgroundColor};border:1px solid ${theme.borderColor || '#e5e7eb'}">`);
-    for (const b of t.blocks) {
-      if ((b as any).hidden) continue;
+    for (const b of t.blocks as EmailBlock[]) {
+      if (b.hidden) continue;
       switch (b.type) {
         case 'header':
-          parts.push(`<div style="background:${theme.headerColor};color:#fff;padding:20px"><h1 style="margin:0;text-align:center">${(b as any).title || 'Thank you'}</h1></div>`);
+          parts.push(`<div style="background:${theme.headerColor};color:#fff;padding:20px"><h1 style="margin:0;text-align:center">${b.title || 'Thank you'}</h1></div>`);
           break;
         case 'text':
-          parts.push(`<div style="padding:16px 20px;color:${theme.textColor}">${(b as any).html || ''}</div>`);
+          parts.push(`<div style="padding:16px 20px;color:${theme.textColor}">${b.html || ''}</div>`);
           break;
         case 'event_details':
           parts.push(`<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px"><strong style="color:${theme.textColor}">Sample Event Name</strong><div style="color:${theme.textColor};font-size:14px"><div style="display:flex;align-items:center;margin:8px 0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${theme.buttonColor}" stroke-width="2" style="margin-right:8px"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>${new Date().toLocaleDateString()}</div><div style="display:flex;align-items:center;margin:8px 0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${theme.buttonColor}" stroke-width="2" style="margin-right:8px"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>Sample Venue</div><div style="display:flex;align-items:center;margin:8px 0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${theme.buttonColor}" stroke-width="2" style="margin-right:8px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Sample Customer</div></div>`);
@@ -361,10 +403,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           parts.push(`<hr style="border:0;border-top:1px solid ${theme.borderColor};margin:16px 20px"/>`);
           break;
         case 'image':
-          parts.push(`<div style="text-align:${(b as any).align || 'center'};padding:20px">${(b as any).src ? `<img src="${(b as any).src}" style="max-width:100%"/>` : ''}</div>`);
+          parts.push(`<div style="text-align:${(b as { align?: string }).align || 'center'};padding:20px">${(b as { src?: string }).src ? `<img src="${(b as { src?: string }).src}" style="max-width:100%"/>` : ''}</div>`);
           break;
         case 'footer':
-          parts.push(`<div style="background:${theme.accentColor};padding:16px;text-align:center;border-top:1px solid ${theme.borderColor}"><small style="color:#999">${(b as any).text || ''}</small></div>`);
+          parts.push(`<div style="background:${theme.accentColor};padding:16px;text-align:center;border-top:1px solid ${theme.borderColor}"><small style="color:#999">${(b as { text?: string }).text || ''}</small></div>`);
           break;
         default:
           break;
@@ -372,7 +414,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     }
     parts.push(`</div>`);
     return parts.join('');
-  }, [emailBlocksTemplate]);
+  }, [emailBlocksTemplate, widgetCustomization]);
 
   const saveCustomizations = async () => {
     setLoading(true);

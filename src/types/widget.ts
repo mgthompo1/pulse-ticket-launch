@@ -9,9 +9,9 @@ export interface EventData {
   logo_url?: string | null;
   featured_image_url?: string | null;
   organization_id: string;
-  widget_customization?: any;
-  ticket_customization?: any;
-  email_customization?: any;
+  widget_customization?: Record<string, unknown>;
+  ticket_customization?: Record<string, unknown>;
+  email_customization?: Record<string, unknown>;
   
   organizations?: {
     name: string;

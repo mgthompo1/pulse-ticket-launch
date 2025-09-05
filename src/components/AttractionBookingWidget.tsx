@@ -38,10 +38,15 @@ interface AttractionData {
   duration_minutes: number;
   base_price: number;
   logo_url: string | null;
-  widget_customization: any;
+  widget_customization: Record<string, unknown>;
   organization_id: string;
   resource_label?: string | null; // User-configurable label for resources (e.g., "Simulator", "Room", "Lane")
-  organizations?: any; // Organization data
+  organizations?: {
+    name: string;
+    payment_provider?: string | null;
+    currency?: string | null;
+    logo_url?: string | null;
+  }; // Organization data
 }
 
 interface BookingSlot {
@@ -217,7 +222,7 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
 
   const quickDateSelect = (type: 'tomorrow' | 'weekend') => {
     const today = new Date();
-    let targetDate = new Date(today);
+    const targetDate = new Date(today);
     
     if (type === 'tomorrow') {
       targetDate.setDate(today.getDate() + 1);

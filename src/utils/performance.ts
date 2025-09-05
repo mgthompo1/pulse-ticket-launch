@@ -2,14 +2,14 @@ import React from 'react';
 
 // Performance optimization utilities
 
-export const preloadRoute = (routeModule: () => Promise<any>) => {
+export const preloadRoute = (routeModule: () => Promise<{ default: React.ComponentType<unknown> }>) => {
   const link = document.createElement('link');
   link.rel = 'modulepreload';
   link.href = routeModule.toString();
   document.head.appendChild(link);
 };
 
-export const lazyLoad = (importFunc: () => Promise<any>) => {
+export const lazyLoad = (importFunc: () => Promise<{ default: React.ComponentType<unknown> }>) => {
   return React.lazy(() => 
     importFunc().then(module => ({ 
       default: module.default || module 
@@ -17,7 +17,7 @@ export const lazyLoad = (importFunc: () => Promise<any>) => {
   );
 };
 
-export const debounce = <T extends (...args: any[]) => any>(
+export const debounce = <T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void => {
@@ -28,7 +28,7 @@ export const debounce = <T extends (...args: any[]) => any>(
   };
 };
 
-export const throttle = <T extends (...args: any[]) => any>(
+export const throttle = <T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void => {

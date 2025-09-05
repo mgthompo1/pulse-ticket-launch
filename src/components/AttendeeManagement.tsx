@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,13 +61,13 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
 
   useEffect(() => {
     loadAttendees();
-  }, [eventId]);
+  }, [loadAttendees]);
 
   useEffect(() => {
     filterAttendees();
-  }, [attendees, searchTerm, statusFilter, ticketTypeFilter, checkedInFilter]);
+  }, [filterAttendees]);
 
-  const loadAttendees = async () => {
+  const loadAttendees = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -89,7 +89,7 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [eventId, toast]);
 
   const calculateAnalytics = (attendeeData: Attendee[]) => {
     const totalTickets = attendeeData.length;
@@ -122,7 +122,7 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
     });
   };
 
-  const filterAttendees = () => {
+  const filterAttendees = useCallback(() => {
     let filtered = [...attendees];
 
     // Search filter
@@ -151,7 +151,7 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
     }
 
     setFilteredAttendees(filtered);
-  };
+  }, [attendees, searchTerm, statusFilter, ticketTypeFilter, checkedInFilter]);
 
   const exportAttendees = () => {
     const csvContent = [

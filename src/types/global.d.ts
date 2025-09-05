@@ -2,17 +2,18 @@
 declare global {
   interface Window {
     // Add any global window properties if needed
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   }
 }
 
-// Add as any assertions for problematic types
+// Add as React component assertions for module imports
 declare module "*.tsx" {
-  const content: any;
+  const content: React.ComponentType<unknown>;
   export default content;
 }
 
 declare module "*.ts" {
-  const content: any;
+  const content: unknown;
   export default content;
 }
 
