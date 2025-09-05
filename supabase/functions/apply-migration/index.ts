@@ -41,8 +41,8 @@ Deno.serve(async (req) => {
       ALTER TABLE public.billing_customers 
       ALTER COLUMN billing_interval_days SET DEFAULT 14;
       
-      -- Update the scheduled function comment to reflect fortnightly billing
-      COMMENT ON FUNCTION publish_monthly_billing() IS 'Processes billing for customers based on their billing_interval_days (default: fortnightly/14 days)';
+      -- Note: publish-monthly-billing is a Supabase Edge Function (not a DB function)
+      -- It already supports billing_interval_days and will use the new 14-day default
     `;
 
     const { error } = await supabaseClient.rpc('exec_sql', { 
@@ -66,14 +66,8 @@ Deno.serve(async (req) => {
         throw new Error(`Failed to check billing_customers table: ${alterError.message}`);
       }
 
-      // Since we can't use ALTER directly, let's just update the function comment
-      const { error: commentError } = await supabaseClient.rpc('exec_sql', {
-        sql: `COMMENT ON FUNCTION publish_monthly_billing() IS 'Processes billing for customers based on their billing_interval_days (default: fortnightly/14 days)';`
-      });
-
-      if (commentError) {
-        console.warn('Could not update function comment:', commentError);
-      }
+      // Note: No function comment needed - publish-monthly-billing is an Edge Function
+      console.log('Migration completed - billing_interval_days columns and indexes created');
 
       return new Response(
         JSON.stringify({

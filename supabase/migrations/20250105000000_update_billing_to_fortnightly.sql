@@ -22,6 +22,6 @@ ALTER COLUMN billing_interval_days SET DEFAULT 14;
 -- Uncomment the line below if you want to update existing customers:
 -- UPDATE public.billing_customers SET billing_interval_days = 14 WHERE billing_interval_days = 30;
 
--- Update the scheduled function comment to reflect fortnightly billing (rename for clarity)
--- The function can still handle any interval, but the name should reflect the new default
-COMMENT ON FUNCTION publish_monthly_billing() IS 'Processes billing for customers based on their billing_interval_days (default: fortnightly/14 days)';
+-- Note: publish-monthly-billing is a Supabase Edge Function (not a DB function)
+-- It already supports billing_interval_days and will use the new 14-day default
+-- The Edge function processes billing based on next_billing_at and billing_interval_days columns
