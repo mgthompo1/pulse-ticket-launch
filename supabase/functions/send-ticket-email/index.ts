@@ -34,21 +34,21 @@ Deno.serve(async (req) => {
       .from("orders")
       .select(`
         *,
-        booking_fee_amount,
-        booking_fee_enabled,
-        subtotal_amount,
         payment_method_type,
         card_last_four,
         card_brand,
         payment_method_id,
+        booking_fee_amount,
+        booking_fee_enabled,
+        subtotal_amount,
         processing_fee_amount,
-        events!inner(
+        events(
           name,
           event_date,
           venue,
           description,
           email_customization,
-          organizations!inner(
+          organizations(
             id,
             name,
             email,
@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
             credit_card_processing_fee_percentage
           )
         ),
-        order_items!inner(
+        order_items(
           id,
           quantity,
           unit_price,
@@ -75,12 +75,44 @@ Deno.serve(async (req) => {
       .single();
 
     if (orderError || !order) {
-      throw new Error("Order not found");
+      console.error("Order lookup failed:", {
+        orderId,
+        error: orderError,
+        orderExists: !!order
+      });
+      
+      // Try a basic lookup to see if order exists at all
+      const { data: basicOrder, error: basicError } = await supabaseClient
+        .from("orders")
+        .select("id, status, event_id, total_amount")
+        .eq("id", orderId)
+        .single();
+        
+      if (basicError) {
+        throw new Error(`Order not found in database: ${basicError.message}`);
+      } else {
+        throw new Error(`Order exists but missing required relationships (event/organization/items). Order status: ${basicOrder.status}, Event ID: ${basicOrder.event_id}`);
+      }
+    }
+
+    // Validate required relationships
+    if (!order.events) {
+      throw new Error(`Event not found for order ${orderId}. Event ID: ${order.event_id}`);
+    }
+    
+    if (!order.events.organizations) {
+      throw new Error(`Organization not found for event ${order.events.id || order.event_id}`);
+    }
+    
+    if (!order.order_items || order.order_items.length === 0) {
+      throw new Error(`No order items found for order ${orderId}`);
     }
 
     logStep("Order details retrieved", { 
       customerEmail: order.customer_email,
-      eventName: order.events.name 
+      eventName: order.events.name,
+      organizationName: order.events.organizations.name,
+      itemCount: order.order_items.length
     });
 
     // Fetch payment method details from payment processors
@@ -563,17 +595,25 @@ Deno.serve(async (req) => {
                 </div>
               `).join('');
               
-              // Calculate totals with booking fee and processing fee support
-              const registrationSubtotal = registrationItems.reduce((sum: number, item: any) => sum + item.total, 0);
+              // Calculate totals using the new booking fee columns
+              const registrationSubtotal = parseFloat(order.subtotal_amount || 0);
               const bookingFeeAmount = parseFloat(order.booking_fee_amount || 0);
               const processingFeeAmount = parseFloat(order.processing_fee_amount || 0);
+              const grandTotal = parseFloat(order.total_amount || 0);
+              
+              // Check if fees are enabled based on database columns
               const hasBookingFee = order.booking_fee_enabled && bookingFeeAmount > 0;
               const hasProcessingFee = processingFeeAmount > 0;
               
-              // Calculate grand total including all fees
-              let grandTotal = registrationSubtotal;
-              if (hasBookingFee) grandTotal += bookingFeeAmount;
-              if (hasProcessingFee) grandTotal += processingFeeAmount;
+              logStep("Registration fee breakdown", {
+                subtotal: registrationSubtotal,
+                bookingFee: bookingFeeAmount,
+                processingFee: processingFeeAmount,
+                total: grandTotal,
+                hasBookingFee,
+                hasProcessingFee,
+                bookingFeeEnabled: order.booking_fee_enabled
+              });
               
               // Generate fee breakdown for registration (includes booking and processing fees)
               const registrationFeeBreakdown = (hasBookingFee || hasProcessingFee) ? `
@@ -666,17 +706,25 @@ Deno.serve(async (req) => {
                 </div>
               `).join('');
               
-              // Calculate grand total with booking fee and processing fee breakdown
-              const itemsSubtotal = allItems.reduce((sum: number, item: any) => sum + item.total, 0);
+              // Calculate grand total using the new booking fee columns
+              const itemsSubtotal = parseFloat(order.subtotal_amount || 0);
               const bookingFeeAmount = parseFloat(order.booking_fee_amount || 0);
               const processingFeeAmount = parseFloat(order.processing_fee_amount || 0);
+              const grandTotal = parseFloat(order.total_amount || 0);
+              
+              // Check if fees are enabled based on database columns
               const hasBookingFee = order.booking_fee_enabled && bookingFeeAmount > 0;
               const hasProcessingFee = processingFeeAmount > 0;
               
-              // Calculate grand total including all fees
-              let grandTotal = itemsSubtotal;
-              if (hasBookingFee) grandTotal += bookingFeeAmount;
-              if (hasProcessingFee) grandTotal += processingFeeAmount;
+              logStep("QR ticket fee breakdown", {
+                subtotal: itemsSubtotal,
+                bookingFee: bookingFeeAmount,
+                processingFee: processingFeeAmount,
+                total: grandTotal,
+                hasBookingFee,
+                hasProcessingFee,
+                bookingFeeEnabled: order.booking_fee_enabled
+              });
               
               // Generate fee breakdown HTML if applicable (includes booking and processing fees)
               const ticketFeeBreakdown = (hasBookingFee || hasProcessingFee) ? `
