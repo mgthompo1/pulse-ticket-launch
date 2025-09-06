@@ -72,8 +72,8 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         setStripeAccountId(credData.stripe_account_id || '');
         setStripePublishableKey(credData.stripe_publishable_key || '');
         setStripeSecretKey(credData.stripe_secret_key || '');
-        setEnableApplePay((credData as any)?.enable_apple_pay || false);
-        setEnableGooglePay((credData as any)?.enable_google_pay || false);
+        setEnableApplePay(credData?.enable_apple_pay || false);
+        setEnableGooglePay(credData?.enable_google_pay || false);
         setWindcaveUsername(credData.windcave_username || '');
         setWindcaveApiKey(credData.windcave_api_key || '');
         setWindcaveEndpoint(credData.windcave_endpoint || 'UAT');

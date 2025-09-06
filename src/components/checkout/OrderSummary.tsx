@@ -393,8 +393,8 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                   <StripePaymentForm
                     publishableKey={stripePublishableKey}
                     eventId={eventData.id}
-                    cart={cartItems as any}
-                    merchandiseCart={merchandiseCart as any}
+                    cart={cartItems}
+                    merchandiseCart={merchandiseCart}
                     customerInfo={customerInfo}
                     total={total}
                     bookingFeesEnabled={bookingFeesEnabled}

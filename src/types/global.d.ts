@@ -2,7 +2,7 @@
 declare global {
   interface Window {
     // Add any global window properties if needed
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+     
   }
 }
 
