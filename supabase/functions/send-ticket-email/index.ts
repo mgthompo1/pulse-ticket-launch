@@ -283,15 +283,21 @@ Deno.serve(async (req) => {
     // Get email customization (supports block-based schema)
     const emailCustomization = order.events.email_customization as any;
     
-    // Use saved blocks when present; otherwise fall back to sane defaults
+    // Use saved blocks when present; otherwise fall back to defaults based on delivery method
     const blocks: any[] = Array.isArray(emailCustomization?.blocks) && emailCustomization.blocks.length > 0
       ? emailCustomization.blocks
-      : [
+      : (deliveryMethod === 'registration_confirmation' ? [
+          { type: 'header', title: emailCustomization?.content?.headerText || 'Registration Confirmed!' },
+          { type: 'event_details' },
+          { type: 'registration_details' },
+          { type: 'button', label: 'Get Directions', url: 'https://maps.google.com/?q=' + encodeURIComponent(order.events.venue || ''), align: 'center' },
+          { type: 'button', label: 'Add to Calendar', url: '#', align: 'center' }
+        ] : [
           { type: 'header', title: emailCustomization?.content?.headerText || 'Thank you for your purchase!' },
           { type: 'event_details' },
           { type: 'ticket_list' },
           { type: 'button', label: 'View Tickets', url: '#', align: 'center' }
-        ];
+        ]);
     
     logStep("USING EMAIL BLOCKS", { 
       hasCustomBlocks: Array.isArray(emailCustomization?.blocks) && emailCustomization.blocks.length > 0,
@@ -519,6 +525,44 @@ Deno.serve(async (req) => {
                   <div style="flex:1;">
                     <div style="color:${theme.textColor};opacity:0.6;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Attendee</div>
                     <div style="font-weight:600;color:${theme.textColor};">${order.customer_name}</div>
+                  </div>
+                </div>
+              </div>
+            </div>`);
+            break;
+          case 'registration_details':
+            // Registration details block - shows confirmation summary
+            const registrationItems = order.order_items.filter((item: any) => item.item_type === 'ticket').map((item: any) => {
+              return {
+                name: item.ticket_types?.name || 'General Admission',
+                quantity: item.quantity,
+                price: item.unit_price,
+                total: (item.unit_price || 0) * (item.quantity || 0)
+              };
+            });
+            
+            const totalAmount = registrationItems.reduce((sum: number, item: any) => sum + item.total, 0);
+            
+            const registrationHtml = registrationItems.map((item: any) => `
+              <div style="padding:16px 20px;border-bottom:1px solid ${theme.borderColor};display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                  <div style="font-weight:600;color:${theme.textColor};margin-bottom:4px;">${item.name}</div>
+                  <div style="color:${theme.textColor};opacity:0.7;font-size:14px;">Quantity: ${item.quantity}</div>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-weight:600;color:${theme.textColor};">$${item.total.toFixed(2)}</div>
+                </div>
+              </div>
+            `).join('');
+            
+            parts.push(`<div style="padding:0 20px;color:${theme.textColor}">
+              <h3 style="margin:24px 0 20px 0;color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:20px;">Registration Summary</h3>
+              <div style="background:#fff;border:2px solid ${theme.borderColor};border-radius:12px;padding:0;margin-bottom:20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                ${registrationHtml}
+                <div style="background:linear-gradient(135deg, #22c55e, #16a34a);padding:20px;border-top:1px solid ${theme.borderColor};">
+                  <div style="text-align:center;">
+                    <div style="color:#ffffff;font-weight:700;font-size:24px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">Total: $${totalAmount.toFixed(2)}</div>
+                    <div style="color:#ffffff;opacity:0.9;font-size:14px;">Registration confirmed ✓</div>
                   </div>
                 </div>
               </div>
