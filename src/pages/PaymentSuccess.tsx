@@ -159,6 +159,65 @@ const PaymentSuccess = () => {
     alert('To add tickets to your mobile wallet:\n\n1. Take a screenshot of your tickets\n2. Save the QR codes to your photos\n3. Show the QR codes at the event entrance\n\nWallet integration coming soon!');
   };
 
+  const downloadReceipt = async () => {
+    if (!orderDetails) return;
+    
+    try {
+      // Call receipt generation function
+      const { data, error } = await supabase.functions.invoke('send-receipt-email', {
+        body: { 
+          orderId: orderDetails.id,
+          downloadOnly: true // Request PDF download instead of email
+        }
+      });
+      
+      if (error) {
+        console.error('Error generating receipt:', error);
+        alert('Sorry, there was an error generating your receipt. Please try again.');
+        return;
+      }
+      
+      // If we get a PDF URL back, trigger download
+      if (data?.pdfUrl) {
+        const link = document.createElement('a');
+        link.href = data.pdfUrl;
+        link.download = `Receipt-${orderDetails.id}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        // Fallback: create a simple receipt
+        const receiptData = `
+          PAYMENT RECEIPT
+          ================
+          
+          Order ID: ${orderDetails.id}
+          Event: ${orderDetails.events?.name || 'N/A'}
+          Date: ${new Date(orderDetails.created_at).toLocaleDateString()}
+          Customer: ${orderDetails.customer_name}
+          Email: ${orderDetails.customer_email}
+          Total: $${orderDetails.total_amount}
+          Status: Paid
+          
+          Thank you for your purchase!
+        `;
+        
+        const blob = new Blob([receiptData], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Receipt-${orderDetails.id}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Error downloading receipt:', error);
+      alert('Sorry, there was an error generating your receipt. Please try again.');
+    }
+  };
+
   // Removed official PDF download function
 
   useEffect(() => {
@@ -196,7 +255,7 @@ const PaymentSuccess = () => {
               if (order.event_id) {
                 const { data: eventData, error: eventError } = await supabase
                   .from('events')
-                  .select('name, event_date, venue, logo_url, description, organization_id, ticket_customization, widget_customization')
+                  .select('name, event_date, venue, logo_url, description, organization_id, ticket_customization, widget_customization, ticket_delivery_method')
                   .eq('id', order.event_id)
                   .single();
                 
@@ -236,7 +295,7 @@ const PaymentSuccess = () => {
               if (order.event_id) {
                 const { data: eventData, error: eventError } = await supabase
                   .from('events')
-                  .select('name, event_date, venue, logo_url, description, organization_id, ticket_customization, widget_customization')
+                  .select('name, event_date, venue, logo_url, description, organization_id, ticket_customization, widget_customization, ticket_delivery_method')
                   .eq('id', order.event_id)
                   .single();
                 
@@ -333,7 +392,10 @@ const PaymentSuccess = () => {
           </div>
           <CardTitle className="text-2xl">Payment Successful!</CardTitle>
           <p className="text-muted-foreground">
-            Thank you for your purchase. Your tickets have been confirmed.
+            {orderDetails?.events?.ticket_delivery_method === 'confirmation_email' 
+              ? 'Thank you for your purchase. Your registration has been confirmed.'
+              : 'Thank you for your purchase. Your tickets have been confirmed.'
+            }
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -365,14 +427,21 @@ const PaymentSuccess = () => {
           <div className="space-y-2">
             {orderDetails && (
               <>
-                {/* Official PDF download removed */}
-                <Dialog open={showTickets} onOpenChange={setShowTickets}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full" onClick={viewTickets}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Tickets
-                    </Button>
-                  </DialogTrigger>
+                {/* Download Receipt button - always shown */}
+                <Button variant="outline" className="w-full" onClick={downloadReceipt}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Receipt
+                </Button>
+                
+                {/* View Tickets button - only shown for QR ticket delivery */}
+                {orderDetails.events?.ticket_delivery_method !== 'confirmation_email' && (
+                  <Dialog open={showTickets} onOpenChange={setShowTickets}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="w-full" onClick={viewTickets}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Tickets
+                      </Button>
+                    </DialogTrigger>
                   <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Your Tickets</DialogTitle>
@@ -450,8 +519,9 @@ const PaymentSuccess = () => {
                         </Button>
                       </div>
                     </div>
-                  </DialogContent>
-                </Dialog>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </>
             )}
             <Button 

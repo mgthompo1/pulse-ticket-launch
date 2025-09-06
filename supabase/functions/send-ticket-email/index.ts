@@ -40,6 +40,7 @@ Deno.serve(async (req) => {
           venue,
           description,
           email_customization,
+          ticket_delivery_method,
           organizations!inner(
             id,
             name,
@@ -165,26 +166,37 @@ Deno.serve(async (req) => {
       logStep("Using default payment method info", paymentMethodInfo);
     }
 
-    // Check delivery method from custom answers or event settings
-    const customAnswers = order.custom_answers as any;
-    const eventSettings = order.events.email_customization as any;
+    // Use event's ticket_delivery_method setting
+    const eventDeliveryMethod = order.events.ticket_delivery_method || 'qr_ticket';
     
-    // Determine delivery method with enhanced logic
-    let deliveryMethod = customAnswers?.deliveryMethod || 'qr_ticket';
-    
-    // Check if event is configured as registration-only (e.g. conference)
-    if (eventSettings?.emailMode === 'registration_confirmation') {
+    // Map delivery method names
+    let deliveryMethod = eventDeliveryMethod;
+    if (eventDeliveryMethod === 'confirmation_email') {
       deliveryMethod = 'registration_confirmation';
     }
     
-    // Support multiple delivery method names for compatibility
-    if (['confirmation', 'registration', 'registration_only', 'no_tickets'].includes(deliveryMethod)) {
-      deliveryMethod = 'registration_confirmation';
+    // Legacy fallbacks for backward compatibility
+    const customAnswers = order.custom_answers as any;
+    const eventSettings = order.events.email_customization as any;
+    
+    // Support old configurations
+    if (!order.events.ticket_delivery_method) {
+      // Fallback to old method if new field is not set
+      deliveryMethod = customAnswers?.deliveryMethod || 'qr_ticket';
+      
+      if (eventSettings?.emailMode === 'registration_confirmation') {
+        deliveryMethod = 'registration_confirmation';
+      }
+      
+      if (['confirmation', 'registration', 'registration_only', 'no_tickets', 'confirmation_email'].includes(deliveryMethod)) {
+        deliveryMethod = 'registration_confirmation';
+      }
     }
     
     logStep("Processing delivery method", { 
       deliveryMethod, 
-      originalMethod: customAnswers?.deliveryMethod,
+      eventDeliveryMethod,
+      legacyMethod: customAnswers?.deliveryMethod,
       emailMode: eventSettings?.emailMode 
     });
 
