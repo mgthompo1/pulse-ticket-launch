@@ -44,6 +44,10 @@ serve(async (req) => {
     let amountInCents: number;
     let metadata: any;
     let orderId: string | null = null;
+    let bookingFeesEnabled = false;
+    let subtotal = 0;
+    let bookingFee = 0;
+    let event: any = null;
 
     if (isAttractionPayment) {
       // Handle attraction payment (simple format)
@@ -122,14 +126,19 @@ serve(async (req) => {
       // Handle event payment (existing complex format)
       console.log("=== PROCESSING EVENT PAYMENT ===");
       
-      const { eventId, items, customerInfo, total, bookingFeesEnabled, subtotal, bookingFee } = requestBody;
+      const { eventId, items, customerInfo, total, bookingFeesEnabled: requestBookingFeesEnabled, subtotal: requestSubtotal, bookingFee: requestBookingFee } = requestBody;
+      
+      // Assign to outer scope variables
+      bookingFeesEnabled = requestBookingFeesEnabled || false;
+      subtotal = requestSubtotal || 0;
+      bookingFee = requestBookingFee || 0;
       
       if (!eventId || !items) {
         throw new Error("Missing required parameters: eventId, items");
       }
 
       // Get event and organization info with booking fee settings
-      const { data: event, error: eventError } = await supabaseClient
+      const { data: eventData, error: eventError } = await supabaseClient
         .from("events")
         .select(`
           id,
@@ -145,10 +154,11 @@ serve(async (req) => {
         .eq("id", eventId)
         .single();
 
-      if (eventError || !event) {
+      if (eventError || !eventData) {
         throw new Error("Event not found");
       }
 
+      event = eventData; // Assign to outer scope variable
       console.log("=== EVENT FOUND ===", event.name);
 
       // Get payment credentials for the organization
