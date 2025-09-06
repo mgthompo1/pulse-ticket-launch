@@ -14,7 +14,8 @@ import {
   Settings,
   XCircle,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  Receipt
 } from "lucide-react";
 import {
   AlertDialog,
@@ -168,6 +169,26 @@ export const BillingManagement: React.FC<BillingManagementProps> = ({ organizati
     }
   };
 
+  const handleViewInvoices = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('manage-billing', {
+        body: { action: 'create_invoice_portal_session' }
+      });
+
+      if (error) throw error;
+      
+      // Open Stripe Customer Portal focused on invoices
+      window.open(data.url, '_blank');
+    } catch (error) {
+      console.error('Error opening invoice portal:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to open invoice portal",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleCancelBilling = async () => {
     try {
       const { error } = await supabase.functions.invoke('manage-billing', {
@@ -267,12 +288,6 @@ export const BillingManagement: React.FC<BillingManagementProps> = ({ organizati
           </div>
 
           <div className="flex flex-wrap gap-3 pt-4">
-            <Button onClick={handleManagePaymentMethods} variant="default">
-              <Settings className="h-4 w-4 mr-2" />
-              Manage Payment Methods
-              <ExternalLink className="h-3 w-3 ml-1" />
-            </Button>
-
             <Button onClick={loadUpcomingCharges} variant="outline" size="sm">
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
@@ -391,6 +406,14 @@ export const BillingManagement: React.FC<BillingManagementProps> = ({ organizati
                 </AlertDescription>
               </Alert>
             )}
+
+            <div className="flex gap-2 pt-4">
+              <Button onClick={handleViewInvoices} variant="outline">
+                <Receipt className="h-4 w-4 mr-2" />
+                View Invoices & History
+                <ExternalLink className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

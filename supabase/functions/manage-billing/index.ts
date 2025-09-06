@@ -182,6 +182,67 @@ serve(async (req) => {
           throw stripeError;
         }
 
+      case 'create_invoice_portal_session':
+        try {
+          // Create Stripe Customer Portal session focused on invoices/billing history
+          const portalSession = await stripe.billingPortal.sessions.create({
+            customer: billingCustomer.stripe_customer_id,
+            return_url: `${req.headers.get('origin')}/dashboard?tab=billing`,
+            flow_data: {
+              type: 'subscription_update_confirm',
+              subscription_update_confirm: {
+                subscription: billingCustomer.subscription_id || undefined,
+              }
+            }
+          });
+
+          console.log('Invoice portal session created:', portalSession.id);
+
+          return new Response(JSON.stringify({
+            url: portalSession.url
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          });
+        } catch (stripeError) {
+          console.error('Stripe invoice portal session error:', stripeError);
+          
+          // Handle specific Stripe Customer Portal configuration error
+          if (stripeError.type === 'invalid_request_error' && 
+              stripeError.message?.includes('No configuration provided')) {
+            return new Response(JSON.stringify({
+              error: 'Customer portal not configured. Please set up Stripe Customer Portal in your dashboard.',
+              code: 'STRIPE_PORTAL_NOT_CONFIGURED',
+              details: 'Go to https://dashboard.stripe.com/settings/billing/portal to configure the customer portal.',
+              fallback_action: 'get_upcoming_charges'
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 400,
+            });
+          }
+          
+          // For invoice portal, if there's no subscription, just create a regular portal session
+          if (stripeError.message?.includes('subscription') || stripeError.message?.includes('flow_data')) {
+            console.log('Subscription not found, creating regular portal session for invoices');
+            
+            // Fallback to regular portal session
+            const fallbackPortalSession = await stripe.billingPortal.sessions.create({
+              customer: billingCustomer.stripe_customer_id,
+              return_url: `${req.headers.get('origin')}/dashboard?tab=billing`,
+            });
+
+            return new Response(JSON.stringify({
+              url: fallbackPortalSession.url
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200,
+            });
+          }
+          
+          // Re-throw other Stripe errors to be caught by main error handler
+          throw stripeError;
+        }
+
       case 'update_payment_method':
         if (!setup_intent_id) {
           throw new Error('Setup intent ID required for payment method update');
