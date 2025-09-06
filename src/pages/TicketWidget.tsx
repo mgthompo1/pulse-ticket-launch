@@ -364,6 +364,8 @@ const TicketWidget = () => {
       // Get safe payment configuration from organization data
       if (event.organizations) {
         console.log("🔍 Organization payment provider:", event.organizations.payment_provider);
+        console.log("🔍 Organization data:", event.organizations);
+        console.log("🔍 Stripe booking fee enabled:", event.organizations.stripe_booking_fee_enabled);
         setPaymentProvider(event.organizations.payment_provider || "stripe");
         setCreditCardProcessingFee(event.organizations.credit_card_processing_fee_percentage || 0);
         

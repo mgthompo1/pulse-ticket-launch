@@ -37,6 +37,13 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   
   // Get booking fees setting from eventData instead of separate API call
   const bookingFeesEnabled = eventData.organizations?.stripe_booking_fee_enabled || false;
+  
+  // Debug logging for booking fees
+  console.log("=== BOOKING FEE DEBUG ===");
+  console.log("Event data organizations:", eventData.organizations);
+  console.log("Stripe booking fee enabled:", eventData.organizations?.stripe_booking_fee_enabled);
+  console.log("Booking fees enabled (computed):", bookingFeesEnabled);
+  console.log("Payment provider:", eventData.organizations?.payment_provider);
   const calculateTicketSubtotal = () => {
     return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
@@ -52,8 +59,15 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     ? (subtotal * 0.01) + 0.50
     : 0;
   
-  // Processing fee is only applied when booking fees are NOT enabled
-  const processingFee = (!bookingFeesEnabled && eventData.organizations?.credit_card_processing_fee_percentage) 
+  // Debug booking fee calculation
+  console.log("=== BOOKING FEE CALCULATION ===");
+  console.log("Subtotal:", subtotal);
+  console.log("Booking fees enabled:", bookingFeesEnabled);
+  console.log("Payment provider check:", eventData.organizations?.payment_provider === 'stripe');
+  console.log("Calculated booking fee:", bookingFee);
+  
+  // Processing fee can be applied alongside booking fees
+  const processingFee = eventData.organizations?.credit_card_processing_fee_percentage 
     ? (subtotal * (eventData.organizations.credit_card_processing_fee_percentage / 100))
     : 0;
 

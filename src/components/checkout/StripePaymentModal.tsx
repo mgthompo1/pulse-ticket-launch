@@ -40,10 +40,29 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   };
 
   const subtotal = calculateTotal();
+  
+  // Get booking fees setting from eventData
+  const bookingFeesEnabled = eventData.organizations?.stripe_booking_fee_enabled || false;
+  
+  // Calculate booking fee (1% + $0.50) when enabled for Stripe
+  const bookingFee = bookingFeesEnabled && eventData.organizations?.payment_provider === 'stripe' 
+    ? (subtotal * 0.01) + 0.50
+    : 0;
+  
+  // Processing fee can be applied alongside booking fees
   const processingFee = eventData.organizations?.credit_card_processing_fee_percentage 
     ? subtotal * (eventData.organizations.credit_card_processing_fee_percentage / 100)
     : 0;
-  const total = subtotal + processingFee;
+    
+  const total = subtotal + processingFee + bookingFee;
+  
+  // Debug logging
+  console.log("=== STRIPE MODAL FEE CALCULATION ===");
+  console.log("Subtotal:", subtotal);
+  console.log("Booking fees enabled:", bookingFeesEnabled);
+  console.log("Booking fee:", bookingFee);
+  console.log("Processing fee:", processingFee);
+  console.log("Total:", total);
 
   // Load Stripe configuration when modal opens
   useEffect(() => {
@@ -156,6 +175,9 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                     customerInfo={customerInfo}
                     total={total}
                     theme={theme}
+                    bookingFeesEnabled={bookingFeesEnabled}
+                    subtotal={subtotal}
+                    bookingFee={bookingFee}
                     onSuccess={(orderId: string) => {
                       console.log("Payment successful, order ID:", orderId);
                       handlePaymentSuccess();

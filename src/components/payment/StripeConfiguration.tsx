@@ -136,8 +136,8 @@ export const StripeConfiguration = ({
             <p className="mb-2">
               The booking fee is deposited directly to the platform's Stripe account as a separate charge.
             </p>
-            <p className="text-amber-600 font-medium">
-              ⚠️ When this option is enabled, <strong>no platform fee will be charged</strong> for ticket sales.
+            <p className="text-blue-600 font-medium">
+              💡 This fee can be combined with processing fees if both are enabled.
             </p>
           </div>
         </CardContent>
