@@ -64,15 +64,41 @@ serve(async (req) => {
 
     console.log('Organization found:', org.id);
 
-    // Get billing customer
+    // Get billing customer with better error handling
     const { data: billingCustomer, error: billingError } = await supabaseClient
       .from('billing_customers')
       .select('*')
       .eq('organization_id', org.id)
       .single();
 
-    if (billingError || !billingCustomer) {
-      throw new Error('Billing customer not found');
+    if (billingError) {
+      console.error('Billing customer query error:', billingError);
+      
+      // If no rows found, provide a helpful error message
+      if (billingError.code === 'PGRST116') {
+        return new Response(JSON.stringify({
+          error: 'Billing not set up yet. Please complete billing setup first.',
+          code: 'BILLING_NOT_SETUP',
+          redirect: '/dashboard?tab=billing&setup=true'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        });
+      }
+      
+      // For other database errors, return a generic message
+      throw new Error(`Database error: ${billingError.message}`);
+    }
+
+    if (!billingCustomer) {
+      return new Response(JSON.stringify({
+        error: 'Billing customer not found. Please complete billing setup first.',
+        code: 'BILLING_NOT_SETUP',
+        redirect: '/dashboard?tab=billing&setup=true'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      });
     }
 
     console.log('Billing customer found:', billingCustomer.stripe_customer_id);
@@ -236,9 +262,20 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Manage billing error:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message 
-    }), {
+    
+    // Provide more detailed error information
+    const errorResponse = {
+      error: error.message || 'An unexpected error occurred',
+      timestamp: new Date().toISOString(),
+      action: 'manage-billing'
+    };
+    
+    // Add stack trace in development
+    if (Deno.env.get('ENVIRONMENT') === 'development') {
+      errorResponse.stack = error.stack;
+    }
+    
+    return new Response(JSON.stringify(errorResponse), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });
