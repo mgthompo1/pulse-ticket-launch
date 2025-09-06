@@ -42,7 +42,7 @@ serve(async (req) => {
     let stripeSecretKey: string;
     let currency: string;
     let amountInCents: number;
-    let metadata: any;
+    let metadata: any = {};
     let orderId: string | null = null;
     let bookingFeesEnabled = false;
     let subtotal = 0;
