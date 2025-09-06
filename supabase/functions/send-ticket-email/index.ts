@@ -74,97 +74,31 @@ Deno.serve(async (req) => {
       eventName: order.events.name 
     });
 
-    // Fetch payment method details from payment processors
-    let paymentMethodInfo = { brand: 'Card', last4: '', type: 'card', processor: 'unknown' };
+    // Get payment method details from order (now stored directly)
+    let paymentMethodInfo = { 
+      brand: order.card_brand || 'Payment', 
+      last4: order.card_last_four || '', 
+      type: order.payment_method_type || 'card', 
+      processor: 'stripe' 
+    };
     
-    // Try Stripe first if session ID exists
-    if (order.stripe_session_id) {
-      try {
-        logStep("Fetching Stripe payment details", { sessionId: order.stripe_session_id });
-        
-        // Get Stripe credentials for this organization
-        const { data: credentialsArray } = await supabaseClient
-          .rpc('get_payment_credentials_for_processing', { 
-            p_organization_id: order.events.organizations.id 
-          });
-          
-        const credentials = credentialsArray?.[0];
-        logStep("Payment credentials retrieved", { 
-          hasCredentials: !!credentials, 
-          hasStripeKey: !!(credentials?.stripe_secret_key),
-          orgId: order.events.organizations.id
-        });
-        
-        if (credentials && credentials.stripe_secret_key) {
-          const stripe = await import('https://esm.sh/stripe@14.21.0');
-          const stripeClient = new stripe.default(credentials.stripe_secret_key, {
-            apiVersion: '2023-10-16',
-          });
-
-          const session = await stripeClient.checkout.sessions.retrieve(order.stripe_session_id, {
-            expand: ['payment_intent.payment_method']
-          });
-
-          if (session.payment_intent && session.payment_intent.payment_method) {
-            const pm = session.payment_intent.payment_method;
-            if (pm.card) {
-              paymentMethodInfo = {
-                brand: pm.card.brand.charAt(0).toUpperCase() + pm.card.brand.slice(1),
-                last4: pm.card.last4,
-                type: 'card',
-                processor: 'stripe'
-              };
-              logStep("Stripe payment method retrieved", paymentMethodInfo);
-            } else if (pm.type) {
-              // Handle other Stripe payment methods (bank transfer, etc.)
-              paymentMethodInfo = {
-                brand: pm.type.charAt(0).toUpperCase() + pm.type.slice(1),
-                last4: '',
-                type: pm.type,
-                processor: 'stripe'
-              };
-              logStep("Stripe non-card payment method retrieved", paymentMethodInfo);
-            }
-          }
-        }
-      } catch (error) {
-        logStep("Failed to fetch Stripe payment method", { error: error.message });
-        // Continue with fallback logic
-      }
+    // Format brand name properly
+    if (paymentMethodInfo.brand && paymentMethodInfo.brand !== 'Payment') {
+      paymentMethodInfo.brand = paymentMethodInfo.brand.charAt(0).toUpperCase() + paymentMethodInfo.brand.slice(1);
     }
     
-    // Try Windcave if no Stripe info and windcave session exists
-    if (paymentMethodInfo.processor === 'unknown' && (order as any).windcave_session_id) {
-      try {
-        logStep("Using Windcave payment info", { sessionId: (order as any).windcave_session_id });
-        paymentMethodInfo = {
-          brand: 'Windcave',
-          last4: '',
-          type: 'card',
-          processor: 'windcave'
-        };
-      } catch (error) {
-        logStep("Failed to process Windcave payment info", { error: error.message });
-      }
-    }
-    
-    // Fallback for cash or other payment methods
-    if (paymentMethodInfo.processor === 'unknown' && (order as any).payment_method) {
-      const method = (order as any).payment_method;
+    // Handle Windcave fallback if no Stripe data
+    if (!order.card_brand && !order.card_last_four && order.stripe_session_id) {
+      // This is likely a Windcave payment or other method
       paymentMethodInfo = {
-        brand: method.charAt(0).toUpperCase() + method.slice(1),
+        brand: 'Card',
         last4: '',
-        type: method,
-        processor: 'other'
+        type: 'card',
+        processor: 'windcave'
       };
-      logStep("Alternative payment method used", paymentMethodInfo);
     }
     
-    // Final validation
-    if (!paymentMethodInfo.brand || paymentMethodInfo.brand === 'Card') {
-      paymentMethodInfo.brand = 'Payment';
-      logStep("Using default payment method info", paymentMethodInfo);
-    }
+    logStep("Payment method info retrieved from order", paymentMethodInfo);
 
     // Use event's ticket_delivery_method setting
     const eventDeliveryMethod = order.events.ticket_delivery_method || 'qr_ticket';

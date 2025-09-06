@@ -76,6 +76,11 @@ const handler = async (req: Request): Promise<Response> => {
     const totalAmount = order.total_amount;
     const paymentDate = order.created_at;
     
+    // Extract payment method details
+    const paymentMethodType = order.payment_method_type;
+    const cardBrand = order.card_brand;
+    const cardLast4 = order.card_last_four;
+    
     const organization = order.events?.organizations;
     const event = order.events;
     
@@ -136,6 +141,9 @@ const handler = async (req: Request): Promise<Response> => {
               <div><strong>Payment Date:</strong> ${formattedDate}</div>
               <div><strong>Customer:</strong> ${customerName}</div>
               <div><strong>Email:</strong> ${customerEmail}</div>
+              ${cardBrand && cardLast4 ? `
+              <div><strong>Payment Method:</strong> ${cardBrand ? cardBrand.charAt(0).toUpperCase() + cardBrand.slice(1) : 'Card'} ending in ${cardLast4}</div>
+              <div></div>` : ''}
             </div>
           </div>
 

@@ -32,6 +32,67 @@ serve(async (req) => {
       }
     );
 
+    // Initialize Stripe to get payment method details
+    let paymentMethodDetails = null;
+    if (paymentIntentId) {
+      try {
+        const Stripe = await import("https://esm.sh/stripe@14.21.0");
+        
+        // Get order to find organization
+        const { data: orderData } = await supabaseClient
+          .from('orders')
+          .select(`
+            event_id,
+            events (
+              organization_id
+            )
+          `)
+          .eq('id', orderId)
+          .single();
+
+        if (orderData?.events?.organization_id) {
+          // Get payment credentials
+          const { data: credentials } = await supabaseClient
+            .rpc('get_payment_credentials_for_processing', { 
+              p_organization_id: orderData.events.organization_id 
+            });
+
+          if (credentials?.[0]?.stripe_secret_key) {
+            const stripe = new Stripe.default(credentials[0].stripe_secret_key, {
+              apiVersion: "2023-10-16",
+            });
+
+            // Get payment intent details
+            const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+            console.log("Payment intent retrieved:", paymentIntent.id);
+            
+            if (paymentIntent.payment_method) {
+              // Get payment method details
+              const paymentMethod = await stripe.paymentMethods.retrieve(
+                typeof paymentIntent.payment_method === 'string' 
+                  ? paymentIntent.payment_method 
+                  : paymentIntent.payment_method.id
+              );
+              
+              console.log("Payment method retrieved:", paymentMethod.id);
+              console.log("Payment method type:", paymentMethod.type);
+              console.log("Card details:", paymentMethod.card);
+              
+              paymentMethodDetails = {
+                type: paymentMethod.type,
+                cardBrand: paymentMethod.card?.brand,
+                cardLast4: paymentMethod.card?.last4,
+                paymentMethodId: paymentMethod.id
+              };
+            }
+          }
+        }
+      } catch (stripeError) {
+        console.error("Error retrieving payment method details:", stripeError);
+        // Don't fail the whole process for this
+      }
+    }
+
     // Update order status to paid
     console.log("Updating order status to paid...");
     console.log("Looking for order with ID:", orderId);
@@ -54,15 +115,27 @@ serve(async (req) => {
     console.log("About to update order with data:", {
       orderId: orderId,
       newStatus: "paid",
-      paymentIntentId: paymentIntentId
+      paymentIntentId: paymentIntentId,
+      paymentMethodDetails: paymentMethodDetails
     });
+    
+    // Build update object with payment method details
+    const updateData: any = {
+      status: "paid",
+      stripe_session_id: paymentIntentId || null
+    };
+    
+    // Add payment method details if available
+    if (paymentMethodDetails) {
+      updateData.payment_method_type = paymentMethodDetails.type;
+      updateData.card_brand = paymentMethodDetails.cardBrand;
+      updateData.card_last_four = paymentMethodDetails.cardLast4;
+      updateData.payment_method_id = paymentMethodDetails.paymentMethodId;
+    }
     
     const { error: updateError } = await supabaseClient
       .from("orders")
-      .update({ 
-        status: "paid",
-        stripe_session_id: paymentIntentId || null
-      })
+      .update(updateData)
       .eq("id", orderId);
 
     if (updateError) {
