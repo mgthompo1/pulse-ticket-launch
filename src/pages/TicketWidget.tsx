@@ -673,10 +673,18 @@ const TicketWidget = () => {
     const merchandiseTotal = getMerchandiseTotal();
     const subtotal = ticketTotal + merchandiseTotal;
     
+    // Get booking fees setting from eventData
+    const bookingFeesEnabled = eventData?.organizations?.stripe_booking_fee_enabled || false;
+    
+    // Calculate booking fee (1% + $0.50) when enabled for Stripe
+    const bookingFee = bookingFeesEnabled && eventData?.organizations?.payment_provider === 'stripe' 
+      ? (subtotal * 0.01) + 0.50
+      : 0;
+    
     // Apply credit card processing fee if configured
     const processingFeeAmount = creditCardProcessingFee > 0 ? (subtotal * creditCardProcessingFee / 100) : 0;
     
-    return subtotal + processingFeeAmount;
+    return subtotal + processingFeeAmount + bookingFee;
   };
 
   // Optimize custom questions with useMemo
@@ -1878,17 +1886,25 @@ const TicketWidget = () => {
                           </div>
                         )}
                          
-                        {/* Show subtotal if there's a processing fee */}
-                        {creditCardProcessingFee > 0 && (
+                        {/* Show subtotal if there are fees */}
+                        {(creditCardProcessingFee > 0 || (eventData?.organizations?.stripe_booking_fee_enabled && eventData?.organizations?.payment_provider === 'stripe')) && (
                           <>
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-sm">Subtotal:</span>
                               <span className="text-sm">${(cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()).toFixed(2)}</span>
                             </div>
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-sm">Credit Card Processing Fee ({creditCardProcessingFee}%):</span>
-                              <span className="text-sm">${((cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()) * creditCardProcessingFee / 100).toFixed(2)}</span>
-                            </div>
+                            {creditCardProcessingFee > 0 && (
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm">Credit Card Processing Fee ({creditCardProcessingFee}%):</span>
+                                <span className="text-sm">${((cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()) * creditCardProcessingFee / 100).toFixed(2)}</span>
+                              </div>
+                            )}
+                            {eventData?.organizations?.stripe_booking_fee_enabled && eventData?.organizations?.payment_provider === 'stripe' && (
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm">Booking Fee:</span>
+                                <span className="text-sm">${(((cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()) * 0.01) + 0.50).toFixed(2)}</span>
+                              </div>
+                            )}
                           </>
                         )}
                          
@@ -2023,6 +2039,12 @@ const TicketWidget = () => {
                             <span>${((cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()) * creditCardProcessingFee / 100).toFixed(2)}</span>
                           </div>
                         )}
+                        {eventData?.organizations?.stripe_booking_fee_enabled && eventData?.organizations?.payment_provider === 'stripe' && (
+                          <div className="flex justify-between text-muted-foreground border-t pt-2">
+                            <span>Booking Fee</span>
+                            <span>${(((cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()) * 0.01) + 0.50).toFixed(2)}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
                           <span>Total:</span>
                                                       <span style={{ color: headerTextColor }}>${getTotalAmount().toFixed(2)}</span>
@@ -2034,11 +2056,16 @@ const TicketWidget = () => {
                       <StripePaymentForm
                         publishableKey={stripePublishableKey}
                         eventId={eventId!}
-                        cart={cart as any}
-                        merchandiseCart={merchandiseCart as any}
+                        cart={cart}
+                        merchandiseCart={merchandiseCart}
                         customerInfo={customerInfo}
                         total={getTotalAmount()}
                         theme={theme}
+                        bookingFeesEnabled={eventData?.organizations?.stripe_booking_fee_enabled || false}
+                        subtotal={cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()}
+                        bookingFee={eventData?.organizations?.stripe_booking_fee_enabled && eventData?.organizations?.payment_provider === 'stripe' 
+                          ? ((cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()) * 0.01) + 0.50
+                          : 0}
                         onSuccess={(orderId: string) => {
                           setCart([]);
                           setMerchandiseCart([]);
