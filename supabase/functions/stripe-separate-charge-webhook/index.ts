@@ -124,7 +124,38 @@ serve(async (req) => {
         // Booking fee stays with the platform (no separate charge needed)
         console.log("Booking fee retained by platform:", bookingFeeAmount, "cents");
 
-        // Update order status and booking fee information
+        // Get payment method details from the payment intent
+        let paymentMethodUpdate = {};
+        if (paymentIntent.payment_method) {
+          const pmId = typeof paymentIntent.payment_method === 'string' 
+            ? paymentIntent.payment_method 
+            : paymentIntent.payment_method.id;
+          
+          try {
+            // Fetch payment method details
+            const paymentMethod = await stripe.paymentMethods.retrieve(pmId);
+            
+            if (paymentMethod.card) {
+              paymentMethodUpdate = {
+                payment_method_type: 'card',
+                card_last_four: paymentMethod.card.last4,
+                card_brand: paymentMethod.card.brand,
+                payment_method_id: pmId
+              };
+              console.log("Payment method details retrieved:", paymentMethodUpdate);
+            } else if (paymentMethod.type) {
+              paymentMethodUpdate = {
+                payment_method_type: paymentMethod.type,
+                payment_method_id: pmId
+              };
+              console.log("Non-card payment method retrieved:", paymentMethodUpdate);
+            }
+          } catch (error) {
+            console.error("Failed to fetch payment method details:", error.message);
+          }
+        }
+
+        // Update order status, booking fee information, and payment method details
         const { error: updateError } = await supabaseClient
           .from('orders')
           .update({
@@ -132,7 +163,8 @@ serve(async (req) => {
             payment_status: 'paid',
             booking_fee_amount: bookingFeeAmount / 100, // Convert from cents to dollars
             booking_fee_enabled: true,
-            subtotal_amount: ticketAmount / 100 // Convert from cents to dollars
+            subtotal_amount: ticketAmount / 100, // Convert from cents to dollars
+            ...paymentMethodUpdate // Include payment method details
           })
           .eq('id', orderId);
 

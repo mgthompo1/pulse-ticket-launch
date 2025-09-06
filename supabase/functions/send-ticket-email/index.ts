@@ -38,8 +38,10 @@ Deno.serve(async (req) => {
         booking_fee_amount,
         booking_fee_enabled,
         subtotal_amount,
-        card_type,
+        payment_method_type,
         card_last_four,
+        card_brand,
+        payment_method_id,
         processing_fee_amount,
         events!inner(
           name,
@@ -169,11 +171,11 @@ Deno.serve(async (req) => {
     }
     
     // Use stored card details as fallback if API calls failed
-    if (paymentMethodInfo.processor === 'unknown' && (order.card_type || order.card_last_four)) {
+    if (paymentMethodInfo.processor === 'unknown' && (order.card_brand || order.card_last_four || order.payment_method_type)) {
       paymentMethodInfo = {
-        brand: order.card_type ? order.card_type.charAt(0).toUpperCase() + order.card_type.slice(1) : 'Card',
+        brand: order.card_brand ? order.card_brand.charAt(0).toUpperCase() + order.card_brand.slice(1) : (order.payment_method_type ? order.payment_method_type.charAt(0).toUpperCase() + order.payment_method_type.slice(1) : 'Card'),
         last4: order.card_last_four || '',
-        type: 'card',
+        type: order.payment_method_type || 'card',
         processor: 'stored'
       };
       logStep("Using stored card details from database", paymentMethodInfo);
