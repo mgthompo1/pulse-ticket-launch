@@ -146,20 +146,41 @@ serve(async (req) => {
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
 
       case 'create_portal_session':
-        // Create Stripe Customer Portal session for managing payment methods
-        const portalSession = await stripe.billingPortal.sessions.create({
-          customer: billingCustomer.stripe_customer_id,
-          return_url: `${req.headers.get('origin')}/dashboard?tab=billing`,
-        });
+        try {
+          // Create Stripe Customer Portal session for managing payment methods
+          const portalSession = await stripe.billingPortal.sessions.create({
+            customer: billingCustomer.stripe_customer_id,
+            return_url: `${req.headers.get('origin')}/dashboard?tab=billing`,
+          });
 
-        console.log('Portal session created:', portalSession.id);
+          console.log('Portal session created:', portalSession.id);
 
-        return new Response(JSON.stringify({
-          url: portalSession.url
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        });
+          return new Response(JSON.stringify({
+            url: portalSession.url
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          });
+        } catch (stripeError) {
+          console.error('Stripe portal session error:', stripeError);
+          
+          // Handle specific Stripe Customer Portal configuration error
+          if (stripeError.type === 'invalid_request_error' && 
+              stripeError.message?.includes('No configuration provided')) {
+            return new Response(JSON.stringify({
+              error: 'Customer portal not configured. Please set up Stripe Customer Portal in your dashboard.',
+              code: 'STRIPE_PORTAL_NOT_CONFIGURED',
+              details: 'Go to https://dashboard.stripe.com/settings/billing/portal to configure the customer portal.',
+              fallback_action: 'list_payment_methods'
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 400,
+            });
+          }
+          
+          // Re-throw other Stripe errors to be caught by main error handler
+          throw stripeError;
+        }
 
       case 'update_payment_method':
         if (!setup_intent_id) {
