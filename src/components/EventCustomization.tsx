@@ -90,6 +90,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     widget_customization?: Record<string, unknown>;
     ticket_customization?: Record<string, unknown>;
     email_customization?: Record<string, unknown>;
+    ticket_delivery_method?: string;
   } | null>(null);
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
   const [eventVenue, setEventVenue] = useState<string>("");
@@ -256,7 +257,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       
       const { data, error } = await supabase
         .from("events")
-        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, organization_id, description, event_date, capacity, requires_approval")
+        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, organization_id, description, event_date, capacity, requires_approval, ticket_delivery_method")
         .eq("id", eventId)
         .single();
 
@@ -285,6 +286,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         event_date: data.event_date,
         capacity: data.capacity,
         requires_approval: data.requires_approval,
+        ticket_delivery_method: data.ticket_delivery_method,
         widget_customization: {
           ...(data.widget_customization as Record<string, unknown>),
           // Ensure checkoutMode is preserved if it exists
