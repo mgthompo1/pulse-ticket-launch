@@ -34,6 +34,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null);
   const [showStripePayment, setShowStripePayment] = useState(false);
+  const [bookingFeesEnabled, setBookingFeesEnabled] = useState(false);
   const calculateTicketSubtotal = () => {
     return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
@@ -44,11 +45,17 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
 
   const subtotal = calculateTicketSubtotal() + calculateMerchandiseSubtotal();
   
-  const processingFee = eventData.organizations?.credit_card_processing_fee_percentage 
+  // Calculate booking fee (1% + $0.50) when enabled for Stripe
+  const bookingFee = bookingFeesEnabled && eventData.organizations?.payment_provider === 'stripe' 
+    ? (subtotal * 0.01) + 0.50
+    : 0;
+  
+  // Processing fee is only applied when booking fees are NOT enabled
+  const processingFee = (!bookingFeesEnabled && eventData.organizations?.credit_card_processing_fee_percentage) 
     ? (subtotal * (eventData.organizations.credit_card_processing_fee_percentage / 100))
     : 0;
 
-  const total = subtotal + processingFee;
+  const total = subtotal + processingFee + bookingFee;
 
   // Load Stripe configuration when on payment step
   useEffect(() => {
@@ -65,6 +72,17 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             if (config.stripe_publishable_key) {
               setStripePublishableKey(config.stripe_publishable_key);
             }
+          }
+
+          // Load organization settings for booking fees
+          const { data: orgData, error: orgError } = await supabase
+            .from('organizations')
+            .select('stripe_booking_fee_enabled')
+            .eq('id', eventData.organization_id)
+            .single();
+
+          if (!orgError && orgData) {
+            setBookingFeesEnabled(orgData.stripe_booking_fee_enabled || false);
           }
         } catch (error) {
           console.error('Error loading Stripe config:', error);
@@ -288,6 +306,13 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                 </div>
               )}
               
+              {bookingFee > 0 && (
+                <div className="flex justify-between text-sm text-muted-foreground">
+                   <span style={{ color: theme.bodyTextColor }}>Booking Fee</span>
+                   <span style={{ color: theme.bodyTextColor }}>${bookingFee.toFixed(2)}</span>
+                </div>
+              )}
+              
               <Separator />
               
               <div className="flex justify-between font-semibold">
@@ -372,6 +397,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                     merchandiseCart={merchandiseCart as any}
                     customerInfo={customerInfo}
                     total={total}
+                    bookingFeesEnabled={bookingFeesEnabled}
                     theme={theme}
                     onSuccess={() => {
                       setShowStripePayment(false);
@@ -382,6 +408,8 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                       window.location.href = '/payment-success';
                     }}
                     onCancel={() => setShowStripePayment(false)}
+                    subtotal={subtotal}
+                    bookingFee={bookingFee}
                   />
                 </CardContent>
               </Card>

@@ -15,6 +15,9 @@ interface StripePaymentFormProps {
   theme: Theme;
   onSuccess: (orderId: string) => void;
   onCancel: () => void;
+  bookingFeesEnabled?: boolean;
+  subtotal?: number;
+  bookingFee?: number;
 }
 
 const CheckoutForm = ({ 
@@ -24,7 +27,10 @@ const CheckoutForm = ({
   customerInfo, 
   total, 
   theme,
-  onCancel
+  onCancel,
+  bookingFeesEnabled = false,
+  subtotal = 0,
+  bookingFee = 0
 }: StripePaymentFormProps) => {
   const [loading, setLoading] = useState(false);
 
@@ -102,6 +108,9 @@ const CheckoutForm = ({
       const requestBody = { 
         eventId, 
         total,
+        subtotal,
+        bookingFee,
+        bookingFeesEnabled,
         items: [
           ...cart.map(item => ({
             id: item.id,

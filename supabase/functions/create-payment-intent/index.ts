@@ -122,13 +122,13 @@ serve(async (req) => {
       // Handle event payment (existing complex format)
       console.log("=== PROCESSING EVENT PAYMENT ===");
       
-      const { eventId, items, customerInfo, total } = requestBody;
+      const { eventId, items, customerInfo, total, bookingFeesEnabled, subtotal, bookingFee } = requestBody;
       
       if (!eventId || !items) {
         throw new Error("Missing required parameters: eventId, items");
       }
 
-      // Get event and organization info
+      // Get event and organization info with booking fee settings
       const { data: event, error: eventError } = await supabaseClient
         .from("events")
         .select(`
@@ -138,7 +138,8 @@ serve(async (req) => {
           organizations (
             id,
             name,
-            currency
+            currency,
+            stripe_booking_fee_enabled
           )
         `)
         .eq("id", eventId)
@@ -172,6 +173,12 @@ serve(async (req) => {
       }
 
       stripeSecretKey = creds.stripe_secret_key;
+
+      console.log("=== BOOKING FEE DEBUG ===");
+      console.log("Booking fees enabled from request:", bookingFeesEnabled);
+      console.log("Booking fees enabled from org:", event.organizations?.stripe_booking_fee_enabled);
+      console.log("Subtotal:", subtotal);
+      console.log("Booking fee:", bookingFee);
 
       // Calculate amount in cents - handle both total parameter and calculate from items
       let finalTotal = total;
@@ -277,7 +284,10 @@ serve(async (req) => {
         customerName: customerInfo?.name || "Unknown",
         customerEmail: customerInfo?.email || "unknown@example.com",
         itemCount: items?.length || 0,
-        paymentType: 'event'
+        paymentType: 'event',
+        bookingFeesEnabled: bookingFeesEnabled || false,
+        subtotal: subtotal || 0,
+        bookingFee: bookingFee || 0
       };
     }
 
@@ -286,15 +296,41 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    console.log("=== CREATING PAYMENT INTENT ===");
+    let paymentIntent;
+    const enableBookingFees = isEventPayment && bookingFeesEnabled && event?.organizations?.stripe_booking_fee_enabled;
+
+    console.log("=== PAYMENT INTENT CREATION MODE ===");
+    console.log("Enable booking fees:", enableBookingFees);
     console.log("Amount:", amountInCents, "cents");
     console.log("Currency:", currency);
 
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountInCents,
-      currency: currency.toLowerCase(),
-      metadata: metadata,
-    });
+    if (enableBookingFees) {
+      console.log("=== CREATING PAYMENT INTENT WITH BOOKING FEES (SEPARATE CHARGES) ===");
+      
+      // For booking fees, create payment intent for the full amount
+      // The separate charge will be handled after payment confirmation
+      paymentIntent = await stripe.paymentIntents.create({
+        amount: amountInCents,
+        currency: currency.toLowerCase(),
+        metadata: {
+          ...metadata,
+          useBookingFees: 'true',
+          ticketAmount: Math.round((subtotal || 0) * 100),
+          bookingFeeAmount: Math.round((bookingFee || 0) * 100)
+        },
+        // Don't use automatic payment methods for booking fees
+        // We need manual control for separate charges
+        payment_method_types: ['card'],
+      });
+    } else {
+      console.log("=== CREATING STANDARD PAYMENT INTENT ===");
+      
+      paymentIntent = await stripe.paymentIntents.create({
+        amount: amountInCents,
+        currency: currency.toLowerCase(),
+        metadata: metadata,
+      });
+    }
 
     console.log("=== PAYMENT INTENT CREATED ===", paymentIntent.id);
 

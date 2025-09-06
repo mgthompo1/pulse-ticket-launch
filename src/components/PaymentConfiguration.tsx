@@ -29,6 +29,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
   const [windcaveHitUsername, setWindcaveHitUsername] = useState('');
   const [windcaveHitKey, setWindcaveHitKey] = useState('');
   const [windcaveStationId, setWindcaveStationId] = useState('');
+  const [enableBookingFees, setEnableBookingFees] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -44,7 +45,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
       // Get basic organization info (non-sensitive)
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
-        .select('payment_provider, currency, credit_card_processing_fee_percentage')
+        .select('payment_provider, currency, credit_card_processing_fee_percentage, stripe_booking_fee_enabled')
         .eq('id', organizationId)
         .single();
 
@@ -64,6 +65,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         setPaymentProvider(orgData.payment_provider || 'stripe');
         setCurrency(orgData.currency || 'NZD');
         setCreditCardProcessingFee(orgData.credit_card_processing_fee_percentage || 0);
+        setEnableBookingFees(orgData.stripe_booking_fee_enabled || false);
       }
 
       if (credData) {
@@ -96,7 +98,8 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         .update({
           payment_provider: paymentProvider,
           currency: currency,
-          credit_card_processing_fee_percentage: creditCardProcessingFee
+          credit_card_processing_fee_percentage: creditCardProcessingFee,
+          stripe_booking_fee_enabled: enableBookingFees
         })
         .eq('id', organizationId);
 
@@ -175,12 +178,14 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
                 enableApplePay={enableApplePay}
                 enableGooglePay={enableGooglePay}
                 currency={currency}
+                enableBookingFees={enableBookingFees}
                 onStripeAccountIdChange={setStripeAccountId}
                 onStripePublishableKeyChange={setStripePublishableKey}
                 onStripeSecretKeyChange={setStripeSecretKey}
                 onEnableApplePayChange={setEnableApplePay}
                 onEnableGooglePayChange={setEnableGooglePay}
                 onCurrencyChange={setCurrency}
+                onEnableBookingFeesChange={setEnableBookingFees}
               />
             )}
 
