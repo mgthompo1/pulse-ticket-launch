@@ -62,13 +62,29 @@ serve(async (req) => {
       console.log("Payment Intent ID:", paymentIntent.id);
       console.log("Metadata:", paymentIntent.metadata);
 
-      // Check if this payment uses booking fees
-      if (paymentIntent.metadata?.useBookingFees === 'true') {
+      // Check if this payment uses booking fees (either from metadata or by checking the order)
+      const shouldProcessBookingFees = paymentIntent.metadata?.useBookingFees === 'true';
+      const orderId = paymentIntent.metadata?.orderId;
+      
+      console.log("=== PAYMENT INTENT METADATA DEBUG ===");
+      console.log("Payment Intent ID:", paymentIntent.id);
+      console.log("Metadata keys:", Object.keys(paymentIntent.metadata || {}));
+      console.log("Full metadata:", paymentIntent.metadata);
+      console.log("useBookingFees flag:", paymentIntent.metadata?.useBookingFees);
+      console.log("Order ID:", orderId);
+      
+      // If no explicit booking fee flag, check if we can determine from order
+      let checkOrderForBookingFees = false;
+      if (!shouldProcessBookingFees && orderId) {
+        console.log("=== CHECKING ORDER FOR BOOKING FEE SETTINGS ===");
+        checkOrderForBookingFees = true;
+      }
+      
+      if (shouldProcessBookingFees || checkOrderForBookingFees) {
         console.log("=== PROCESSING BOOKING FEES ===");
         
-        const orderId = paymentIntent.metadata?.orderId;
-        const ticketAmount = parseInt(paymentIntent.metadata?.ticketAmount || '0');
-        const bookingFeeAmount = parseInt(paymentIntent.metadata?.bookingFeeAmount || '0');
+        let ticketAmount = parseInt(paymentIntent.metadata?.ticketAmount || '0');
+        let bookingFeeAmount = parseInt(paymentIntent.metadata?.bookingFeeAmount || '0');
         
         if (!orderId) {
           throw new Error("Order ID missing from payment metadata");
@@ -94,6 +110,37 @@ serve(async (req) => {
         }
 
         const stripeAccountId = order.events?.organizations?.stripe_account_id;
+        const orgBookingFeesEnabled = order.events?.organizations?.stripe_booking_fee_enabled;
+        
+        // If we're checking order for booking fees, determine if we should process them
+        if (checkOrderForBookingFees && !shouldProcessBookingFees) {
+          if (!orgBookingFeesEnabled) {
+            console.log("=== ORGANIZATION BOOKING FEES DISABLED - SKIPPING ===");
+            return new Response(JSON.stringify({ received: true, message: "No booking fees for this organization" }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 200,
+            });
+          }
+          
+          // Calculate booking fees if not provided in metadata
+          if (ticketAmount === 0 && bookingFeeAmount === 0) {
+            const totalAmount = paymentIntent.amount; // in cents
+            const orderTotal = parseFloat(order.total_amount) * 100; // convert to cents
+            
+            // Calculate booking fee (1% + $0.50)
+            const calculatedBookingFee = Math.round((orderTotal * 0.01) + 50); // 1% + 50 cents
+            const calculatedTicketAmount = totalAmount - calculatedBookingFee;
+            
+            ticketAmount = calculatedTicketAmount;
+            bookingFeeAmount = calculatedBookingFee;
+            
+            console.log("=== CALCULATED BOOKING FEES ===");
+            console.log("Total payment amount:", totalAmount, "cents");
+            console.log("Calculated ticket amount:", ticketAmount, "cents");
+            console.log("Calculated booking fee:", bookingFeeAmount, "cents");
+          }
+        }
+        
         if (!stripeAccountId) {
           throw new Error("Stripe account ID not configured for organization");
         }

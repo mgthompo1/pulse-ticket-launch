@@ -793,11 +793,34 @@ const TicketWidget = () => {
         // Handle Stripe payment (existing logic)
         console.log("🔍 Starting Stripe checkout with key:", stripePublishableKey ? "Key available" : "No key");
         
+        // Calculate booking fee breakdown for Stripe
+        const ticketTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const merchandiseTotal = getMerchandiseTotal();
+        const subtotal = ticketTotal + merchandiseTotal;
+        const bookingFeesEnabled = eventData?.organizations?.stripe_booking_fee_enabled || false;
+        const bookingFee = bookingFeesEnabled && eventData?.organizations?.payment_provider === 'stripe' 
+          ? (subtotal * 0.01) + 0.50
+          : 0;
+        const processingFeeAmount = creditCardProcessingFee > 0 ? (subtotal * creditCardProcessingFee / 100) : 0;
+        const total = subtotal + processingFeeAmount + bookingFee;
+
+        console.log("🔍 Payment breakdown:", {
+          subtotal,
+          bookingFee,
+          processingFeeAmount,
+          total,
+          bookingFeesEnabled
+        });
+
         const { data, error } = await supabase.functions.invoke("create-payment-intent", {
           body: { 
             eventId, 
             items: allItems,
-            customerInfo: fullCustomerInfo
+            customerInfo: fullCustomerInfo,
+            total,
+            bookingFeesEnabled,
+            subtotal,
+            bookingFee
           }
         });
 
