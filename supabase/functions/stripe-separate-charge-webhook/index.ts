@@ -124,12 +124,15 @@ serve(async (req) => {
         // Booking fee stays with the platform (no separate charge needed)
         console.log("Booking fee retained by platform:", bookingFeeAmount, "cents");
 
-        // Update order status
+        // Update order status and booking fee information
         const { error: updateError } = await supabaseClient
           .from('orders')
           .update({
             status: 'completed',
-            payment_status: 'paid'
+            payment_status: 'paid',
+            booking_fee_amount: bookingFeeAmount / 100, // Convert from cents to dollars
+            booking_fee_enabled: true,
+            subtotal_amount: ticketAmount / 100 // Convert from cents to dollars
           })
           .eq('id', orderId);
 

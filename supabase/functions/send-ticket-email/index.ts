@@ -16,6 +16,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+  
 
   try {
     logStep("Function started");
@@ -29,23 +30,26 @@ Deno.serve(async (req) => {
     const { orderId } = await req.json();
     logStep("Processing order", { orderId });
 
-    // Get order details with related data
+    // Get order details with related data including booking fee information
     const { data: order, error: orderError } = await supabaseClient
       .from("orders")
       .select(`
         *,
+        booking_fee_amount,
+        booking_fee_enabled,
+        subtotal_amount,
         events!inner(
           name,
           event_date,
           venue,
           description,
           email_customization,
-          ticket_delivery_method,
           organizations!inner(
             id,
             name,
             email,
-            logo_url
+            logo_url,
+            stripe_booking_fee_enabled
           )
         ),
         order_items!inner(
@@ -74,63 +78,118 @@ Deno.serve(async (req) => {
       eventName: order.events.name 
     });
 
-    // Get payment method details from order (now stored directly)
-    let paymentMethodInfo = { 
-      brand: order.card_brand || 'Payment', 
-      last4: order.card_last_four || '', 
-      type: order.payment_method_type || 'card', 
-      processor: 'stripe' 
-    };
+    // Fetch payment method details from payment processors
+    let paymentMethodInfo = { brand: 'Card', last4: '', type: 'card', processor: 'unknown' };
     
-    // Format brand name properly
-    if (paymentMethodInfo.brand && paymentMethodInfo.brand !== 'Payment') {
-      paymentMethodInfo.brand = paymentMethodInfo.brand.charAt(0).toUpperCase() + paymentMethodInfo.brand.slice(1);
-    }
-    
-    // Handle Windcave fallback if no Stripe data
-    if (!order.card_brand && !order.card_last_four && order.stripe_session_id) {
-      // This is likely a Windcave payment or other method
-      paymentMethodInfo = {
-        brand: 'Card',
-        last4: '',
-        type: 'card',
-        processor: 'windcave'
-      };
-    }
-    
-    logStep("Payment method info retrieved from order", paymentMethodInfo);
+    // Try Stripe first if session ID exists
+    if (order.stripe_session_id) {
+      try {
+        logStep("Fetching Stripe payment details", { sessionId: order.stripe_session_id });
+        
+        // Get Stripe credentials for this organization
+        const { data: credentialsArray } = await supabaseClient
+          .rpc('get_payment_credentials_for_processing', { 
+            p_organization_id: order.events.organizations.id 
+          });
+          
+        const credentials = credentialsArray?.[0];
+        logStep("Payment credentials retrieved", { 
+          hasCredentials: !!credentials, 
+          hasStripeKey: !!(credentials?.stripe_secret_key),
+          orgId: order.events.organizations.id
+        });
+        
+        if (credentials && credentials.stripe_secret_key) {
+          const stripe = await import('https://esm.sh/stripe@14.21.0');
+          const stripeClient = new stripe.default(credentials.stripe_secret_key, {
+            apiVersion: '2023-10-16',
+          });
 
-    // Use event's ticket_delivery_method setting
-    const eventDeliveryMethod = order.events.ticket_delivery_method || 'qr_ticket';
-    
-    // Map delivery method names
-    let deliveryMethod = eventDeliveryMethod;
-    if (eventDeliveryMethod === 'confirmation_email') {
-      deliveryMethod = 'registration_confirmation';
+          const session = await stripeClient.checkout.sessions.retrieve(order.stripe_session_id, {
+            expand: ['payment_intent.payment_method']
+          });
+
+          if (session.payment_intent && session.payment_intent.payment_method) {
+            const pm = session.payment_intent.payment_method;
+            if (pm.card) {
+              paymentMethodInfo = {
+                brand: pm.card.brand.charAt(0).toUpperCase() + pm.card.brand.slice(1),
+                last4: pm.card.last4,
+                type: 'card',
+                processor: 'stripe'
+              };
+              logStep("Stripe payment method retrieved", paymentMethodInfo);
+            } else if (pm.type) {
+              // Handle other Stripe payment methods (bank transfer, etc.)
+              paymentMethodInfo = {
+                brand: pm.type.charAt(0).toUpperCase() + pm.type.slice(1),
+                last4: '',
+                type: pm.type,
+                processor: 'stripe'
+              };
+              logStep("Stripe non-card payment method retrieved", paymentMethodInfo);
+            }
+          }
+        }
+      } catch (error) {
+        logStep("Failed to fetch Stripe payment method", { error: error.message });
+        // Continue with fallback logic
+      }
     }
     
-    // Legacy fallbacks for backward compatibility
+    // Try Windcave if no Stripe info and windcave session exists
+    if (paymentMethodInfo.processor === 'unknown' && (order as any).windcave_session_id) {
+      try {
+        logStep("Using Windcave payment info", { sessionId: (order as any).windcave_session_id });
+        paymentMethodInfo = {
+          brand: 'Windcave',
+          last4: '',
+          type: 'card',
+          processor: 'windcave'
+        };
+      } catch (error) {
+        logStep("Failed to process Windcave payment info", { error: error.message });
+      }
+    }
+    
+    // Fallback for cash or other payment methods
+    if (paymentMethodInfo.processor === 'unknown' && (order as any).payment_method) {
+      const method = (order as any).payment_method;
+      paymentMethodInfo = {
+        brand: method.charAt(0).toUpperCase() + method.slice(1),
+        last4: '',
+        type: method,
+        processor: 'other'
+      };
+      logStep("Alternative payment method used", paymentMethodInfo);
+    }
+    
+    // Final validation
+    if (!paymentMethodInfo.brand || paymentMethodInfo.brand === 'Card') {
+      paymentMethodInfo.brand = 'Payment';
+      logStep("Using default payment method info", paymentMethodInfo);
+    }
+
+    // Check delivery method from custom answers or event settings
     const customAnswers = order.custom_answers as any;
     const eventSettings = order.events.email_customization as any;
     
-    // Support old configurations
-    if (!order.events.ticket_delivery_method) {
-      // Fallback to old method if new field is not set
-      deliveryMethod = customAnswers?.deliveryMethod || 'qr_ticket';
-      
-      if (eventSettings?.emailMode === 'registration_confirmation') {
-        deliveryMethod = 'registration_confirmation';
-      }
-      
-      if (['confirmation', 'registration', 'registration_only', 'no_tickets', 'confirmation_email'].includes(deliveryMethod)) {
-        deliveryMethod = 'registration_confirmation';
-      }
+    // Determine delivery method with enhanced logic
+    let deliveryMethod = customAnswers?.deliveryMethod || 'qr_ticket';
+    
+    // Check if event is configured as registration-only (e.g. conference)
+    if (eventSettings?.emailMode === 'registration_confirmation') {
+      deliveryMethod = 'registration_confirmation';
+    }
+    
+    // Support multiple delivery method names for compatibility
+    if (['confirmation', 'registration', 'registration_only', 'no_tickets'].includes(deliveryMethod)) {
+      deliveryMethod = 'registration_confirmation';
     }
     
     logStep("Processing delivery method", { 
       deliveryMethod, 
-      eventDeliveryMethod,
-      legacyMethod: customAnswers?.deliveryMethod,
+      originalMethod: customAnswers?.deliveryMethod,
       emailMode: eventSettings?.emailMode 
     });
 
@@ -217,33 +276,15 @@ Deno.serve(async (req) => {
     // Get email customization (supports block-based schema)
     const emailCustomization = order.events.email_customization as any;
     
-    // Use delivery method to determine blocks - delivery method takes precedence over saved blocks
-    // This ensures that changing delivery method overrides any previously saved email template
-    let blocks: any[] = [];
-    
-    if (deliveryMethod === 'registration_confirmation') {
-      // Email confirmation mode - use registration-focused template
-      blocks = [
-        { type: 'header', title: emailCustomization?.content?.headerText || 'Registration Confirmed!' },
-        { type: 'event_details' },
-        { type: 'registration_details' },
-        { type: 'button', label: 'Get Directions', url: 'https://maps.google.com/?q=' + encodeURIComponent(order.events.venue || ''), align: 'center' },
-        { type: 'button', label: 'Add to Calendar', url: '#', align: 'center' }
-      ];
-    } else {
-      // QR ticket mode - use ticket-focused template  
-      blocks = [
-        { type: 'header', title: emailCustomization?.content?.headerText || 'Thank you for your purchase!' },
-        { type: 'event_details' },
-        { type: 'ticket_list' },
-        { type: 'button', label: 'View Tickets', url: '#', align: 'center' }
-      ];
-    }
-    
-    // Only use saved blocks if delivery method is not set (legacy support)
-    if (!order.events.ticket_delivery_method && Array.isArray(emailCustomization?.blocks) && emailCustomization.blocks.length > 0) {
-      blocks = emailCustomization.blocks;
-    }
+    // Use saved blocks when present; otherwise fall back to sane defaults
+    const blocks: any[] = Array.isArray(emailCustomization?.blocks) && emailCustomization.blocks.length > 0
+      ? emailCustomization.blocks
+      : [
+          { type: 'header', title: emailCustomization?.content?.headerText || 'Thank you for your purchase!' },
+          { type: 'event_details' },
+          { type: 'ticket_list' },
+          { type: 'button', label: 'View Tickets', url: '#', align: 'center' }
+        ];
     
     logStep("USING EMAIL BLOCKS", { 
       hasCustomBlocks: Array.isArray(emailCustomization?.blocks) && emailCustomization.blocks.length > 0,
@@ -445,7 +486,8 @@ Deno.serve(async (req) => {
               <div style="color:${theme.textColor};font-size:14px;line-height:1.6;margin-top:16px;">
                 <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;">
                   <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">
-                    <span style="font-size:16px;">${icons.calendar}</span>
+                    <img src="${svgIcons.calendar}" alt="Calendar" style="width:16px;height:16px;" onerror="this.style.display='none';this.nextSibling.style.display='inline';">
+                    <span style="display:none;font-size:16px;">${icons.calendar}</span>
                   </div>
                   <div style="flex:1;">
                     <div style="font-weight:600;color:${theme.textColor};margin-bottom:2px;">${new Date(order.events.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
@@ -454,7 +496,8 @@ Deno.serve(async (req) => {
                 </div>
                 <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;">
                   <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">
-                    <span style="font-size:16px;">${icons.mapPin}</span>
+                    <img src="${svgIcons.mapPin}" alt="Location" style="width:16px;height:16px;" onerror="this.style.display='none';this.nextSibling.style.display='inline';">
+                    <span style="display:none;font-size:16px;">${icons.mapPin}</span>
                   </div>
                   <div style="flex:1;">
                     <div style="color:${theme.textColor};opacity:0.6;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Venue</div>
@@ -463,49 +506,12 @@ Deno.serve(async (req) => {
                 </div>
                 <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;">
                   <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">
-                    <span style="font-size:16px;">${icons.user}</span>
+                    <img src="${svgIcons.user}" alt="User" style="width:16px;height:16px;" onerror="this.style.display='none';this.nextSibling.style.display='inline';">
+                    <span style="display:none;font-size:16px;">${icons.user}</span>
                   </div>
                   <div style="flex:1;">
                     <div style="color:${theme.textColor};opacity:0.6;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Attendee</div>
                     <div style="font-weight:600;color:${theme.textColor};">${order.customer_name}</div>
-                  </div>
-                </div>
-              </div>
-            </div>`);
-            break;
-          case 'registration_details':
-            // Registration details block - shows confirmation summary
-            const registrationItems = order.order_items.filter((item: any) => item.item_type === 'ticket').map((item: any) => {
-              return {
-                name: item.ticket_types?.name || 'General Admission',
-                quantity: item.quantity,
-                price: item.unit_price,
-                total: (item.unit_price || 0) * (item.quantity || 0)
-              };
-            });
-            
-            const totalAmount = registrationItems.reduce((sum: number, item: any) => sum + item.total, 0);
-            
-            const registrationHtml = registrationItems.map((item: any) => `
-              <div style="padding:16px 20px;border-bottom:1px solid ${theme.borderColor};display:flex;justify-content:space-between;align-items:center;">
-                <div>
-                  <div style="font-weight:600;color:${theme.textColor};margin-bottom:4px;">${item.name}</div>
-                  <div style="color:${theme.textColor};opacity:0.7;font-size:14px;">Quantity: ${item.quantity}</div>
-                </div>
-                <div style="text-align:right;">
-                  <div style="font-weight:600;color:${theme.textColor};">$${item.total.toFixed(2)}</div>
-                </div>
-              </div>
-            `).join('');
-            
-            parts.push(`<div style="padding:0 20px;color:${theme.textColor}">
-              <h3 style="margin:24px 0 20px 0;color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:20px;">Registration Summary</h3>
-              <div style="background:#fff;border:2px solid ${theme.borderColor};border-radius:12px;padding:0;margin-bottom:20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-                ${registrationHtml}
-                <div style="background:linear-gradient(135deg, #22c55e, #16a34a);padding:20px;border-top:1px solid ${theme.borderColor};">
-                  <div style="text-align:center;">
-                    <div style="color:#ffffff;font-weight:700;font-size:24px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">Total: $${totalAmount.toFixed(2)}</div>
-                    <div style="color:#ffffff;opacity:0.9;font-size:14px;">Registration confirmed ✓</div>
                   </div>
                 </div>
               </div>
@@ -541,16 +547,41 @@ Deno.serve(async (req) => {
                 </div>
               `).join('');
               
-              const grandTotal = registrationItems.reduce((sum: number, item: any) => sum + item.total, 0);
+              // Calculate totals with booking fee support
+              const registrationSubtotal = registrationItems.reduce((sum: number, item: any) => sum + item.total, 0);
+              const bookingFeeAmount = parseFloat(order.booking_fee_amount || 0);
+              const hasBookingFee = order.booking_fee_enabled && bookingFeeAmount > 0;
+              const grandTotal = hasBookingFee ? registrationSubtotal + bookingFeeAmount : registrationSubtotal;
+              
+              // Generate booking fee breakdown for registration
+              const registrationBookingFeeBreakdown = hasBookingFee ? `
+                <div style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#f8f9fa;">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                    <span style="color:${theme.textColor};font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;font-size:14px;">Registration Subtotal</span>
+                    <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:14px;">$${registrationSubtotal.toFixed(2)}</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                    <span style="color:${theme.textColor};font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;font-size:14px;">Booking Fee</span>
+                    <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:14px;">$${bookingFeeAmount.toFixed(2)}</span>
+                  </div>
+                  <div style="border-top:1px solid #e5e7eb;margin-top:8px;padding-top:8px;">
+                    <div style="display:flex;justify-content:space-between;">
+                      <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:700;font-size:16px;">Total</span>
+                      <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:700;font-size:16px;">$${grandTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              ` : '';
               
               parts.push(`<div style="padding:0 20px;color:${theme.textColor}">
                 <h3 style="margin:24px 0 20px 0;color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:20px;">Registration Confirmation</h3>
                 <div style="background:#fff;border:2px solid ${theme.borderColor};border-radius:12px;padding:0;margin-bottom:20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
                   ${registrationHtml}
+                  ${registrationBookingFeeBreakdown}
                   <div style="background:linear-gradient(135deg, #22c55e, #16a34a);padding:32px 24px;border-top:1px solid ${theme.borderColor};">
                     <div style="text-align:center;margin-bottom:16px;">
                       <div style="color:#ffffff;font-weight:700;font-size:28px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">$${grandTotal.toFixed(2)}</div>
-                      <div style="color:#ffffff;opacity:0.8;font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">Total Amount Paid</div>
+                      <div style="color:#ffffff;opacity:0.8;font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">Total Amount Paid${hasBookingFee ? ' (incl. booking fee)' : ''}</div>
                     </div>
                     <div style="text-align:center;padding-top:16px;border-top:1px solid rgba(255,255,255,0.2);">
                       <div style="color:#ffffff;opacity:0.8;font-size:12px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">Payment Method</div>
@@ -605,17 +636,41 @@ Deno.serve(async (req) => {
                 </div>
               `).join('');
               
-              // Calculate grand total
-              const grandTotal = allItems.reduce((sum: number, item: any) => sum + item.total, 0);
+              // Calculate grand total and booking fee breakdown
+              const itemsSubtotal = allItems.reduce((sum: number, item: any) => sum + item.total, 0);
+              const bookingFeeAmount = parseFloat(order.booking_fee_amount || 0);
+              const hasBookingFee = order.booking_fee_enabled && bookingFeeAmount > 0;
+              const grandTotal = hasBookingFee ? itemsSubtotal + bookingFeeAmount : itemsSubtotal;
+              
+              // Generate booking fee breakdown HTML if applicable
+              const bookingFeeBreakdown = hasBookingFee ? `
+                <div style="padding:16px 24px;border-top:1px solid ${theme.borderColor};background:#f8f9fa;">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                    <span style="color:${theme.textColor};font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;font-size:14px;">Subtotal</span>
+                    <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:14px;">$${itemsSubtotal.toFixed(2)}</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                    <span style="color:${theme.textColor};font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;font-size:14px;">Booking Fee</span>
+                    <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:14px;">$${bookingFeeAmount.toFixed(2)}</span>
+                  </div>
+                  <div style="border-top:1px solid ${theme.borderColor};margin-top:8px;padding-top:8px;">
+                    <div style="display:flex;justify-content:space-between;">
+                      <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:700;font-size:16px;">Total</span>
+                      <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:700;font-size:16px;">$${grandTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              ` : '';
               
               parts.push(`<div style="padding:0 20px;color:${theme.textColor}">
                 <h3 style="margin:24px 0 20px 0;color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:20px;">Your Order Summary</h3>
                 <div style="background:#fff;border:2px solid ${theme.borderColor};border-radius:12px;padding:0;margin-bottom:20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
                   ${itemsHtml}
+                  ${bookingFeeBreakdown}
                   <div style="background:linear-gradient(135deg, ${theme.headerColor}, ${theme.buttonColor});padding:32px 24px;border-top:1px solid ${theme.borderColor};">
                     <div style="text-align:center;margin-bottom:16px;">
                       <div style="color:#ffffff;font-weight:700;font-size:28px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">$${grandTotal.toFixed(2)}</div>
-                      <div style="color:#ffffff;opacity:0.8;font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">Total Amount Paid</div>
+                      <div style="color:#ffffff;opacity:0.8;font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">Total Amount Paid${hasBookingFee ? ' (incl. booking fee)' : ''}</div>
                     </div>
                     <div style="text-align:center;padding-top:16px;border-top:1px solid rgba(255,255,255,0.2);">
                       <div style="color:#ffffff;opacity:0.8;font-size:12px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">Payment Method</div>

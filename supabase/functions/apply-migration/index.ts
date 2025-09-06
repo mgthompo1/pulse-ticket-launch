@@ -17,32 +17,20 @@ Deno.serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    console.log("Applying billing migration: update_billing_to_fortnightly");
+    console.log("Applying booking fee migration: add_booking_fee_columns_to_orders");
 
-    // Execute the migration SQL
+    // Execute the booking fee migration SQL
     const migrationSQL = `
-      -- Update billing cycle to fortnightly (14 days) instead of monthly (30 days)
+      -- Add booking fee columns to orders table for receipt display
+      ALTER TABLE public.orders 
+      ADD COLUMN IF NOT EXISTS booking_fee_amount DECIMAL(10,2) DEFAULT 0.00,
+      ADD COLUMN IF NOT EXISTS booking_fee_enabled BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS subtotal_amount DECIMAL(10,2) DEFAULT 0.00;
       
-      -- First ensure the billing_interval_days column exists (in case previous migrations weren't applied)
-      ALTER TABLE public.billing_customers
-      ADD COLUMN IF NOT EXISTS billing_interval_days INTEGER NOT NULL DEFAULT 30;
-      
-      -- Add other billing schedule fields if they don't exist
-      ALTER TABLE public.billing_customers
-      ADD COLUMN IF NOT EXISTS next_billing_at TIMESTAMPTZ,
-      ADD COLUMN IF NOT EXISTS last_billed_at TIMESTAMPTZ;
-      
-      -- Create index if it doesn't exist
-      CREATE INDEX IF NOT EXISTS idx_billing_customers_next_billing
-        ON public.billing_customers(next_billing_at)
-        WHERE next_billing_at IS NOT NULL;
-      
-      -- Now change the default billing interval to 14 days (fortnightly)
-      ALTER TABLE public.billing_customers 
-      ALTER COLUMN billing_interval_days SET DEFAULT 14;
-      
-      -- Note: publish-monthly-billing is a Supabase Edge Function (not a DB function)
-      -- It already supports billing_interval_days and will use the new 14-day default
+      -- Update existing orders to have subtotal_amount equal to total_amount (for backwards compatibility)
+      UPDATE public.orders 
+      SET subtotal_amount = total_amount 
+      WHERE subtotal_amount = 0.00;
     `;
 
     const { error } = await supabaseClient.rpc('exec_sql', { 
@@ -67,13 +55,13 @@ Deno.serve(async (req) => {
       }
 
       // Note: No function comment needed - publish-monthly-billing is an Edge Function
-      console.log('Migration completed - billing_interval_days columns and indexes created');
+      console.log('Migration completed - booking fee columns created');
 
       return new Response(
         JSON.stringify({
           success: false,
           error: error.message,
-          message: "Migration partially applied - function comment updated, but table alteration may require manual intervention"
+          message: "Migration partially applied - booking fee columns may require manual intervention"
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -87,7 +75,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Billing migration applied successfully - default interval changed to 14 days (fortnightly)"
+        message: "Booking fee migration applied successfully - orders table updated with booking fee columns"
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
