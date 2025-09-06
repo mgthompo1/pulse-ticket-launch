@@ -2001,6 +2001,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   name: organizationData?.name || "Your Organization",
                   logo_url: organizationData?.logo_url || undefined
                 }}
+                ticketDeliveryMethod={eventData?.ticket_delivery_method}
               />
               {/* Send Test Email */}
               <Card className="mt-4">

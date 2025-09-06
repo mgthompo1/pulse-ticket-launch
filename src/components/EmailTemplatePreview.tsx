@@ -54,13 +54,15 @@ interface EmailTemplatePreviewProps {
     logo_url?: string;
   };
   isAttractionMode?: boolean;
+  ticketDeliveryMethod?: string;
 }
 
 export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
   emailCustomization,
   eventDetails,
   organizationDetails,
-  blocksTemplate
+  blocksTemplate,
+  ticketDeliveryMethod
 }) => {
   const { template, content, branding, layout = { headerStyle: 'standard', contentLayout: 'standard', footerStyle: 'standard' } } = emailCustomization || {};
   
@@ -126,6 +128,33 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
 
   // If blocks provided, render simplified preview of blocks
   if (blocksTemplate && Array.isArray(blocksTemplate.blocks)) {
+    // Override blocks based on ticket delivery method - match the email function logic
+    let effectiveBlocks = blocksTemplate.blocks;
+    
+    if (ticketDeliveryMethod === 'confirmation_email') {
+      // Email confirmation mode - use registration-focused template
+      effectiveBlocks = [
+        { type: 'header', title: 'Registration Confirmed!', id: '1' },
+        { type: 'event_details', id: '2' },
+        { type: 'registration_details', id: '3' },
+        { type: 'button', label: 'Get Directions', url: '#', align: 'center', id: '4' },
+        { type: 'button', label: 'Add to Calendar', url: '#', align: 'center', id: '5' }
+      ];
+    } else if (ticketDeliveryMethod === 'qr_ticket') {
+      // QR ticket mode - use ticket-focused template
+      effectiveBlocks = [
+        { type: 'header', title: 'Thank you for your purchase!', id: '1' },
+        { type: 'event_details', id: '2' },
+        { type: 'ticket_list', id: '3' },
+        { type: 'button', label: 'View Tickets', url: '#', align: 'center', id: '4' }
+      ];
+    }
+    
+    // Create modified template with correct blocks
+    const modifiedBlocksTemplate = {
+      ...blocksTemplate,
+      blocks: effectiveBlocks
+    };
     return (
       <Card className="w-full max-w-2xl">
         <CardHeader>
@@ -136,11 +165,11 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
             <div
               data-email-preview-root
               style={{
-                fontFamily: blocksTemplate.theme.fontFamily || 'Arial, sans-serif',
+                fontFamily: modifiedBlocksTemplate.theme.fontFamily || 'Arial, sans-serif',
                 maxWidth: '600px',
                 margin: '0 auto',
-                backgroundColor: blocksTemplate.theme.backgroundColor,
-                border: `1px solid ${blocksTemplate.theme.borderColor || '#e5e7eb'}`,
+                backgroundColor: modifiedBlocksTemplate.theme.backgroundColor,
+                border: `1px solid ${modifiedBlocksTemplate.theme.borderColor || '#e5e7eb'}`,
               }}
             >
               {/* Logo - Header Position */}
@@ -159,50 +188,66 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                 </div>
               )}
               
-              {blocksTemplate.blocks.map((b) => {
+              {modifiedBlocksTemplate.blocks.map((b) => {
                 if (b.type === 'header') {
                   const title = (b as any).title || 'Header';
                   return (
-                    <div key={b.id} style={{ backgroundColor: blocksTemplate.theme.headerColor, color: '#fff', padding: '20px' }}>
+                    <div key={b.id} style={{ backgroundColor: modifiedBlocksTemplate.theme.headerColor, color: '#fff', padding: '20px' }}>
                       <h1 style={{ margin: 0, textAlign: 'center' }}>{title}</h1>
                     </div>
                   );
                 }
                 if (b.type === 'text') {
                   return (
-                    <div key={b.id} style={{ padding: '16px 20px', color: blocksTemplate.theme.textColor }}
+                    <div key={b.id} style={{ padding: '16px 20px', color: modifiedBlocksTemplate.theme.textColor }}
                       dangerouslySetInnerHTML={{ __html: (b as any).html || '' }} />
                   );
                 }
                 if (b.type === 'event_details') {
                   return (
-                    <div key={b.id} style={{ background: blocksTemplate.theme.accentColor, border: `1px solid ${blocksTemplate.theme.borderColor}`, margin: '16px 20px', padding: '16px', borderRadius: 8 }}>
-                      <strong style={{ color: blocksTemplate.theme.textColor }}>{safeEventDetails.name}</strong>
-                      <div style={{ color: blocksTemplate.theme.textColor, fontSize: 14, lineHeight: 1.6, marginTop: 16 }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: blocksTemplate.theme.accentColor, borderRadius: '8px', borderLeft: `3px solid ${blocksTemplate.theme.buttonColor}` }}>
-                          <div style={{ background: blocksTemplate.theme.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0 }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                              <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
-                              <line x1="16" x2="16" y1="2" y2="6"/>
-                              <line x1="8" x2="8" y1="2" y2="6"/>
-                              <line x1="3" x2="21" y1="10" y2="10"/>
-                            </svg>
+                    <div key={b.id} style={{ background: modifiedBlocksTemplate.theme.accentColor, border: `1px solid ${modifiedBlocksTemplate.theme.borderColor}`, margin: '16px 20px', padding: '16px', borderRadius: 8 }}>
+                      <strong style={{ color: modifiedBlocksTemplate.theme.textColor }}>{safeEventDetails.name}</strong>
+                      <div style={{ color: modifiedBlocksTemplate.theme.textColor, fontSize: 14, lineHeight: 1.6, marginTop: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: modifiedBlocksTemplate.theme.accentColor, borderRadius: '8px', borderLeft: `3px solid ${modifiedBlocksTemplate.theme.buttonColor}` }}>
+                          <div style={{ background: modifiedBlocksTemplate.theme.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0 }}>
+                            <span style={{ fontSize: '16px' }}>📅</span>
                           </div>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, color: blocksTemplate.theme.textColor, marginBottom: '2px' }}>{new Date(safeEventDetails.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                            <div style={{ color: blocksTemplate.theme.textColor + 'CC', fontSize: '13px' }}>{new Date(safeEventDetails.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
+                            <div style={{ fontWeight: 600, color: modifiedBlocksTemplate.theme.textColor, marginBottom: '2px' }}>{new Date(safeEventDetails.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                            <div style={{ color: modifiedBlocksTemplate.theme.textColor + 'CC', fontSize: '13px' }}>{new Date(safeEventDetails.event_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div>
                           </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: blocksTemplate.theme.accentColor, borderRadius: '8px', borderLeft: `3px solid ${blocksTemplate.theme.buttonColor}` }}>
-                          <div style={{ background: blocksTemplate.theme.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0 }}>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
-                              <circle cx="12" cy="10" r="3"/>
-                            </svg>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', margin: '12px 0', padding: '12px', background: modifiedBlocksTemplate.theme.accentColor, borderRadius: '8px', borderLeft: `3px solid ${modifiedBlocksTemplate.theme.buttonColor}` }}>
+                          <div style={{ background: modifiedBlocksTemplate.theme.buttonColor, color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '12px', flexShrink: 0 }}>
+                            <span style={{ fontSize: '16px' }}>📍</span>
                           </div>
                           <div style={{ flex: 1 }}>
-                            <div style={{ color: blocksTemplate.theme.textColor + '88', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Venue</div>
-                            <div style={{ fontWeight: 600, color: blocksTemplate.theme.textColor }}>{safeEventDetails.venue || 'TBA'}</div>
+                            <div style={{ color: modifiedBlocksTemplate.theme.textColor + '88', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Venue</div>
+                            <div style={{ fontWeight: 600, color: modifiedBlocksTemplate.theme.textColor }}>{safeEventDetails.venue || 'TBA'}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                if (b.type === 'registration_details') {
+                  return (
+                    <div key={b.id} style={{ padding: '0 20px', color: modifiedBlocksTemplate.theme.textColor }}>
+                      <h3 style={{ margin: '24px 0 20px 0', color: modifiedBlocksTemplate.theme.textColor, fontFamily: 'Manrope, -apple-system, BlinkMacSystemFont, sans-serif', fontWeight: 600, fontSize: '20px' }}>Registration Summary</h3>
+                      <div style={{ background: '#fff', border: `2px solid ${modifiedBlocksTemplate.theme.borderColor}`, borderRadius: '12px', padding: 0, marginBottom: '20px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${modifiedBlocksTemplate.theme.borderColor}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontWeight: 600, color: modifiedBlocksTemplate.theme.textColor, marginBottom: '4px' }}>General Admission</div>
+                            <div style={{ color: modifiedBlocksTemplate.theme.textColor, opacity: 0.7, fontSize: '14px' }}>Quantity: 1</div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontWeight: 600, color: modifiedBlocksTemplate.theme.textColor }}>$50.00</div>
+                          </div>
+                        </div>
+                        <div style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)', padding: '20px', borderTop: `1px solid ${modifiedBlocksTemplate.theme.borderColor}` }}>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ color: '#ffffff', fontWeight: 700, fontSize: '24px', fontFamily: 'Manrope, -apple-system, BlinkMacSystemFont, sans-serif', marginBottom: '4px' }}>Total: $50.00</div>
+                            <div style={{ color: '#ffffff', opacity: 0.9, fontSize: '14px' }}>Registration confirmed ✓</div>
                           </div>
                         </div>
                       </div>
@@ -211,12 +256,12 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                 }
                 if (b.type === 'ticket_list') {
                   return (
-                    <div key={b.id} style={{ padding: '0 20px', color: blocksTemplate.theme.textColor }}>
+                    <div key={b.id} style={{ padding: '0 20px', color: modifiedBlocksTemplate.theme.textColor }}>
                       <h3>Your Tickets</h3>
-                      <div style={{ border: `1px solid ${blocksTemplate.theme.borderColor}`, padding: 16, borderRadius: 8, background: '#fff' }}>
+                      <div style={{ border: `1px solid ${modifiedBlocksTemplate.theme.borderColor}`, padding: 16, borderRadius: 8, background: '#fff' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span>General Admission</span>
-                          <code style={{ background: blocksTemplate.theme.accentColor, padding: '4px 8px' }}>TCK-XXXXXX</code>
+                          <code style={{ background: modifiedBlocksTemplate.theme.accentColor, padding: '4px 8px' }}>TCK-XXXXXX</code>
                         </div>
                       </div>
                     </div>
@@ -225,12 +270,12 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                 if (b.type === 'button') {
                   return (
                     <div key={b.id} style={{ textAlign: (b as any).align || 'center', padding: 20 }}>
-                      <a href="#" style={{ background: blocksTemplate.theme.buttonColor, color: '#fff', padding: '10px 16px', borderRadius: 6, textDecoration: 'none' }}>{(b as any).label || 'Button'}</a>
+                      <a href="#" style={{ background: modifiedBlocksTemplate.theme.buttonColor, color: '#fff', padding: '10px 16px', borderRadius: 6, textDecoration: 'none' }}>{(b as any).label || 'Button'}</a>
                     </div>
                   );
                 }
                 if (b.type === 'divider') {
-                  return <hr key={b.id} style={{ border: 0, borderTop: `1px solid ${blocksTemplate.theme.borderColor}`, margin: '16px 20px' }} />;
+                  return <hr key={b.id} style={{ border: 0, borderTop: `1px solid ${modifiedBlocksTemplate.theme.borderColor}`, margin: '16px 20px' }} />;
                 }
                 if (b.type === 'image') {
                   return (
@@ -241,7 +286,7 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
                 }
                 if (b.type === 'footer') {
                   return (
-                    <div key={b.id} style={{ background: blocksTemplate.theme.accentColor, padding: 16, textAlign: 'center', borderTop: `1px solid ${blocksTemplate.theme.borderColor}` }}>
+                    <div key={b.id} style={{ background: modifiedBlocksTemplate.theme.accentColor, padding: 16, textAlign: 'center', borderTop: `1px solid ${modifiedBlocksTemplate.theme.borderColor}` }}>
                       <small style={{ color: '#999' }}>{(b as any).text || ''}</small>
                     </div>
                   );
