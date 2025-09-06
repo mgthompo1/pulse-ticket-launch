@@ -54,7 +54,144 @@ serve(async (req) => {
     console.log("Event type:", event.type);
     console.log("Event ID:", event.id);
 
-    // Only handle payment_intent.succeeded events
+    // Handle both payment_intent.succeeded and checkout.session.completed events
+    if (event.type === "payment_intent.succeeded") {
+      const paymentIntent = event.data.object;
+    } else if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
+      
+      console.log("=== PROCESSING CHECKOUT SESSION COMPLETED ===");
+      console.log("Session ID:", session.id);
+      console.log("Metadata:", session.metadata);
+
+      // Check if this session uses booking fees
+      const shouldProcessBookingFees = session.metadata?.useBookingFees === 'true';
+      const orderId = session.metadata?.orderId;
+      
+      console.log("=== CHECKOUT SESSION METADATA DEBUG ===");
+      console.log("Session ID:", session.id);
+      console.log("Metadata keys:", Object.keys(session.metadata || {}));
+      console.log("Full metadata:", session.metadata);
+      console.log("useBookingFees flag:", session.metadata?.useBookingFees);
+      console.log("Order ID:", orderId);
+      
+      if (shouldProcessBookingFees && orderId) {
+        console.log("=== PROCESSING BOOKING FEES FROM CHECKOUT SESSION ===");
+        
+        let ticketAmount = parseInt(session.metadata?.ticketAmount || '0');
+        let bookingFeeAmount = parseInt(session.metadata?.bookingFeeAmount || '0');
+        
+        if (!orderId) {
+          throw new Error("Order ID missing from session metadata");
+        }
+
+        // Get order details to find the organization
+        const { data: order, error: orderError } = await supabaseClient
+          .from('orders')
+          .select(`
+            *,
+            events (
+              organization_id,
+              organizations (
+                stripe_account_id
+              )
+            )
+          `)
+          .eq('id', orderId)
+          .single();
+
+        if (orderError || !order) {
+          throw new Error("Order not found");
+        }
+
+        const stripeAccountId = order.events?.organizations?.stripe_account_id;
+        
+        if (!stripeAccountId) {
+          throw new Error("Stripe account ID not configured for organization");
+        }
+
+        console.log("=== CREATING SEPARATE CHARGES FROM SESSION ===");
+        console.log("Ticket amount:", ticketAmount, "cents");
+        console.log("Booking fee amount:", bookingFeeAmount, "cents");
+        console.log("Connected account:", stripeAccountId);
+
+        // Get the payment intent from the session to access the payment method
+        if (session.payment_intent) {
+          const paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent);
+          
+          // Create separate charge for ticket amount to connected account
+          if (ticketAmount > 0) {
+            const ticketCharge = await stripe.charges.create({
+              amount: ticketAmount,
+              currency: session.currency,
+              source: paymentIntent.payment_method,
+              description: `Ticket payment for order ${orderId}`,
+              metadata: {
+                orderId: orderId,
+                chargeType: 'tickets'
+              }
+            }, {
+              stripeAccount: stripeAccountId
+            });
+
+            console.log("Ticket charge created:", ticketCharge.id);
+          }
+
+          // Booking fee stays with the platform (no separate charge needed)
+          console.log("Booking fee retained by platform:", bookingFeeAmount, "cents");
+
+          // Get payment method details
+          let paymentMethodUpdate = {};
+          if (paymentIntent.payment_method) {
+            const pmId = typeof paymentIntent.payment_method === 'string' 
+              ? paymentIntent.payment_method 
+              : paymentIntent.payment_method.id;
+            
+            try {
+              const paymentMethod = await stripe.paymentMethods.retrieve(pmId);
+              
+              if (paymentMethod.card) {
+                paymentMethodUpdate = {
+                  payment_method_type: 'card',
+                  card_last_four: paymentMethod.card.last4,
+                  card_brand: paymentMethod.card.brand,
+                  payment_method_id: pmId
+                };
+                console.log("Payment method details retrieved:", paymentMethodUpdate);
+              }
+            } catch (error) {
+              console.error("Failed to fetch payment method details:", error.message);
+            }
+          }
+
+          // Update order status and booking fee information
+          const { error: updateError } = await supabaseClient
+            .from('orders')
+            .update({
+              status: 'completed',
+              payment_status: 'paid',
+              booking_fee_amount: bookingFeeAmount / 100, // Convert from cents to dollars
+              booking_fee_enabled: true,
+              subtotal_amount: ticketAmount / 100, // Convert from cents to dollars
+              stripe_session_id: session.id,
+              ...paymentMethodUpdate
+            })
+            .eq('id', orderId);
+
+          if (updateError) {
+            console.error("Error updating order status:", updateError);
+          }
+
+          console.log("=== BOOKING FEE PROCESSING COMPLETED FROM SESSION ===");
+        }
+      }
+      
+      return new Response(JSON.stringify({ received: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+    
     if (event.type === "payment_intent.succeeded") {
       const paymentIntent = event.data.object;
       

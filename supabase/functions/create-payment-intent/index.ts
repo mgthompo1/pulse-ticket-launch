@@ -315,31 +315,58 @@ serve(async (req) => {
     console.log("Currency:", currency);
 
     if (enableBookingFees) {
-      console.log("=== CREATING PAYMENT INTENT WITH BOOKING FEES (SEPARATE CHARGES) ===");
+      console.log("=== CREATING CHECKOUT SESSION WITH BOOKING FEES (SEPARATE CHARGES) ===");
       
-      // For booking fees, create payment intent for the full amount
+      // For booking fees, create checkout session for the full amount
       // The separate charge will be handled after payment confirmation
-      paymentIntent = await stripe.paymentIntents.create({
-        amount: amountInCents,
-        currency: currency.toLowerCase(),
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [{
+          price_data: {
+            currency: currency.toLowerCase(),
+            product_data: {
+              name: `Tickets for ${event?.name || 'Event'}`,
+              description: `${metadata.itemCount} ticket(s) + booking fee`,
+            },
+            unit_amount: amountInCents,
+          },
+          quantity: 1,
+        }],
+        mode: 'payment',
+        success_url: `${Deno.env.get('PUBLIC_APP_BASE_URL') || 'https://www.ticketflo.org'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${Deno.env.get('PUBLIC_APP_BASE_URL') || 'https://www.ticketflo.org'}/payment-cancelled`,
         metadata: {
           ...metadata,
           useBookingFees: 'true',
           ticketAmount: Math.round((subtotal || 0) * 100),
           bookingFeeAmount: Math.round((bookingFee || 0) * 100)
         },
-        // Don't use automatic payment methods for booking fees
-        // We need manual control for separate charges
-        payment_method_types: ['card'],
       });
-    } else {
-      console.log("=== CREATING STANDARD PAYMENT INTENT ===");
       
-      paymentIntent = await stripe.paymentIntents.create({
-        amount: amountInCents,
-        currency: currency.toLowerCase(),
+      paymentIntent = { id: session.id, client_secret: null };
+    } else {
+      console.log("=== CREATING STANDARD CHECKOUT SESSION ===");
+      
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [{
+          price_data: {
+            currency: currency.toLowerCase(),
+            product_data: {
+              name: `Tickets for ${event?.name || 'Event'}`,
+              description: `${metadata.itemCount} ticket(s)`,
+            },
+            unit_amount: amountInCents,
+          },
+          quantity: 1,
+        }],
+        mode: 'payment',
+        success_url: `${Deno.env.get('PUBLIC_APP_BASE_URL') || 'https://www.ticketflo.org'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${Deno.env.get('PUBLIC_APP_BASE_URL') || 'https://www.ticketflo.org'}/payment-cancelled`,
         metadata: metadata,
       });
+      
+      paymentIntent = { id: session.id, client_secret: null };
     }
 
     console.log("=== PAYMENT INTENT CREATED ===", paymentIntent.id);
@@ -373,7 +400,8 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      paymentIntentId: paymentIntent.id,
+      sessionId: paymentIntent.id,
+      paymentIntentId: paymentIntent.id, // Keep for backwards compatibility
       client_secret: paymentIntent.client_secret,
       orderId: orderId
     }), {
