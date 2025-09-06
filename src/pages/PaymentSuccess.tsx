@@ -177,8 +177,18 @@ const PaymentSuccess = () => {
         return;
       }
       
-      // If we get a PDF URL back, trigger download
-      if (data?.pdfUrl) {
+      // If we get HTML content back, create an HTML download
+      if (data?.html) {
+        const blob = new Blob([data.html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = data.filename || `Receipt-${orderDetails.id}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } else if (data?.pdfUrl) {
         const link = document.createElement('a');
         link.href = data.pdfUrl;
         link.download = `Receipt-${orderDetails.id}.pdf`;

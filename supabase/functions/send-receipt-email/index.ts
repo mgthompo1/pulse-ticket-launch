@@ -9,11 +9,12 @@ const corsHeaders = {
 
 interface ReceiptEmailRequest {
   orderId: string;
-  customerEmail: string;
-  customerName: string;
-  eventName: string;
-  totalAmount: number;
-  paymentDate: string;
+  customerEmail?: string;
+  customerName?: string;
+  eventName?: string;
+  totalAmount?: number;
+  paymentDate?: string;
+  downloadOnly?: boolean;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -24,11 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { 
       orderId, 
-      customerEmail, 
-      customerName, 
-      eventName, 
-      totalAmount, 
-      paymentDate 
+      downloadOnly
     }: ReceiptEmailRequest = await req.json();
 
     // Create Supabase client with service role key for database access
@@ -72,6 +69,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (orderError) throw orderError;
 
+    // Extract data from order
+    const customerEmail = order.customer_email;
+    const customerName = order.customer_name;
+    const eventName = order.events?.name;
+    const totalAmount = order.total_amount;
+    const paymentDate = order.created_at;
+    
     const organization = order.events?.organizations;
     const event = order.events;
     
@@ -86,9 +90,9 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="font-weight: 600;">${itemName}</div>
             ${itemDescription ? `<div style="color: #6b7280; font-size: 14px;">${itemDescription}</div>` : ''}
           </td>
-          <td style="padding: 12px 0; text-align: center;">${item.quantity}</td>
-          <td style="padding: 12px 0; text-align: right;">$${item.unit_price.toFixed(2)}</td>
-          <td style="padding: 12px 0; text-align: right; font-weight: 600;">$${(item.quantity * item.unit_price).toFixed(2)}</td>
+          <td style="padding: 12px 0; text-align: center;">${item.quantity || 0}</td>
+          <td style="padding: 12px 0; text-align: right;">$${(item.unit_price || 0).toFixed(2)}</td>
+          <td style="padding: 12px 0; text-align: right; font-weight: 600;">$${((item.quantity || 0) * (item.unit_price || 0)).toFixed(2)}</td>
         </tr>
       `;
     }).join('') || '';
@@ -162,7 +166,7 @@ const handler = async (req: Request): Promise<Response> => {
             <div style="padding: 20px; border-top: 2px solid #e5e7eb; background: #f9fafb;">
               <div style="text-align: right;">
                 <div style="font-size: 18px; font-weight: 700; color: #1f2937;">
-                  Total: $${totalAmount.toFixed(2)}
+                  Total: $${(totalAmount || 0).toFixed(2)}
                 </div>
               </div>
             </div>
@@ -178,6 +182,21 @@ const handler = async (req: Request): Promise<Response> => {
         </body>
       </html>
     `;
+
+    // If downloadOnly is requested, return the HTML content for client-side processing
+    if (downloadOnly) {
+      return new Response(JSON.stringify({ 
+        success: true,
+        html: emailHtml,
+        filename: `Receipt-${orderId.slice(0, 8)}.html`
+      }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
+      });
+    }
 
     // Initialize Resend inside the handler
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
