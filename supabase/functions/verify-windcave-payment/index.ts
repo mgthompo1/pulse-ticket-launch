@@ -130,7 +130,11 @@ serve(async (req) => {
 
     console.log("Order updated successfully:", order.id);
 
-    // Generate tickets for the completed order
+    // Check event ticket delivery method
+    console.log("Event ticket delivery method:", event.ticket_delivery_method || 'qr_ticket');
+    const ticketDeliveryMethod = event.ticket_delivery_method || 'qr_ticket';
+
+    // Generate tickets for the completed order only if delivery method is 'qr_ticket'
     const { data: orderItems, error: itemsError } = await supabaseClient
       .from("order_items")
       .select("*")
@@ -141,17 +145,24 @@ serve(async (req) => {
       throw new Error("Failed to fetch order items");
     }
 
-    // Create individual tickets only for ticket items, not merchandise
-    const ticketsToCreate = [];
-    const ticketItems = orderItems.filter(item => item.item_type === 'ticket');
-    for (const item of ticketItems) {
-      for (let i = 0; i < item.quantity; i++) {
-        ticketsToCreate.push({
-          order_item_id: item.id,
-          ticket_code: `${event.name.substring(0, 3).toUpperCase()}-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-          status: "valid"
-        });
+    // Only create tickets if the delivery method is 'qr_ticket'
+    let ticketsToCreate = [];
+    if (ticketDeliveryMethod === 'qr_ticket') {
+      console.log("Creating QR tickets for order:", order.id);
+      
+      // Create individual tickets only for ticket items, not merchandise
+      const ticketItems = orderItems.filter(item => item.item_type === 'ticket');
+      for (const item of ticketItems) {
+        for (let i = 0; i < item.quantity; i++) {
+          ticketsToCreate.push({
+            order_item_id: item.id,
+            ticket_code: `${event.name.substring(0, 3).toUpperCase()}-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+            status: "valid"
+          });
+        }
       }
+    } else if (ticketDeliveryMethod === 'confirmation_email') {
+      console.log("Email confirmation only mode - no tickets will be generated");
     }
 
     if (ticketsToCreate.length > 0) {

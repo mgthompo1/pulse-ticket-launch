@@ -135,7 +135,11 @@ serve(async (req) => {
       } else {
         logStep("Order status updated to completed", { orderId: order.id });
         
-        // Generate tickets for completed orders
+        // Check event ticket delivery method
+        const ticketDeliveryMethod = event.ticket_delivery_method || 'qr_ticket';
+        logStep("Event ticket delivery method", { method: ticketDeliveryMethod });
+        
+        // Generate tickets for completed orders only if delivery method is 'qr_ticket'
         try {
           const { data: orderItems } = await supabaseClient
             .from("order_items")
@@ -143,17 +147,24 @@ serve(async (req) => {
             .eq("order_id", order.id);
 
            if (orderItems && orderItems.length > 0) {
-            const tickets = [];
-            // Only generate tickets for ticket items, not merchandise
-            const ticketItems = orderItems.filter(item => item.item_type === 'ticket');
-            for (const item of ticketItems) {
-              for (let i = 0; i < item.quantity; i++) {
-                tickets.push({
-                  order_item_id: item.id,
-                  ticket_code: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                  status: 'valid'
-                });
+            let tickets = [];
+            
+            if (ticketDeliveryMethod === 'qr_ticket') {
+              logStep("Creating QR tickets for order", { orderId: order.id });
+              
+              // Only generate tickets for ticket items, not merchandise
+              const ticketItems = orderItems.filter(item => item.item_type === 'ticket');
+              for (const item of ticketItems) {
+                for (let i = 0; i < item.quantity; i++) {
+                  tickets.push({
+                    order_item_id: item.id,
+                    ticket_code: `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                    status: 'valid'
+                  });
+                }
               }
+            } else if (ticketDeliveryMethod === 'confirmation_email') {
+              logStep("Email confirmation only mode - no tickets will be generated");
             }
             
             if (tickets.length > 0) {

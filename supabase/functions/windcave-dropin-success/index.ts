@@ -76,7 +76,23 @@ serve(async (req) => {
       console.log("Successfully updated to 'completed' status");
     }
 
-    // Get order items and create tickets
+    // Get event information to check ticket delivery method
+    console.log("Checking event ticket delivery method...");
+    const { data: eventData, error: eventError } = await supabaseClient
+      .from("events")
+      .select("ticket_delivery_method")
+      .eq("id", eventId)
+      .single();
+
+    if (eventError) {
+      console.error("Failed to get event delivery method:", eventError);
+      throw new Error("Failed to get event information");
+    }
+
+    const ticketDeliveryMethod = eventData.ticket_delivery_method || 'qr_ticket';
+    console.log("Event ticket delivery method:", ticketDeliveryMethod);
+
+    // Get order items
     console.log("Fetching order items...");
     const { data: orderItems, error: orderItemsError } = await supabaseClient
       .from("order_items")
@@ -91,27 +107,32 @@ serve(async (req) => {
       throw new Error("No order items found");
     }
 
-    console.log("Creating tickets for", orderItems.length, "order items");
-    
-    // Create tickets for each order item (only for ticket items, not merchandise)
-    const ticketsToCreate = [];
-    for (const item of orderItems) {
-      if (item.item_type === 'ticket') {
-        for (let i = 0; i < item.quantity; i++) {
-          // Generate proper ticket code using the database function
-          const ticketCode = await supabaseClient.rpc('generate_ticket_code').single();
-          if (ticketCode.error) {
-            throw new Error(`Ticket code generation failed: ${ticketCode.error.message}`);
+    // Only create tickets if the delivery method is 'qr_ticket'
+    let ticketsToCreate = [];
+    if (ticketDeliveryMethod === 'qr_ticket') {
+      console.log("Creating QR tickets for", orderItems.length, "order items");
+      
+      // Create tickets for each order item (only for ticket items, not merchandise)
+      for (const item of orderItems) {
+        if (item.item_type === 'ticket') {
+          for (let i = 0; i < item.quantity; i++) {
+            // Generate proper ticket code using the database function
+            const ticketCode = await supabaseClient.rpc('generate_ticket_code').single();
+            if (ticketCode.error) {
+              throw new Error(`Ticket code generation failed: ${ticketCode.error.message}`);
+            }
+            
+            ticketsToCreate.push({
+              order_item_id: item.id,
+              ticket_code: ticketCode.data,
+              status: 'valid',
+              checked_in: false
+            });
           }
-          
-          ticketsToCreate.push({
-            order_item_id: item.id,
-            ticket_code: ticketCode.data,
-            status: 'valid',
-            checked_in: false
-          });
         }
       }
+    } else if (ticketDeliveryMethod === 'confirmation_email') {
+      console.log("Email confirmation only mode - no tickets will be generated");
     }
 
     console.log("Inserting", ticketsToCreate.length, "tickets");
