@@ -84,6 +84,21 @@ const handler = async (req: Request): Promise<Response> => {
     const organization = order.events?.organizations;
     const event = order.events;
     
+    // Calculate fee breakdown from order items and organization settings
+    const itemsSubtotal = order.order_items?.reduce((sum: number, item: any) => {
+      return sum + ((item.quantity || 0) * (item.unit_price || 0));
+    }, 0) || 0;
+    
+    // Get fee settings from organization
+    const processingFeePercentage = organization?.credit_card_processing_fee_percentage || 0;
+    const bookingFeesEnabled = organization?.stripe_booking_fee_enabled || false;
+    
+    // Calculate fees
+    const processingFee = processingFeePercentage > 0 ? (itemsSubtotal * processingFeePercentage / 100) : 0;
+    const bookingFee = (bookingFeesEnabled && organization?.payment_provider === 'stripe') 
+      ? (itemsSubtotal * 0.01) + 0.50 
+      : 0;
+    
     // Format order items for the email
     const orderItemsHtml = order.order_items?.map((item: any) => {
       const itemName = item.ticket_types?.name || item.merchandise?.name || 'Unknown Item';
@@ -172,9 +187,26 @@ const handler = async (req: Request): Promise<Response> => {
               </tbody>
             </table>
             <div style="padding: 20px; border-top: 2px solid #e5e7eb; background: #f9fafb;">
-              <div style="text-align: right;">
-                <div style="font-size: 18px; font-weight: 700; color: #1f2937;">
-                  Total: $${(totalAmount || 0).toFixed(2)}
+              <div style="text-align: right; space-y: 8px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="color: #6b7280;">Subtotal:</span>
+                  <span style="color: #1f2937;">$${itemsSubtotal.toFixed(2)}</span>
+                </div>
+                ${processingFee > 0 ? `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="color: #6b7280;">Processing Fee (${processingFeePercentage}%):</span>
+                  <span style="color: #1f2937;">$${processingFee.toFixed(2)}</span>
+                </div>` : ''}
+                ${bookingFee > 0 ? `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="color: #6b7280;">Booking Fee:</span>
+                  <span style="color: #1f2937;">$${bookingFee.toFixed(2)}</span>
+                </div>` : ''}
+                <div style="border-top: 1px solid #e5e7eb; padding-top: 8px; margin-top: 8px;">
+                  <div style="display: flex; justify-content: space-between;">
+                    <span style="font-size: 18px; font-weight: 700; color: #1f2937;">Total:</span>
+                    <span style="font-size: 18px; font-weight: 700; color: #1f2937;">$${(totalAmount || 0).toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
             </div>
