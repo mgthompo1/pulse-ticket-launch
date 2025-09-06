@@ -290,6 +290,12 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                       <span style={{ color: theme.headerTextColor }}>${processingFee.toFixed(2)}</span>
                     </div>
                   )}
+                  {bookingFee > 0 && (
+                    <div className="flex justify-between">
+                      <span style={{ color: theme.bodyTextColor }}>Booking Fee</span>
+                      <span style={{ color: theme.headerTextColor }}>${bookingFee.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between font-semibold text-lg">
                     <span style={{ color: theme.headerTextColor }}>Total</span>
                     <span style={{ color: theme.headerTextColor }}>${total.toFixed(2)}</span>
