@@ -34,7 +34,9 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null);
   const [showStripePayment, setShowStripePayment] = useState(false);
-  const [bookingFeesEnabled, setBookingFeesEnabled] = useState(false);
+  
+  // Get booking fees setting from eventData instead of separate API call
+  const bookingFeesEnabled = eventData.organizations?.stripe_booking_fee_enabled || false;
   const calculateTicketSubtotal = () => {
     return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
@@ -74,16 +76,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             }
           }
 
-          // Load organization settings for booking fees
-          const { data: orgData, error: orgError } = await supabase
-            .from('organizations')
-            .select('stripe_booking_fee_enabled')
-            .eq('id', eventData.organization_id)
-            .single();
-
-          if (!orgError && orgData) {
-            setBookingFeesEnabled(orgData.stripe_booking_fee_enabled || false);
-          }
+          // Booking fees setting is now loaded from eventData
         } catch (error) {
           console.error('Error loading Stripe config:', error);
         }

@@ -21,6 +21,7 @@ export interface EventData {
     credit_card_processing_fee_percentage?: number | null;
     apple_pay_merchant_id?: string | null;
     windcave_endpoint?: string | null;
+    stripe_booking_fee_enabled?: boolean | null;
   };
 }
 
