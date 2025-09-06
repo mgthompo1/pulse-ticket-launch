@@ -283,21 +283,33 @@ Deno.serve(async (req) => {
     // Get email customization (supports block-based schema)
     const emailCustomization = order.events.email_customization as any;
     
-    // Use saved blocks when present; otherwise fall back to defaults based on delivery method
-    const blocks: any[] = Array.isArray(emailCustomization?.blocks) && emailCustomization.blocks.length > 0
-      ? emailCustomization.blocks
-      : (deliveryMethod === 'registration_confirmation' ? [
-          { type: 'header', title: emailCustomization?.content?.headerText || 'Registration Confirmed!' },
-          { type: 'event_details' },
-          { type: 'registration_details' },
-          { type: 'button', label: 'Get Directions', url: 'https://maps.google.com/?q=' + encodeURIComponent(order.events.venue || ''), align: 'center' },
-          { type: 'button', label: 'Add to Calendar', url: '#', align: 'center' }
-        ] : [
-          { type: 'header', title: emailCustomization?.content?.headerText || 'Thank you for your purchase!' },
-          { type: 'event_details' },
-          { type: 'ticket_list' },
-          { type: 'button', label: 'View Tickets', url: '#', align: 'center' }
-        ]);
+    // Use delivery method to determine blocks - delivery method takes precedence over saved blocks
+    // This ensures that changing delivery method overrides any previously saved email template
+    let blocks: any[] = [];
+    
+    if (deliveryMethod === 'registration_confirmation') {
+      // Email confirmation mode - use registration-focused template
+      blocks = [
+        { type: 'header', title: emailCustomization?.content?.headerText || 'Registration Confirmed!' },
+        { type: 'event_details' },
+        { type: 'registration_details' },
+        { type: 'button', label: 'Get Directions', url: 'https://maps.google.com/?q=' + encodeURIComponent(order.events.venue || ''), align: 'center' },
+        { type: 'button', label: 'Add to Calendar', url: '#', align: 'center' }
+      ];
+    } else {
+      // QR ticket mode - use ticket-focused template  
+      blocks = [
+        { type: 'header', title: emailCustomization?.content?.headerText || 'Thank you for your purchase!' },
+        { type: 'event_details' },
+        { type: 'ticket_list' },
+        { type: 'button', label: 'View Tickets', url: '#', align: 'center' }
+      ];
+    }
+    
+    // Only use saved blocks if delivery method is not set (legacy support)
+    if (!order.events.ticket_delivery_method && Array.isArray(emailCustomization?.blocks) && emailCustomization.blocks.length > 0) {
+      blocks = emailCustomization.blocks;
+    }
     
     logStep("USING EMAIL BLOCKS", { 
       hasCustomBlocks: Array.isArray(emailCustomization?.blocks) && emailCustomization.blocks.length > 0,
@@ -499,8 +511,7 @@ Deno.serve(async (req) => {
               <div style="color:${theme.textColor};font-size:14px;line-height:1.6;margin-top:16px;">
                 <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;">
                   <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">
-                    <img src="${svgIcons.calendar}" alt="Calendar" style="width:16px;height:16px;" onerror="this.style.display='none';this.nextSibling.style.display='inline';">
-                    <span style="display:none;font-size:16px;">${icons.calendar}</span>
+                    <span style="font-size:16px;">${icons.calendar}</span>
                   </div>
                   <div style="flex:1;">
                     <div style="font-weight:600;color:${theme.textColor};margin-bottom:2px;">${new Date(order.events.event_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
@@ -509,8 +520,7 @@ Deno.serve(async (req) => {
                 </div>
                 <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;">
                   <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">
-                    <img src="${svgIcons.mapPin}" alt="Location" style="width:16px;height:16px;" onerror="this.style.display='none';this.nextSibling.style.display='inline';">
-                    <span style="display:none;font-size:16px;">${icons.mapPin}</span>
+                    <span style="font-size:16px;">${icons.mapPin}</span>
                   </div>
                   <div style="flex:1;">
                     <div style="color:${theme.textColor};opacity:0.6;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Venue</div>
@@ -519,8 +529,7 @@ Deno.serve(async (req) => {
                 </div>
                 <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.accentColor};border-radius:8px;">
                   <div style="background:${theme.headerColor};color:#ffffff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">
-                    <img src="${svgIcons.user}" alt="User" style="width:16px;height:16px;" onerror="this.style.display='none';this.nextSibling.style.display='inline';">
-                    <span style="display:none;font-size:16px;">${icons.user}</span>
+                    <span style="font-size:16px;">${icons.user}</span>
                   </div>
                   <div style="flex:1;">
                     <div style="color:${theme.textColor};opacity:0.6;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;">Attendee</div>
