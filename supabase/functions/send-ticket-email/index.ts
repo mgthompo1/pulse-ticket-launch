@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
-  
+  just 
 
   try {
     logStep("Function started");
@@ -38,6 +38,9 @@ Deno.serve(async (req) => {
         booking_fee_amount,
         booking_fee_enabled,
         subtotal_amount,
+        card_type,
+        card_last_four,
+        processing_fee_amount,
         events!inner(
           name,
           event_date,
@@ -49,7 +52,8 @@ Deno.serve(async (req) => {
             name,
             email,
             logo_url,
-            stripe_booking_fee_enabled
+            stripe_booking_fee_enabled,
+            credit_card_processing_fee_percentage
           )
         ),
         order_items!inner(
@@ -162,6 +166,17 @@ Deno.serve(async (req) => {
         processor: 'other'
       };
       logStep("Alternative payment method used", paymentMethodInfo);
+    }
+    
+    // Use stored card details as fallback if API calls failed
+    if (paymentMethodInfo.processor === 'unknown' && (order.card_type || order.card_last_four)) {
+      paymentMethodInfo = {
+        brand: order.card_type ? order.card_type.charAt(0).toUpperCase() + order.card_type.slice(1) : 'Card',
+        last4: order.card_last_four || '',
+        type: 'card',
+        processor: 'stored'
+      };
+      logStep("Using stored card details from database", paymentMethodInfo);
     }
     
     // Final validation
@@ -547,23 +562,37 @@ Deno.serve(async (req) => {
                 </div>
               `).join('');
               
-              // Calculate totals with booking fee support
+              // Calculate totals with booking fee and processing fee support
               const registrationSubtotal = registrationItems.reduce((sum: number, item: any) => sum + item.total, 0);
               const bookingFeeAmount = parseFloat(order.booking_fee_amount || 0);
+              const processingFeeAmount = parseFloat(order.processing_fee_amount || 0);
               const hasBookingFee = order.booking_fee_enabled && bookingFeeAmount > 0;
-              const grandTotal = hasBookingFee ? registrationSubtotal + bookingFeeAmount : registrationSubtotal;
+              const hasProcessingFee = processingFeeAmount > 0;
               
-              // Generate booking fee breakdown for registration
-              const registrationBookingFeeBreakdown = hasBookingFee ? `
+              // Calculate grand total including all fees
+              let grandTotal = registrationSubtotal;
+              if (hasBookingFee) grandTotal += bookingFeeAmount;
+              if (hasProcessingFee) grandTotal += processingFeeAmount;
+              
+              // Generate fee breakdown for registration (includes booking and processing fees)
+              const registrationFeeBreakdown = (hasBookingFee || hasProcessingFee) ? `
                 <div style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#f8f9fa;">
                   <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
                     <span style="color:${theme.textColor};font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;font-size:14px;">Registration Subtotal</span>
                     <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:14px;">$${registrationSubtotal.toFixed(2)}</span>
                   </div>
-                  <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                    <span style="color:${theme.textColor};font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;font-size:14px;">Booking Fee</span>
-                    <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:14px;">$${bookingFeeAmount.toFixed(2)}</span>
-                  </div>
+                  ${hasBookingFee ? `
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                      <span style="color:${theme.textColor};font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;font-size:14px;">Booking Fee</span>
+                      <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:14px;">$${bookingFeeAmount.toFixed(2)}</span>
+                    </div>
+                  ` : ''}
+                  ${hasProcessingFee ? `
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                      <span style="color:${theme.textColor};font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;font-size:14px;">Processing Fee</span>
+                      <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:14px;">$${processingFeeAmount.toFixed(2)}</span>
+                    </div>
+                  ` : ''}
                   <div style="border-top:1px solid #e5e7eb;margin-top:8px;padding-top:8px;">
                     <div style="display:flex;justify-content:space-between;">
                       <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:700;font-size:16px;">Total</span>
@@ -577,11 +606,11 @@ Deno.serve(async (req) => {
                 <h3 style="margin:24px 0 20px 0;color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:20px;">Registration Confirmation</h3>
                 <div style="background:#fff;border:2px solid ${theme.borderColor};border-radius:12px;padding:0;margin-bottom:20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
                   ${registrationHtml}
-                  ${registrationBookingFeeBreakdown}
+                  ${registrationFeeBreakdown}
                   <div style="background:linear-gradient(135deg, #22c55e, #16a34a);padding:32px 24px;border-top:1px solid ${theme.borderColor};">
                     <div style="text-align:center;margin-bottom:16px;">
                       <div style="color:#ffffff;font-weight:700;font-size:28px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">$${grandTotal.toFixed(2)}</div>
-                      <div style="color:#ffffff;opacity:0.8;font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">Total Amount Paid${hasBookingFee ? ' (incl. booking fee)' : ''}</div>
+                      <div style="color:#ffffff;opacity:0.8;font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">Total Amount Paid${(hasBookingFee || hasProcessingFee) ? ' (incl. fees)' : ''}</div>
                     </div>
                     <div style="text-align:center;padding-top:16px;border-top:1px solid rgba(255,255,255,0.2);">
                       <div style="color:#ffffff;opacity:0.8;font-size:12px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">Payment Method</div>
@@ -636,23 +665,37 @@ Deno.serve(async (req) => {
                 </div>
               `).join('');
               
-              // Calculate grand total and booking fee breakdown
+              // Calculate grand total with booking fee and processing fee breakdown
               const itemsSubtotal = allItems.reduce((sum: number, item: any) => sum + item.total, 0);
               const bookingFeeAmount = parseFloat(order.booking_fee_amount || 0);
+              const processingFeeAmount = parseFloat(order.processing_fee_amount || 0);
               const hasBookingFee = order.booking_fee_enabled && bookingFeeAmount > 0;
-              const grandTotal = hasBookingFee ? itemsSubtotal + bookingFeeAmount : itemsSubtotal;
+              const hasProcessingFee = processingFeeAmount > 0;
               
-              // Generate booking fee breakdown HTML if applicable
-              const bookingFeeBreakdown = hasBookingFee ? `
+              // Calculate grand total including all fees
+              let grandTotal = itemsSubtotal;
+              if (hasBookingFee) grandTotal += bookingFeeAmount;
+              if (hasProcessingFee) grandTotal += processingFeeAmount;
+              
+              // Generate fee breakdown HTML if applicable (includes booking and processing fees)
+              const ticketFeeBreakdown = (hasBookingFee || hasProcessingFee) ? `
                 <div style="padding:16px 24px;border-top:1px solid ${theme.borderColor};background:#f8f9fa;">
                   <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
                     <span style="color:${theme.textColor};font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;font-size:14px;">Subtotal</span>
                     <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:14px;">$${itemsSubtotal.toFixed(2)}</span>
                   </div>
-                  <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                    <span style="color:${theme.textColor};font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;font-size:14px;">Booking Fee</span>
-                    <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:14px;">$${bookingFeeAmount.toFixed(2)}</span>
-                  </div>
+                  ${hasBookingFee ? `
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                      <span style="color:${theme.textColor};font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;font-size:14px;">Booking Fee</span>
+                      <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:14px;">$${bookingFeeAmount.toFixed(2)}</span>
+                    </div>
+                  ` : ''}
+                  ${hasProcessingFee ? `
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                      <span style="color:${theme.textColor};font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;font-size:14px;">Processing Fee</span>
+                      <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:14px;">$${processingFeeAmount.toFixed(2)}</span>
+                    </div>
+                  ` : ''}
                   <div style="border-top:1px solid ${theme.borderColor};margin-top:8px;padding-top:8px;">
                     <div style="display:flex;justify-content:space-between;">
                       <span style="color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:700;font-size:16px;">Total</span>
@@ -666,11 +709,11 @@ Deno.serve(async (req) => {
                 <h3 style="margin:24px 0 20px 0;color:${theme.textColor};font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:20px;">Your Order Summary</h3>
                 <div style="background:#fff;border:2px solid ${theme.borderColor};border-radius:12px;padding:0;margin-bottom:20px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
                   ${itemsHtml}
-                  ${bookingFeeBreakdown}
+                  ${ticketFeeBreakdown}
                   <div style="background:linear-gradient(135deg, ${theme.headerColor}, ${theme.buttonColor});padding:32px 24px;border-top:1px solid ${theme.borderColor};">
                     <div style="text-align:center;margin-bottom:16px;">
                       <div style="color:#ffffff;font-weight:700;font-size:28px;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">$${grandTotal.toFixed(2)}</div>
-                      <div style="color:#ffffff;opacity:0.8;font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">Total Amount Paid${hasBookingFee ? ' (incl. booking fee)' : ''}</div>
+                      <div style="color:#ffffff;opacity:0.8;font-size:14px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;">Total Amount Paid${(hasBookingFee || hasProcessingFee) ? ' (incl. fees)' : ''}</div>
                     </div>
                     <div style="text-align:center;padding-top:16px;border-top:1px solid rgba(255,255,255,0.2);">
                       <div style="color:#ffffff;opacity:0.8;font-size:12px;font-family:'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;margin-bottom:4px;">Payment Method</div>
