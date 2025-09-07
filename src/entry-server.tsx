@@ -76,13 +76,10 @@ function shouldServerSideRender(url: string, context: SSRContext): boolean {
     '/support',            // Support page
     '/events/',            // Event pages
     '/org/',               // Organization pages
-    '/widget/',            // Ticket widget (event pages for crawlers)
-    // Temporarily disable SSR for widget routes to prevent hydration issues
-    // '/widget/',            // Ticket widget (actual route)
-    // '/attraction/',        // Attraction widget (actual route)
-    // '/ticket-widget',      // Legacy ticket widget
-    // '/attraction-widget',  // Legacy attraction widget
-    // '/tickets'             // Public ticket pages
+    '/widget/',            // Ticket widget (ENABLED for social sharing)
+    '/attraction/',        // Attraction widget (ENABLED for social sharing)
+    '/ticket-widget',      // Legacy ticket widget
+    '/attraction-widget',  // Legacy attraction widget
   ];
   
   // Check if current path matches SSR routes
