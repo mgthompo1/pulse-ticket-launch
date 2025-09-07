@@ -76,6 +76,7 @@ function shouldServerSideRender(url: string, context: SSRContext): boolean {
     '/support',            // Support page
     '/events/',            // Event pages
     '/org/',               // Organization pages
+    '/widget/',            // Ticket widget (event pages for crawlers)
     // Temporarily disable SSR for widget routes to prevent hydration issues
     // '/widget/',            // Ticket widget (actual route)
     // '/attraction/',        // Attraction widget (actual route)

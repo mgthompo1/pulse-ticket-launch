@@ -4,10 +4,13 @@ import { fileURLToPath } from 'url';
 import express from 'express';
 import compression from 'compression';
 import sirv from 'sirv';
+import fetch from 'node-fetch';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isProduction = process.env.NODE_ENV === 'production';
 const port = process.env.PORT || 3000;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
 // Create Express app
 const app = express();
@@ -83,20 +86,53 @@ app.use('*', async (req, res, next) => {
     
     // For SSR routes, inject the rendered content
     let finalHtml = template.replace('<!--ssr-outlet-->', html);
-    
-    // Inject helmet data if available
+
+    // Build head content from Helmet
+    let headContent = '';
     if (helmet && helmet.helmet) {
       const { title, meta, link } = helmet.helmet;
-      const headContent = [
+      headContent = [
         title?.toString() || '',
         meta?.toString() || '',
         link?.toString() || ''
       ].join('\n');
-      
-      finalHtml = finalHtml.replace('<!--ssr-head-->', headContent);
-    } else {
-      finalHtml = finalHtml.replace('<!--ssr-head-->', '');
     }
+
+    // If a bot is requesting a widget URL, enrich head with dynamic meta
+    if (isBot && url.startsWith('/widget/') && SUPABASE_URL && SUPABASE_ANON_KEY) {
+      try {
+        const eventId = url.split('/widget/')[1]?.split(/[?#]/)[0];
+        const resp = await fetch(`${SUPABASE_URL}/functions/v1/dynamic-meta-tags`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({ path: url, eventId })
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          // Append Open Graph and Twitter meta tags
+          const dynamicHead = `
+            <title>${escapeHtml(data.title || '')}</title>
+            <meta name="description" content="${escapeHtml(data.description || '')}" />
+            <link rel="canonical" href="${escapeAttr(data.canonical || '')}" />
+            <meta property="og:title" content="${escapeAttr(data.ogTitle || data.title || '')}" />
+            <meta property="og:description" content="${escapeAttr(data.ogDescription || data.description || '')}" />
+            <meta property="og:image" content="${escapeAttr(data.ogImage || '')}" />
+            <meta property="og:url" content="${escapeAttr(data.canonical || '')}" />
+            <meta name="twitter:title" content="${escapeAttr(data.ogTitle || data.title || '')}" />
+            <meta name="twitter:description" content="${escapeAttr(data.ogDescription || data.description || '')}" />
+            <meta name="twitter:image" content="${escapeAttr(data.ogImage || '')}" />
+          `;
+          headContent = `${headContent}\n${dynamicHead}`;
+        }
+      } catch (e) {
+        console.warn('Dynamic meta fetch failed:', e?.message || e);
+      }
+    }
+
+    finalHtml = finalHtml.replace('<!--ssr-head-->', headContent);
     
     res.status(200).set({ 'Content-Type': 'text/html' }).end(finalHtml);
     
@@ -166,6 +202,19 @@ function isBotUserAgent(userAgent) {
   ];
   
   return botPatterns.some(pattern => pattern.test(userAgent));
+}
+
+function escapeHtml(str = '') {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function escapeAttr(str = '') {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;');
 }
 
 // Start server
