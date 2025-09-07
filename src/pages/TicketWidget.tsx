@@ -107,27 +107,15 @@ const TicketWidget = () => {
   const { eventId } = useParams();
   const { toast } = useToast();
   
-  // Add debugging for eventId
-  console.log("=== URL DEBUG ===");
-  console.log("Current URL:", window.location.href);
-  console.log("Event ID from params:", eventId);
-  
-  // Use dynamic SEO for this widget
-  const { metaTags, loading: seoLoading } = useDynamicSEO({
-    eventId,
-    fallbackTitle: "Event Tickets - TicketFlo",
-    fallbackDescription: "Purchase tickets for this event through our secure ticketing platform.",
-    enabled: !!eventId
-  });
-  
   // Use useMemo to ensure the client is only created once
   const anonymousSupabase = useMemo(() => createAnonymousSupabaseClient(), []);
   
-  // Add render counter for debugging
-  const renderCount = useRef(0);
-  renderCount.current += 1;
-  
-  console.log(`TicketWidget render #${renderCount.current}`);
+  // Client-side only debugging - moved to useEffect to avoid hydration mismatch
+  useEffect(() => {
+    console.log("=== URL DEBUG ===");
+    console.log("Current URL:", window.location.href);
+    console.log("Event ID from params:", eventId);
+  }, [eventId]);
   
   const [eventData, setEventData] = useState<EventData | null>(null);
   
@@ -171,10 +159,13 @@ const TicketWidget = () => {
       };
     }
     
-    console.log("🎨 Theme recalculated:", newTheme);
-    console.log("🎨 Event data widget_customization:", eventData?.widget_customization);
-    console.log("🎨 Raw theme data:", themeData);
-    console.log("🎨 Theme customization enabled:", isEnabled);
+    // Client-side only logging to avoid hydration issues
+    if (typeof window !== 'undefined') {
+      console.log("🎨 Theme recalculated:", newTheme);
+      console.log("🎨 Event data widget_customization:", eventData?.widget_customization);
+      console.log("🎨 Raw theme data:", themeData);
+      console.log("🎨 Theme customization enabled:", isEnabled);
+    }
     
     return newTheme;
   }, [eventData?.widget_customization?.theme]);
@@ -216,8 +207,8 @@ const TicketWidget = () => {
       console.log("🔄 Current checkout mode:", checkoutMode);
       console.log("🔄 Current widget customization:", eventData?.widget_customization);
       
-      // Add timestamp to bypass any caching
-      const timestamp = Date.now();
+      // Add timestamp to bypass any caching (client-side only)
+      const timestamp = typeof window !== 'undefined' ? Date.now() : 0;
       console.log("🔄 Refresh timestamp:", timestamp);
       
       // Small delay to ensure database changes are propagated
@@ -291,8 +282,8 @@ const TicketWidget = () => {
       
       console.log("🧪 Direct event query result:", { directEvent, directError });
       
-      // Test 2: Query with timestamp to bypass cache
-      const timestamp = Date.now();
+      // Test 2: Query with timestamp to bypass cache (client-side only)
+      const timestamp = typeof window !== 'undefined' ? Date.now() : 0;
       const { data: timestampedEvent, error: timestampedError } = await supabase
         .from("events")
         .select("widget_customization")
@@ -327,8 +318,8 @@ const TicketWidget = () => {
       console.log("Event ID:", eventId);
       
       // Load event details with safe payment configuration
-              // Add timestamp to ensure we get fresh data and bypass any caching
-        const timestamp = Date.now();
+              // Add timestamp to ensure we get fresh data and bypass any caching (client-side only)
+        const timestamp = typeof window !== 'undefined' ? Date.now() : 0;
         console.log("🔄 Loading event data with timestamp:", timestamp);
       
       const { data: event, error: eventError } = await supabase
