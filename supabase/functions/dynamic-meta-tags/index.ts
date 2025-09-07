@@ -23,10 +23,12 @@ serve(async (req) => {
   }
 
   try {
+    console.log('dynamic-meta-tags invoked');
     const url = new URL(req.url);
     const path = url.searchParams.get("path") || "/";
     const eventId = url.searchParams.get("eventId");
     const organizationId = url.searchParams.get("organizationId");
+    console.log('params', { path, eventId, organizationId });
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",

@@ -99,38 +99,47 @@ app.use('*', async (req, res, next) => {
     }
 
     // If a bot is requesting a widget URL, enrich head with dynamic meta
-    if (isBot && url.startsWith('/widget/') && SUPABASE_URL && SUPABASE_ANON_KEY) {
-      try {
-        const eventId = url.split('/widget/')[1]?.split(/[?#]/)[0];
-        const qs = new URLSearchParams({ path: url, eventId: eventId || '' }).toString();
-        const resp = await fetch(`${SUPABASE_URL}/functions/v1/dynamic-meta-tags?${qs}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+    if (isBot && url.startsWith('/widget/')) {
+      console.log('Dynamic meta attempt', {
+        url,
+        hasSUPABASE_URL: Boolean(SUPABASE_URL),
+        hasSUPABASE_ANON_KEY: Boolean(SUPABASE_ANON_KEY)
+      });
+      if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+        try {
+          const eventId = url.split('/widget/')[1]?.split(/[?#]/)[0];
+          const qs = new URLSearchParams({ path: url, eventId: eventId || '' }).toString();
+          const resp = await fetch(`${SUPABASE_URL}/functions/v1/dynamic-meta-tags?${qs}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            }
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            // Append Open Graph and Twitter meta tags
+            const dynamicHead = `
+              <title>${escapeHtml(data.title || '')}</title>
+              <meta name="description" content="${escapeHtml(data.description || '')}" />
+              <link rel="canonical" href="${escapeAttr(data.canonical || '')}" />
+              <meta property="og:title" content="${escapeAttr(data.ogTitle || data.title || '')}" />
+              <meta property="og:description" content="${escapeAttr(data.ogDescription || data.description || '')}" />
+              <meta property="og:image" content="${escapeAttr(data.ogImage || '')}" />
+              <meta property="og:url" content="${escapeAttr(data.canonical || '')}" />
+              <meta name="twitter:title" content="${escapeAttr(data.ogTitle || data.title || '')}" />
+              <meta name="twitter:description" content="${escapeAttr(data.ogDescription || data.description || '')}" />
+              <meta name="twitter:image" content="${escapeAttr(data.ogImage || '')}" />
+            `;
+            headContent = `${headContent}\n${dynamicHead}`;
+          } else {
+            const text = await resp.text().catch(() => '');
+            console.warn('Dynamic meta fetch non-200:', resp.status, text);
           }
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          // Append Open Graph and Twitter meta tags
-          const dynamicHead = `
-            <title>${escapeHtml(data.title || '')}</title>
-            <meta name="description" content="${escapeHtml(data.description || '')}" />
-            <link rel="canonical" href="${escapeAttr(data.canonical || '')}" />
-            <meta property="og:title" content="${escapeAttr(data.ogTitle || data.title || '')}" />
-            <meta property="og:description" content="${escapeAttr(data.ogDescription || data.description || '')}" />
-            <meta property="og:image" content="${escapeAttr(data.ogImage || '')}" />
-            <meta property="og:url" content="${escapeAttr(data.canonical || '')}" />
-            <meta name="twitter:title" content="${escapeAttr(data.ogTitle || data.title || '')}" />
-            <meta name="twitter:description" content="${escapeAttr(data.ogDescription || data.description || '')}" />
-            <meta name="twitter:image" content="${escapeAttr(data.ogImage || '')}" />
-          `;
-          headContent = `${headContent}\n${dynamicHead}`;
-        } else {
-          const text = await resp.text().catch(() => '');
-          console.warn('Dynamic meta fetch non-200:', resp.status, text);
+        } catch (e) {
+          console.warn('Dynamic meta fetch failed:', e?.message || e);
         }
-      } catch (e) {
-        console.warn('Dynamic meta fetch failed:', e?.message || e);
+      } else {
+        console.warn('Dynamic meta skipped: missing SUPABASE_URL or SUPABASE_ANON_KEY');
       }
     }
 
