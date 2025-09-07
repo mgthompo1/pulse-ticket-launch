@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { loadStripe } from '@stripe/stripe-js';
+// Stripe will be loaded dynamically when needed
 import { Elements, useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -197,8 +197,8 @@ export const AttractionStripePayment: React.FC<AttractionStripePaymentProps> = (
   }, [props.metadata?.organization_id]);
 
   const stripePromise = useMemo(() => {
-    if (!publishableKey) return null;
-    return loadStripe(publishableKey);
+    if (!publishableKey || typeof window === 'undefined') return null;
+    return import('@stripe/stripe-js').then(({ loadStripe }) => loadStripe(publishableKey));
   }, [publishableKey]);
 
   if (loading) {

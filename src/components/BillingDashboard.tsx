@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { loadStripe } from "@stripe/stripe-js";
+// Stripe will be loaded dynamically when needed
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { 
   CreditCard, 
@@ -341,12 +341,7 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
           </AlertDescription>
         </Alert>
 
-        <Elements stripe={loadStripe("pk_live_51RkWYvIkAZJOEIBEU4kM4sZ1jv3Jkdhfcr953tdGveqHA83bUo6pDA3KBSUUe9QbWbgTnT9uvXWSUO65PEFqlZ06009YvC3tjO")}>
-          <PaymentMethodSetup 
-            organizationId={organizationId} 
-            onSuccess={handleSetupComplete}
-          />
-        </Elements>
+        <StripeElementsWrapper organizationId={organizationId} onSuccess={handleSetupComplete} />
       </div>
     );
   }
@@ -680,6 +675,31 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
         <BillingManagement organizationId={organizationId} />
       </TabsContent>
     </Tabs>
+  );
+};
+
+const StripeElementsWrapper = ({ organizationId, onSuccess }: { organizationId: string; onSuccess: () => void }) => {
+  const [stripePromise, setStripePromise] = useState<any>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      import("@stripe/stripe-js").then(({ loadStripe }) => {
+        setStripePromise(loadStripe("pk_live_51RkWYvIkAZJOEIBEU4kM4sZ1jv3Jkdhfcr953tdGveqHA83bUo6pDA3KBSUUe9QbWbgTnT9uvXWSUO65PEFqlZ06009YvC3tjO"));
+      });
+    }
+  }, []);
+
+  if (!stripePromise) {
+    return <div>Loading payment form...</div>;
+  }
+
+  return (
+    <Elements stripe={stripePromise}>
+      <PaymentMethodSetup 
+        organizationId={organizationId} 
+        onSuccess={onSuccess}
+      />
+    </Elements>
   );
 };
 

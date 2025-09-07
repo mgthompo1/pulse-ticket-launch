@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { loadStripe } from '@stripe/stripe-js';
+// Stripe will be loaded dynamically when needed
 import { Elements, useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Theme } from '@/types/theme';
@@ -251,7 +251,10 @@ export const StripePaymentForm = ({
   const { toast } = useToast();
   
   // Use useMemo to prevent recreating the stripe promise on every render
-  const stripePromise = React.useMemo(() => loadStripe(publishableKey), [publishableKey]);
+  const stripePromise = React.useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    return import('@stripe/stripe-js').then(({ loadStripe }) => loadStripe(publishableKey));
+  }, [publishableKey]);
 
   // Create payment intent on component mount
   useEffect(() => {

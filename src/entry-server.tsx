@@ -6,16 +6,49 @@ import { HelmetProvider } from 'react-helmet-async';
 
 // Mock browser APIs for SSR
 if (typeof window === 'undefined') {
-  global.window = {} as any;
-  global.document = {} as any;
+  global.window = {
+    location: { href: '', origin: '', pathname: '/' },
+    history: { pushState: () => {}, replaceState: () => {} },
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => {},
+    getComputedStyle: () => ({}),
+    matchMedia: () => ({ matches: false, addListener: () => {}, removeListener: () => {} })
+  } as any;
+  
+  global.document = {
+    createElement: () => ({}),
+    getElementById: () => null,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    head: { appendChild: () => {} },
+    body: { appendChild: () => {} },
+    title: ''
+  } as any;
+  
   global.localStorage = {
     getItem: () => null,
     setItem: () => {},
     removeItem: () => {},
     clear: () => {}
   } as any;
+  
   global.sessionStorage = global.localStorage;
-  global.navigator = { userAgent: 'SSR' } as any;
+  
+  // Make navigator non-writable to prevent override attempts
+  Object.defineProperty(global, 'navigator', {
+    value: {
+      userAgent: 'SSR',
+      language: 'en-US',
+      languages: ['en-US', 'en'],
+      onLine: true,
+      platform: 'SSR'
+    },
+    writable: false,
+    configurable: false
+  });
 }
 
 import App from './App';

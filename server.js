@@ -107,15 +107,16 @@ app.use('/', async (req, res, next) => {
       console.log('URL:', url);
       
       const supabaseUrl = SUPABASE_URL || 'https://yoxsewbpoqxscsutqlcb.supabase.co';
-      const supabaseKey = SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlveHNld2Jwb3F4c2NzdXRxbGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjUzMTAwODAsImV4cCI6MjA0MDg4NjA4MH0.mUBUHl8qBvEKzOkMEX2WMWb0E2TGHkqGzn__vGYA0DE';
+      // Use the current anon key from the client configuration
+      const supabaseKey = SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlveHNld2Jwb3F4c2NzdXRxbGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0MzU4NDgsImV4cCI6MjA2ODAxMTg0OH0.CrW53mnoXiatBWePensSroh0yfmVALpcWxX2dXYde5k';
       
       try {
         const eventId = url.split('/widget/')[1]?.split(/[?#]/)[0];
         console.log('Extracted eventId:', eventId);
         
         if (eventId) {
-          // Fetch event data directly from Supabase instead of edge function
-          const eventResp = await fetch(`${supabaseUrl}/rest/v1/events?id=eq.${eventId}&select=id,name,description,venue,event_date,featured_image_url,organizations(name,logo_url)`, {
+          // Fetch event data directly from Supabase (only published events are publicly accessible)
+          const eventResp = await fetch(`${supabaseUrl}/rest/v1/events?id=eq.${eventId}&status=eq.published&select=id,name,description,venue,event_date,featured_image_url,organizations(name,logo_url)`, {
             headers: {
               'apikey': supabaseKey,
               'Authorization': `Bearer ${supabaseKey}`,

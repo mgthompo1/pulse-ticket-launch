@@ -13,7 +13,7 @@ import { GuestSeatSelector } from "@/components/GuestSeatSelector";
 import MerchandiseSelector from "@/components/MerchandiseSelector";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { loadStripe } from "@stripe/stripe-js";
+// Stripe will be loaded dynamically when needed
 import { 
   EventData, 
   TicketType, 
@@ -829,6 +829,7 @@ const TicketWidget = () => {
           throw new Error("Stripe publishable key not loaded. Please check organization payment configuration.");
         }
 
+        const { loadStripe } = await import("@stripe/stripe-js");
         const stripe = await loadStripe(stripePublishableKey);
         if (!stripe) throw new Error("Failed to load Stripe");
 
