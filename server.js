@@ -35,8 +35,8 @@ if (isProduction) {
   app.use(vite.ssrLoadModule);
 }
 
-// SSR middleware
-app.use('*', async (req, res, next) => {
+// SSR middleware (catch-all)
+app.use(async (req, res, next) => {
   const url = req.originalUrl;
   
   try {
