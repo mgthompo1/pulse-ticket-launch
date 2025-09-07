@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Loading Event...</title>
+    <script>
+        // Extract event ID from URL
+        const urlPath = window.location.pathname;
+        const eventId = urlPath.split('/widget/')[1]?.split('/')[0];
+        
+        if (eventId) {
+            // Fetch event data and update meta tags
+            fetch(`https://yoxsewbpoqxscsutqlcb.supabase.co/functions/v1/dynamic-meta-tags?path=${encodeURIComponent(urlPath)}&eventId=${encodeURIComponent(eventId)}`, {
+                headers: {
+                    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlveHNld2Jwb3F4c2NzdXRxbGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjUzMTAwODAsImV4cCI6MjA0MDg4NjA4MH0.mUBUHl8qBvEKzOkMEX2WMWb0E2TGHkqGzn__vGYA0DE'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Update page title and meta tags
+                if (data.title) document.title = data.title;
+                
+                // Update existing meta tags
+                updateMetaTag('description', data.description);
+                updateMetaTag('og:title', data.ogTitle, 'property');
+                updateMetaTag('og:description', data.ogDescription, 'property');
+                updateMetaTag('og:image', data.ogImage, 'property');
+                updateMetaTag('og:url', data.canonical, 'property');
+                updateMetaTag('twitter:title', data.ogTitle, 'name');
+                updateMetaTag('twitter:description', data.ogDescription, 'name');
+                updateMetaTag('twitter:image', data.ogImage, 'name');
+                
+                // Redirect to actual widget
+                setTimeout(() => {
+                    window.location.href = urlPath;
+                }, 100);
+            })
+            .catch(error => {
+                console.error('Failed to load meta tags:', error);
+                window.location.href = urlPath;
+            });
+        } else {
+            window.location.href = '/';
+        }
+        
+        function updateMetaTag(name, content, attribute = 'name') {
+            if (!content) return;
+            
+            let tag = document.querySelector(`meta[${attribute}="${name}"]`);
+            if (!tag) {
+                tag = document.createElement('meta');
+                tag.setAttribute(attribute, name);
+                document.head.appendChild(tag);
+            }
+            tag.setAttribute('content', content);
+        }
+    </script>
+</head>
+<body>
+    <div style="display: flex; align-items: center; justify-content: center; height: 100vh; font-family: Arial, sans-serif;">
+        <div style="text-align: center;">
+            <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 2s linear infinite; margin: 0 auto 20px;"></div>
+            <p>Loading event details...</p>
+        </div>
+    </div>
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</body>
+</html>
