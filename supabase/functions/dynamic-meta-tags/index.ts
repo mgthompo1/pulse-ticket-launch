@@ -22,8 +22,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Allow public access for meta tags (no auth required)
+  console.log('=== DYNAMIC META TAGS FUNCTION CALLED ===');
+
   try {
-    console.log('dynamic-meta-tags invoked');
     const url = new URL(req.url);
     const path = url.searchParams.get("path") || "/";
     const eventId = url.searchParams.get("eventId");
