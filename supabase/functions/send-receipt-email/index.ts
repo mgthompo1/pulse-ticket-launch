@@ -34,11 +34,21 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Get detailed order information
+    // Get detailed order information including card details
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .select(`
         *,
+        payment_method_type,
+        card_last_four,
+        card_brand,
+        payment_method_id,
+        booking_fee,
+        processing_fee,
+        subtotal_amount,
+        booking_fee_amount,
+        booking_fee_enabled,
+        stripe_payment_intent_id,
         events (
           name,
           event_date,
@@ -46,7 +56,9 @@ const handler = async (req: Request): Promise<Response> => {
           organizations (
             name,
             email,
-            logo_url
+            logo_url,
+            stripe_booking_fee_enabled,
+            credit_card_processing_fee_percentage
           )
         ),
         order_items (

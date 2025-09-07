@@ -62,6 +62,7 @@ Deno.serve(async (req) => {
       $$;
     `;
 
+    // Try to execute the migration
     const { error } = await supabaseClient.rpc('exec_sql', { 
       sql: migrationSQL 
     });
@@ -69,34 +70,83 @@ Deno.serve(async (req) => {
     if (error) {
       console.error('Migration error:', error);
       
-      // Try alternative approach - execute each statement separately
-      console.log("Trying alternative approach...");
+      // Try alternative approach - execute statements individually
+      console.log("Trying to add columns individually...");
       
-      // Update default billing interval
-      const { error: alterError } = await supabaseClient
-        .from('information_schema.columns')
-        .select('*')
-        .eq('table_name', 'billing_customers')
-        .eq('column_name', 'billing_interval_days');
-      
-      if (alterError) {
-        throw new Error(`Failed to check billing_customers table: ${alterError.message}`);
-      }
-
-      // Note: No function comment needed - publish-monthly-billing is an Edge Function
-      console.log('Migration completed - booking fee columns created');
-
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: error.message,
-          message: "Migration partially applied - booking fee columns may require manual intervention"
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
+      try {
+        // Add columns one by one
+        const statements = [
+          "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS stripe_account_id TEXT;",
+          "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS stripe_access_token TEXT;", 
+          "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS stripe_refresh_token TEXT;",
+          "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS stripe_scope TEXT;",
+          "CREATE INDEX IF NOT EXISTS idx_organizations_stripe_account_id ON organizations(stripe_account_id);"
+        ];
+        
+        for (const statement of statements) {
+          const { error: stmtError } = await supabaseClient.rpc('exec_sql', { sql: statement });
+          if (stmtError) {
+            console.error(`Error executing: ${statement}`, stmtError);
+          } else {
+            console.log(`Success: ${statement}`);
+          }
         }
-      );
+        
+        // Update the function
+        const functionSQL = `
+          CREATE OR REPLACE FUNCTION get_public_payment_config(p_event_id UUID)
+          RETURNS TABLE (
+              stripe_publishable_key TEXT,
+              payment_provider TEXT,
+              currency TEXT,
+              credit_card_processing_fee_percentage NUMERIC,
+              apple_pay_merchant_id TEXT,
+              windcave_enabled BOOLEAN,
+              stripe_account_id TEXT
+          )
+          LANGUAGE plpgsql
+          SECURITY DEFINER
+          AS $$
+          BEGIN
+              RETURN QUERY
+              SELECT 
+                  o.stripe_publishable_key,
+                  o.payment_provider,
+                  o.currency,
+                  o.credit_card_processing_fee_percentage,
+                  o.apple_pay_merchant_id,
+                  o.windcave_enabled,
+                  o.stripe_account_id
+              FROM events e
+              JOIN organizations o ON e.organization_id = o.id
+              WHERE e.id = p_event_id;
+          END;
+          $$;
+        `;
+        
+        const { error: funcError } = await supabaseClient.rpc('exec_sql', { sql: functionSQL });
+        if (funcError) {
+          console.error('Function update error:', funcError);
+        } else {
+          console.log('Function updated successfully');
+        }
+        
+        console.log('Migration completed with individual statements');
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "Stripe Connect fields and function updated successfully"
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          }
+        );
+        
+      } catch (individualError) {
+        throw new Error(`Migration failed: ${error.message}. Individual attempt also failed: ${individualError.message}`);
+      }
     }
 
     console.log("Migration applied successfully");

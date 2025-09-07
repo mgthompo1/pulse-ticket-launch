@@ -10,12 +10,14 @@ interface StripeConnectButtonProps {
   isConnected?: boolean;
   stripeAccountId?: string;
   onConnectionChange?: () => void;
+  showBookingFeesRequirement?: boolean;
 }
 
 export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
   isConnected = false,
   stripeAccountId,
-  onConnectionChange
+  onConnectionChange,
+  showBookingFeesRequirement = false
 }) => {
   const [loading, setLoading] = useState(false);
   const [connectUrl, setConnectUrl] = useState<string | null>(null);
@@ -187,9 +189,18 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
               </Badge>
             </div>
             <p className="text-sm text-gray-600">
-              Connect your existing Stripe account to enable payment processing. 
+              Connect your existing Stripe account to enable {showBookingFeesRequirement ? 'booking fee pass-through to customers' : 'payment processing'}. 
               This uses OAuth - no need to share API keys!
             </p>
+            {showBookingFeesRequirement && (
+              <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                <h4 className="font-medium text-amber-900 mb-1">Required for Booking Fees:</h4>
+                <p className="text-sm text-amber-800">
+                  To pass booking fees to customers, you must connect your Stripe account. This enables automatic fee splitting 
+                  where customers pay once, platform keeps fees, and you get ticket revenue.
+                </p>
+              </div>
+            )}
             <div className="bg-blue-50 p-3 rounded-lg">
               <h4 className="font-medium text-blue-900 mb-1">How it works:</h4>
               <ul className="text-sm text-blue-800 space-y-1">

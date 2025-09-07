@@ -74,13 +74,55 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
         setIsLoading(true);
         
         try {
-          const { data, error } = await supabase
+          let data, error;
+          
+          // Try the new function first, fallback to direct table query
+          const { data: rpcData, error: rpcError } = await supabase
             .rpc('get_public_payment_config', { 
               p_event_id: eventData.id 
             });
           
-          console.log('📊 RPC Response - Error:', error);
-          console.log('📊 RPC Response - Data:', data);
+          if (rpcError) {
+            console.log('RPC function failed, trying fallback query:', rpcError);
+            // Fallback: direct query to organizations table
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from('events')
+              .select(`
+                organizations (
+                  stripe_publishable_key,
+                  payment_provider,
+                  currency,
+                  credit_card_processing_fee_percentage,
+                  apple_pay_merchant_id,
+                  windcave_enabled
+                )
+              `)
+              .eq('id', eventData.id)
+              .single();
+            
+            if (fallbackError || !fallbackData?.organizations) {
+              error = fallbackError;
+              data = null;
+            } else {
+              // Transform fallback data to match RPC format
+              data = [{
+                stripe_publishable_key: fallbackData.organizations.stripe_publishable_key,
+                payment_provider: fallbackData.organizations.payment_provider,
+                currency: fallbackData.organizations.currency,
+                credit_card_processing_fee_percentage: fallbackData.organizations.credit_card_processing_fee_percentage,
+                apple_pay_merchant_id: fallbackData.organizations.apple_pay_merchant_id,
+                windcave_enabled: fallbackData.organizations.windcave_enabled,
+                stripe_account_id: null // Not available in fallback
+              }];
+              error = null;
+            }
+          } else {
+            data = rpcData;
+            error = rpcError;
+          }
+          
+          console.log('📊 Final Response - Error:', error);
+          console.log('📊 Final Response - Data:', data);
 
           if (error) {
             console.error('Error loading payment config:', error);

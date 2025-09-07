@@ -41,6 +41,14 @@ export const StripeConfiguration = ({
   onEnableBookingFeesChange,
   onConnectionChange
 }: StripeConfigurationProps) => {
+  const handleBookingFeeToggle = (checked: boolean) => {
+    if (checked && !stripeConnectedAccountId) {
+      // Don't allow enabling booking fees without Connect setup
+      return;
+    }
+    onEnableBookingFeesChange?.(checked);
+  };
+
   return (
     <div className="space-y-6">
       {/* Stripe API Configuration */}
@@ -129,12 +137,21 @@ export const StripeConfiguration = ({
             <Checkbox
               id="enableBookingFees"
               checked={enableBookingFees}
-              onCheckedChange={onEnableBookingFeesChange}
+              onCheckedChange={handleBookingFeeToggle}
+              disabled={!stripeConnectedAccountId && !enableBookingFees}
             />
-            <Label htmlFor="enableBookingFees" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            <Label htmlFor="enableBookingFees" className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${!stripeConnectedAccountId && !enableBookingFees ? 'text-muted-foreground' : ''}`}>
               Pass booking fees to customers
             </Label>
           </div>
+          {!stripeConnectedAccountId && !enableBookingFees && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Stripe Connect Required:</strong> You must first connect your Stripe account using OAuth below to enable booking fee pass-through to customers.
+              </AlertDescription>
+            </Alert>
+          )}
           {enableBookingFees && (
             <Alert>
               <Info className="h-4 w-4" />
@@ -172,14 +189,13 @@ export const StripeConfiguration = ({
         </CardContent>
       </Card>
 
-      {/* Stripe Connect - Only shown when booking fees are enabled */}
-      {enableBookingFees && (
-        <StripeConnectButton
-          isConnected={!!stripeConnectedAccountId}
-          stripeAccountId={stripeConnectedAccountId}
-          onConnectionChange={onConnectionChange}
-        />
-      )}
+      {/* Stripe Connect - Always shown, but with different messaging */}
+      <StripeConnectButton
+        isConnected={!!stripeConnectedAccountId}
+        stripeAccountId={stripeConnectedAccountId}
+        onConnectionChange={onConnectionChange}
+        showBookingFeesRequirement={!enableBookingFees}
+      />
     </div>
   );
 };
