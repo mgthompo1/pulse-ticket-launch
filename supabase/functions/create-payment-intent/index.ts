@@ -302,25 +302,6 @@ serve(async (req) => {
     }
 
     console.log("=== INITIALIZING STRIPE ===");
-    
-    let stripeKey: string;
-    if (useConnectPayment) {
-      // Use platform Stripe account for Connect payments
-      const platformStripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-      if (!platformStripeKey) {
-        throw new Error("Platform Stripe secret key not configured");
-      }
-      stripeKey = platformStripeKey;
-      console.log("Using PLATFORM Stripe key for Connect payment");
-    } else {
-      // Use organization's Stripe account for direct payments
-      stripeKey = stripeSecretKey;
-      console.log("Using ORGANIZATION Stripe key for direct payment");
-    }
-    
-    const stripe = new Stripe.default(stripeKey, {
-      apiVersion: "2023-10-16",
-    });
 
     const enableBookingFees = isEventPayment && bookingFeesEnabled && event?.organizations?.stripe_booking_fee_enabled;
 
@@ -370,6 +351,26 @@ serve(async (req) => {
       console.log("Using organization's Stripe account directly");
       console.log("Booking fees:", enableBookingFees ? "enabled but not passed to customer" : "disabled");
     }
+
+    // Initialize Stripe with the appropriate key
+    let stripeKey: string;
+    if (useConnectPayment) {
+      // Use platform Stripe account for Connect payments
+      const platformStripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (!platformStripeKey) {
+        throw new Error("Platform Stripe secret key not configured");
+      }
+      stripeKey = platformStripeKey;
+      console.log("Using PLATFORM Stripe key for Connect payment");
+    } else {
+      // Use organization's Stripe account for direct payments
+      stripeKey = stripeSecretKey;
+      console.log("Using ORGANIZATION Stripe key for direct payment");
+    }
+    
+    const stripe = new Stripe.default(stripeKey, {
+      apiVersion: "2023-10-16",
+    });
 
     const paymentIntentParams: any = {
       amount: amountInCents,
