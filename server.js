@@ -102,13 +102,12 @@ app.use('*', async (req, res, next) => {
     if (isBot && url.startsWith('/widget/') && SUPABASE_URL && SUPABASE_ANON_KEY) {
       try {
         const eventId = url.split('/widget/')[1]?.split(/[?#]/)[0];
-        const resp = await fetch(`${SUPABASE_URL}/functions/v1/dynamic-meta-tags`, {
-          method: 'POST',
+        const qs = new URLSearchParams({ path: url, eventId: eventId || '' }).toString();
+        const resp = await fetch(`${SUPABASE_URL}/functions/v1/dynamic-meta-tags?${qs}`, {
+          method: 'GET',
           headers: {
-            'Content-Type': 'application/json',
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-          },
-          body: JSON.stringify({ path: url, eventId })
+          }
         });
         if (resp.ok) {
           const data = await resp.json();
@@ -126,6 +125,9 @@ app.use('*', async (req, res, next) => {
             <meta name="twitter:image" content="${escapeAttr(data.ogImage || '')}" />
           `;
           headContent = `${headContent}\n${dynamicHead}`;
+        } else {
+          const text = await resp.text().catch(() => '');
+          console.warn('Dynamic meta fetch non-200:', resp.status, text);
         }
       } catch (e) {
         console.warn('Dynamic meta fetch failed:', e?.message || e);
