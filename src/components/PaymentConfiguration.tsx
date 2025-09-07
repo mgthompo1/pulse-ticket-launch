@@ -30,6 +30,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
   const [windcaveHitKey, setWindcaveHitKey] = useState('');
   const [windcaveStationId, setWindcaveStationId] = useState('');
   const [enableBookingFees, setEnableBookingFees] = useState(false);
+  const [stripeConnectedAccountId, setStripeConnectedAccountId] = useState('');
 
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -42,10 +43,10 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
 
   const loadPaymentConfiguration = async () => {
     try {
-      // Get basic organization info (non-sensitive)
+      // Get basic organization info (non-sensitive) including Stripe Connect status
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
-        .select('payment_provider, currency, credit_card_processing_fee_percentage, stripe_booking_fee_enabled')
+        .select('payment_provider, currency, credit_card_processing_fee_percentage, stripe_booking_fee_enabled, stripe_account_id')
         .eq('id', organizationId)
         .single();
 
@@ -66,6 +67,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         setCurrency(orgData.currency || 'NZD');
         setCreditCardProcessingFee(orgData.credit_card_processing_fee_percentage || 0);
         setEnableBookingFees(orgData.stripe_booking_fee_enabled || false);
+        setStripeConnectedAccountId(orgData.stripe_account_id || '');
       }
 
       if (credData) {
@@ -179,6 +181,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
                 enableGooglePay={enableGooglePay}
                 currency={currency}
                 enableBookingFees={enableBookingFees}
+                stripeConnectedAccountId={stripeConnectedAccountId}
                 onStripeAccountIdChange={setStripeAccountId}
                 onStripePublishableKeyChange={setStripePublishableKey}
                 onStripeSecretKeyChange={setStripeSecretKey}
@@ -186,6 +189,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
                 onEnableGooglePayChange={setEnableGooglePay}
                 onCurrencyChange={setCurrency}
                 onEnableBookingFeesChange={setEnableBookingFees}
+                onConnectionChange={loadPaymentConfiguration}
               />
             )}
 

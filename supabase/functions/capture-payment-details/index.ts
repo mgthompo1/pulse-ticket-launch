@@ -176,20 +176,20 @@ serve(async (req) => {
 
     console.log('✅ Order updated successfully with payment details');
 
-    // Send receipt email
-    console.log('=== SENDING RECEIPT EMAIL ===');
+    // Send ticket email (includes receipt and tickets)
+    console.log('=== SENDING TICKET EMAIL ===');
     try {
-      const { data: emailData, error: emailError } = await supabaseClient.functions.invoke('send-receipt-email', {
+      const { data: emailData, error: emailError } = await supabaseClient.functions.invoke('send-ticket-email', {
         body: { orderId: orderId }
       });
 
       if (emailError) {
-        console.error('❌ Email sending failed:', emailError);
+        console.error('❌ Ticket email sending failed:', emailError);
       } else {
-        console.log('✅ Receipt email sent successfully');
+        console.log('✅ Ticket email sent successfully');
       }
     } catch (emailError) {
-      console.error('❌ Email function error:', emailError);
+      console.error('❌ Ticket email function error:', emailError);
     }
 
     return new Response(JSON.stringify({
