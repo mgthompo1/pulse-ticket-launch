@@ -102,10 +102,7 @@ app.use(async (req, res, next) => {
     if (url.startsWith('/widget/')) {
       console.log('=== DYNAMIC META ATTEMPT ===');
       console.log('URL:', url);
-      console.log('Has SUPABASE_URL:', Boolean(SUPABASE_URL));
-      console.log('Has SUPABASE_ANON_KEY:', Boolean(SUPABASE_ANON_KEY));
       
-      // Hardcoded fallback URLs if env vars are missing
       const supabaseUrl = SUPABASE_URL || 'https://yoxsewbpoqxscsutqlcb.supabase.co';
       const supabaseKey = SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlveHNld2Jwb3F4c2NzdXRxbGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjUzMTAwODAsImV4cCI6MjA0MDg4NjA4MH0.mUBUHl8qBvEKzOkMEX2WMWb0E2TGHkqGzn__vGYA0DE';
       
@@ -113,47 +110,66 @@ app.use(async (req, res, next) => {
         const eventId = url.split('/widget/')[1]?.split(/[?#]/)[0];
         console.log('Extracted eventId:', eventId);
         
-        const qs = new URLSearchParams({ path: url, eventId: eventId || '' }).toString();
-        const fetchUrl = `${supabaseUrl}/functions/v1/dynamic-meta-tags?${qs}`;
-        console.log('Fetching:', fetchUrl);
-        
-        const resp = await fetch(fetchUrl, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${supabaseKey}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        console.log('Response status:', resp.status);
-        
-        if (resp.ok) {
-          const data = await resp.json();
-          console.log('Meta data received:', data);
+        if (eventId) {
+          // Fetch event data directly from Supabase instead of edge function
+          const eventResp = await fetch(`${supabaseUrl}/rest/v1/events?id=eq.${eventId}&select=id,name,description,venue,event_date,featured_image_url,organizations(name,logo_url)`, {
+            headers: {
+              'apikey': supabaseKey,
+              'Authorization': `Bearer ${supabaseKey}`,
+              'Content-Type': 'application/json'
+            }
+          });
           
-          // Append Open Graph and Twitter meta tags
-          const dynamicHead = `
-            <title>${escapeHtml(data.title || '')}</title>
-            <meta name="description" content="${escapeHtml(data.description || '')}" />
-            <link rel="canonical" href="${escapeAttr(data.canonical || '')}" />
-            <meta property="og:title" content="${escapeAttr(data.ogTitle || data.title || '')}" />
-            <meta property="og:description" content="${escapeAttr(data.ogDescription || data.description || '')}" />
-            <meta property="og:image" content="${escapeAttr(data.ogImage || '')}" />
-            <meta property="og:url" content="${escapeAttr(data.canonical || '')}" />
-            <meta property="og:type" content="website" />
-            <meta name="twitter:card" content="summary_large_image" />
-            <meta name="twitter:title" content="${escapeAttr(data.ogTitle || data.title || '')}" />
-            <meta name="twitter:description" content="${escapeAttr(data.ogDescription || data.description || '')}" />
-            <meta name="twitter:image" content="${escapeAttr(data.ogImage || '')}" />
-          `;
-          headContent = `${headContent}\n${dynamicHead}`;
-          console.log('✅ Dynamic meta tags added');
+          if (eventResp.ok) {
+            const events = await eventResp.json();
+            const event = events[0];
+            
+            if (event) {
+              console.log('Event found:', event.name);
+              
+              const eventDate = new Date(event.event_date).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric', 
+                month: 'long',
+                day: 'numeric'
+              });
+              
+              const title = `${event.name} - Get Tickets | TicketFlo`;
+              const description = event.description 
+                ? `${event.description.substring(0, 150)}... Join us ${eventDate} at ${event.venue || 'TBD'}. Get your tickets now!`
+                : `Join us for ${event.name} on ${eventDate} at ${event.venue || 'TBD'}. Get your tickets now on TicketFlo!`;
+              
+              const ogImage = event.featured_image_url || event.organizations?.logo_url || "https://www.ticketflo.org/og-image.jpg";
+              const canonical = `https://www.ticketflo.org/widget/${eventId}`;
+              
+              // Generate dynamic meta tags
+              const dynamicHead = `
+                <title>${escapeHtml(title)}</title>
+                <meta name="description" content="${escapeHtml(description)}" />
+                <link rel="canonical" href="${escapeAttr(canonical)}" />
+                <meta property="og:title" content="${escapeAttr(event.name)}" />
+                <meta property="og:description" content="${escapeAttr(description)}" />
+                <meta property="og:image" content="${escapeAttr(ogImage)}" />
+                <meta property="og:url" content="${escapeAttr(canonical)}" />
+                <meta property="og:type" content="website" />
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content="${escapeAttr(event.name)}" />
+                <meta name="twitter:description" content="${escapeAttr(description)}" />
+                <meta name="twitter:image" content="${escapeAttr(ogImage)}" />
+              `;
+              headContent = `${headContent}\n${dynamicHead}`;
+              console.log('✅ Dynamic meta tags added for:', event.name);
+            } else {
+              console.warn('❌ Event not found:', eventId);
+            }
+          } else {
+            console.warn('❌ Failed to fetch event data:', eventResp.status);
+          }
         } else {
-          const text = await resp.text().catch(() => '');
-          console.warn('❌ Dynamic meta fetch non-200:', resp.status, text);
+          console.warn('❌ No eventId extracted from URL');
         }
       } catch (e) {
-        console.error('❌ Dynamic meta fetch failed:', e?.message || e);
+        console.error('❌ Dynamic meta generation failed:', e?.message || e);
         console.error('Stack:', e?.stack);
       }
     }
