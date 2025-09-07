@@ -9,8 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, CheckCircle } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle, Shield, Fingerprint } from "lucide-react";
 import { InvitationAcceptance } from "@/components/InvitationAcceptance";
+import { PasskeyButton } from "@/components/PasskeyButton";
+import { PasskeySetup } from "@/components/PasskeySetup";
+import { usePasskeys } from "@/hooks/usePasskeys";
 
 
 const Auth = () => {
@@ -24,12 +27,18 @@ const Auth = () => {
   const [activeTab, setActiveTab] = useState("signin");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [showPasskeySetup, setShowPasskeySetup] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
+  const { isSupported: isPasskeySupported, checkSupport } = usePasskeys();
   
   const inviteToken = searchParams.get('invite');
+
+  useEffect(() => {
+    checkSupport();
+  }, [checkSupport]);
 
   // Email validation function
   const isValidEmail = useCallback((email: string): boolean => {
@@ -214,12 +223,33 @@ const Auth = () => {
         title: "Welcome back!",
         description: "You've been signed in successfully.",
       });
-      navigate("/dashboard");
+      
+      // Check if user should set up passkey after successful traditional sign in
+      const shouldPromptPasskeySetup = !invitationValid && isPasskeySupported;
+      if (shouldPromptPasskeySetup) {
+        setShowPasskeySetup(true);
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Sign in failed");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePasskeyAuthSuccess = (user: any) => {
+    setError("");
+    navigate("/dashboard");
+  };
+
+  const handlePasskeyAuthError = (error: string) => {
+    setError(error);
+  };
+
+  const handlePasskeySetupSuccess = () => {
+    setShowPasskeySetup(false);
+    navigate("/dashboard");
   };
 
   const resendVerificationEmail = async () => {
@@ -388,6 +418,30 @@ const Auth = () => {
                       {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                       Sign In
                     </Button>
+                    
+                    {/* Passkey Sign In Option */}
+                    {isPasskeySupported && (
+                      <>
+                        <div className="relative my-6">
+                          <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
+                          </div>
+                          <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-background px-2 text-muted-foreground">
+                              Or continue with
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <PasskeyButton
+                          email={email}
+                          onSuccess={handlePasskeyAuthSuccess}
+                          onError={handlePasskeyAuthError}
+                          variant="outline"
+                        />
+                      </>
+                    )}
+                    
                     <div className="text-center">
                       <Button
                         type="button"
@@ -518,6 +572,13 @@ const Auth = () => {
             </Tabs>
           </CardContent>
         </Card>
+        
+        {/* Passkey Setup Dialog */}
+        <PasskeySetup
+          isOpen={showPasskeySetup}
+          onClose={() => setShowPasskeySetup(false)}
+          onSuccess={handlePasskeySetupSuccess}
+        />
       </div>
     </div>
   );
