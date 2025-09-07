@@ -10,6 +10,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Skip auth for debug function
+  console.log("=== SSR DEBUG FUNCTION CALLED ===");
+
   try {
     console.log("=== SSR DEBUG CALLED ===");
     
