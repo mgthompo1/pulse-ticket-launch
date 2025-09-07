@@ -41,8 +41,14 @@ serve(async (req) => {
       metaTags = await generateEventMetaTags(supabaseClient, eventId);
     } else if (path.startsWith("/org/") && organizationId) {
       metaTags = await generateOrganizationMetaTags(supabaseClient, organizationId);
-    } else if (path.startsWith("/ticket-widget")) {
-      metaTags = await generateTicketWidgetMetaTags(supabaseClient, eventId);
+    } else if (path.startsWith("/widget/") || path.startsWith("/ticket-widget")) {
+      // Extract eventId from URL if not provided in params
+      const urlEventId = eventId || path.split('/').pop();
+      metaTags = await generateTicketWidgetMetaTags(supabaseClient, urlEventId);
+    } else if (path.startsWith("/attraction/")) {
+      // Extract attractionId from URL for attraction widgets
+      const attractionId = path.split('/').pop();
+      metaTags = await generateAttractionWidgetMetaTags(supabaseClient, attractionId);
     } else {
       // Default landing page meta tags
       metaTags = getDefaultMetaTags();
@@ -177,8 +183,80 @@ async function generateTicketWidgetMetaTags(supabaseClient: any, eventId?: strin
     };
   }
 
-  // Reuse event meta tags for ticket widget
-  return await generateEventMetaTags(supabaseClient, eventId);
+  // Reuse event meta tags for ticket widget but with widget-specific canonical URL
+  const eventMetaTags = await generateEventMetaTags(supabaseClient, eventId);
+  return {
+    ...eventMetaTags,
+    canonical: `https://www.ticketflo.org/widget/${eventId}`,
+    title: `${eventMetaTags.ogTitle} - Get Tickets | TicketFlo`,
+    description: `${eventMetaTags.description} Purchase tickets now through our secure platform.`
+  };
+}
+
+async function generateAttractionWidgetMetaTags(supabaseClient: any, attractionId?: string): Promise<MetaTagsResponse> {
+  if (!attractionId) {
+    return {
+      title: "Attraction Booking - TicketFlo Widget",
+      description: "Book your attraction experience through our secure booking platform.",
+      ogTitle: "Attraction Booking",
+      ogDescription: "Book your attraction experience through our secure booking platform.",
+      ogImage: "https://www.ticketflo.org/og-image.jpg",
+      canonical: "https://www.ticketflo.org/attraction-widget",
+      keywords: "attraction booking, secure booking, online booking"
+    };
+  }
+
+  // Get attraction details
+  const { data: attraction, error } = await supabaseClient
+    .from("attractions")
+    .select(`
+      id,
+      name,
+      description,
+      location,
+      logo_url,
+      organizations (
+        name,
+        logo_url
+      )
+    `)
+    .eq("id", attractionId)
+    .single();
+
+  if (error || !attraction) {
+    return getDefaultMetaTags();
+  }
+
+  const title = `${attraction.name} - Book Now | TicketFlo`;
+  const description = attraction.description 
+    ? `${attraction.description.substring(0, 150)}... Book your experience at ${attraction.location || 'this amazing attraction'}!`
+    : `Book your experience at ${attraction.name} located at ${attraction.location || 'this amazing location'}. Secure booking through TicketFlo!`;
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "TouristAttraction",
+    "name": attraction.name,
+    "description": attraction.description || `Experience ${attraction.name}`,
+    "location": {
+      "@type": "Place",
+      "name": attraction.location || "TBD"
+    },
+    "provider": {
+      "@type": "Organization",
+      "name": attraction.organizations?.name || "Attraction Provider"
+    }
+  };
+
+  return {
+    title,
+    description,
+    ogTitle: attraction.name,
+    ogDescription: description,
+    ogImage: attraction.logo_url || attraction.organizations?.logo_url || "https://www.ticketflo.org/og-image.jpg",
+    canonical: `https://www.ticketflo.org/attraction/${attractionId}`,
+    keywords: `${attraction.name}, attraction booking, ${attraction.location}, ${attraction.organizations?.name}, ticketflo`,
+    structuredData
+  };
 }
 
 function getDefaultMetaTags(): MetaTagsResponse {

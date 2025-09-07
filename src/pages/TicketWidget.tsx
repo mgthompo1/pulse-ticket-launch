@@ -25,6 +25,7 @@ import {
 } from "@/types/widget";
 import { MultiStepCheckout } from "@/components/checkout/MultiStepCheckout";
 import { SEOHead } from "@/components/SEOHead";
+import { useDynamicSEO } from "@/hooks/useDynamicSEO";
 
 // Extend the global Window interface to include WindcavePayments
 declare global {
@@ -110,6 +111,14 @@ const TicketWidget = () => {
   console.log("=== URL DEBUG ===");
   console.log("Current URL:", window.location.href);
   console.log("Event ID from params:", eventId);
+  
+  // Use dynamic SEO for this widget
+  const { metaTags, loading: seoLoading } = useDynamicSEO({
+    eventId,
+    fallbackTitle: "Event Tickets - TicketFlo",
+    fallbackDescription: "Purchase tickets for this event through our secure ticketing platform.",
+    enabled: !!eventId
+  });
   
   // Use useMemo to ensure the client is only created once
   const anonymousSupabase = useMemo(() => createAnonymousSupabaseClient(), []);

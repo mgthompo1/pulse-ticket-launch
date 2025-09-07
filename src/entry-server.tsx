@@ -76,8 +76,10 @@ function shouldServerSideRender(url: string, context: SSRContext): boolean {
     '/support',            // Support page
     '/events/',            // Event pages
     '/org/',               // Organization pages
-    '/ticket-widget',      // Ticket widget
-    '/attraction-widget',  // Attraction widget
+    '/widget/',            // Ticket widget (actual route)
+    '/attraction/',        // Attraction widget (actual route)
+    '/ticket-widget',      // Legacy ticket widget
+    '/attraction-widget',  // Legacy attraction widget
     '/tickets'             // Public ticket pages
   ];
   

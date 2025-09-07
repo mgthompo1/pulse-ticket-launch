@@ -32,11 +32,14 @@ class MetaTagService {
       });
 
       const { data, error } = await supabase.functions.invoke('dynamic-meta-tags', {
-        body: {},
+        body: {
+          path,
+          eventId: params?.eventId,
+          organizationId: params?.organizationId
+        },
         headers: {
           'Content-Type': 'application/json',
-        },
-        method: 'GET'
+        }
       });
 
       if (error) {
