@@ -98,8 +98,8 @@ app.use(async (req, res, next) => {
       ].join('\n');
     }
 
-    // If a bot is requesting a widget URL, enrich head with dynamic meta
-    if (isBot && url.startsWith('/widget/')) {
+    // Enrich head for widget URLs with dynamic meta (run for all agents to ensure coverage)
+    if (url.startsWith('/widget/')) {
       console.log('Dynamic meta attempt', {
         url,
         hasSUPABASE_URL: Boolean(SUPABASE_URL),
