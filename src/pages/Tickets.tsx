@@ -14,6 +14,8 @@ interface TicketData {
   status: string;
   eventName: string;
   customerName: string;
+  ticketTypeName: string;
+  eventDate: string;
   order_item_id: string;
   order_items: {
     id: string;
@@ -21,7 +23,7 @@ interface TicketData {
     ticket_types: {
       name: string;
       price: number;
-    };
+    } | null;
     orders: {
       id: string;
       customer_name: string;
@@ -147,7 +149,9 @@ const Tickets: React.FC = () => {
       const transformedTickets = ticketsData?.map(ticket => ({
         ...ticket,
         eventName: ticket.order_items?.orders?.events?.name || 'Unknown Event',
-        customerName: ticket.order_items?.orders?.customer_name || 'Unknown Customer'
+        customerName: ticket.order_items?.orders?.customer_name || 'Unknown Customer',
+        ticketTypeName: ticket.order_items?.ticket_types?.name || 'General Admission',
+        eventDate: ticket.order_items?.orders?.events?.event_date || new Date().toISOString()
       })) || [];
 
       setTickets(transformedTickets);

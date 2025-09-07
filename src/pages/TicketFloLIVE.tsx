@@ -145,7 +145,12 @@ const [analytics, setAnalytics] = useState<{
       }
 
       console.log("Windcave HIT config loaded:", credentials);
-      setOrganizationConfig(credentials);
+      setOrganizationConfig({
+        windcave_enabled: credentials.windcave_enabled || false,
+        windcave_hit_username: credentials.windcave_hit_username,
+        windcave_hit_key: credentials.windcave_hit_key,
+        windcave_station_id: credentials.windcave_station_id
+      });
     } catch (error) {
       console.error("Error loading organization config:", error);
       toast({
