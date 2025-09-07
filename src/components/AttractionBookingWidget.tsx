@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import type { Theme } from "../types/theme";
 import { 
   Calendar,
   Clock, 
@@ -110,7 +111,7 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
   });
 
   // Get theme colors from attraction customization
-  const theme = useMemo(() => {
+  const theme = useMemo((): Theme => {
     const themeData = attractionData?.widget_customization?.theme || {};
     const isEnabled = themeData?.enabled === true;
     

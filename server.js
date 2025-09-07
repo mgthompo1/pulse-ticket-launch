@@ -32,11 +32,14 @@ if (isProduction) {
     server: { middlewareMode: true },
     appType: 'custom'
   });
-  app.use(vite.ssrLoadModule);
+  app.use(vite.middlewares);
+  
+  // Store vite instance for SSR middleware
+  app.locals.vite = vite;
 }
 
 // SSR middleware (catch-all)
-app.use(async (req, res, next) => {
+app.use('/', async (req, res, next) => {
   const url = req.originalUrl;
   
   try {
@@ -45,7 +48,7 @@ app.use(async (req, res, next) => {
     
     if (!isProduction) {
       // Development: read template and transform with Vite
-      const vite = res.locals.vite;
+      const vite = req.app.locals.vite;
       template = fs.readFileSync(
         path.resolve(__dirname, 'index.html'),
         'utf-8'
@@ -58,7 +61,7 @@ app.use(async (req, res, next) => {
         path.resolve(__dirname, 'dist/client/index.html'),
         'utf-8'
       );
-      render = (await import('./dist/server/entry-server.js')).render;
+      render = (await import('./dist/server/server.js')).render;
     }
     
     // Determine if this is a bot/crawler
@@ -181,9 +184,9 @@ app.use(async (req, res, next) => {
   } catch (error) {
     console.error('SSR Error:', error);
     
-    if (!isProduction && res.locals.vite) {
+    if (!isProduction && req.app.locals.vite) {
       // In development, let Vite fix the stack trace
-      res.locals.vite.ssrFixStacktrace(error);
+      req.app.locals.vite.ssrFixStacktrace(error);
     }
     
     // Fallback to SPA mode on error
