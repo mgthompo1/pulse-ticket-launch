@@ -62,10 +62,7 @@ serve(async (req) => {
         .select(`
           *,
           events!inner (
-            organization_id,
-            organizations!inner (
-              stripe_secret_key
-            )
+            organization_id
           )
         `)
         .eq('id', orderId)
@@ -75,9 +72,23 @@ serve(async (req) => {
         throw new Error('Order not found');
       }
 
-      const orgStripeKey = order.events.organizations.stripe_secret_key;
+      console.log('Found order:', order.id, 'for event:', order.events.organization_id);
+
+      // Get organization's Stripe credentials from payment_credentials table
+      const { data: credentials, error: credError } = await supabaseClient
+        .rpc('get_payment_credentials_for_processing', { 
+          p_organization_id: order.events.organization_id 
+        });
+
+      console.log('Credentials query result:', { credentials, credError });
+
+      if (credError || !credentials || credentials.length === 0) {
+        throw new Error('Organization payment credentials not found');
+      }
+
+      const orgStripeKey = credentials[0].stripe_secret_key;
       if (!orgStripeKey) {
-        throw new Error('Organization Stripe key not found');
+        throw new Error('Organization Stripe secret key not found');
       }
 
       stripe = new Stripe.default(orgStripeKey, { apiVersion: "2023-10-16" });

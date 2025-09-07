@@ -24,6 +24,7 @@ interface StripePaymentFormProps {
 
 const CheckoutForm = ({ 
   orderId,
+  paymentIntentId,
   theme,
   customerInfo,
   onCancel,
@@ -31,6 +32,7 @@ const CheckoutForm = ({
   currency
 }: { 
   orderId: string;
+  paymentIntentId: string | null;
   theme: Theme;
   customerInfo: any;
   onCancel: () => void;
@@ -126,24 +128,32 @@ const CheckoutForm = ({
       } else {
         // Payment successful - capture payment details
         console.log("=== CAPTURING PAYMENT DETAILS ===");
-        try {
-          // Capture payment details using the payment intent ID
-          const { data, error } = await supabase.functions.invoke('capture-payment-details', {
-            body: { 
-              paymentIntentId: paymentIntentId,
-              orderId: orderId 
-            }
-          });
+        console.log("Payment Intent ID:", paymentIntentId);
+        console.log("Order ID:", orderId);
+        
+        if (paymentIntentId && orderId) {
+          try {
+            // Capture payment details using the payment intent ID
+            console.log("Calling capture-payment-details function...");
+            const { data, error } = await supabase.functions.invoke('capture-payment-details', {
+              body: { 
+                paymentIntentId: paymentIntentId,
+                orderId: orderId 
+              }
+            });
 
-          if (error) {
-            console.error("Failed to capture payment details:", error);
-            // Don't fail the whole process, just log the error
-          } else {
-            console.log("✅ Payment details captured:", data);
+            if (error) {
+              console.error("Failed to capture payment details:", error);
+              // Don't fail the whole process, just log the error
+            } else {
+              console.log("✅ Payment details captured:", data);
+            }
+          } catch (captureError) {
+            console.error("Payment details capture error:", captureError);
+            // Don't fail the whole process
           }
-        } catch (captureError) {
-          console.error("Payment details capture error:", captureError);
-          // Don't fail the whole process
+        } else {
+          console.error("Missing payment intent ID or order ID for capture");
         }
 
         toast({
@@ -353,6 +363,7 @@ export const StripePaymentForm = ({
     >
       <CheckoutForm 
         orderId={orderId}
+        paymentIntentId={paymentIntentId}
         theme={theme}
         customerInfo={customerInfo}
         onCancel={onCancel}
