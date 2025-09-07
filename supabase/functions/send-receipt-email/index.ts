@@ -93,11 +93,15 @@ const handler = async (req: Request): Promise<Response> => {
     const processingFeePercentage = organization?.credit_card_processing_fee_percentage || 0;
     const bookingFeesEnabled = organization?.stripe_booking_fee_enabled || false;
     
-    // Calculate fees
-    const processingFee = processingFeePercentage > 0 ? (itemsSubtotal * processingFeePercentage / 100) : 0;
-    const bookingFee = (bookingFeesEnabled && organization?.payment_provider === 'stripe') 
-      ? (itemsSubtotal * 0.01) + 0.50 
-      : 0;
+    // Use actual fees from order record (captured from payment intent)
+    const processingFee = order.processing_fee || 0;
+    const bookingFee = order.booking_fee || 0;
+    
+    console.log('=== FEE DETAILS FOR EMAIL ===');
+    console.log('Items subtotal:', itemsSubtotal);
+    console.log('Processing fee (stored):', processingFee);
+    console.log('Booking fee (stored):', bookingFee);
+    console.log('Total amount:', totalAmount);
     
     // Format order items for the email
     const orderItemsHtml = order.order_items?.map((item: any) => {

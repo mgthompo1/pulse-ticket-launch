@@ -30,6 +30,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   theme
 }) => {
   const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null);
+  const [currency, setCurrency] = useState<string>('USD');
   const [isLoading, setIsLoading] = useState(false);
 
   // Calculate totals
@@ -69,6 +70,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
     const loadStripeConfig = async () => {
       if (isOpen && !stripePublishableKey) {
         console.log('=== LOADING STRIPE CONFIG FOR MODAL ===');
+        console.log('📅 Event ID for config:', eventData.id);
         setIsLoading(true);
         
         try {
@@ -76,6 +78,9 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
             .rpc('get_public_payment_config', { 
               p_event_id: eventData.id 
             });
+          
+          console.log('📊 RPC Response - Error:', error);
+          console.log('📊 RPC Response - Data:', data);
 
           if (error) {
             console.error('Error loading payment config:', error);
@@ -89,9 +94,14 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
 
           if (data && data.length > 0) {
             const publishableKey = data[0].stripe_publishable_key;
+            const configCurrency = data[0].currency || 'USD';
+            
             if (publishableKey) {
               setStripePublishableKey(publishableKey);
+              setCurrency(configCurrency);
               console.log('✅ Stripe publishable key loaded for modal');
+              console.log('✅ Currency loaded:', configCurrency);
+              console.log('🔍 Full payment config data:', data[0]);
             } else {
               console.error('❌ No Stripe publishable key found');
               toast({
@@ -115,25 +125,25 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
     };
 
     loadStripeConfig();
-  }, [isOpen, eventData.id, stripePublishableKey]);
+  }, [isOpen, eventData.id, stripePublishableKey, currency]);
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = (orderId: string) => {
     toast({
       title: "Payment Successful!",
       description: "Your tickets have been confirmed. Check your email for details.",
     });
     
-    // Close modal and redirect to success page
+    // Close modal and redirect to success page with orderId
     onClose();
     setTimeout(() => {
-      window.location.href = '/payment-success';
+      window.location.href = `/payment-success?orderId=${orderId}`;
     }, 1500);
   };
 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-2xl font-bold" style={{ color: theme.headerTextColor }}>
@@ -150,7 +160,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
           </div>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto flex-1 min-h-0">
           {/* Payment Form */}
           <div className="space-y-6">
             <Card style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
@@ -167,7 +177,9 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                     <span className="ml-2" style={{ color: theme.bodyTextColor }}>Loading payment form...</span>
                   </div>
                 ) : stripePublishableKey ? (
-                  <StripePaymentForm
+                  <>
+                    {console.log('🚀 Modal passing currency to payment form:', currency)}
+                    <StripePaymentForm
                     publishableKey={stripePublishableKey}
                     eventId={eventData.id}
                     cart={cartItems}
@@ -178,12 +190,14 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                     bookingFeesEnabled={bookingFeesEnabled}
                     subtotal={subtotal}
                     bookingFee={bookingFee}
+                    currency={currency}
                     onSuccess={(orderId: string) => {
                       console.log("Payment successful, order ID:", orderId);
-                      handlePaymentSuccess();
+                      handlePaymentSuccess(orderId);
                     }}
                     onCancel={onClose}
                   />
+                  </>
                 ) : (
                   <div className="text-center py-8" style={{ color: theme.bodyTextColor }}>
                     <p>Payment system is not available at the moment.</p>

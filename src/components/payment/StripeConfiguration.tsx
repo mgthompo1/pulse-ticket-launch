@@ -4,7 +4,9 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CreditCard, DollarSign } from "lucide-react";
+import { CreditCard, DollarSign, Info } from "lucide-react";
+import { StripeConnectButton } from "@/components/StripeConnectButton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface StripeConfigurationProps {
   stripeAccountId: string;
@@ -14,6 +16,7 @@ interface StripeConfigurationProps {
   enableGooglePay?: boolean;
   currency: string;
   enableBookingFees?: boolean;
+  stripeConnectedAccountId?: string;
   onStripeAccountIdChange: (value: string) => void;
   onStripePublishableKeyChange: (value: string) => void;
   onStripeSecretKeyChange: (value: string) => void;
@@ -21,6 +24,7 @@ interface StripeConfigurationProps {
   onEnableGooglePayChange?: (value: boolean) => void;
   onCurrencyChange: (value: string) => void;
   onEnableBookingFeesChange?: (value: boolean) => void;
+  onConnectionChange?: () => void;
 }
 
 export const StripeConfiguration = ({ 
@@ -29,11 +33,13 @@ export const StripeConfiguration = ({
   stripeSecretKey,
   currency,
   enableBookingFees = false,
+  stripeConnectedAccountId,
   onStripeAccountIdChange, 
   onStripePublishableKeyChange,
   onStripeSecretKeyChange,
   onCurrencyChange,
-  onEnableBookingFeesChange
+  onEnableBookingFeesChange,
+  onConnectionChange
 }: StripeConfigurationProps) => {
   return (
     <div className="space-y-6">
@@ -129,21 +135,51 @@ export const StripeConfiguration = ({
               Pass booking fees to customers
             </Label>
           </div>
+          {enableBookingFees && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Connect Required:</strong> To pass booking fees to customers, you must connect your existing Stripe account using OAuth. 
+                This enables automatic fee splitting where customers pay the platform directly, and funds are transferred to your account minus booking fees.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="text-sm text-muted-foreground pl-6">
             <p className="mb-2">
               When enabled, customers will pay a booking fee of <strong>1% + $0.50</strong> on top of the ticket price.
             </p>
-            <p className="mb-2">
-              The booking fee is deposited directly to the platform's Stripe account as a separate charge.
-            </p>
-            <p className="text-blue-600 font-medium">
-              💡 This fee can be combined with processing fees if both are enabled.
-            </p>
+            {enableBookingFees ? (
+              <>
+                <p className="mb-2 text-blue-600">
+                  ✅ <strong>With Connect:</strong> Booking fees are automatically split - customers pay once, platform keeps fees, you get ticket revenue.
+                </p>
+                <p className="text-green-600 font-medium">
+                  💡 This creates the cleanest customer experience with automatic fee collection.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mb-2">
+                  <strong>Without booking fees:</strong> Customers only pay ticket prices directly to your Stripe account.
+                </p>
+                <p className="text-gray-600">
+                  💡 Platform fees will be invoiced to you separately on a monthly basis.
+                </p>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Express Payment Methods removed */}
+      {/* Stripe Connect - Only shown when booking fees are enabled */}
+      {enableBookingFees && (
+        <StripeConnectButton
+          isConnected={!!stripeConnectedAccountId}
+          stripeAccountId={stripeConnectedAccountId}
+          onConnectionChange={onConnectionChange}
+        />
+      )}
     </div>
   );
 };

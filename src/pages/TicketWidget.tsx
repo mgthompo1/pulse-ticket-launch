@@ -110,7 +110,6 @@ const TicketWidget = () => {
   console.log("=== URL DEBUG ===");
   console.log("Current URL:", window.location.href);
   console.log("Event ID from params:", eventId);
-  console.log("Expected Kaleidoscope event ID: 4217e500-6744-4480-b419-b4c61f5dbe89");
   
   // Use useMemo to ensure the client is only created once
   const anonymousSupabase = useMemo(() => createAnonymousSupabaseClient(), []);
@@ -2089,6 +2088,7 @@ const TicketWidget = () => {
                         bookingFee={eventData?.organizations?.stripe_booking_fee_enabled && eventData?.organizations?.payment_provider === 'stripe' 
                           ? ((cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()) * 0.01) + 0.50
                           : 0}
+                        currency={eventData?.organizations?.currency || 'USD'}
                         onSuccess={(orderId: string) => {
                           setCart([]);
                           setMerchandiseCart([]);

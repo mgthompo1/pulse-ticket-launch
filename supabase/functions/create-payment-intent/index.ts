@@ -302,11 +302,26 @@ serve(async (req) => {
     }
 
     console.log("=== INITIALIZING STRIPE ===");
-    const stripe = new Stripe.default(stripeSecretKey, {
+    
+    let stripeKey: string;
+    if (useConnectPayment) {
+      // Use platform Stripe account for Connect payments
+      const platformStripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (!platformStripeKey) {
+        throw new Error("Platform Stripe secret key not configured");
+      }
+      stripeKey = platformStripeKey;
+      console.log("Using PLATFORM Stripe key for Connect payment");
+    } else {
+      // Use organization's Stripe account for direct payments
+      stripeKey = stripeSecretKey;
+      console.log("Using ORGANIZATION Stripe key for direct payment");
+    }
+    
+    const stripe = new Stripe.default(stripeKey, {
       apiVersion: "2023-10-16",
     });
 
-    let paymentIntent;
     const enableBookingFees = isEventPayment && bookingFeesEnabled && event?.organizations?.stripe_booking_fee_enabled;
 
     console.log("=== PAYMENT INTENT CREATION MODE ===");
@@ -314,60 +329,73 @@ serve(async (req) => {
     console.log("Amount:", amountInCents, "cents");
     console.log("Currency:", currency);
 
+    // Create Payment Intent for both scenarios
+    console.log("=== CREATING PAYMENT INTENT ===");
+    console.log("This should NOT be creating any checkout sessions!");
+    
+    // Add booking fee metadata if enabled
     if (enableBookingFees) {
-      console.log("=== CREATING CHECKOUT SESSION WITH BOOKING FEES (SEPARATE CHARGES) ===");
-      
-      // For booking fees, create checkout session for the full amount
-      // The separate charge will be handled after payment confirmation
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        line_items: [{
-          price_data: {
-            currency: currency.toLowerCase(),
-            product_data: {
-              name: `Tickets for ${event?.name || 'Event'}`,
-              description: `${metadata.itemCount} ticket(s) + booking fee`,
-            },
-            unit_amount: amountInCents,
-          },
-          quantity: 1,
-        }],
-        mode: 'payment',
-        success_url: `${Deno.env.get('PUBLIC_APP_BASE_URL') || 'https://www.ticketflo.org'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${Deno.env.get('PUBLIC_APP_BASE_URL') || 'https://www.ticketflo.org'}/payment-cancelled`,
-        metadata: {
-          ...metadata,
-          useBookingFees: 'true',
-          ticketAmount: Math.round((subtotal || 0) * 100),
-          bookingFeeAmount: Math.round((bookingFee || 0) * 100)
-        },
+      metadata.useBookingFees = 'true';
+      metadata.ticketAmount = Math.round((subtotal || 0) * 100);
+      metadata.bookingFeeAmount = Math.round((bookingFee || 0) * 100);
+      console.log("Added booking fee metadata:", {
+        useBookingFees: metadata.useBookingFees,
+        ticketAmount: metadata.ticketAmount,
+        bookingFeeAmount: metadata.bookingFeeAmount
       });
-      
-      paymentIntent = { id: session.id, client_secret: null };
-    } else {
-      console.log("=== CREATING STANDARD CHECKOUT SESSION ===");
-      
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        line_items: [{
-          price_data: {
-            currency: currency.toLowerCase(),
-            product_data: {
-              name: `Tickets for ${event?.name || 'Event'}`,
-              description: `${metadata.itemCount} ticket(s)`,
-            },
-            unit_amount: amountInCents,
-          },
-          quantity: 1,
-        }],
-        mode: 'payment',
-        success_url: `${Deno.env.get('PUBLIC_APP_BASE_URL') || 'https://www.ticketflo.org'}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${Deno.env.get('PUBLIC_APP_BASE_URL') || 'https://www.ticketflo.org'}/payment-cancelled`,
-        metadata: metadata,
-      });
-      
-      paymentIntent = { id: session.id, client_secret: null };
     }
+
+    // Use Connect ONLY when booking fees are enabled AND organization has connected account
+    let stripeAccountId = null;
+    let transferAmount = amountInCents;
+    let useConnectPayment = false;
+    
+    if (isEventPayment && enableBookingFees && event?.organizations?.stripe_account_id) {
+      // Connect is required when booking fees are enabled
+      stripeAccountId = event.organizations.stripe_account_id;
+      useConnectPayment = true;
+      
+      const platformFeeAmount = Math.round((bookingFee || 0) * 100);
+      transferAmount = amountInCents - platformFeeAmount;
+      
+      console.log("=== CONNECT PAYMENT WITH BOOKING FEES ===");
+      console.log("Total amount:", amountInCents, "cents");
+      console.log("Platform fee:", platformFeeAmount, "cents"); 
+      console.log("Transfer to organization:", transferAmount, "cents");
+    } else if (isEventPayment && enableBookingFees && !event?.organizations?.stripe_account_id) {
+      // Booking fees enabled but no connected account - this is an error
+      throw new Error("Booking fees require Stripe Connect. Please connect your Stripe account first.");
+    } else {
+      console.log("=== DIRECT PAYMENT (NO CONNECT) ===");
+      console.log("Using organization's Stripe account directly");
+      console.log("Booking fees:", enableBookingFees ? "enabled but not passed to customer" : "disabled");
+    }
+
+    const paymentIntentParams: any = {
+      amount: amountInCents,
+      currency: currency.toLowerCase(),
+      metadata: metadata,
+      automatic_payment_methods: { enabled: true },
+    };
+
+    // Add Connect parameters only if using Connect payment
+    if (useConnectPayment && stripeAccountId) {
+      paymentIntentParams.on_behalf_of = stripeAccountId;
+      paymentIntentParams.transfer_data = {
+        destination: stripeAccountId,
+        amount: transferAmount,
+      };
+      console.log("=== CREATING CONNECT PAYMENT INTENT ===");
+      console.log("Connected account:", stripeAccountId);
+      console.log("Transfer amount:", transferAmount, "cents");
+    } else {
+      console.log("=== CREATING DIRECT PAYMENT INTENT ===");
+      console.log("Payment goes directly to organization's Stripe account");
+    }
+    
+    console.log("About to create Payment Intent with params:", paymentIntentParams);
+    
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
 
     console.log("=== PAYMENT INTENT CREATED ===", paymentIntent.id);
 
@@ -385,14 +413,14 @@ serve(async (req) => {
           // Don't fail the whole process for this update error
         }
       } else {
-        // Update order with Stripe session ID
+        // Update order with Stripe payment intent ID in stripe_session_id field
         const { error: updateError } = await supabaseClient
           .from("orders")
           .update({ stripe_session_id: paymentIntent.id })
           .eq("id", orderId);
 
         if (updateError) {
-          console.error("Error updating order with Stripe session ID:", updateError);
+          console.error("Error updating order with Stripe payment intent ID:", updateError);
           // Don't fail the whole process for this update error
         }
       }
@@ -400,8 +428,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      sessionId: paymentIntent.id,
-      paymentIntentId: paymentIntent.id, // Keep for backwards compatibility
+      paymentIntentId: paymentIntent.id,
       client_secret: paymentIntent.client_secret,
       orderId: orderId
     }), {
