@@ -11,7 +11,12 @@ export default defineConfig(({ mode }) => ({
   },
   esbuild: {
     // Temporarily make TypeScript less strict to allow build
-    logOverride: { 'this-is-undefined-in-esm': 'silent' }
+    logOverride: { 'this-is-undefined-in-esm': 'silent' },
+    // Disable strict mode temporarily
+    jsxInject: `import React from 'react'`
+  },
+  define: {
+    'process.env.NODE_ENV': '"development"'
   },
   plugins: [
     react(),
@@ -24,6 +29,8 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
+    target: 'esnext',
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         manualChunks: {

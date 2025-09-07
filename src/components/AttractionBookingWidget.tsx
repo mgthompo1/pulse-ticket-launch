@@ -112,7 +112,7 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
   // Get theme colors from attraction customization
   const theme = useMemo(() => {
     const themeData = attractionData?.widget_customization?.theme || {};
-    const isEnabled = themeData.enabled === true;
+    const isEnabled = themeData?.enabled === true;
     
     let newTheme;
     if (!isEnabled) {
@@ -135,17 +135,17 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
       // Use custom theme when enabled
       newTheme = {
         enabled: true,
-        primaryColor: themeData.primaryColor || '#000000',
-        buttonTextColor: themeData.buttonTextColor || '#ffffff',
-        secondaryColor: themeData.secondaryColor || '#ffffff',
-        backgroundColor: themeData.backgroundColor || '#ffffff',
-        cardBackgroundColor: themeData.cardBackgroundColor || themeData.backgroundColor || '#ffffff',
-        inputBackgroundColor: themeData.inputBackgroundColor || '#ffffff',
-        borderEnabled: themeData.borderEnabled ?? false,
-        borderColor: themeData.borderColor || '#e5e7eb',
-        headerTextColor: themeData.headerTextColor || '#111827',
-        bodyTextColor: themeData.bodyTextColor || '#6b7280',
-        fontFamily: themeData.fontFamily || 'Manrope'
+        primaryColor: themeData?.primaryColor || '#000000',
+        buttonTextColor: themeData?.buttonTextColor || '#ffffff',
+        secondaryColor: themeData?.secondaryColor || '#ffffff',
+        backgroundColor: themeData?.backgroundColor || '#ffffff',
+        cardBackgroundColor: themeData?.cardBackgroundColor || themeData?.backgroundColor || '#ffffff',
+        inputBackgroundColor: themeData?.inputBackgroundColor || '#ffffff',
+        borderEnabled: themeData?.borderEnabled ?? false,
+        borderColor: themeData?.borderColor || '#e5e7eb',
+        headerTextColor: themeData?.headerTextColor || '#111827',
+        bodyTextColor: themeData?.bodyTextColor || '#6b7280',
+        fontFamily: themeData?.fontFamily || 'Manrope'
       };
     }
     
@@ -437,7 +437,7 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
         .single();
 
       if (error) throw error;
-      setAttractionData(data);
+      setAttractionData(data as AttractionData);
       
       // Set payment provider from organization data
       if (data.organizations) {
@@ -835,7 +835,7 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
               )}
 
               {/* Organization Logo (if enabled and different from main logo) */}
-              {attractionData.widget_customization?.branding?.showOrgLogo && 
+              {attractionData?.widget_customization?.branding?.showOrgLogo && 
                attractionData.organizations?.logo_url && 
                attractionData.organizations.logo_url !== attractionData.logo_url && (
                 <div className="mt-6">
@@ -888,11 +888,11 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
               )}
 
               {/* Custom Header Text */}
-              {attractionData.widget_customization?.branding?.customHeaderText && (
+              {attractionData?.widget_customization?.branding?.customHeaderText && (
                 <div 
                   className="text-xl leading-relaxed"
                   style={{ color: bodyTextColor }}
-                  dangerouslySetInnerHTML={{ __html: attractionData.widget_customization.branding.customHeaderText }}
+                  dangerouslySetInnerHTML={{ __html: attractionData?.widget_customization?.branding?.customHeaderText || '' }}
                 />
               )}
 
@@ -1138,7 +1138,7 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
                             {resources.length > 0 && (
                 <div className="space-y-2">
                   <Label>
-                    {attractionData.widget_customization?.resourceSelection?.label || `Select ${getResourceLabel()} (Optional)`}
+                    {attractionData?.widget_customization?.resourceSelection?.label || `Select ${getResourceLabel()} (Optional)`}
                   </Label>
                   <Select
                     value={bookingForm.selectedResourceId || "any"}
@@ -1150,13 +1150,13 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={
-                        attractionData.widget_customization?.resourceSelection?.placeholder || 
+                        attractionData?.widget_customization?.resourceSelection?.placeholder || 
                         `Any available ${getResourceLabel().toLowerCase()}`
                       } />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="any">
-                        {attractionData.widget_customization?.resourceSelection?.anyOption || `Any Available ${getResourceLabel()}`}
+                        {attractionData?.widget_customization?.resourceSelection?.anyOption || `Any Available ${getResourceLabel()}`}
                       </SelectItem>
                       {resources.map(resource => (
                         <SelectItem key={resource.id} value={resource.id}>

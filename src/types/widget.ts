@@ -1,3 +1,48 @@
+export interface WidgetCustomization {
+  enabled?: boolean;
+  theme?: {
+    enabled?: boolean;
+    primaryColor?: string;
+    buttonTextColor?: string;
+    secondaryColor?: string;
+    backgroundColor?: string;
+    cardBackgroundColor?: string;
+    inputBackgroundColor?: string;
+    borderEnabled?: boolean;
+    borderColor?: string;
+    headerTextColor?: string;
+    bodyTextColor?: string;
+    fontFamily?: string;
+  };
+  branding?: {
+    showOrgLogo?: boolean;
+    customHeaderText?: string;
+  };
+  resourceSelection?: {
+    label?: string;
+    placeholder?: string;
+    anyOption?: string;
+  };
+}
+
+export interface AttractionData {
+  id: string;
+  name: string;
+  description?: string | null;
+  venue?: string | null;
+  logo_url?: string | null;
+  featured_image_url?: string | null;
+  organization_id: string;
+  widget_customization?: WidgetCustomization;
+  organizations?: {
+    name: string;
+    payment_provider?: string | null;
+    currency?: string | null;
+    logo_url?: string | null;
+    credit_card_processing_fee_percentage?: number | null;
+  };
+}
+
 export interface EventData {
   id: string;
   name: string;
@@ -9,7 +54,7 @@ export interface EventData {
   logo_url?: string | null;
   featured_image_url?: string | null;
   organization_id: string;
-  widget_customization?: Record<string, unknown>;
+  widget_customization?: WidgetCustomization;
   ticket_customization?: Record<string, unknown>;
   email_customization?: Record<string, unknown>;
   
