@@ -13,7 +13,8 @@ export interface LandingPageContent {
 
 export const useLandingPageContent = () => {
   const [content, setContent] = useState<LandingPageContent[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Start with loading false on server, true on client to avoid hydration mismatch
+  const [loading, setLoading] = useState(typeof window === 'undefined' ? false : true);
 
   const fetchContent = async () => {
     try {
@@ -65,7 +66,10 @@ export const useLandingPageContent = () => {
   };
 
   useEffect(() => {
-    fetchContent();
+    // Only fetch content on client-side to avoid hydration mismatch
+    if (typeof window !== 'undefined') {
+      fetchContent();
+    }
   }, []);
 
   return {

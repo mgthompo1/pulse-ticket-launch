@@ -18,9 +18,10 @@ class MetaTagService {
   async getDynamicMetaTags(path: string, params?: { eventId?: string; organizationId?: string }): Promise<DynamicMetaTags | null> {
     const cacheKey = `${path}-${JSON.stringify(params)}`;
     
-    // Check cache first
+    // Check cache first (client-side only to avoid hydration mismatch)
     const cached = this.cache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+    const now = typeof window !== 'undefined' ? Date.now() : 0;
+    if (cached && now - cached.timestamp < this.CACHE_DURATION) {
       return cached.data;
     }
 
@@ -47,8 +48,9 @@ class MetaTagService {
         return null;
       }
 
-      // Cache the result
-      this.cache.set(cacheKey, { data, timestamp: Date.now() });
+      // Cache the result (client-side only)
+      const timestamp = typeof window !== 'undefined' ? Date.now() : 0;
+      this.cache.set(cacheKey, { data, timestamp });
       return data;
     } catch (error) {
       console.error('Meta tags service error:', error);
@@ -57,6 +59,11 @@ class MetaTagService {
   }
 
   applyMetaTags(metaTags: DynamicMetaTags) {
+    // Only apply meta tags in browser environment
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
+    }
+
     // Update document title
     document.title = metaTags.title;
 
@@ -85,6 +92,8 @@ class MetaTagService {
   }
 
   private updateMetaTag(name: string, content: string, isProperty = false) {
+    if (typeof document === 'undefined') return;
+    
     const attribute = isProperty ? 'property' : 'name';
     const selector = `meta[${attribute}="${name}"]`;
     
@@ -100,6 +109,8 @@ class MetaTagService {
   }
 
   private updateCanonicalUrl(url: string) {
+    if (typeof document === 'undefined') return;
+    
     let canonicalLink = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
     
     if (!canonicalLink) {
@@ -112,6 +123,8 @@ class MetaTagService {
   }
 
   private updateStructuredData(data: object) {
+    if (typeof document === 'undefined') return;
+    
     let structuredDataScript = document.querySelector('#dynamic-structured-data') as HTMLScriptElement;
     
     if (!structuredDataScript) {

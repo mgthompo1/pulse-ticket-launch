@@ -59,14 +59,6 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
     locationBreakdown: { local: 0, regional: 0, international: 0 }
   });
 
-  useEffect(() => {
-    loadAttendees();
-  }, [loadAttendees]);
-
-  useEffect(() => {
-    filterAttendees();
-  }, [filterAttendees]);
-
   const loadAttendees = useCallback(async () => {
     try {
       setLoading(true);
@@ -152,6 +144,14 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
 
     setFilteredAttendees(filtered);
   }, [attendees, searchTerm, statusFilter, ticketTypeFilter, checkedInFilter]);
+
+  useEffect(() => {
+    loadAttendees();
+  }, [loadAttendees]);
+
+  useEffect(() => {
+    filterAttendees();
+  }, [filterAttendees]);
 
   const exportAttendees = () => {
     const csvContent = [

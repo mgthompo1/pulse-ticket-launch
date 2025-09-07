@@ -2,33 +2,39 @@ import React from 'react';
 import { hydrateRoot, createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
+import './index.css';
+import './App.css';
 import App from './App';
 
 const container = document.getElementById('root')!;
 
-// Check if the page was server-side rendered
-const isSSR = container.innerHTML.trim() !== '';
+// Check if the page was server-side rendered by requiring an actual element child
+// Note: index.html includes an SSR comment placeholder <!--ssr-outlet--> which should not trigger hydration
+const isSSR = container.firstElementChild !== null;
 
-if (isSSR) {
-  // Hydrate SSR content
-  hydrateRoot(
-    container,
-    <HelmetProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </HelmetProvider>
-  );
+// Reuse a single root across HMR/re-executions to avoid React warnings
+const w = window as unknown as { __appRoot?: any };
+
+const appTree = (
+  <HelmetProvider>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </HelmetProvider>
+);
+
+if (w.__appRoot) {
+  // Update existing root
+  w.__appRoot.render(appTree);
 } else {
-  // Client-side render for SPA routes
-  const root = createRoot(container);
-  root.render(
-    <HelmetProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </HelmetProvider>
-  );
+  if (isSSR) {
+    // Hydrate SSR content
+    w.__appRoot = hydrateRoot(container, appTree);
+  } else {
+    // Client-side render for SPA routes
+    w.__appRoot = createRoot(container);
+    w.__appRoot.render(appTree);
+  }
 }
 
 // Enable hot module replacement in development

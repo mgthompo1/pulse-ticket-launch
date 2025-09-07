@@ -41,7 +41,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
         
         if (isMounted) {
-          console.log("=== Initial session loaded ===", !!session?.user);
+          if (typeof window !== 'undefined') {
+            console.log("=== Initial session loaded ===", !!session?.user);
+          }
           setSession(session);
           setUser(session?.user ?? null);
           setLoading(false);
@@ -64,7 +66,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           return; // Skip INITIAL_SESSION as we handle it above
         }
         
-        console.log("=== Auth state changed ===", event, !!session?.user);
+        if (typeof window !== 'undefined') {
+          console.log("=== Auth state changed ===", event, !!session?.user);
+        }
         if (isMounted) {
           setSession(session);
           setUser(session?.user ?? null);
