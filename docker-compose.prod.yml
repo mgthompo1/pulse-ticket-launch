@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  ticketflo-app:
+    build: .
+    container_name: ticketflo-prod
+    restart: unless-stopped
+    ports:
+      - "80:3000"
+      - "443:3000"  # If using SSL termination elsewhere
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  # Optional: Add nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: ticketflo-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro  # If you have SSL certificates
+    depends_on:
+      - ticketflo-app
+    profiles:
+      - with-nginx

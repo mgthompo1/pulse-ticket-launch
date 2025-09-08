@@ -1,0 +1,52 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist
+build
+
+# Development files
+.git
+.gitignore
+README.md
+*.md
+.env.local
+.env.development
+.env.test
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Test files
+coverage
+.nyc_output
+test
+tests
+__tests__
+*.test.js
+*.spec.js
+
+# Development tools
+.eslintrc*
+.prettierrc*
+jest.config.*
+cypress
+cypress.json
+
+# Temporary files
+tmp
+temp
