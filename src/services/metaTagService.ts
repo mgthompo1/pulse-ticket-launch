@@ -26,11 +26,6 @@ class MetaTagService {
     }
 
     try {
-      const searchParams = new URLSearchParams({
-        path,
-        ...(params?.eventId && { eventId: params.eventId }),
-        ...(params?.organizationId && { organizationId: params.organizationId })
-      });
 
       const { data, error } = await supabase.functions.invoke('dynamic-meta-tags', {
         body: {
