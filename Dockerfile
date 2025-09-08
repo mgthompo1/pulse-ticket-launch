@@ -1,14 +1,14 @@
-# Multi-stage build for optimized production image
-FROM node:18-alpine AS builder
+# Use Node.js 18 LTS Alpine for smaller image size
+FROM node:18-alpine
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files first for better caching
 COPY package*.json ./
 
-# Install all dependencies (needed for build)
-RUN npm ci
+# Install dependencies (including dev dependencies for build)
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -16,43 +16,29 @@ COPY . .
 # Build the application
 RUN npm run build:ssr
 
-# Production stage
-FROM node:18-alpine AS production
+# Remove dev dependencies to reduce image size
+RUN npm prune --production
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nextjs -u 1001
-
-# Set working directory
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install only production dependencies
-RUN npm ci --omit=dev && npm cache clean --force
-
-# Copy built application from builder stage
-COPY --from=builder --chown=nextjs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nextjs:nodejs /app/server.js ./server.js
+# Change ownership of app directory
+RUN chown -R nextjs:nodejs /app
 
 # Switch to non-root user
 USER nextjs
 
-# Expose port
+# Expose port 3000
 EXPOSE 3000
 
-# Set environment to production
+# Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
-# Start the server with dumb-init
-CMD ["dumb-init", "node", "server.js"]
+# Start the application
+CMD ["node", "server.js"]
 
