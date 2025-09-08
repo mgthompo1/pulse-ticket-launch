@@ -54,11 +54,11 @@ serve(async (req) => {
       });
     }
 
-    // Get user's credentials
-    const { data: userCredentials, error: credError } = await supabaseClient
-      .from("user_credentials")
-      .select("credential_id, credential_transports")
-      .eq("user_id", user.id);
+    // Get user's credentials using RPC function
+    const { data: credentialsData, error: credError } = await supabaseClient
+      .rpc('webauthn_get_user_credentials', { p_user_id: user.id });
+    
+    const userCredentials = credentialsData || [];
 
     if (credError) {
       console.error("Error fetching user credentials:", credError);
@@ -75,7 +75,19 @@ serve(async (req) => {
       });
     }
 
-    const rpID = new URL(Deno.env.get("SUPABASE_URL") ?? "").hostname;
+    // Get the origin from the request to determine the correct RP ID
+    const origin = req.headers.get("origin") || req.headers.get("referer");
+    let rpID = "localhost"; // Default for development
+    
+    if (origin) {
+      try {
+        rpID = new URL(origin).hostname;
+        console.log(`Using RP ID from origin: ${rpID}`);
+      } catch (error) {
+        console.log("Could not parse origin, using localhost");
+        rpID = "localhost";
+      }
+    }
 
     // Prepare authentication options
     const opts: GenerateAuthenticationOptionsOpts = {
@@ -95,12 +107,11 @@ serve(async (req) => {
 
     // Store the challenge for verification
     const { error: challengeError } = await supabaseClient
-      .from("challenges")
-      .insert({
-        user_id: user.id,
-        challenge: options.challenge,
-        challenge_type: "authentication",
-        expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString() // 5 minutes
+      .rpc('webauthn_insert_challenge', {
+        p_user_id: user.id,
+        p_challenge: options.challenge,
+        p_challenge_type: "authentication",
+        p_expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString()
       });
 
     if (challengeError) {
