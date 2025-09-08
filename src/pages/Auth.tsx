@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ArrowLeft, CheckCircle, Shield, Fingerprint } from "lucide-react";
+import { Loader2, ArrowLeft, CheckCircle } from "lucide-react";
 import { InvitationAcceptance } from "@/components/InvitationAcceptance";
 import { PasskeyButton } from "@/components/PasskeyButton";
 import { PasskeySetup } from "@/components/PasskeySetup";
@@ -238,7 +238,7 @@ const Auth = () => {
     }
   };
 
-  const handlePasskeyAuthSuccess = (user: any) => {
+  const handlePasskeyAuthSuccess = () => {
     setError("");
     navigate("/dashboard");
   };

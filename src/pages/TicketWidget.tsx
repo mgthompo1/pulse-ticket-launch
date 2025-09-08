@@ -25,7 +25,6 @@ import {
 } from "@/types/widget";
 import { MultiStepCheckout } from "@/components/checkout/MultiStepCheckout";
 import { SEOHead } from "@/components/SEOHead";
-import { useDynamicSEO } from "@/hooks/useDynamicSEO";
 
 // Extend the global Window interface to include WindcavePayments
 declare global {
@@ -237,7 +236,7 @@ const TicketWidget = () => {
         console.log("🔄 Fresh widget customization:", eventUpdate.widget_customization);
         console.log("🔄 Fresh checkout mode:", (eventUpdate.widget_customization as any)?.checkoutMode);
         
-        setEventData(eventUpdate);
+        setEventData(eventUpdate as any);
         console.log("✅ Widget data refreshed successfully");
       } else {
         console.error("❌ Error refreshing widget data:", eventError);
@@ -258,8 +257,8 @@ const TicketWidget = () => {
     if (eventData?.widget_customization?.checkoutMode) {
       // Small delay to ensure state updates properly
       const timer = setTimeout(() => {
-        console.log("⏰ Delayed checkout mode update for:", eventData.widget_customization.checkoutMode);
-        setCheckoutMode(eventData.widget_customization.checkoutMode);
+        console.log("⏰ Delayed checkout mode update for:", eventData.widget_customization?.checkoutMode);
+        setCheckoutMode((eventData.widget_customization?.checkoutMode as 'onepage' | 'multistep') || 'onepage');
       }, 100);
       
       return () => clearTimeout(timer);
@@ -358,15 +357,15 @@ const TicketWidget = () => {
       console.log("Widget customization theme:", widgetCustomization?.theme);
       console.log("Widget customization theme keys:", widgetCustomization?.theme ? Object.keys(widgetCustomization.theme) : 'none');
 
-      setEventData(event);
+      setEventData(event as any);
 
       // Get safe payment configuration from organization data
       if (event.organizations) {
-        console.log("🔍 Organization payment provider:", event.organizations.payment_provider);
+        console.log("🔍 Organization payment provider:", (event.organizations as any)?.payment_provider);
         console.log("🔍 Organization data:", event.organizations);
-        console.log("🔍 Stripe booking fee enabled:", event.organizations.stripe_booking_fee_enabled);
-        setPaymentProvider(event.organizations.payment_provider || "stripe");
-        setCreditCardProcessingFee(event.organizations.credit_card_processing_fee_percentage || 0);
+        console.log("🔍 Stripe booking fee enabled:", (event.organizations as any)?.stripe_booking_fee_enabled);
+        setPaymentProvider((event.organizations as any)?.payment_provider || "stripe");
+        setCreditCardProcessingFee((event.organizations as any)?.credit_card_processing_fee_percentage || 0);
         
         // Load payment configuration including Stripe publishable key
         try {
@@ -417,7 +416,7 @@ const TicketWidget = () => {
       setTicketTypes(types || []);
       
       // Load appropriate Windcave scripts if Windcave is the payment provider
-      if (event.organizations?.payment_provider === "windcave") {
+      if ((event.organizations as any)?.payment_provider === "windcave") {
         await loadWindcaveScripts("UAT"); // Default to UAT for public widgets
       }
       
@@ -455,7 +454,7 @@ const TicketWidget = () => {
     console.log("Current checkoutMode state:", checkoutMode);
     
     if (eventData?.widget_customization?.checkoutMode) {
-      const newMode = eventData.widget_customization.checkoutMode;
+      const newMode = eventData.widget_customization.checkoutMode as 'onepage' | 'multistep';
       console.log("🔄 Setting checkout mode to:", newMode);
       console.log("Previous checkout mode was:", checkoutMode);
       
@@ -688,14 +687,11 @@ const TicketWidget = () => {
 
   // Optimize custom questions with useMemo
   const customQuestions = useMemo(() => {
-    const questions = eventData?.widget_customization?.customQuestions?.enabled
-      ? eventData.widget_customization.customQuestions.questions || []
-      : [];
+    const questions = eventData?.widget_customization?.customQuestions || [];
 
     // Only log once when questions change
     if (questions.length > 0) {
       console.log("=== CUSTOM QUESTIONS DEBUG ===");
-      console.log("Custom questions enabled:", eventData?.widget_customization?.customQuestions?.enabled);
       console.log("Custom questions count:", questions.length);
       console.log("First question:", questions[0]);
     }

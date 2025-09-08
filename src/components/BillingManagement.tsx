@@ -11,7 +11,6 @@ import {
   DollarSign,
   AlertTriangle,
   CheckCircle,
-  Settings,
   XCircle,
   RefreshCw,
   ExternalLink,
@@ -379,7 +378,7 @@ export const BillingManagement: React.FC<BillingManagementProps> = ({ organizati
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-green-600" />
                   <span className="text-2xl font-bold">
-                    ${parseFloat(upcomingCharges.upcoming_amount).toFixed(2)}
+                    ${Number(upcomingCharges.upcoming_amount).toFixed(2)}
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground">
@@ -398,7 +397,7 @@ export const BillingManagement: React.FC<BillingManagementProps> = ({ organizati
               </div>
             </div>
 
-            {parseFloat(upcomingCharges.upcoming_amount) === 0 && (
+            {Number(upcomingCharges.upcoming_amount) === 0 && (
               <Alert className="mt-4">
                 <CheckCircle className="h-4 w-4" />
                 <AlertDescription>

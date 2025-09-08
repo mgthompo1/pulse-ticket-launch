@@ -30,7 +30,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
   const [windcaveHitKey, setWindcaveHitKey] = useState('');
   const [windcaveStationId, setWindcaveStationId] = useState('');
   const [enableBookingFees, setEnableBookingFees] = useState(false);
-  const [stripeConnectedAccountId, setStripeConnectedAccountId] = useState('');
+  const [stripeConnectedAccountId] = useState('');
 
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -46,7 +46,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
       // Get basic organization info (non-sensitive) including Stripe Connect status
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
-        .select('payment_provider, currency, credit_card_processing_fee_percentage, stripe_booking_fee_enabled, stripe_account_id')
+        .select('payment_provider, currency, credit_card_processing_fee_percentage')
         .eq('id', organizationId)
         .single();
 
@@ -66,16 +66,14 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         setPaymentProvider(orgData.payment_provider || 'stripe');
         setCurrency(orgData.currency || 'NZD');
         setCreditCardProcessingFee(orgData.credit_card_processing_fee_percentage || 0);
-        setEnableBookingFees(orgData.stripe_booking_fee_enabled || false);
-        setStripeConnectedAccountId(orgData.stripe_account_id || '');
       }
 
       if (credData) {
         setStripeAccountId(credData.stripe_account_id || '');
         setStripePublishableKey(credData.stripe_publishable_key || '');
         setStripeSecretKey(credData.stripe_secret_key || '');
-        setEnableApplePay(credData?.enable_apple_pay || false);
-        setEnableGooglePay(credData?.enable_google_pay || false);
+        setEnableApplePay(false); // Column doesn't exist yet
+        setEnableGooglePay(false); // Column doesn't exist yet
         setWindcaveUsername(credData.windcave_username || '');
         setWindcaveApiKey(credData.windcave_api_key || '');
         setWindcaveEndpoint(credData.windcave_endpoint || 'UAT');

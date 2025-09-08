@@ -43,20 +43,6 @@ interface EmailCustomization {
   blocks?: EmailBlock[];
 }
 
-interface EventData {
-  widget_customization?: Record<string, unknown>;
-  ticket_customization?: Record<string, unknown>;
-  email_customization?: EmailCustomization;
-  organization_id?: string;
-  logo_url?: string;
-  venue?: string;
-  name?: string;
-  status?: string;
-  description?: string;
-  event_date?: string;
-  capacity?: number;
-  requires_approval?: boolean;
-}
 import { EmailTemplateBuilder } from "@/components/EmailTemplateBuilder";
 import { createDefaultTemplate, EmailTemplate } from "@/types/email-template";
 
@@ -286,13 +272,13 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         event_date: data.event_date,
         capacity: data.capacity,
         requires_approval: data.requires_approval,
-        ticket_delivery_method: data.ticket_delivery_method,
+        ticket_delivery_method: data.ticket_delivery_method || undefined,
         widget_customization: {
-          ...(data.widget_customization as Record<string, unknown>),
+          ...(data.widget_customization as Record<string, unknown> || {}),
           // Ensure checkoutMode is preserved if it exists
-          ...((data.widget_customization as Record<string, unknown>)?.checkoutMode && { 
+          ...((data.widget_customization as Record<string, unknown>)?.checkoutMode ? { 
             checkoutMode: (data.widget_customization as Record<string, unknown>).checkoutMode 
-          })
+          } : {})
         },
         ticket_customization: data.ticket_customization as Record<string, unknown>,
         email_customization: data.email_customization as Record<string, unknown>
@@ -322,11 +308,11 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         const currentCheckoutMode = (widgetCustomization as Record<string, unknown>).checkoutMode;
         const newWidgetCustomization = {
           ...widgetCustomization,
-          ...(data.widget_customization as Record<string, unknown>),
+          ...(data.widget_customization as Record<string, unknown> || {}),
           // Keep the current checkoutMode if it exists
-          ...(currentCheckoutMode && { checkoutMode: currentCheckoutMode })
+          ...(currentCheckoutMode ? { checkoutMode: currentCheckoutMode } : {})
         };
-        setWidgetCustomization(newWidgetCustomization);
+        setWidgetCustomization(newWidgetCustomization as any);
       }
       if (data?.ticket_customization) {
         setTicketCustomization(data.ticket_customization as typeof ticketCustomization);
@@ -347,7 +333,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
             borderColor: emailCustomization?.template?.borderColor || "#e5e7eb",
             fontFamily: emailCustomization?.template?.fontFamily || "Arial, sans-serif",
           },
-          blocks: maybeBlocks,
+          blocks: maybeBlocks as any, // Type assertion to handle missing src property on ImageBlock
         });
       }
       if (data?.email_customization) {

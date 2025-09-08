@@ -1,6 +1,8 @@
 export interface WidgetCustomization {
   enabled?: boolean;
   seatMaps?: any;
+  checkoutMode?: string;
+  customQuestions?: CustomQuestion[];
   theme?: {
     enabled?: boolean;
     primaryColor?: string;
@@ -13,6 +15,7 @@ export interface WidgetCustomization {
     borderColor?: string;
     headerTextColor?: string;
     bodyTextColor?: string;
+    textColor?: string;
     fontFamily?: string;
   };
   branding?: {

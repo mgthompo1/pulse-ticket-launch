@@ -19,7 +19,7 @@ import EventCustomization from "@/components/EventCustomization";
 import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, BarChart3, Monitor, LogOut, Menu, HelpCircle, Activity, DollarSign, TrendingUp } from "lucide-react";
+import { Calendar, Users, Ticket, BarChart3, Monitor, LogOut, Menu, HelpCircle, DollarSign } from "lucide-react";
 import OrganizationSettings from "@/components/OrganizationSettings";
 import OrganizationOnboarding from "@/components/OrganizationOnboarding";
 
@@ -125,7 +125,7 @@ const OrgDashboard = () => {
   });
   
   // Order data for custom answers
-  const [orderData, setOrderData] = useState<any[]>([]);
+  const [, setOrderData] = useState<any[]>([]);
 
   // Listen for help requests from child components
   React.useEffect(() => {
@@ -779,14 +779,6 @@ const OrgDashboard = () => {
     }
   };
 
-  const handleAttractionSelectForAnalytics = (attraction: any) => {
-    setSelectedAttraction(attraction);
-    // Reload analytics for the selected attraction
-    if (organizationId && userRole && (userRole === 'owner' || userRole === 'admin' || userRole === 'editor')) {
-      loadAttractionAnalytics(organizationId, attraction?.id);
-      loadAttractionAnalyticsData(organizationId, attraction?.id);
-    }
-  };
 
   const handleCreateEvent = async () => {
     if (!organizationId || !eventForm.name || !eventForm.date || !eventForm.venue || !eventForm.capacity) {

@@ -112,7 +112,7 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
 
   // Get theme colors from attraction customization
   const theme = useMemo((): Theme => {
-    const themeData = attractionData?.widget_customization?.theme || {};
+    const themeData = attractionData?.widget_customization?.theme as any || {};
     const isEnabled = themeData?.enabled === true;
     
     let newTheme;
@@ -836,7 +836,7 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
               )}
 
               {/* Organization Logo (if enabled and different from main logo) */}
-              {attractionData?.widget_customization?.branding?.showOrgLogo && 
+              {(attractionData?.widget_customization?.branding as any)?.showOrgLogo && 
                attractionData.organizations?.logo_url && 
                attractionData.organizations.logo_url !== attractionData.logo_url && (
                 <div className="mt-6">
@@ -889,11 +889,11 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
               )}
 
               {/* Custom Header Text */}
-              {attractionData?.widget_customization?.branding?.customHeaderText && (
+              {(attractionData?.widget_customization?.branding as any)?.customHeaderText && (
                 <div 
                   className="text-xl leading-relaxed"
                   style={{ color: bodyTextColor }}
-                  dangerouslySetInnerHTML={{ __html: attractionData?.widget_customization?.branding?.customHeaderText || '' }}
+                  dangerouslySetInnerHTML={{ __html: (attractionData?.widget_customization?.branding as any)?.customHeaderText || '' }}
                 />
               )}
 
@@ -1139,7 +1139,7 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
                             {resources.length > 0 && (
                 <div className="space-y-2">
                   <Label>
-                    {attractionData?.widget_customization?.resourceSelection?.label || `Select ${getResourceLabel()} (Optional)`}
+                    {(attractionData?.widget_customization?.resourceSelection as any)?.label || `Select ${getResourceLabel()} (Optional)`}
                   </Label>
                   <Select
                     value={bookingForm.selectedResourceId || "any"}
@@ -1151,13 +1151,13 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={
-                        attractionData?.widget_customization?.resourceSelection?.placeholder || 
+                        (attractionData?.widget_customization?.resourceSelection as any)?.placeholder || 
                         `Any available ${getResourceLabel().toLowerCase()}`
                       } />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="any">
-                        {attractionData?.widget_customization?.resourceSelection?.anyOption || `Any Available ${getResourceLabel()}`}
+                        {(attractionData?.widget_customization?.resourceSelection as any)?.anyOption || `Any Available ${getResourceLabel()}`}
                       </SelectItem>
                       {resources.map(resource => (
                         <SelectItem key={resource.id} value={resource.id}>

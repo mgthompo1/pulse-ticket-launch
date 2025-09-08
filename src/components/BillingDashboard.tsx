@@ -449,7 +449,7 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
             </div>
             <div className="p-4 border rounded-lg">
               <div className="text-sm text-muted-foreground">Interval</div>
-              <div className="text-lg font-semibold">{billingData?.billing_interval_days || 14} days</div>
+              <div className="text-lg font-semibold">{(billingData as any)?.billing_interval_days || 14} days</div>
             </div>
           </CardContent>
         </Card>

@@ -5,6 +5,7 @@ export type EmailBlockType =
   | "text"
   | "event_details"
   | "ticket_list"
+  | "registration_details"
   | "button"
   | "divider"
   | "image"
@@ -44,6 +45,12 @@ export interface TicketListBlock extends EmailBlockBase {
   showCode?: boolean;
 }
 
+export interface RegistrationDetailsBlock extends EmailBlockBase {
+  type: "registration_details";
+  showTotal?: boolean;
+  showQuantity?: boolean;
+}
+
 export interface ButtonBlock extends EmailBlockBase {
   type: "button";
   label: string;
@@ -74,6 +81,7 @@ export type EmailBlock =
   | TextBlock
   | EventDetailsBlock
   | TicketListBlock
+  | RegistrationDetailsBlock
   | ButtonBlock
   | DividerBlock
   | ImageBlock

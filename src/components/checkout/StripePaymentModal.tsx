@@ -106,12 +106,12 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
             } else {
               // Transform fallback data to match RPC format
               data = [{
-                stripe_publishable_key: fallbackData.organizations.stripe_publishable_key,
+                stripe_publishable_key: (fallbackData.organizations as any).stripe_publishable_key || null,
                 payment_provider: fallbackData.organizations.payment_provider,
                 currency: fallbackData.organizations.currency,
                 credit_card_processing_fee_percentage: fallbackData.organizations.credit_card_processing_fee_percentage,
-                apple_pay_merchant_id: fallbackData.organizations.apple_pay_merchant_id,
-                windcave_enabled: fallbackData.organizations.windcave_enabled,
+                apple_pay_merchant_id: (fallbackData.organizations as any).apple_pay_merchant_id || null,
+                windcave_enabled: (fallbackData.organizations as any).windcave_enabled || false,
                 stripe_account_id: null // Not available in fallback
               }];
               error = null;

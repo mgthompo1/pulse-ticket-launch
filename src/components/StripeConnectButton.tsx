@@ -20,7 +20,6 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
   showBookingFeesRequirement = false
 }) => {
   const [loading, setLoading] = useState(false);
-  const [connectUrl, setConnectUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Handle OAuth callback from URL params
@@ -47,7 +46,7 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
   const completeConnection = async (code: string, state: string) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('stripe-connect-oauth', {
+      const { error } = await supabase.functions.invoke('stripe-connect-oauth', {
         body: { code, state },
         headers: {
           'Content-Type': 'application/json',
@@ -81,7 +80,7 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
   const handleConnect = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('stripe-connect-oauth', {
+      const { error } = await supabase.functions.invoke('stripe-connect-oauth', {
         body: {},
         headers: {
           'Content-Type': 'application/json',
@@ -112,7 +111,7 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('stripe-connect-oauth', {
+      const { error } = await supabase.functions.invoke('stripe-connect-oauth', {
         body: { action: 'disconnect' },
         headers: {
           'Content-Type': 'application/json',
