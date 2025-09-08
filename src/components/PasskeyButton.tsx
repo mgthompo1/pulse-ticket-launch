@@ -39,8 +39,9 @@ export const PasskeyButton = ({
       setIsChecking(false);
     };
 
+    // Only run once on component mount
     initializeSupport();
-  }, [checkSupport]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePasskeySignIn = async () => {
     if (!email.trim()) {

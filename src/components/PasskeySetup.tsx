@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,6 @@ import {
   Fingerprint, 
   Loader2, 
   Shield, 
-  Smartphone, 
   CheckCircle, 
   AlertCircle,
   Plus
@@ -44,8 +43,9 @@ export const PasskeySetup = ({ isOpen, onClose, onSuccess }: PasskeySetupProps) 
       }
     };
 
+    // Only run when dialog opens, not when checkSupport changes
     initializeSupport();
-  }, [isOpen, checkSupport]);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreatePasskey = async () => {
     setError('');

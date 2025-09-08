@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { 
   startRegistration, 
   startAuthentication,
@@ -24,16 +24,48 @@ export const usePasskeys = () => {
   const [isSupported, setIsSupported] = useState<boolean | null>(null);
   const [isPlatformAvailable, setIsPlatformAvailable] = useState<boolean | null>(null);
   const { toast } = useToast();
+  
+  // Use ref to track if support check is already running to prevent multiple calls
+  const checkingSupportRef = useRef(false);
 
   // Check WebAuthn support
-  const checkSupport = async () => {
+  const checkSupport = useCallback(async (): Promise<boolean> => {
+    // Prevent multiple simultaneous support checks
+    if (checkingSupportRef.current) {
+      console.log('Support check already in progress, returning current state');
+      return isSupported ?? false;
+    }
+    
+    // If we already have a result, return it unless explicitly re-checking
+    if (isSupported !== null) {
+      console.log('Support already checked, returning cached result:', isSupported);
+      return isSupported;
+    }
+    
+    checkingSupportRef.current = true;
     try {
       const supported = browserSupportsWebAuthn();
+      console.log('Browser supports WebAuthn:', supported);
       setIsSupported(supported);
       
       if (supported) {
-        const platformAvailable = await platformAuthenticatorIsAvailable();
-        setIsPlatformAvailable(platformAvailable);
+        // Add timeout to prevent hanging
+        const platformAvailablePromise = platformAuthenticatorIsAvailable();
+        const timeoutPromise = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Platform authenticator check timeout')), 5000)
+        );
+        
+        try {
+          const platformAvailable = await Promise.race([platformAvailablePromise, timeoutPromise]);
+          console.log('Platform authenticator available:', platformAvailable);
+          setIsPlatformAvailable(platformAvailable as boolean);
+        } catch (platformError) {
+          console.warn('Platform authenticator check failed:', platformError);
+          // Default to assuming platform auth is available if check fails
+          setIsPlatformAvailable(true);
+        }
+      } else {
+        setIsPlatformAvailable(false);
       }
       
       return supported;
@@ -42,8 +74,10 @@ export const usePasskeys = () => {
       setIsSupported(false);
       setIsPlatformAvailable(false);
       return false;
+    } finally {
+      checkingSupportRef.current = false;
     }
-  };
+  }, [isSupported]);
 
   // Register a new passkey
   const registerPasskey = async (credentialName?: string): Promise<PasskeyRegistrationResult> => {
@@ -63,15 +97,30 @@ export const usePasskeys = () => {
         return { success: false, error: 'You must be signed in to register a passkey' };
       }
 
-      // Get registration options from server
-      const { data: options, error: optionsError } = await supabase.functions.invoke(
-        'webauthn-registration-options',
+      // Get registration options from server using direct fetch to bypass caching issues
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://yoxsewbpoqxscsutqlcb.supabase.co";
+      const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlveHNld2Jwb3F4c2NzdXRxbGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0MzU4NDgsImV4cCI6MjA2ODAxMTg0OH0.CrW53mnoXiatBWePensSroh0yfmVALpcWxX2dXYde5k";
+      
+      const optionsResponse = await fetch(
+        `${SUPABASE_URL}/functions/v1/webauthn-registration-options?t=${Date.now()}`,
         {
+          method: 'POST',
           headers: {
-            Authorization: `Bearer ${session.access_token}`
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_PUBLISHABLE_KEY,
+            'Authorization': `Bearer ${session.access_token}`
           }
         }
       );
+
+      let options;
+      let optionsError;
+      
+      if (optionsResponse.ok) {
+        options = await optionsResponse.json();
+      } else {
+        optionsError = new Error(`HTTP ${optionsResponse.status}: ${await optionsResponse.text()}`);
+      }
 
       if (optionsError || !options) {
         console.error('Error getting registration options:', optionsError);
@@ -81,19 +130,31 @@ export const usePasskeys = () => {
       // Start WebAuthn registration
       const registrationResponse = await startRegistration(options);
 
-      // Verify registration on server
-      const { data: verificationResult, error: verificationError } = await supabase.functions.invoke(
-        'webauthn-registration-verify',
+      // Verify registration on server using direct fetch
+      const verifyResponse = await fetch(
+        `${SUPABASE_URL}/functions/v1/webauthn-registration-verify?t=${Date.now()}`,
         {
-          body: {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_PUBLISHABLE_KEY,
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({
             credential: registrationResponse,
             credentialName: credentialName || 'My Passkey'
-          },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
-          }
+          })
         }
       );
+
+      let verificationResult;
+      let verificationError;
+      
+      if (verifyResponse.ok) {
+        verificationResult = await verifyResponse.json();
+      } else {
+        verificationError = new Error(`HTTP ${verifyResponse.status}: ${await verifyResponse.text()}`);
+      }
 
       if (verificationError || !verificationResult?.verified) {
         console.error('Error verifying registration:', verificationError);
@@ -137,13 +198,31 @@ export const usePasskeys = () => {
     setIsLoading(true);
 
     try {
-      // Get authentication options from server
-      const { data: options, error: optionsError } = await supabase.functions.invoke(
-        'webauthn-authentication-options',
+      // Get authentication options from server using direct fetch to bypass caching issues
+      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://yoxsewbpoqxscsutqlcb.supabase.co";
+      const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlveHNld2Jwb3F4c2NzdXRxbGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0MzU4NDgsImV4cCI6MjA2ODAxMTg0OH0.CrW53mnoXiatBWePensSroh0yfmVALpcWxX2dXYde5k";
+      
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/webauthn-authentication-options?t=${Date.now()}`,
         {
-          body: { email }
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_PUBLISHABLE_KEY,
+            'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+          },
+          body: JSON.stringify({ email })
         }
       );
+
+      let options;
+      let optionsError;
+      
+      if (response.ok) {
+        options = await response.json();
+      } else {
+        optionsError = new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
 
       if (optionsError || !options) {
         console.error('Error getting authentication options:', optionsError);
@@ -158,16 +237,31 @@ export const usePasskeys = () => {
       // Start WebAuthn authentication
       const authenticationResponse = await startAuthentication(options);
 
-      // Verify authentication on server
-      const { data: verificationResult, error: verificationError } = await supabase.functions.invoke(
-        'webauthn-authentication-verify',
+      // Verify authentication on server using direct fetch
+      const verifyResponse = await fetch(
+        `${SUPABASE_URL}/functions/v1/webauthn-authentication-verify?t=${Date.now()}`,
         {
-          body: {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_PUBLISHABLE_KEY,
+            'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+          },
+          body: JSON.stringify({
             email,
             credential: authenticationResponse
-          }
+          })
         }
       );
+
+      let verificationResult;
+      let verificationError;
+      
+      if (verifyResponse.ok) {
+        verificationResult = await verifyResponse.json();
+      } else {
+        verificationError = new Error(`HTTP ${verifyResponse.status}: ${await verifyResponse.text()}`);
+      }
 
       if (verificationError || !verificationResult?.verified) {
         console.error('Error verifying authentication:', verificationError);

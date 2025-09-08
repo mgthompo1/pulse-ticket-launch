@@ -59,8 +59,9 @@ export const PasskeyManager = () => {
       setIsChecking(false);
     };
 
+    // Only run once on component mount
     initializeSupport();
-  }, [checkSupport]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (user && !isChecking) {
