@@ -1,5 +1,6 @@
 export interface WidgetCustomization {
   enabled?: boolean;
+  seatMaps?: any;
   theme?: {
     enabled?: boolean;
     primaryColor?: string;
@@ -23,6 +24,23 @@ export interface WidgetCustomization {
     placeholder?: string;
     anyOption?: string;
   };
+  // Legacy flat structure for backwards compatibility
+  primaryColor?: string;
+  buttonTextColor?: string;
+  secondaryColor?: string;
+  backgroundColor?: string;
+  cardBackgroundColor?: string;
+  inputBackgroundColor?: string;
+  borderEnabled?: boolean;
+  borderColor?: string;
+  headerTextColor?: string;
+  bodyTextColor?: string;
+  fontFamily?: string;
+  showOrgLogo?: boolean;
+  customHeaderText?: string;
+  label?: string;
+  placeholder?: string;
+  anyOption?: string;
 }
 
 export interface AttractionData {

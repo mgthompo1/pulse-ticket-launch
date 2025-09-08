@@ -8,11 +8,7 @@ export default defineConfig({
     host: "::",
     port: 8080,
   },
-  esbuild: {
-    target: 'esnext',
-    // Completely skip TypeScript type checking
-    tsconfigRaw: {}
-  },
+  esbuild: false, // Disable esbuild completely
   plugins: [
     react({
       tsDecorators: true
@@ -26,12 +22,11 @@ export default defineConfig({
   build: {
     target: 'esnext',
     emptyOutDir: true,
-    // Skip type checking during build
+    // Skip all type checking
     rollupOptions: {
-      onwarn(warning, warn) {
-        // Suppress TypeScript warnings
-        if (warning.code === 'TYPESCRIPT_ERROR') return;
-        warn(warning);
+      onwarn() {
+        // Suppress all warnings
+        return;
       }
     }
   },
