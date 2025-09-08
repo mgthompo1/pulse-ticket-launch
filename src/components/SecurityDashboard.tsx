@@ -6,7 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { TOTPSetup } from './TOTPSetup';
-import { Shield, Key, AlertTriangle, CheckCircle, Clock, Mail } from 'lucide-react';
+import { PasskeyManager } from './PasskeyManager';
+import { Shield, Key, AlertTriangle, CheckCircle, Clock, Mail, Fingerprint } from 'lucide-react';
 
 export const SecurityDashboard = () => {
   const { user } = useAuth();
@@ -175,6 +176,19 @@ export const SecurityDashboard = () => {
 
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div className="flex items-center gap-3">
+                <Fingerprint className="h-4 w-4" />
+                <span className="font-medium">Passkeys</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-blue-600" />
+                <Badge variant="default">
+                  Available
+                </Badge>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="flex items-center gap-3">
                 <Clock className="h-4 w-4" />
                 <span className="font-medium">Last Sign In</span>
               </div>
@@ -220,6 +234,22 @@ export const SecurityDashboard = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Passkey Setup */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Fingerprint className="h-5 w-5 text-blue-600" />
+            Passkeys
+          </CardTitle>
+          <CardDescription>
+            Sign in securely with passkeys
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PasskeyManager />
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -70,7 +70,7 @@ export const PasskeySetup = ({ isOpen, onClose, onSuccess }: PasskeySetupProps) 
 
   const getDeviceTypeText = () => {
     if (isPlatformAvailable) {
-      return 'This device supports biometric authentication (Face ID, Touch ID, or Windows Hello)';
+      return 'This device supports passkey authentication (Face ID, Touch ID, or Windows Hello)';
     }
     return 'This device supports security key authentication';
   };

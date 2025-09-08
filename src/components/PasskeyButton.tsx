@@ -57,13 +57,23 @@ export const PasskeyButton = ({
     }
   };
 
-  // Don't show the button if WebAuthn is not supported
+  // Don't show the button if passkeys are not supported
   if (isChecking) {
-    return null;
+    return (
+      <Button disabled variant="outline" className="w-full">
+        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+        Checking passkey support...
+      </Button>
+    );
   }
 
   if (!isSupported) {
-    return null;
+    return (
+      <Button disabled variant="outline" className="w-full">
+        <ShieldCheck className="w-4 h-4 mr-2" />
+        Passkeys not supported
+      </Button>
+    );
   }
 
   const getButtonIcon = () => {
@@ -84,7 +94,7 @@ export const PasskeyButton = ({
     }
     
     if (isPlatformAvailable) {
-      return 'Sign in with biometrics';
+      return 'Sign in with Passkey';
     }
     
     return 'Sign in with passkey';
