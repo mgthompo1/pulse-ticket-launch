@@ -18,6 +18,11 @@ const app = express();
 // Add compression middleware
 app.use(compression());
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
 // Serve static files
 if (isProduction) {
   app.use('/', sirv(path.resolve(__dirname, 'dist/client'), {
