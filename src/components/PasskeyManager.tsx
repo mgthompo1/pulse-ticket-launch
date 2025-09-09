@@ -12,7 +12,8 @@ import {
   Loader2, 
   Plus,
   Smartphone,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 
 export const PasskeyManager = () => {
@@ -28,6 +29,7 @@ export const PasskeyManager = () => {
   const [isChecking, setIsChecking] = useState(true);
   const [registeredPasskeys, setRegisteredPasskeys] = useState([]);
   const [isLoadingPasskeys, setIsLoadingPasskeys] = useState(true);
+  const [deletingPasskeyId, setDeletingPasskeyId] = useState(null);
 
   const loadPasskeys = async () => {
     if (!user) return;
@@ -74,6 +76,35 @@ export const PasskeyManager = () => {
     console.log('Passkey registered successfully!');
     // Refresh the passkey list
     loadPasskeys();
+  };
+
+  const handleDeletePasskey = async (passkeyId: string) => {
+    if (!confirm('Are you sure you want to delete this passkey? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeletingPasskeyId(passkeyId);
+    try {
+      // Delete directly from the table using RLS policies
+      const { error } = await supabase
+        .from('user_credentials')
+        .delete()
+        .eq('id', passkeyId);
+
+      if (error) {
+        console.error('Error deleting passkey:', error);
+        alert('Failed to delete passkey. Please try again.');
+      } else {
+        console.log('Passkey deleted successfully');
+        // Refresh the passkey list
+        loadPasskeys();
+      }
+    } catch (error) {
+      console.error('Failed to delete passkey:', error);
+      alert('Failed to delete passkey. Please try again.');
+    } finally {
+      setDeletingPasskeyId(null);
+    }
   };
 
   if (isChecking) {
@@ -146,7 +177,22 @@ export const PasskeyManager = () => {
                     </span>
                   </div>
                 </div>
-                <Badge variant="outline">Active</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">Active</Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDeletePasskey(passkey.id)}
+                    disabled={deletingPasskeyId === passkey.id}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    {deletingPasskeyId === passkey.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

@@ -69,9 +69,22 @@ serve(async (req) => {
       });
     }
 
+    // Get the origin from the request to determine the correct RP ID
+    const origin = req.headers.get("origin") || req.headers.get("referer");
+    let rpID = "localhost"; // Default for development
+    
+    if (origin) {
+      try {
+        rpID = new URL(origin).hostname;
+        console.log(`Using RP ID from origin: ${rpID}`);
+      } catch (error) {
+        console.log("Could not parse origin, using localhost");
+        rpID = "localhost";
+      }
+    }
+
     // Prepare registration options
     const rpName = "TicketFlo";
-    const rpID = new URL(Deno.env.get("SUPABASE_URL") ?? "").hostname;
     
     const opts: GenerateRegistrationOptionsOpts = {
       rpName,
