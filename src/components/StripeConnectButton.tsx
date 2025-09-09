@@ -48,7 +48,7 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
     setLoading(true);
     try {
       const { error } = await supabase.functions.invoke('stripe-connect-oauth', {
-        body: { code, state },
+        body: { code, state, action: 'complete_connection' },
         headers: {
           'Content-Type': 'application/json',
         }

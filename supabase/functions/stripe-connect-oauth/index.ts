@@ -113,8 +113,7 @@ serve(async (req) => {
       const tokenResponse = await fetch('https://connect.stripe.com/oauth/token', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': `Bearer ${Deno.env.get('STRIPE_SECRET_KEY')}`
+          'Content-Type': 'application/x-www-form-urlencoded'
         },
         body: new URLSearchParams({
           client_secret: Deno.env.get('STRIPE_SECRET_KEY') || '',
@@ -181,8 +180,7 @@ serve(async (req) => {
           await fetch('https://connect.stripe.com/oauth/deauthorize', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'Authorization': `Bearer ${Deno.env.get('STRIPE_SECRET_KEY')}`
+              'Content-Type': 'application/x-www-form-urlencoded'
             },
             body: new URLSearchParams({
               client_secret: Deno.env.get('STRIPE_SECRET_KEY') || '',
