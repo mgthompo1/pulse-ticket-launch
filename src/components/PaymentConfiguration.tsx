@@ -30,7 +30,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
   const [windcaveHitKey, setWindcaveHitKey] = useState('');
   const [windcaveStationId, setWindcaveStationId] = useState('');
   const [enableBookingFees, setEnableBookingFees] = useState(false);
-  const [stripeConnectedAccountId] = useState('');
+  const [stripeConnectedAccountId, setStripeConnectedAccountId] = useState('');
 
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -46,7 +46,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
       // Get basic organization info (non-sensitive) including Stripe Connect status
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
-        .select('payment_provider, currency, credit_card_processing_fee_percentage')
+        .select('payment_provider, currency, credit_card_processing_fee_percentage, stripe_account_id, stripe_booking_fee_enabled')
         .eq('id', organizationId)
         .single();
 
@@ -66,6 +66,8 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         setPaymentProvider(orgData.payment_provider || 'stripe');
         setCurrency(orgData.currency || 'NZD');
         setCreditCardProcessingFee(orgData.credit_card_processing_fee_percentage || 0);
+        setStripeConnectedAccountId(orgData.stripe_account_id || '');
+        setEnableBookingFees(orgData.stripe_booking_fee_enabled || false);
       }
 
       if (credData) {
