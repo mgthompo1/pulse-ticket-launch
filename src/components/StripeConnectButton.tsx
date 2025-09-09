@@ -81,7 +81,7 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
   const handleConnect = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('stripe-connect-oauth', {
+      const { data, error } = await supabase.functions.invoke('stripe-connect-oauth', {
         body: {},
         headers: {
           'Content-Type': 'application/json',
@@ -90,7 +90,7 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
 
       if (error) throw error;
 
-      if (data.connect_url) {
+      if (data?.connect_url) {
         // Redirect to Stripe OAuth
         window.location.href = data.connect_url;
       }
