@@ -185,6 +185,15 @@ app.use('/', async (req, res, next) => {
 
     finalHtml = finalHtml.replace('<!--ssr-head-->', headContent);
     
+    // If we generated dynamic meta tags for widgets, remove conflicting default ones
+    if (url.startsWith('/widget/') && headContent.includes('og:title')) {
+      // Remove default og:title, og:description, og:image that conflict with dynamic ones
+      finalHtml = finalHtml.replace(/<meta property="og:title" content="TicketFlo - Professional Event Ticketing Platform" \/>/g, '');
+      finalHtml = finalHtml.replace(/<meta property="og:description" content="The complete solution for event organizers[^"]*" \/>/g, '');
+      finalHtml = finalHtml.replace(/<meta property="og:image" content="https:\/\/www\.ticketflo\.org\/og-image\.jpg" \/>/g, '');
+      finalHtml = finalHtml.replace(/<meta property="og:url" content="https:\/\/www\.ticketflo\.org\/" \/>/g, '');
+    }
+    
     res.status(200).set({ 'Content-Type': 'text/html' }).end(finalHtml);
     
   } catch (error) {
