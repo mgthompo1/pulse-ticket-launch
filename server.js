@@ -121,7 +121,7 @@ app.use('/', async (req, res, next) => {
         
         if (eventId) {
           // Fetch event data directly from Supabase (only published events are publicly accessible)
-          const eventResp = await fetch(`${supabaseUrl}/rest/v1/events?id=eq.${eventId}&status=eq.published&select=id,name,description,venue,event_date,featured_image_url,organizations(name,logo_url)`, {
+          const eventResp = await fetch(`${supabaseUrl}/rest/v1/events?id=eq.${eventId}&status=eq.published&select=id,name,description,venue,event_date,featured_image_url,event_image_url,logo_url,organizations(name,logo_url)`, {
             headers: {
               'apikey': supabaseKey,
               'Authorization': `Bearer ${supabaseKey}`,
@@ -148,7 +148,17 @@ app.use('/', async (req, res, next) => {
                 ? `${event.description.substring(0, 150)}... Join us ${eventDate} at ${event.venue || 'TBD'}. Get your tickets now!`
                 : `Join us for ${event.name} on ${eventDate} at ${event.venue || 'TBD'}. Get your tickets now on TicketFlo!`;
               
-              const ogImage = event.featured_image_url || event.organizations?.logo_url || "https://www.ticketflo.org/og-image.jpg";
+              // Prioritize event-specific images over organization logo
+              console.log('Image options:', {
+                featured_image_url: event.featured_image_url,
+                event_image_url: event.event_image_url, 
+                logo_url: event.logo_url,
+                org_logo: event.organizations?.logo_url
+              });
+              
+              const ogImage = event.featured_image_url || event.event_image_url || event.logo_url || event.organizations?.logo_url || "https://www.ticketflo.org/og-image.jpg";
+              console.log('Selected image:', ogImage);
+              
               const canonical = `https://www.ticketflo.org/widget/${eventId}`;
               
               // Generate dynamic meta tags
