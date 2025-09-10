@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -42,7 +42,7 @@ const EventHero: React.FC<{
   theme: Theme;
   onScrollToTickets: () => void;
   isLoading: boolean;
-}> = ({ eventData, theme, onScrollToTickets, isLoading }) => (
+}> = React.memo(({ eventData, theme, onScrollToTickets, isLoading }) => (
   <div className="container mx-auto px-4 py-6">
     <div className="max-w-7xl mx-auto">
       <Card className="overflow-hidden" style={{ backgroundColor: theme.cardBackgroundColor }}>
@@ -142,7 +142,10 @@ const EventHero: React.FC<{
             <Button 
               variant="outline"
               size="sm"
-              onClick={() => setShowEventInfoModal(true)}
+              onClick={() => {
+                console.log('Event info button clicked');
+                setShowEventInfoModal(true);
+              }}
               className="text-sm"
             >
               Event info
@@ -166,7 +169,7 @@ const EventHero: React.FC<{
     </Card>
     </div>
   </div>
-);
+));
 
 // Improvement #2: Progressive loading with skeleton states
 const TicketSkeleton: React.FC = () => (
@@ -261,7 +264,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
   const [promoDiscount, setPromoDiscount] = useState(0);
   const [promoMessage, setPromoMessage] = useState('');
 
-  // Extract theme colors from event data
+  // Extract theme colors from event data with proper memoization
   const theme: Theme = useMemo(() => {
     const themeData = eventData.widget_customization?.theme;
     const isEnabled = themeData?.enabled === true;
@@ -280,7 +283,20 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
       bodyTextColor: isEnabled ? (themeData?.bodyTextColor || '#6b7280') : '#6b7280',
       fontFamily: isEnabled ? (themeData?.fontFamily || 'Manrope') : 'Manrope'
     };
-  }, [eventData.widget_customization?.theme]);
+  }, [
+    eventData.widget_customization?.theme?.enabled,
+    eventData.widget_customization?.theme?.primaryColor,
+    eventData.widget_customization?.theme?.buttonTextColor,
+    eventData.widget_customization?.theme?.secondaryColor,
+    eventData.widget_customization?.theme?.backgroundColor,
+    eventData.widget_customization?.theme?.cardBackgroundColor,
+    eventData.widget_customization?.theme?.inputBackgroundColor,
+    eventData.widget_customization?.theme?.borderEnabled,
+    eventData.widget_customization?.theme?.borderColor,
+    eventData.widget_customization?.theme?.headerTextColor,
+    eventData.widget_customization?.theme?.bodyTextColor,
+    eventData.widget_customization?.theme?.fontFamily
+  ]);
 
   // Improvement #2: Progressive loading simulation (disabled for now to avoid setState warnings)
   // useEffect(() => {
@@ -376,7 +392,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
       feePercentage,
       currency: eventData.organizations?.currency || 'USD'
     };
-  }, [cartItems, merchandiseCart, promoDiscount, eventData.organizations]);
+  }, [cartItems, merchandiseCart, promoDiscount, eventData.organizations?.credit_card_processing_fee_percentage, eventData.organizations?.currency]);
 
   const handleCustomerInfoChange = (field: string, value: string) => {
     setCustomerInfo(prev => ({
@@ -458,10 +474,10 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
     }
   };
 
-  const scrollToTickets = () => {
+  const scrollToTickets = useCallback(() => {
     const ticketsSection = document.getElementById('beta-tickets-section');
     ticketsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  }, []);
 
   const isStripePayment = eventData.organizations?.payment_provider === 'stripe';
   const hasTicketsInCart = cartItems.length > 0;
@@ -890,7 +906,10 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
       </div>
 
       {/* Event Info Modal */}
-      <Dialog open={showEventInfoModal} onOpenChange={setShowEventInfoModal}>
+      <Dialog open={showEventInfoModal} onOpenChange={(open) => {
+        console.log('Modal state changing to:', open);
+        setShowEventInfoModal(open);
+      }}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle style={{ color: theme.headerTextColor }}>
