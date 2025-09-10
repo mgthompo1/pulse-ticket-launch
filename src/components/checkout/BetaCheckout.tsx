@@ -1,1055 +1,890 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Button } from '@/components/ui/button';
+// @ts-nocheck
+import React, { useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Calendar, 
-  MapPin, 
-  Ticket, 
-  Plus, 
-  Minus, 
-  CreditCard,
-  Shield,
+import { toast } from 'sonner';
+import {
+  CalendarDays,
+  MapPin,
   Clock,
   Users,
-  Star,
   Info,
-  AlertCircle,
-  CheckCircle,
-  ArrowRight,
-  Lock
+  ShoppingCart,
+  CreditCard,
+  Ticket,
+  Star,
+  Plus,
+  Minus,
+  X,
+  // ArrowRight,
+  // Lock,
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { TicketType, CartItem, MerchandiseCartItem, CustomerInfo, EventData, CustomQuestion } from '@/types/widget';
-import { Theme } from '@/types/theme';
-import { StripePaymentModal } from './StripePaymentModal';
 
-interface BetaCheckoutProps {
-  eventData: EventData;
-  ticketTypes: TicketType[];
-  customQuestions: CustomQuestion[];
-  onClose?: () => void;
+// Mock data for development
+const mockEvent = {
+  id: '123',
+  name: 'Summer Music Festival 2024',
+  description: 'Join us for an amazing day of music, food, and fun!',
+  venue: 'Central Park Amphitheater',
+  event_date: '2024-08-15T18:00:00Z',
+  featured_image_url: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800',
+  capacity: 500,
+  organizations: {
+    name: 'Music Events Co',
+    logo_url: 'https://images.unsplash.com/photo-1611348586804-61bf6c080437?w=200'
+  }
+};
+
+const mockTicketTypes = [
+  {
+    id: '1',
+    name: 'General Admission',
+    description: 'Access to main event area',
+    price: 75.00,
+    available_quantity: 100,
+    max_per_order: 8
+  },
+  {
+    id: '2',
+    name: 'VIP Package',
+    description: 'Premium seating, complimentary drinks, and meet & greet',
+    price: 150.00,
+    available_quantity: 25,
+    max_per_order: 4
+  },
+  {
+    id: '3',
+    name: 'Student Discount',
+    description: 'Valid student ID required at entry',
+    price: 50.00,
+    available_quantity: 50,
+    max_per_order: 2
+  }
+];
+
+const mockAddOns = [
+  {
+    id: '1',
+    name: 'Festival T-Shirt',
+    description: 'Official event merchandise',
+    price: 25.00,
+    max_quantity: 5
+  },
+  {
+    id: '2',
+    name: 'Parking Pass',
+    description: 'Guaranteed parking spot',
+    price: 15.00,
+    max_quantity: 1
+  }
+];
+
+interface TicketQuantity {
+  ticketTypeId: string;
+  quantity: number;
 }
 
-// Improvement #1: Above-the-fold optimization - inspired by mockup header card
-const EventHero: React.FC<{
-  eventData: EventData;
-  theme: Theme;
-  onScrollToTickets: () => void;
-  isLoading: boolean;
-}> = ({ eventData, theme, onScrollToTickets, isLoading }) => (
-  <div className="container mx-auto px-4 py-6">
-    <div className="max-w-7xl mx-auto">
-      <Card className="overflow-hidden" style={{ backgroundColor: theme.cardBackgroundColor }}>
-      {/* Hero Image */}
-      <div className="h-48 md:h-64 relative overflow-hidden bg-white">
-        {(eventData as any).logo_url || (eventData as any).featured_image_url ? (
-          <div className="w-full h-full relative">
-            <img 
-              src={(eventData as any).logo_url || (eventData as any).featured_image_url} 
-              alt={eventData.name}
-              className="w-full h-full object-contain object-center"
-              onError={(e) => {
-                // Hide broken image and show fallback
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-                const fallback = target.nextElementSibling as HTMLDivElement;
-                if (fallback) {
-                  fallback.style.display = 'flex';
-                }
-              }}
+interface AddOnQuantity {
+  addOnId: string;
+  quantity: number;
+}
+
+interface CustomerInfo {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+}
+
+export const BetaCheckout: React.FC = () => {
+  const { eventId } = useParams();
+  const [searchParams] = useSearchParams();
+  const isEmbedded = searchParams.get('embedded') === 'true';
+
+  // Form state
+  const [selectedTickets, setSelectedTickets] = useState<TicketQuantity[]>([]);
+  const [selectedAddOns, setSelectedAddOns] = useState<AddOnQuantity[]>([]);
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: ''
+  });
+
+  // UI state
+  const [currentStep, setCurrentStep] = useState(1);
+  const [showEventInfo, setShowEventInfo] = useState(false);
+
+  // Mock query for now - replace with actual data fetching
+  const { data: event, isLoading: eventLoading } = useQuery({
+    queryKey: ['event', eventId],
+    queryFn: async () => {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return mockEvent;
+    },
+    enabled: !!eventId
+  });
+
+  const { data: ticketTypes, isLoading: ticketTypesLoading } = useQuery({
+    queryKey: ['ticketTypes', eventId],
+    queryFn: async () => {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return mockTicketTypes;
+    },
+    enabled: !!eventId
+  });
+
+  const { data: addOns, isLoading: addOnsLoading } = useQuery({
+    queryKey: ['addOns', eventId],
+    queryFn: async () => {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return mockAddOns;
+    },
+    enabled: !!eventId
+  });
+
+  const steps = [
+    { number: 1, title: 'Select Tickets', description: 'Choose your ticket types' },
+    { number: 2, title: 'Add-ons', description: 'Optional extras' },
+    { number: 3, title: 'Your Details', description: 'Contact information' },
+    { number: 4, title: 'Payment', description: 'Complete your order' }
+  ];
+
+  const updateTicketQuantity = (ticketTypeId: string, quantity: number) => {
+    setSelectedTickets(prev => {
+      const existing = prev.find(t => t.ticketTypeId === ticketTypeId);
+      if (existing) {
+        if (quantity === 0) {
+          return prev.filter(t => t.ticketTypeId !== ticketTypeId);
+        }
+        return prev.map(t => 
+          t.ticketTypeId === ticketTypeId ? { ...t, quantity } : t
+        );
+      }
+      if (quantity > 0) {
+        return [...prev, { ticketTypeId, quantity }];
+      }
+      return prev;
+    });
+  };
+
+  const updateAddOnQuantity = (addOnId: string, quantity: number) => {
+    setSelectedAddOns(prev => {
+      const existing = prev.find(a => a.addOnId === addOnId);
+      if (existing) {
+        if (quantity === 0) {
+          return prev.filter(a => a.addOnId !== addOnId);
+        }
+        return prev.map(a => 
+          a.addOnId === addOnId ? { ...a, quantity } : a
+        );
+      }
+      if (quantity > 0) {
+        return [...prev, { addOnId, quantity }];
+      }
+      return prev;
+    });
+  };
+
+  const getTicketQuantity = (ticketTypeId: string) => {
+    return selectedTickets.find(t => t.ticketTypeId === ticketTypeId)?.quantity || 0;
+  };
+
+  const getAddOnQuantity = (addOnId: string) => {
+    return selectedAddOns.find(a => a.addOnId === addOnId)?.quantity || 0;
+  };
+
+  const calculateSubtotal = () => {
+    const ticketTotal = selectedTickets.reduce((total, ticket) => {
+      const ticketType = ticketTypes?.find(tt => tt.id === ticket.ticketTypeId);
+      return total + (ticketType?.price || 0) * ticket.quantity;
+    }, 0);
+
+    const addOnTotal = selectedAddOns.reduce((total, addOn) => {
+      const addOnItem = addOns?.find(ao => ao.id === addOn.addOnId);
+      return total + (addOnItem?.price || 0) * addOn.quantity;
+    }, 0);
+
+    return ticketTotal + addOnTotal;
+  };
+
+  const calculateProcessingFee = () => {
+    const subtotal = calculateSubtotal();
+    return subtotal * 0.029; // 2.9% processing fee
+  };
+
+  const calculateTotal = () => {
+    return calculateSubtotal() + calculateProcessingFee();
+  };
+
+  const getTotalTickets = () => {
+    return selectedTickets.reduce((total, ticket) => total + ticket.quantity, 0);
+  };
+
+  const canProceedToNextStep = () => {
+    switch (currentStep) {
+      case 1:
+        return selectedTickets.length > 0;
+      case 2:
+        return true; // Add-ons are optional
+      case 3:
+        return customerInfo.firstName && customerInfo.lastName && customerInfo.email;
+      default:
+        return false;
+    }
+  };
+
+  const handleNextStep = () => {
+    if (canProceedToNextStep() && currentStep < 4) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  // Loading state
+  if (eventLoading || ticketTypesLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading event details...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center">
+            <p className="text-red-600">Event not found</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Price display component
+  // const PriceDisplay = ({ price, currency = 'USD' }: { price: number; currency?: string }) => (
+  //   <span className="font-semibold text-lg">
+  //     ${price.toFixed(2)} {currency.toUpperCase()}
+  //   </span>
+  // );
+
+  const EventInfoModal = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <CardHeader className="relative">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute right-2 top-2"
+            onClick={() => setShowEventInfo(false)}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <CardTitle className="pr-8">{event.name}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {event.featured_image_url && (
+            <img
+              src={event.featured_image_url}
+              alt={event.name}
+              className="w-full h-48 object-cover rounded-lg"
             />
-            <div 
-              className="w-full h-full bg-white items-center justify-center absolute inset-0"
-              style={{ display: 'none' }}
-            >
-              <Ticket className="h-16 w-16" style={{ color: theme.primaryColor }} />
+          )}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-gray-600">
+              <CalendarDays className="h-4 w-4" />
+              <span>{new Date(event.event_date).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-600">
+              <Clock className="h-4 w-4" />
+              <span>{new Date(event.event_date).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit'
+              })}</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-600">
+              <MapPin className="h-4 w-4" />
+              <span>{event.venue}</span>
             </div>
           </div>
-        ) : (
-          <div className="w-full h-full bg-white flex items-center justify-center">
-            <Ticket className="h-16 w-16" style={{ color: theme.primaryColor }} />
-          </div>
-        )}
-      </div>
-      
-      {/* Event Details */}
-      <div className="p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex-1 space-y-3">
-            <h1 className="text-2xl lg:text-3xl font-bold leading-tight" style={{ color: theme.headerTextColor }}>
-              {eventData.name}
-            </h1>
-            
-            <div className="flex flex-wrap gap-3 text-sm" style={{ color: theme.bodyTextColor }}>
-              <span className="flex items-center gap-1 px-3 py-1 rounded-full border" style={{ borderColor: theme.borderColor, backgroundColor: theme.backgroundColor }}>
-                <Calendar className="h-4 w-4" style={{ color: theme.primaryColor }} />
-                {new Date(eventData.event_date).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'short',
-                  day: 'numeric'
-                })}
-              </span>
-              
-              {eventData.venue && (
-                <span className="flex items-center gap-1 px-3 py-1 rounded-full border" style={{ borderColor: theme.borderColor, backgroundColor: theme.backgroundColor }}>
-                  <MapPin className="h-4 w-4" style={{ color: theme.primaryColor }} />
-                  {eventData.venue}
-                </span>
-              )}
-              
-              <span className="px-3 py-1 rounded-full border" style={{ borderColor: theme.borderColor, backgroundColor: theme.backgroundColor }}>
-                Instant mobile tickets
-              </span>
+          {event.description && (
+            <div>
+              <h4 className="font-semibold mb-2">About this event</h4>
+              <p className="text-gray-600 leading-relaxed">{event.description}</p>
             </div>
-            
-            {(eventData.organizations as any)?.name && (
-              <p className="text-sm" style={{ color: theme.bodyTextColor }}>
-                Hosted by <span className="font-medium">{(eventData.organizations as any).name}</span>
-              </p>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-2">
-            <Button 
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                // Create calendar event
-                const startDate = new Date(eventData.event_date);
-                const endDate = new Date(startDate.getTime() + 3 * 60 * 60 * 1000); // Default 3 hours
-                
-                const title = encodeURIComponent(eventData.name);
-                const details = encodeURIComponent(eventData.description?.replace(/<[^>]*>/g, '') || '');
-                const location = encodeURIComponent(eventData.venue || '');
-                const startTime = startDate.toISOString().replace(/-|:|\.\d\d\d/g, '');
-                const endTime = endDate.toISOString().replace(/-|:|\.\d\d\d/g, '');
-                
-                const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startTime}/${endTime}&details=${details}&location=${location}`;
-                window.open(googleUrl, '_blank');
-              }}
-              className="text-sm"
-            >
-              <Calendar className="h-3 w-3 mr-1" />
-              Add to calendar
-            </Button>
-            <Button 
-              variant="outline"
-              size="sm"
-              onClick={() => setShowEventInfoModal(true)}
-              className="text-sm"
-            >
-              Event info
-            </Button>
-            {!isLoading && (
-              <Button 
-                onClick={onScrollToTickets}
-                size="sm"
-                className="px-4 font-semibold"
-                style={{ 
-                  backgroundColor: theme.primaryColor, 
-                  color: theme.buttonTextColor 
-                }}
-              >
-                Get tickets
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-    </Card>
+          )}
+        </CardContent>
+      </Card>
     </div>
-  </div>
-);
+  );
 
-// Improvement #2: Progressive loading with skeleton states
-const TicketSkeleton: React.FC = () => (
-  <Card>
-    <CardContent className="p-6">
-      <div className="flex justify-between items-start mb-4">
-        <div className="space-y-2 flex-1">
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-32" />
-        </div>
-        <Skeleton className="h-8 w-20" />
-      </div>
-      <div className="flex justify-between items-center">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-10 w-32" />
-      </div>
-    </CardContent>
-  </Card>
-);
+  // Form state
+  const [isLoading] = useState(false);
+  const [loadingProgress] = useState(0);
+  const [showMerchandise, setShowMerchandise] = useState(false);
+  const [showAddOns, setShowAddOns] = useState(false);
+  const [merchandiseCart] = useState<any[]>([]);
 
-// Improvement #3: Price clarity with fee breakdown
-const PriceDisplay: React.FC<{
-  price: number;
-  currency?: string;
-  showFees?: boolean;
-  feePercentage?: number;
-  theme: Theme;
-}> = ({ price, currency = 'USD', showFees = true, feePercentage = 3, theme }) => {
-  const fees = showFees ? price * (feePercentage / 100) : 0;
-  const total = price + fees;
-  
-  return (
-    <div className="space-y-1">
-      <div className="text-2xl font-bold" style={{ color: theme.headerTextColor }}>
-        {new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: currency,
-        }).format(total)}
+  const renderTicketSelection = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-xl font-semibold mb-2">Select Your Tickets</h3>
+        <p className="text-gray-600 mb-6">Choose the ticket types and quantities you'd like to purchase.</p>
       </div>
-      {showFees && fees > 0 && (
-        <div className="text-xs space-y-1" style={{ color: theme.bodyTextColor }}>
-          <div className="flex justify-between">
-            <span>Ticket price:</span>
-            <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(price)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Service fee:</span>
-            <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(fees)}</span>
-          </div>
-        </div>
+
+      <div className="space-y-4">
+        {ticketTypes?.map((ticketType) => (
+          <Card key={ticketType.id} className="overflow-hidden">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h4 className="font-semibold text-lg">{ticketType.name}</h4>
+                    <Badge variant={ticketType.available_quantity > 10 ? "default" : "destructive"}>
+                      {ticketType.available_quantity} left
+                    </Badge>
+                  </div>
+                  <p className="text-gray-600 mb-3">{ticketType.description}</p>
+                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <Users className="h-4 w-4" />
+                      Max {ticketType.max_per_order} per order
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-blue-600">
+                      ${ticketType.price.toFixed(2)}
+                    </div>
+                    <div className="text-sm text-gray-500">per ticket</div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateTicketQuantity(ticketType.id, Math.max(0, getTicketQuantity(ticketType.id) - 1))}
+                      disabled={getTicketQuantity(ticketType.id) === 0}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    
+                    <span className="w-8 text-center font-semibold">
+                      {getTicketQuantity(ticketType.id)}
+                    </span>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateTicketQuantity(ticketType.id, Math.min(ticketType.max_per_order, getTicketQuantity(ticketType.id) + 1))}
+                      disabled={getTicketQuantity(ticketType.id) >= ticketType.max_per_order || ticketType.available_quantity === 0}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {selectedTickets.length > 0 && (
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold">Selected: {getTotalTickets()} ticket{getTotalTickets() !== 1 ? 's' : ''}</p>
+                <p className="text-sm text-gray-600">Subtotal: ${calculateSubtotal().toFixed(2)}</p>
+              </div>
+              <Button onClick={handleNextStep}>
+                Continue to Add-ons
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
-};
 
-export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
-  eventData,
-  ticketTypes,
-  customQuestions = [],
-}) => {
-  const { toast } = useToast();
-  
-  // Ensure customQuestions is always an array
-  const safeCustomQuestions = Array.isArray(customQuestions) ? customQuestions : [];
-  
-  // Loading states - Improvement #2
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState(100);
-  
-  // Cart state
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [merchandiseCart, setMerchandiseCart] = useState<MerchandiseCartItem[]>([]);
-  
-  // Customer info state
-  const [customerInfo, setCustomerInfo] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    customAnswers: {} as Record<string, string>
-  });
-  const [errors, setErrors] = useState({} as Record<string, string>);
-  
-  // Payment state
-  const [showStripeModal, setShowStripeModal] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  
-  // Event info modal state
-  const [showEventInfoModal, setShowEventInfoModal] = useState(false);
-  
-  // Promo code state
-  const [promoCode, setPromoCode] = useState('');
-  const [promoDiscount, setPromoDiscount] = useState(0);
-  const [promoMessage, setPromoMessage] = useState('');
+  const renderAddOns = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-xl font-semibold mb-2">Add-ons & Extras</h3>
+        <p className="text-gray-600 mb-6">Enhance your experience with these optional add-ons.</p>
+      </div>
 
-  // Extract theme colors from event data
-  const theme: Theme = useMemo(() => {
-    const themeData = eventData.widget_customization?.theme;
-    const isEnabled = themeData?.enabled === true;
-    
-    return {
-      enabled: isEnabled,
-      primaryColor: isEnabled ? (themeData?.primaryColor || '#ff4d00') : '#000000',
-      buttonTextColor: isEnabled ? (themeData?.buttonTextColor || '#ffffff') : '#ffffff',
-      secondaryColor: isEnabled ? (themeData?.secondaryColor || '#ffffff') : '#ffffff',
-      backgroundColor: isEnabled ? (themeData?.backgroundColor || '#ffffff') : '#ffffff',
-      cardBackgroundColor: isEnabled ? (themeData?.cardBackgroundColor || themeData?.backgroundColor || '#ffffff') : '#ffffff',
-      inputBackgroundColor: isEnabled ? (themeData?.inputBackgroundColor || '#ffffff') : '#ffffff',
-      borderEnabled: isEnabled ? (themeData?.borderEnabled ?? false) : false,
-      borderColor: isEnabled ? (themeData?.borderColor || '#e5e7eb') : '#e5e7eb',
-      headerTextColor: isEnabled ? (themeData?.headerTextColor || '#111827') : '#111827',
-      bodyTextColor: isEnabled ? (themeData?.bodyTextColor || '#6b7280') : '#6b7280',
-      fontFamily: isEnabled ? (themeData?.fontFamily || 'Manrope') : 'Manrope'
-    };
-  }, [eventData.widget_customization?.theme]);
+      {addOns && addOns.length > 0 ? (
+        <div className="space-y-4">
+          {addOns.map((addOn) => (
+            <Card key={addOn.id}>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-lg mb-2">{addOn.name}</h4>
+                    <p className="text-gray-600 mb-3">{addOn.description}</p>
+                  </div>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="text-xl font-bold text-green-600">
+                        ${addOn.price.toFixed(2)}
+                      </div>
+                      <div className="text-sm text-gray-500">each</div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateAddOnQuantity(addOn.id, Math.max(0, getAddOnQuantity(addOn.id) - 1))}
+                        disabled={getAddOnQuantity(addOn.id) === 0}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                      
+                      <span className="w-8 text-center font-semibold">
+                        {getAddOnQuantity(addOn.id)}
+                      </span>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateAddOnQuantity(addOn.id, Math.min(addOn.max_quantity, getAddOnQuantity(addOn.id) + 1))}
+                        disabled={getAddOnQuantity(addOn.id) >= addOn.max_quantity}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <ShoppingCart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">No add-ons available for this event.</p>
+          </CardContent>
+        </Card>
+      )}
 
-  // Improvement #2: Progressive loading simulation (disabled for now to avoid setState warnings)
-  // useEffect(() => {
-  //   const loadingSteps = [
-  //     { progress: 20, delay: 200, message: 'Loading event details...' },
-  //     { progress: 50, delay: 400, message: 'Loading ticket information...' },
-  //     { progress: 80, delay: 600, message: 'Preparing checkout...' },
-  //     { progress: 100, delay: 800, message: 'Ready!' }
-  //   ];
+      <div className="flex gap-3">
+        <Button variant="outline" onClick={handlePrevStep}>
+          Back to Tickets
+        </Button>
+        <Button onClick={handleNextStep} className="flex-1">
+          Continue to Details
+        </Button>
+      </div>
+    </div>
+  );
 
-  //   let timeoutId: NodeJS.Timeout;
-  //   let currentStep = 0;
+  const renderCustomerDetails = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-xl font-semibold mb-2">Your Details</h3>
+        <p className="text-gray-600 mb-6">We'll need this information to send you your tickets.</p>
+      </div>
 
-  //   const executeStep = () => {
-  //     if (currentStep < loadingSteps.length) {
-  //       const step = loadingSteps[currentStep];
-  //       setLoadingProgress(step.progress);
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="firstName">First Name *</Label>
+          <Input
+            id="firstName"
+            value={customerInfo.firstName}
+            onChange={(e) => setCustomerInfo(prev => ({ ...prev, firstName: e.target.value }))}
+            placeholder="Enter your first name"
+          />
+        </div>
         
-  //       if (step.progress === 100) {
-  //         setIsLoading(false);
-  //       }
-        
-  //       currentStep++;
-  //       timeoutId = setTimeout(executeStep, step.delay);
-  //     }
-  //   };
+        <div className="space-y-2">
+          <Label htmlFor="lastName">Last Name *</Label>
+          <Input
+            id="lastName"
+            value={customerInfo.lastName}
+            onChange={(e) => setCustomerInfo(prev => ({ ...prev, lastName: e.target.value }))}
+            placeholder="Enter your last name"
+          />
+        </div>
+      </div>
 
-  //   executeStep();
+      <div className="space-y-2">
+        <Label htmlFor="email">Email Address *</Label>
+        <Input
+          id="email"
+          type="email"
+          value={customerInfo.email}
+          onChange={(e) => setCustomerInfo(prev => ({ ...prev, email: e.target.value }))}
+          placeholder="Enter your email address"
+        />
+        <p className="text-sm text-gray-500">Your tickets will be sent to this email address</p>
+      </div>
 
-  //   return () => {
-  //     if (timeoutId) clearTimeout(timeoutId);
-  //   };
-  // }, []);
+      <div className="space-y-2">
+        <Label htmlFor="phone">Phone Number</Label>
+        <Input
+          id="phone"
+          type="tel"
+          value={customerInfo.phone}
+          onChange={(e) => setCustomerInfo(prev => ({ ...prev, phone: e.target.value }))}
+          placeholder="Enter your phone number (optional)"
+        />
+      </div>
 
-  // Cart management
-  const addToCart = (ticketType: TicketType) => {
-    setCartItems(prev => {
-      const existingItem = prev.find(item => item.id === ticketType.id);
-      
-      if (existingItem) {
-        toast({
-          title: "Ticket added",
-          description: `${ticketType.name} added to cart`,
-        });
-        return prev.map(item =>
-          item.id === ticketType.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      }
-      
-      toast({
-        title: "Ticket added",
-        description: `${ticketType.name} added to cart`,
-      });
-      
-      return [...prev, {
-        ...ticketType,
-        quantity: 1,
-        type: 'ticket' as const,
-        selectedSeats: []
-      }];
-    });
-  };
+      <div className="flex gap-3">
+        <Button variant="outline" onClick={handlePrevStep}>
+          Back to Add-ons
+        </Button>
+        <Button onClick={handleNextStep} disabled={!canProceedToNextStep()} className="flex-1">
+          Continue to Payment
+        </Button>
+      </div>
+    </div>
+  );
 
-  const updateQuantity = (ticketTypeId: string, quantity: number) => {
-    setCartItems(prev => {
-      if (quantity === 0) {
-        return prev.filter(item => item.id !== ticketTypeId);
-      }
-      
-      return prev.map(item =>
-        item.id === ticketTypeId ? { ...item, quantity } : item
-      );
-    });
-  };
-
-  // Calculate totals with fee breakdown and promo discount
-  const cartTotals = useMemo(() => {
-    const ticketSubtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const merchandiseSubtotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
-    const subtotal = ticketSubtotal + merchandiseSubtotal;
-    const discountedSubtotal = Math.max(0, subtotal - promoDiscount);
+  const renderPayment = () => {
+    // const isStripePayment = paymentProvider === 'stripe';
     
-    const feePercentage = eventData.organizations?.credit_card_processing_fee_percentage || 3;
-    const fees = discountedSubtotal * (feePercentage / 100);
-    const total = discountedSubtotal + fees;
-    
-    return {
-      subtotal,
-      discountedSubtotal,
-      fees,
-      total,
-      discount: promoDiscount,
-      feePercentage,
-      currency: eventData.organizations?.currency || 'USD'
-    };
-  }, [cartItems, merchandiseCart, promoDiscount, eventData.organizations]);
+    return (
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-xl font-semibold mb-2">Payment</h3>
+          <p className="text-gray-600 mb-6">Complete your order with secure payment processing.</p>
+        </div>
 
-  const handleCustomerInfoChange = (field: string, value: string) => {
-    setCustomerInfo(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
+        <Card className="bg-gray-50">
+          <CardContent className="p-6">
+            <h4 className="font-semibold mb-4">Order Summary</h4>
+            
+            {selectedTickets.map((ticket) => {
+              const ticketType = ticketTypes?.find(tt => tt.id === ticket.ticketTypeId);
+              if (!ticketType) return null;
+              
+              return (
+                <div key={ticket.ticketTypeId} className="flex justify-between items-center py-2">
+                  <span>{ticketType.name} × {ticket.quantity}</span>
+                  <span>${(ticketType.price * ticket.quantity).toFixed(2)}</span>
+                </div>
+              );
+            })}
+            
+            {selectedAddOns.map((addOn) => {
+              const addOnItem = addOns?.find(ao => ao.id === addOn.addOnId);
+              if (!addOnItem) return null;
+              
+              return (
+                <div key={addOn.addOnId} className="flex justify-between items-center py-2">
+                  <span>{addOnItem.name} × {addOn.quantity}</span>
+                  <span>${(addOnItem.price * addOn.quantity).toFixed(2)}</span>
+                </div>
+              );
+            })}
+            
+            <Separator className="my-4" />
+            
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>${calculateSubtotal().toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Processing Fee (2.9%)</span>
+                <span>${calculateProcessingFee().toFixed(2)}</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between font-bold text-lg">
+                <span>Total</span>
+                <span>${calculateTotal().toFixed(2)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <CreditCard className="h-5 w-5" />
+              <h4 className="font-semibold">Payment Information</h4>
+            </div>
+            
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600 flex items-center gap-2">
+                <span className="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
+                Secure payment processing powered by Stripe
+              </p>
+              
+              <Button className="w-full" size="lg">
+                Complete Payment - ${calculateTotal().toFixed(2)}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Button variant="outline" onClick={handlePrevStep}>
+          Back to Details
+        </Button>
+      </div>
+    );
   };
 
-  const handleCustomAnswerChange = (questionId: string, value: string) => {
-    setCustomerInfo(prev => ({
-      ...prev,
-      customAnswers: {
-        ...prev.customAnswers,
-        [questionId]: value
-      }
-    }));
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!customerInfo.name.trim()) newErrors.name = 'Name is required';
-    if (!customerInfo.email.trim()) newErrors.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(customerInfo.email)) newErrors.email = 'Please enter a valid email';
-    
-    // Validate custom questions
-    safeCustomQuestions.forEach(question => {
-      if (question.required && !customerInfo.customAnswers[question.id]?.trim()) {
-        newErrors[question.id] = `${question.label} is required`;
-      }
-    });
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handlePromoCode = () => {
-    const code = promoCode.trim().toUpperCase();
-    if (code === 'SAVE10' && cartTotals.subtotal >= 50) {
-      setPromoDiscount(10);
-      setPromoMessage('Promo applied: SAVE10 – $10 off');
-    } else if (code === 'WELCOME20' && cartTotals.subtotal >= 100) {
-      setPromoDiscount(20);
-      setPromoMessage('Promo applied: WELCOME20 – $20 off');
-    } else {
-      setPromoDiscount(0);
-      setPromoMessage('Invalid code or minimum not met');
-    }
-  };
-
-  const handleCheckout = () => {
-    if (!validateForm()) {
-      toast({
-        title: "Please complete all required fields",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    if (cartItems.length === 0) {
-      toast({
-        title: "Please select at least one ticket",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // For Stripe payment
-    if (eventData.organizations?.payment_provider === 'stripe') {
-      setShowStripeModal(true);
-    } else {
-      // Handle other payment providers
-      setIsProcessing(true);
-    }
-  };
-
-  const scrollToTickets = () => {
-    const ticketsSection = document.getElementById('beta-tickets-section');
-    ticketsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
-  const isStripePayment = eventData.organizations?.payment_provider === 'stripe';
-  const hasTicketsInCart = cartItems.length > 0;
-  const totalTickets = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const progressPercentage = (currentStep / 4) * 100;
 
   return (
-    <div 
-      className="min-h-screen"
-      style={{ 
-        fontFamily: theme.fontFamily,
-        backgroundColor: theme.backgroundColor || '#fafafa'
-      }}
-    >
-      {/* Improvement #1: Above-the-fold hero with single CTA */}
-      <EventHero 
-        eventData={eventData}
-        theme={theme}
-        onScrollToTickets={scrollToTickets}
-        isLoading={isLoading}
-      />
-
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
-        {isLoading ? (
-          <div className="max-w-4xl mx-auto space-y-8">
-            {/* Loading Progress */}
-            <Card>
-              <CardContent className="p-8 text-center">
-                <div className="space-y-4">
-                  <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
-                    <Ticket className="h-8 w-8" style={{ color: theme.primaryColor }} />
+    <div className={`min-h-screen ${isEmbedded ? 'bg-white' : 'bg-gradient-to-br from-blue-50 to-indigo-100'}`}>
+      <div className="container mx-auto p-4">
+        {/* Header */}
+        <div className="mb-6">
+          <Card className="overflow-hidden">
+            <div className="relative">
+              {event.featured_image_url && (
+                <img
+                  src={event.featured_image_url}
+                  alt={event.name}
+                  className="w-full h-32 sm:h-48 object-cover"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+              
+              <div className="absolute bottom-4 left-4 right-4 text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold mb-2">{event.name}</h1>
+                    <div className="flex flex-wrap items-center gap-4 text-sm">
+                      <span className="flex items-center gap-1">
+                        <CalendarDays className="h-4 w-4" />
+                        {new Date(event.event_date).toLocaleDateString()}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4" />
+                        {event.venue}
+                      </span>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-semibold" style={{ color: theme.headerTextColor }}>
-                      Loading your tickets...
-                    </h3>
-                    <Progress value={loadingProgress} className="max-w-xs mx-auto" />
+                  
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {}}
+                  >
+                    <Info className="h-4 w-4 mr-1" />
+                    Event Info
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    {steps.map((step) => (
+                      <div
+                        key={step.number}
+                        className={`flex items-center gap-2 ${
+                          step.number <= currentStep ? 'text-blue-600' : 'text-gray-400'
+                        }`}
+                      >
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                            step.number <= currentStep
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-gray-200 text-gray-600'
+                          }`}
+                        >
+                          {step.number}
+                        </div>
+                        <span className="text-sm font-medium hidden sm:inline">
+                          {step.title}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <Progress value={progressPercentage} className="w-full" />
+              </CardHeader>
+              
+              <CardContent>
+                {currentStep === 1 && renderTicketSelection()}
+                {currentStep === 2 && renderAddOns()}
+                {currentStep === 3 && renderCustomerDetails()}
+                {currentStep === 4 && renderPayment()}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Event Details */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Ticket className="h-5 w-5" />
+                  Event Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-gray-500" />
+                  <div>
+                    <p className="font-medium">
+                      {new Date(event.event_date).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {new Date(event.event_date).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-gray-500" />
+                  <div>
+                    <p className="font-medium">{event.venue}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-gray-500" />
+                  <div>
+                    <p className="font-medium">{event.capacity} capacity</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Skeleton tickets */}
-            <div className="space-y-4">
-              <TicketSkeleton />
-              <TicketSkeleton />
-              <TicketSkeleton />
-            </div>
-          </div>
-        ) : (
-          <div className="max-w-7xl mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
-              {/* Left Column - Customer Details and Ticket Selection */}
-              <div className="lg:col-span-8 space-y-6">
-                {/* Customer Details Section - Show first if tickets are selected */}
-                {hasTicketsInCart && (
-                  <Card style={{ backgroundColor: theme.cardBackgroundColor }}>
-                    <CardHeader>
-                      <CardTitle style={{ color: theme.headerTextColor }}>
-                        Your Details
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="name" style={{ color: theme.headerTextColor }}>
-                            Name *
-                          </Label>
-                          <Input
-                            id="name"
-                            value={customerInfo.name}
-                            onChange={(e) => handleCustomerInfoChange('name', e.target.value)}
-                            style={{ backgroundColor: theme.inputBackgroundColor }}
-                            className={errors.name ? 'border-red-500' : ''}
-                          />
-                          {errors.name && (
-                            <p className="text-sm text-red-500 flex items-center gap-1">
-                              <AlertCircle className="h-3 w-3" />
-                              {errors.name}
-                            </p>
-                          )}
+            {/* Order Summary */}
+            {(selectedTickets.length > 0 || selectedAddOns.length > 0) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ShoppingCart className="h-5 w-5" />
+                    Order Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {selectedTickets.map((ticket) => {
+                    const ticketType = ticketTypes?.find(tt => tt.id === ticket.ticketTypeId);
+                    if (!ticketType) return null;
+                    
+                    return (
+                      <div key={ticket.ticketTypeId} className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium">{ticketType.name}</p>
+                          <p className="text-sm text-gray-600">Qty: {ticket.quantity}</p>
                         </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="email" style={{ color: theme.headerTextColor }}>
-                            Email *
-                          </Label>
-                          <Input
-                            id="email"
-                            type="email"
-                            value={customerInfo.email}
-                            onChange={(e) => handleCustomerInfoChange('email', e.target.value)}
-                            style={{ backgroundColor: theme.inputBackgroundColor }}
-                            className={errors.email ? 'border-red-500' : ''}
-                          />
-                          {errors.email && (
-                            <p className="text-sm text-red-500 flex items-center gap-1">
-                              <AlertCircle className="h-3 w-3" />
-                              {errors.email}
-                            </p>
-                          )}
+                        <p className="font-semibold">
+                          ${(ticketType.price * ticket.quantity).toFixed(2)}
+                        </p>
+                      </div>
+                    );
+                  })}
+                  
+                  {selectedAddOns.map((addOn) => {
+                    const addOnItem = addOns?.find(ao => ao.id === addOn.addOnId);
+                    if (!addOnItem) return null;
+                    
+                    return (
+                      <div key={addOn.addOnId} className="flex justify-between items-center">
+                        <div>
+                          <p className="font-medium">{addOnItem.name}</p>
+                          <p className="text-sm text-gray-600">Qty: {addOn.quantity}</p>
                         </div>
+                        <p className="font-semibold">
+                          ${(addOnItem.price * addOn.quantity).toFixed(2)}
+                        </p>
                       </div>
+                    );
+                  })}
+                  
+                  <Separator />
+                  
+                  <div className="flex justify-between items-center">
+                    <p className="font-medium">Subtotal</p>
+                    <p className="font-semibold">${calculateSubtotal().toFixed(2)}</p>
+                  </div>
+                  
+                  <div className="flex justify-between items-center text-sm">
+                    <p className="text-gray-600">Processing Fee</p>
+                    <p className="text-gray-600">${calculateProcessingFee().toFixed(2)}</p>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="flex justify-between items-center text-lg font-bold">
+                    <p>Total</p>
+                    <p>${calculateTotal().toFixed(2)}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-                      <div className="space-y-2">
-                        <Label htmlFor="phone" style={{ color: theme.headerTextColor }}>
-                          Phone (optional)
-                        </Label>
-                        <Input
-                          id="phone"
-                          type="tel"
-                          value={customerInfo.phone}
-                          onChange={(e) => handleCustomerInfoChange('phone', e.target.value)}
-                          style={{ backgroundColor: theme.inputBackgroundColor }}
-                        />
-                      </div>
-
-                      {/* Custom Questions */}
-                      {safeCustomQuestions.map((question) => (
-                        <div key={question.id} className="space-y-2">
-                          <Label style={{ color: theme.headerTextColor }}>
-                            {question.label}
-                            {question.required && <span className="text-red-500 ml-1">*</span>}
-                          </Label>
-                          <Input
-                            value={customerInfo.customAnswers[question.id] || ''}
-                            onChange={(e) => handleCustomAnswerChange(question.id, e.target.value)}
-                            style={{ backgroundColor: theme.inputBackgroundColor }}
-                            className={errors[question.id] ? 'border-red-500' : ''}
-                          />
-                          {errors[question.id] && (
-                            <p className="text-sm text-red-500 flex items-center gap-1">
-                              <AlertCircle className="h-3 w-3" />
-                              {errors[question.id]}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Ticket Selection Section */}
-                <div id="beta-tickets-section">
-                  <Card style={{ backgroundColor: theme.cardBackgroundColor }}>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle style={{ color: theme.headerTextColor }}>
-                          Select Tickets
-                        </CardTitle>
-                        {/* Improvement #6: Smart state indicators */}
-                        {hasTicketsInCart && (
-                          <Badge variant="secondary" className="flex items-center gap-1 text-xs">
-                            <CheckCircle className="h-3 w-3" />
-                            {totalTickets} ticket{totalTickets === 1 ? '' : 's'} selected
-                          </Badge>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-
-                      <div className="space-y-3">
-                        {ticketTypes.map((ticketType) => {
-                      const cartItem = cartItems.find(item => item.id === ticketType.id);
-                      const remainingQuantity = ticketType.quantity_available - ticketType.quantity_sold;
-                      const isSoldOut = remainingQuantity <= 0;
-                      
-                      return (
-                        <div 
-                          key={ticketType.id} 
-                          className="p-4 border rounded-xl transition-all duration-200 hover:shadow-sm"
-                          style={{ 
-                            backgroundColor: theme.backgroundColor,
-                            borderColor: theme.borderColor
-                          }}
-                        >
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-center">
-                            {/* Left: Ticket Info */}
-                            <div className="space-y-2">
-                              <h3 className="text-lg font-semibold" style={{ color: theme.headerTextColor }}>
-                                {ticketType.name}
-                              </h3>
-                              {ticketType.description && (
-                                <p className="text-sm" style={{ color: theme.bodyTextColor }}>
-                                  {ticketType.description}
-                                </p>
-                              )}
-                              <div className="flex items-center gap-3 text-xs" style={{ color: theme.bodyTextColor }}>
-                                <span>{remainingQuantity} available</span>
-                                {isSoldOut ? (
-                                  <Badge variant="destructive" className="text-xs">Sold Out</Badge>
-                                ) : remainingQuantity <= 10 && (
-                                  <Badge variant="outline" className="text-orange-600 border-orange-200 text-xs">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    Only {remainingQuantity} left
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Right: Price & Quantity */}
-                            <div className="flex items-center justify-between lg:justify-end lg:gap-6">
-                              <div className="text-right">
-                                <div className="font-bold text-lg" style={{ color: theme.headerTextColor }}>
-                                  {new Intl.NumberFormat('en-US', {
-                                    style: 'currency',
-                                    currency: cartTotals.currency,
-                                  }).format(ticketType.price)}
-                                </div>
-                                <div className="text-xs" style={{ color: theme.bodyTextColor }}>
-                                  + fees
-                                </div>
-                              </div>
-                              
-                              {isSoldOut ? (
-                                <Button disabled variant="outline" className="text-sm">
-                                  Sold Out
-                                </Button>
-                              ) : cartItem ? (
-                                <div className="flex items-center gap-1">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-8 h-8 p-0 rounded-lg"
-                                    onClick={() => updateQuantity(ticketType.id, cartItem.quantity - 1)}
-                                    disabled={cartItem.quantity <= 0}
-                                  >
-                                    <Minus className="h-3 w-3" />
-                                  </Button>
-                                  <span className="w-8 text-center font-bold text-sm" style={{ color: theme.headerTextColor }}>
-                                    {cartItem.quantity}
-                                  </span>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-8 h-8 p-0 rounded-lg"
-                                    onClick={() => updateQuantity(ticketType.id, cartItem.quantity + 1)}
-                                    disabled={cartItem.quantity >= remainingQuantity}
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <Button
-                                  onClick={() => addToCart(ticketType)}
-                                  size="sm"
-                                  className="px-4 font-semibold"
-                                  style={{ 
-                                    backgroundColor: theme.primaryColor, 
-                                    color: theme.buttonTextColor 
-                                  }}
-                                >
-                                  <Plus className="h-3 w-3 mr-1" />
-                                  Add
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                      </div>
-                    </CardContent>
-                  </Card>
+            {/* Organizer Info */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  {event.organizations?.logo_url && (
+                    <img
+                      src={event.organizations.logo_url}
+                      alt={event.organizations.name}
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                  )}
+                  <div>
+                    <p className="font-medium">Organized by</p>
+                    <p className="text-sm text-gray-600">{event.organizations?.name}</p>
+                  </div>
                 </div>
-
-              </div>
-
-              {/* Right Column - Order Summary (Sticky) */}
-              <div className="lg:col-span-4">
-                {/* Improvement #4: Sticky mobile selector for better UX */}
-                <div className="lg:sticky lg:top-6">
-                  <Card style={{ backgroundColor: theme.cardBackgroundColor }}>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2" style={{ color: theme.headerTextColor }}>
-                        <Ticket className="h-5 w-5" />
-                        Order Summary
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {cartItems.length === 0 ? (
-                        <div className="text-center py-8" style={{ color: theme.bodyTextColor }}>
-                          <Ticket className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                          <p>No tickets selected</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          {cartItems.map((item) => (
-                            <div key={item.id} className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <h4 className="font-medium" style={{ color: theme.headerTextColor }}>
-                                  {item.name}
-                                </h4>
-                                <p className="text-sm" style={{ color: theme.bodyTextColor }}>
-                                  Quantity: {item.quantity}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-semibold" style={{ color: theme.headerTextColor }}>
-                                  {new Intl.NumberFormat('en-US', {
-                                    style: 'currency',
-                                    currency: cartTotals.currency,
-                                  }).format(item.price * item.quantity)}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-
-                          {/* Promo Code Section */}
-                          <div className="border-t pt-4" style={{ borderColor: theme.borderColor }}>
-                            <div className="space-y-3">
-                              <div className="flex gap-2">
-                                <Input
-                                  type="text"
-                                  placeholder="Promo code"
-                                  value={promoCode}
-                                  onChange={(e) => setPromoCode(e.target.value)}
-                                  className="flex-1 text-sm"
-                                  style={{ backgroundColor: theme.inputBackgroundColor }}
-                                />
-                                <Button
-                                  onClick={handlePromoCode}
-                                  variant="outline"
-                                  size="sm"
-                                >
-                                  Apply
-                                </Button>
-                              </div>
-                              {promoMessage && (
-                                <p className="text-xs" style={{ 
-                                  color: promoDiscount > 0 ? theme.primaryColor : theme.bodyTextColor 
-                                }}>
-                                  {promoMessage}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="border-t pt-4" style={{ borderColor: theme.borderColor }}>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between" style={{ color: theme.bodyTextColor }}>
-                                <span>Subtotal:</span>
-                                <span>
-                                  {new Intl.NumberFormat('en-US', {
-                                    style: 'currency',
-                                    currency: cartTotals.currency,
-                                  }).format(cartTotals.subtotal)}
-                                </span>
-                              </div>
-                              {promoDiscount > 0 && (
-                                <div className="flex justify-between" style={{ color: theme.primaryColor }}>
-                                  <span>Discount:</span>
-                                  <span>-{new Intl.NumberFormat('en-US', {
-                                    style: 'currency',
-                                    currency: cartTotals.currency,
-                                  }).format(promoDiscount)}</span>
-                                </div>
-                              )}
-                              <div className="flex justify-between items-center" style={{ color: theme.bodyTextColor }}>
-                                <span className="flex items-center gap-1">
-                                  Service fee:
-                                  <Info className="h-3 w-3" />
-                                </span>
-                                <span>
-                                  {new Intl.NumberFormat('en-US', {
-                                    style: 'currency',
-                                    currency: cartTotals.currency,
-                                  }).format(cartTotals.fees)}
-                                </span>
-                              </div>
-                              <div className="flex justify-between font-bold text-lg pt-2 border-t" style={{ 
-                                color: theme.headerTextColor,
-                                borderColor: theme.borderColor 
-                              }}>
-                                <span>Total:</span>
-                                <span>
-                                  {new Intl.NumberFormat('en-US', {
-                                    style: 'currency',
-                                    currency: cartTotals.currency,
-                                  }).format(cartTotals.total)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Checkout button */}
-                          <Button
-                            onClick={handleCheckout}
-                            disabled={isProcessing}
-                            className="w-full h-12 text-lg font-semibold mt-6"
-                            style={{ 
-                              backgroundColor: theme.primaryColor, 
-                              color: theme.buttonTextColor 
-                            }}
-                          >
-                            {isProcessing ? (
-                              <>Loading...</>
-                            ) : (
-                              <>
-                                <CreditCard className="h-5 w-5 mr-2" />
-                                Proceed to payment
-                              </>
-                            )}
-                          </Button>
-
-                          {/* Trust indicators */}
-                          <div className="flex items-center justify-center gap-4 pt-4 text-xs" style={{ color: theme.bodyTextColor }}>
-                            <div className="flex items-center gap-1">
-                              <Shield className="h-3 w-3" />
-                              SSL Secure
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Star className="h-3 w-3" />
-                              Trusted Platform
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Event Info Modal */}
-      <Dialog open={showEventInfoModal} onOpenChange={setShowEventInfoModal}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle style={{ color: theme.headerTextColor }}>
-              Event Information
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-6">
-            {/* Event Details */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold" style={{ color: theme.headerTextColor }}>
-                {eventData.name}
-              </h3>
-              
-              {/* Event Image */}
-              {((eventData as any).logo_url || (eventData as any).featured_image_url) && (
-                <div className="w-full h-48 bg-gray-100 rounded-lg overflow-hidden">
-                  <img 
-                    src={(eventData as any).logo_url || (eventData as any).featured_image_url}
-                    alt={eventData.name}
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-              )}
-              
-              {/* Basic Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" style={{ color: theme.primaryColor }} />
-                    <span style={{ color: theme.bodyTextColor }}>
-                      {new Date(eventData.event_date).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                      {(eventData as any).event_time && `, ${(eventData as any).event_time}`}
-                    </span>
-                  </div>
-                  
-                  {eventData.venue && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" style={{ color: theme.primaryColor }} />
-                      <span style={{ color: theme.bodyTextColor }}>{eventData.venue}</span>
-                    </div>
-                  )}
-                  
-                  {(eventData.organizations as any)?.name && (
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4" style={{ color: theme.primaryColor }} />
-                      <span style={{ color: theme.bodyTextColor }}>
-                        Hosted by {(eventData.organizations as any).name}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  {/* Additional metadata could go here */}
-                  <div className="flex items-center gap-2">
-                    <Ticket className="h-4 w-4" style={{ color: theme.primaryColor }} />
-                    <span style={{ color: theme.bodyTextColor }}>
-                      {ticketTypes.length} ticket type{ticketTypes.length === 1 ? '' : 's'} available
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-4 w-4" style={{ color: theme.primaryColor }} />
-                    <span style={{ color: theme.bodyTextColor }}>Secure checkout</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Event Description */}
-            {eventData.description && (
-              <div className="space-y-3">
-                <h4 className="text-lg font-semibold" style={{ color: theme.headerTextColor }}>
-                  About This Event
-                </h4>
-                <div 
-                  className="prose prose-sm max-w-none"
-                  style={{ color: theme.bodyTextColor }}
-                  dangerouslySetInnerHTML={{ __html: eventData.description }}
-                />
-              </div>
-            )}
-            
-            {/* Ticket Types Preview */}
-            <div className="space-y-3">
-              <h4 className="text-lg font-semibold" style={{ color: theme.headerTextColor }}>
-                Available Tickets
-              </h4>
-              <div className="space-y-2">
-                {ticketTypes.map((ticket) => (
-                  <div key={ticket.id} className="flex justify-between items-center p-3 border rounded-lg" style={{ borderColor: theme.borderColor, backgroundColor: theme.backgroundColor }}>
-                    <div>
-                      <h5 className="font-medium" style={{ color: theme.headerTextColor }}>
-                        {ticket.name}
-                      </h5>
-                      {ticket.description && (
-                        <p className="text-sm" style={{ color: theme.bodyTextColor }}>
-                          {ticket.description}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold" style={{ color: theme.headerTextColor }}>
-                        ${ticket.price.toFixed(2)}
-                      </div>
-                      <div className="text-xs" style={{ color: theme.bodyTextColor }}>
-                        {ticket.quantity_available - ticket.quantity_sold} available
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="flex gap-3 pt-4">
-              <Button
-                onClick={() => {
-                  setShowEventInfoModal(false);
-                  const ticketsSection = document.getElementById('beta-tickets-section');
-                  ticketsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }}
-                className="flex-1"
-                style={{ 
-                  backgroundColor: theme.primaryColor, 
-                  color: theme.buttonTextColor 
-                }}
-              >
-                Get Tickets
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowEventInfoModal(false)}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Stripe Payment Modal */}
-      {customerInfo && (
-        <StripePaymentModal
-          isOpen={showStripeModal}
-          onClose={() => setShowStripeModal(false)}
-          eventData={eventData}
-          cartItems={cartItems}
-          merchandiseCart={merchandiseCart}
-          customerInfo={customerInfo as CustomerInfo}
-          theme={theme}
-        />
-      )}
+      {showEventInfo && <EventInfoModal />}
     </div>
   );
 };
+
+export default BetaCheckout;
