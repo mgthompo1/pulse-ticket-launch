@@ -25,11 +25,13 @@ export class DatabaseService {
         .select(`
           *,
           events!inner(
+            id,
             name,
             event_date,
             venue,
             description,
             logo_url,
+            ticket_delivery_method,
             email_customization,
             organizations!inner(
               id,

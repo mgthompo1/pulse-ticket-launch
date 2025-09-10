@@ -24,6 +24,7 @@ import {
   CustomQuestion
 } from "@/types/widget";
 import { MultiStepCheckout } from "@/components/checkout/MultiStepCheckout";
+import { BetaCheckout } from "@/components/checkout/BetaCheckout";
 import { SEOHead } from "@/components/SEOHead";
 
 // Extend the global Window interface to include WindcavePayments
@@ -309,7 +310,7 @@ const TicketWidget = () => {
   const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
   const [customErrors, setCustomErrors] = useState<Record<string, string>>({});
   // State for checkout mode
-  const [checkoutMode, setCheckoutMode] = useState<'onepage' | 'multistep'>('onepage');
+  const [checkoutMode, setCheckoutMode] = useState<'onepage' | 'multistep' | 'beta'>('onepage');
 
   const loadEventData = useCallback(async () => {
     try {
@@ -454,7 +455,7 @@ const TicketWidget = () => {
     console.log("Current checkoutMode state:", checkoutMode);
     
     if (eventData?.widget_customization?.checkoutMode) {
-      const newMode = eventData.widget_customization.checkoutMode as 'onepage' | 'multistep';
+      const newMode = eventData.widget_customization.checkoutMode as 'onepage' | 'multistep' | 'beta';
       console.log("🔄 Setting checkout mode to:", newMode);
       console.log("Previous checkout mode was:", checkoutMode);
       
@@ -1227,13 +1228,14 @@ const TicketWidget = () => {
   };
 
   // Optimize checkout mode decision with useMemo
-  const shouldRenderMultiStep = useMemo(() => {
+  const checkoutModeDecision = useMemo(() => {
     // Check both local state and event data for checkout mode
     const localCheckoutMode = checkoutMode;
     const dataCheckoutMode = eventData?.widget_customization?.checkoutMode;
     const effectiveCheckoutMode = dataCheckoutMode || localCheckoutMode;
     
     const isMultiStep = effectiveCheckoutMode === 'multistep' && eventData;
+    const isBeta = effectiveCheckoutMode === 'beta' && eventData;
     
     // Debug logging
     console.log("=== CHECKOUT MODE DECISION DEBUG ===");
@@ -1243,16 +1245,22 @@ const TicketWidget = () => {
     console.log("eventData exists:", !!eventData);
     console.log("widget_customization:", eventData?.widget_customization);
     console.log("isMultiStep:", isMultiStep);
+    console.log("isBeta:", isBeta);
     
     // Only log once when the decision changes
     if (isMultiStep) {
       console.log("✅ Rendering MultiStepCheckout component");
+    } else if (isBeta) {
+      console.log("✅ Rendering BetaCheckout component");
     } else {
       console.log("❌ Rendering single-page checkout");
     }
     
-    return isMultiStep;
+    return { isMultiStep, isBeta, effectiveCheckoutMode };
   }, [checkoutMode, eventData?.widget_customization?.checkoutMode, eventData]);
+
+  // Legacy support for shouldRenderMultiStep
+  const shouldRenderMultiStep = checkoutModeDecision.isMultiStep;
 
   // Render multi-step checkout if enabled
   if (shouldRenderMultiStep && eventData) {
@@ -1293,6 +1301,53 @@ const TicketWidget = () => {
           structuredData={eventStructuredData}
         />
         <MultiStepCheckout
+          eventData={eventData!}
+          ticketTypes={ticketTypes}
+          customQuestions={customQuestions}
+        />
+      </>
+    );
+  }
+
+  // Render beta checkout if enabled
+  if (checkoutModeDecision.isBeta && eventData) {
+    // Create structured data for the event
+    const eventStructuredData = {
+      "@context": "https://schema.org",
+      "@type": "Event",
+      "name": eventData.name,
+      "description": eventData.description ? eventData.description.replace(/<[^>]*>/g, '') : `Get tickets for ${eventData.name}`,
+      "image": (eventData as any).logo_url || "https://www.ticketflo.org/og-image.jpg",
+      "startDate": eventData.event_date,
+      "location": eventData.venue ? {
+        "@type": "Place",
+        "name": eventData.venue
+      } : undefined,
+      "organizer": {
+        "@type": "Organization",
+        "name": (eventData.organizations as any)?.name || "Event Organizer"
+      },
+      "offers": ticketTypes.map(ticket => ({
+        "@type": "Offer",
+        "name": ticket.name,
+        "price": ticket.price,
+        "priceCurrency": eventData.organizations?.currency || "USD",
+        "availability": "https://schema.org/InStock",
+        "url": `https://www.ticketflo.org/widget/${eventId}`
+      }))
+    };
+
+    return (
+      <>
+        <SEOHead
+          title={`${eventData.name} - Get Tickets | TicketFlo`}
+          description={eventData.description ? eventData.description.replace(/<[^>]*>/g, '').substring(0, 155) + '...' : `Get tickets for ${eventData.name}. Secure online ticket purchasing with TicketFlo.`}
+          ogTitle={eventData.name}
+          ogDescription={eventData.description ? eventData.description.replace(/<[^>]*>/g, '').substring(0, 155) + '...' : `Get tickets for ${eventData.name}`}
+          ogImage={(eventData as any).logo_url || "https://www.ticketflo.org/og-image.jpg"}
+          structuredData={eventStructuredData}
+        />
+        <BetaCheckout
           eventData={eventData!}
           ticketTypes={ticketTypes}
           customQuestions={customQuestions}

@@ -12,11 +12,13 @@ export interface Order {
 }
 
 export interface Event {
+  id: string;
   name: string;
   event_date: string;
   venue: string;
   description?: string;
   logo_url?: string;
+  ticket_delivery_method?: string;
   email_customization?: EmailCustomization;
   organizations: Organization;
 }

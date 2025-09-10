@@ -84,7 +84,8 @@ export const CONFIG = {
     calendar: '📅\uFE0E', // Calendar (text variant)
     mapPin: '⌖',         // Position indicator (monochrome)
     user: '👤\uFE0E',    // Bust in silhouette (text variant)
-    ticket: '🎟\uFE0E'   // Admission tickets (text variant)
+    ticket: '🎟\uFE0E',  // Admission tickets (text variant)
+    card: '💳\uFE0E'     // Credit card (text variant)
   },
   
   // PDF generation settings

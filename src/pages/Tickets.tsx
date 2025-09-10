@@ -51,6 +51,7 @@ const Tickets: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [tickets, setTickets] = useState<TicketData[]>([]);
+  const [orderData, setOrderData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,16 +71,40 @@ const Tickets: React.FC = () => {
     try {
       setLoading(true);
       
-      // First verify the email matches the order
+      // First verify the email matches the order and get event delivery method
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
-        .select('id, customer_email')
+        .select(`
+          id, 
+          customer_email, 
+          customer_name,
+          total_amount,
+          events!inner(
+            id,
+            name,
+            ticket_delivery_method,
+            event_date,
+            venue,
+            organizations(name, logo_url)
+          )
+        `)
         .eq('id', orderId)
         .eq('customer_email', email)
         .single();
 
       if (orderError || !orderData) {
         setError('Order not found or email does not match');
+        return;
+      }
+
+      // Store order data for UI rendering
+      setOrderData(orderData);
+
+      // Check if this is a confirmation-only event (no actual tickets)
+      if (orderData.events?.ticket_delivery_method === 'confirmation_email') {
+        // For confirmation events, we don't have tickets but we can show order confirmation
+        setTickets([]);
+        setError(null);
         return;
       }
 
@@ -277,6 +302,94 @@ const Tickets: React.FC = () => {
   }
 
   if (tickets.length === 0) {
+    // For confirmation-only events, show registration confirmation instead of "no tickets"
+    if (orderData?.events?.ticket_delivery_method === 'confirmation_email') {
+      const eventData = orderData.events;
+      const organizationData = eventData?.organizations;
+      
+      return (
+        <div className="min-h-screen bg-gray-50 py-12">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto">
+              {/* Header */}
+              <div className="text-center mb-8">
+                {organizationData?.logo_url && (
+                  <img 
+                    src={organizationData.logo_url} 
+                    alt={organizationData.name}
+                    className="h-16 mx-auto mb-4"
+                  />
+                )}
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Registration Confirmed</h1>
+                <p className="text-gray-600">Your registration has been successfully confirmed</p>
+              </div>
+
+              {/* Event Details */}
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    Event Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-gray-500" />
+                      <div>
+                        <p className="font-medium">{eventData?.name}</p>
+                        <p className="text-sm text-gray-600">
+                          {new Date(eventData?.event_date).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                    {eventData?.venue && (
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-gray-500" />
+                        <div>
+                          <p className="font-medium">Venue</p>
+                          <p className="text-sm text-gray-600">{eventData.venue}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Order Summary */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Registration Summary</CardTitle>
+                  <CardDescription>Thank you for registering for this event</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span>Customer:</span>
+                      <span className="font-medium">{orderData.customer_name || orderData.customer_email}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Order ID:</span>
+                      <span className="font-medium font-mono text-sm">{orderData.id}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold pt-2 border-t">
+                      <span>Total:</span>
+                      <span>${orderData.total_amount?.toFixed(2) || '0.00'}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-gray-50 py-12">
         <div className="container mx-auto px-4">

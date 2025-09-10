@@ -120,7 +120,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     payment: {
       successUrl: ""
     },
-    checkoutMode: "onepage" as 'onepage' | 'multistep'
+    checkoutMode: "onepage" as 'onepage' | 'multistep' | 'beta'
   });
 
   // Ticket customization state
@@ -2390,7 +2390,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   </div>
                   <Select
                     value={(eventData?.widget_customization as any)?.checkoutMode || 'onepage'}
-                    onValueChange={async (value: 'onepage' | 'multistep') => {
+                    onValueChange={async (value: 'onepage' | 'multistep' | 'beta') => {
                       try {
                         const currentCustomization = (eventData?.widget_customization as any) || {};
                         console.log("Saving checkout mode:", value);
@@ -2474,10 +2474,13 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     <SelectContent>
                       <SelectItem value="onepage">One Page Checkout</SelectItem>
                       <SelectItem value="multistep">Multi-Step Checkout</SelectItem>
+                      <SelectItem value="beta">Beta Checkout (New UX)</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Multi-step includes: ticket selection → add-ons → customer details → payment with order summary sidebar
+                    • One Page: Traditional single-page layout<br/>
+                    • Multi-Step: Progressive flow with sidebar<br/>
+                    • Beta: New UX with mobile optimization, progressive loading, price transparency, and accessibility improvements
                   </p>
                 </div>
               </div>

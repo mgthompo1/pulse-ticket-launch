@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,6 +32,8 @@ const blockLabel: Record<EmailBlockType, string> = {
   text: "Text",
   event_details: "Event Details",
   ticket_list: "Ticket List",
+  registration_details: "Registration Details",
+  payment_summary: "Payment Summary",
   button: "Button",
   divider: "Divider",
   image: "Image",
@@ -88,6 +89,10 @@ export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({
         ? { ...(base as EventDetailsBlock), showDate: true, showTime: true, showVenue: true, showCustomer: true }
         : type === "ticket_list"
         ? { ...(base as TicketListBlock), showCode: true, showPrice: true }
+        : type === "registration_details"
+        ? { ...(base as any), showTotal: true, showQuantity: true }
+        : type === "payment_summary"
+        ? { ...(base as any), showPaymentMethod: true, showLast4: true, showTotal: true }
         : type === "button"
         ? { ...(base as ButtonBlock), label: "View Tickets", url: "/tickets?orderId={{ORDER_ID}}&email={{CUSTOMER_EMAIL}}", align: "center" }
         : type === "divider"

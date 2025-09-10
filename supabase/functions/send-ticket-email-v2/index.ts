@@ -54,10 +54,14 @@ class EmailService {
       credentials?.stripe_secret_key || null
     );
 
-    // Determine delivery method
-    const customAnswers = order.custom_answers as any;
-    const deliveryMethod = customAnswers?.deliveryMethod || 'qr_ticket';
-    logStep("Processing delivery method", { deliveryMethod });
+    // Determine delivery method from event setting (not custom answers)
+    // The event's ticket_delivery_method determines whether to generate actual tickets or send confirmation only
+    const deliveryMethod = order.events.ticket_delivery_method || 'qr_ticket';
+    logStep("Processing delivery method", { 
+      deliveryMethod, 
+      source: "event.ticket_delivery_method",
+      eventId: order.events.id 
+    });
 
     // Handle ticket generation
     const tickets = await this.handleTicketGeneration(order, deliveryMethod);
@@ -73,7 +77,8 @@ class EmailService {
       order,
       tickets,
       deliveryMethod,
-      qrUrls
+      qrUrls,
+      paymentInfo
     );
 
     // Generate PDF attachment if needed
@@ -97,7 +102,7 @@ class EmailService {
 
   // Handle ticket generation logic
   private async handleTicketGeneration(order: Order, deliveryMethod: string): Promise<Ticket[]> {
-    if (deliveryMethod !== 'qr_ticket') {
+    if (deliveryMethod === 'confirmation_email') {
       logStep("Skipping ticket generation for confirmation email");
       return [];
     }

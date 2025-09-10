@@ -85,11 +85,9 @@ export const PasskeyManager = () => {
 
     setDeletingPasskeyId(passkeyId);
     try {
-      // Delete directly from the table using RLS policies
+      // Delete using the RPC function we created in the database
       const { error } = await supabase
-        .from('user_credentials')
-        .delete()
-        .eq('id', passkeyId);
+        .rpc('webauthn_delete_credential', { p_credential_id: passkeyId });
 
       if (error) {
         console.error('Error deleting passkey:', error);

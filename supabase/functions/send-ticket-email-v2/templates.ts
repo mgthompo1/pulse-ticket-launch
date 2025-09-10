@@ -47,7 +47,8 @@ export class TemplateService {
     order: Order,
     tickets: Ticket[],
     deliveryMethod: string,
-    qrUrls: Record<string, string>
+    qrUrls: Record<string, string>,
+    paymentInfo?: any
   ): { to: string; subject: string; html: string } {
     const emailCustomization = order.events.email_customization;
     
@@ -56,12 +57,12 @@ export class TemplateService {
       ? emailCustomization.blocks
       : CONFIG.DEFAULT_EMAIL_BLOCKS;
 
-    const html = this.renderBlocks(blocks, order, tickets, deliveryMethod, qrUrls, emailCustomization);
+    const html = this.renderBlocks(blocks, order, tickets, deliveryMethod, qrUrls, emailCustomization, paymentInfo);
     
     // Generate subject line
-    const subject = deliveryMethod === 'qr_ticket' 
-      ? `Your tickets for ${order.events.name}` 
-      : `Order confirmation for ${order.events.name}`;
+    const subject = deliveryMethod === 'confirmation_email' 
+      ? `Registration confirmation for ${order.events.name}` 
+      : `Your tickets for ${order.events.name}`;
 
     return {
       to: order.customer_email,
@@ -77,7 +78,8 @@ export class TemplateService {
     tickets: Ticket[],
     deliveryMethod: string,
     qrUrls: Record<string, string>,
-    emailCustomization?: EmailCustomization
+    emailCustomization?: EmailCustomization,
+    paymentInfo?: any
   ): string {
     const theme = this.getThemeStyles(
       emailCustomization?.template?.theme || 'professional',
@@ -108,7 +110,7 @@ export class TemplateService {
     // Render blocks
     for (const block of blocks) {
       if (block.hidden) continue;
-      parts.push(this.renderBlock(block, order, tickets, deliveryMethod, qrUrls, theme));
+      parts.push(this.renderBlock(block, order, tickets, deliveryMethod, qrUrls, theme, paymentInfo));
     }
     
     // Footer logo
@@ -129,7 +131,8 @@ export class TemplateService {
     tickets: Ticket[],
     deliveryMethod: string,
     qrUrls: Record<string, string>,
-    theme: ThemeStyles
+    theme: ThemeStyles,
+    paymentInfo?: any
   ): string {
     switch (block.type) {
       case 'header':
@@ -148,9 +151,12 @@ export class TemplateService {
         return this.renderEventDetails(order, theme);
 
       case 'ticket_list':
-        return deliveryMethod === 'qr_ticket' 
-          ? this.renderTicketList(tickets, qrUrls, theme)
-          : this.renderOrderSummary(order, theme);
+        return deliveryMethod === 'confirmation_email' 
+          ? this.renderOrderSummary(order, theme)
+          : this.renderTicketList(tickets, qrUrls, theme);
+
+      case 'payment_summary':
+        return this.renderPaymentSummary(order, paymentInfo, theme);
 
       case 'button':
         return this.renderButton(block, theme);
@@ -270,6 +276,33 @@ export class TemplateService {
       // Skip invalid URLs
       return '';
     }
+  }
+
+  // Render payment summary block
+  private renderPaymentSummary(order: Order, paymentInfo: any, theme: ThemeStyles): string {
+    if (!paymentInfo || !paymentInfo.last4) {
+      return '';
+    }
+
+    return `<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px;">
+      <strong style="color:${theme.textColor}">Payment Summary</strong>
+      <div style="color:${theme.textColor};font-size:14px;line-height:1.6;margin-top:16px;">
+        <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.backgroundColor};border-radius:8px;">
+          <span style="color:${theme.textColor};margin-right:12px;">${CONFIG.ICONS.card}</span>
+          <div>
+            <div style="font-weight:600;color:${theme.headerColor};">Payment Method</div>
+            <div style="color:${theme.textColor};margin-top:4px;">${sanitizeHtml(paymentInfo.brand)} ending in ${sanitizeHtml(paymentInfo.last4)}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.backgroundColor};border-radius:8px;">
+          <span style="color:${theme.textColor};margin-right:12px;">💰</span>
+          <div>
+            <div style="font-weight:600;color:${theme.headerColor};">Total Paid</div>
+            <div style="color:${theme.textColor};margin-top:4px;">$${order.total_amount.toFixed(2)}</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
   }
 
   // Get logo URL based on branding configuration

@@ -6,6 +6,7 @@ export type EmailBlockType =
   | "event_details"
   | "ticket_list"
   | "registration_details"
+  | "payment_summary"
   | "button"
   | "divider"
   | "image"
@@ -51,6 +52,13 @@ export interface RegistrationDetailsBlock extends EmailBlockBase {
   showQuantity?: boolean;
 }
 
+export interface PaymentSummaryBlock extends EmailBlockBase {
+  type: "payment_summary";
+  showPaymentMethod?: boolean;
+  showLast4?: boolean;
+  showTotal?: boolean;
+}
+
 export interface ButtonBlock extends EmailBlockBase {
   type: "button";
   label: string;
@@ -82,6 +90,7 @@ export type EmailBlock =
   | EventDetailsBlock
   | TicketListBlock
   | RegistrationDetailsBlock
+  | PaymentSummaryBlock
   | ButtonBlock
   | DividerBlock
   | ImageBlock
