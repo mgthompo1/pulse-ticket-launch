@@ -19,9 +19,12 @@ const testSuites: TestSuite[] = [
   // Unit Tests
   { name: "Email Template System", path: "./unit/email-template.test.ts", category: "unit" },
   { name: "Wallet Pass Generation", path: "./unit/wallet-generation.test.ts", category: "unit" },
+  { name: "Payment Processing", path: "./unit/payment-processing.test.ts", category: "unit" },
+  { name: "Stripe Connect", path: "./unit/stripe-connect.test.ts", category: "unit" },
 
   // Integration Tests
   { name: "Organizer Notifications", path: "./integration/organizer-notifications.test.ts", category: "integration" },
+  { name: "Payment Workflows", path: "./integration/payment-workflows.test.ts", category: "integration" },
 
   // E2E Tests (to be added)
   // { name: "Complete Purchase Flow", path: "./e2e/purchase-flow.test.ts", category: "e2e" },
