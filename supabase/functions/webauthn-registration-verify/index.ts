@@ -126,12 +126,14 @@ serve(async (req) => {
       .from("user_credentials")
       .insert({
         user_id: user.id,
-        credential_id: registrationInfo.credentialID,
-        credential_public_key: registrationInfo.credentialPublicKey,
-        credential_counter: registrationInfo.counter,
-        credential_device_type: registrationInfo.credentialDeviceType,
-        credential_backed_up: registrationInfo.credentialBackedUp,
-        credential_transports: credential.response.transports || [],
+        credential_id: Array.from(registrationInfo.credentialID),
+        credential_public_key: Array.from(registrationInfo.credentialPublicKey),
+        credential_counter: Number(registrationInfo.counter) || 0,
+        credential_device_type: registrationInfo.credentialDeviceType || 'unknown',
+        credential_backed_up: Boolean(registrationInfo.credentialBackedUp),
+        credential_transports: Array.isArray(credential.response.transports)
+          ? credential.response.transports
+          : [],
         credential_name: credentialName || "My Passkey",
         last_used: new Date().toISOString()
       });

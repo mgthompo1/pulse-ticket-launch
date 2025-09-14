@@ -50,14 +50,14 @@ serve(async (req) => {
           .eq('id', orderId)
           .single();
 
-        if (orderData?.events?.organization_id) {
+        if ((orderData as any)?.events?.organization_id) {
           // Get payment credentials
           const { data: credentials } = await supabaseClient
-            .rpc('get_payment_credentials_for_processing', { 
-              p_organization_id: orderData.events.organization_id 
+            .rpc('get_payment_credentials_for_processing', {
+              p_organization_id: (orderData as any).events.organization_id
             });
 
-          if (credentials?.[0]?.stripe_secret_key) {
+          if (Array.isArray(credentials) && credentials[0]?.stripe_secret_key) {
             const stripe = new Stripe.default(credentials[0].stripe_secret_key, {
               apiVersion: "2023-10-16",
             });
@@ -164,7 +164,7 @@ serve(async (req) => {
       throw new Error("Failed to get event information");
     }
 
-    const ticketDeliveryMethod = orderWithEvent.events.ticket_delivery_method || 'qr_ticket';
+    const ticketDeliveryMethod = (orderWithEvent.events as any).ticket_delivery_method || 'qr_ticket';
     console.log("Event ticket delivery method:", ticketDeliveryMethod);
 
     // Get order items
@@ -285,7 +285,7 @@ serve(async (req) => {
           .eq("id", order.event_id)
           .single();
         
-        if (eventWithCustomization?.email_customization?.notifications?.organiserNotifications) {
+        if ((eventWithCustomization as any)?.email_customization?.notifications?.organiserNotifications) {
           console.log("Organizer notifications enabled, sending notification...");
           
           // Get order data for notification
@@ -361,7 +361,7 @@ serve(async (req) => {
           .eq("connection_status", "connected")
           .single();
 
-        if (xeroConnection?.sync_settings?.auto_create_invoices) {
+        if ((xeroConnection as any)?.sync_settings?.auto_create_invoices) {
           console.log("Creating Xero invoice automatically...");
           await supabaseClient.functions.invoke('xero-sync', {
             body: {

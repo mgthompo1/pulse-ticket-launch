@@ -128,7 +128,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
             .select("*")
             .eq("order_id", orderId);
 
-          if (orderItems && orderItems.length > 0) {
+          if (Array.isArray(orderItems) && orderItems.length > 0) {
             const tickets = [];
             // Only generate tickets for ticket items, not merchandise
             const ticketItems = orderItems.filter(item => item.item_type === 'ticket');
@@ -198,7 +198,7 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent,
       return;
     }
 
-    if (orders && orders.length > 0) {
+    if (Array.isArray(orders) && orders.length > 0) {
       const order = orders[0];
       
       // Update order status
@@ -254,7 +254,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice, supabaseCl
       return;
     }
 
-    if (invoices && invoices.length > 0) {
+    if (Array.isArray(invoices) && invoices.length > 0) {
       const dbInvoice = invoices[0];
       
       // Update invoice status

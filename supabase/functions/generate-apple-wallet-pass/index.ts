@@ -153,10 +153,11 @@ serve(async (req) => {
       );
     }
 
-    const order = Array.isArray(ticket.order_items?.orders) ? ticket.order_items.orders[0] : ticket.order_items?.orders;
-    const event = Array.isArray(order?.events) ? order.events[0] : order?.events;
-    const ticketType = Array.isArray(ticket.order_items?.ticket_types) ? ticket.order_items.ticket_types[0] : ticket.order_items?.ticket_types;
-    const organization = Array.isArray(event?.organizations) ? event.organizations[0] : event?.organizations;
+    // Type assertion for Supabase joined data
+    const order = (ticket.order_items as any)?.orders;
+    const event = (order as any)?.events;
+    const ticketType = (ticket.order_items as any)?.ticket_types;
+    const organization = (event as any)?.organizations;
 
     if (!event || !order) {
       return new Response(

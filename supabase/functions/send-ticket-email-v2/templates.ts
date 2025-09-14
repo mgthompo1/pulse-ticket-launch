@@ -307,6 +307,61 @@ export class TemplateService {
     </div>`;
   }
 
+  // Render configurable ticket list with QR codes
+  private renderTicketListConfigurable(
+    tickets: Ticket[],
+    qrUrls: Record<string, string>,
+    theme: ThemeStyles,
+    config: {
+      showQRCodes: boolean;
+      showWalletButton: boolean;
+      customTitle: string;
+    }
+  ): string {
+    if (tickets.length === 0) return '';
+
+    const ticketHtml = tickets.map((ticket, index) => {
+      const qrUrl = qrUrls[ticket.code];
+      const qrImg = config.showQRCodes && qrUrl
+        ? `<img src="${qrUrl}" alt="QR Code" style="width:100px;height:100px;border:1px solid ${theme.borderColor};border-radius:4px;"/>`
+        : '';
+
+      // Generate wallet pass URL (placeholder for now - will be implemented)
+      const walletUrl = `${CONFIG.DOMAIN}/api/wallet/generate?ticketCode=${encodeURIComponent(ticket.code)}`;
+
+      return `
+        <table style="width:100%;border:1px solid ${theme.borderColor};border-radius:8px;margin:8px 0;background:${theme.backgroundColor};border-collapse:separate;border-spacing:0;">
+          <tr>
+            <td style="padding:16px;vertical-align:top;">
+              <table style="width:100%;border-collapse:collapse;">
+                <tr>
+                  <td style="vertical-align:top;width:60%;">
+                    <div style="font-weight:600;color:${theme.headerColor};margin-bottom:8px;font-family:'Manrope', sans-serif;">${sanitizeHtml(ticket.type)}</div>
+                    <div style="color:${theme.textColor};font-size:14px;margin-bottom:8px;">Ticket #${index + 1}</div>
+                    <div style="color:${theme.textColor};font-size:12px;font-family:monospace;background:${theme.accentColor};padding:8px;border-radius:4px;word-break:break-all;margin-bottom:12px;">
+                      ${sanitizeHtml(ticket.code)}
+                    </div>
+                    ${config.showWalletButton ? `<div style="margin-top:12px;">
+                      <a href="${walletUrl}" style="display:inline-block;background:#007AFF;color:#ffffff;padding:8px 16px;text-decoration:none;border-radius:6px;font-size:12px;font-weight:600;margin-right:8px;">📱 Add to Wallet</a>
+                    </div>` : ''}
+                  </td>
+                  ${qrImg ? `<td style="vertical-align:top;text-align:center;width:40%;padding-left:16px;">
+                    <div>${qrImg}</div>
+                    <div style="color:${theme.textColor};font-size:11px;margin-top:8px;">Scan at event</div>
+                  </td>` : '<td style="width:40%;"></td>'}
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>`;
+    }).join('');
+
+    return `<div class="email-content mobile-padding" style="margin:16px 20px;">
+      ${config.customTitle ? `<h3 style="color:${theme.headerColor};margin-bottom:16px;font-family:'Manrope', sans-serif;">${sanitizeHtml(config.customTitle)}</h3>` : ''}
+      ${ticketHtml}
+    </div>`;
+  }
+
   // Render ticket list with QR codes
   private renderTicketList(tickets: Ticket[], qrUrls: Record<string, string>, theme: ThemeStyles): string {
     if (tickets.length === 0) return '';
@@ -807,9 +862,9 @@ export class TemplateService {
       '@TotalAmount': `$${order.total_amount.toFixed(2)}`,
       '@TicketCount': order.order_items.filter(item => item.item_type === 'ticket').reduce((sum, item) => sum + item.quantity, 0).toString(),
       '@OrganizerName': order.events.organizations?.name || '',
-      '@ContactEmail': order.events.organizations?.contact_email || order.events.contact_email || '',
-      '@EventDescription': order.events.description || '',
-      '@SpecialInstructions': order.events.special_instructions || ''
+      '@ContactEmail': (order.events.organizations as any)?.contact_email || (order.events as any)?.contact_email || '',
+      '@EventDescription': (order.events as any)?.description || '',
+      '@SpecialInstructions': (order.events as any)?.special_instructions || ''
     };
 
     let result = text;

@@ -131,7 +131,8 @@ export class PdfGenerator {
 
   private drawBackground(pdf: jsPDF, pageWidth: number, pageHeight: number): void {
     // Subtle gradient background
-    pdf.setFillColor(...this.config.COLORS.BACKGROUND);
+    const bgColor = this.config.COLORS.BACKGROUND as [number, number, number];
+    pdf.setFillColor(...bgColor);
     pdf.rect(0, 0, pageWidth, pageHeight, 'F');
   }
 
@@ -148,16 +149,18 @@ export class PdfGenerator {
     const ticketY = margin;
 
     // Main ticket background
-    pdf.setFillColor(...this.config.COLORS.WHITE);
-    pdf.roundedRect(ticketX, ticketY, ticketWidth, ticketHeight, 
-      this.config.LAYOUT.TICKET.BORDER_RADIUS, 
+    const whiteColor = this.config.COLORS.WHITE as [number, number, number];
+    pdf.setFillColor(...whiteColor);
+    pdf.roundedRect(ticketX, ticketY, ticketWidth, ticketHeight,
+      this.config.LAYOUT.TICKET.BORDER_RADIUS,
       this.config.LAYOUT.TICKET.BORDER_RADIUS, 'F');
 
     // Elegant border
-    pdf.setDrawColor(...this.config.COLORS.BORDER);
+    const borderColor = this.config.COLORS.BORDER as [number, number, number];
+    pdf.setDrawColor(...borderColor);
     pdf.setLineWidth(2);
-    pdf.roundedRect(ticketX, ticketY, ticketWidth, ticketHeight, 
-      this.config.LAYOUT.TICKET.BORDER_RADIUS, 
+    pdf.roundedRect(ticketX, ticketY, ticketWidth, ticketHeight,
+      this.config.LAYOUT.TICKET.BORDER_RADIUS,
       this.config.LAYOUT.TICKET.BORDER_RADIUS, 'S');
 
     return { x: ticketX, y: ticketY, width: ticketWidth, height: ticketHeight };
@@ -173,13 +176,14 @@ export class PdfGenerator {
     const padding = this.config.LAYOUT.TICKET.CONTENT_PADDING;
     
     // Header background
-    pdf.setFillColor(...this.config.COLORS.SECONDARY);
-    pdf.roundedRect(bounds.x, bounds.y, bounds.width, headerHeight, 
-      this.config.LAYOUT.TICKET.BORDER_RADIUS, 
+    const secondaryColor = this.config.COLORS.SECONDARY as [number, number, number];
+    pdf.setFillColor(...secondaryColor);
+    pdf.roundedRect(bounds.x, bounds.y, bounds.width, headerHeight,
+      this.config.LAYOUT.TICKET.BORDER_RADIUS,
       this.config.LAYOUT.TICKET.BORDER_RADIUS, 'F');
-    
+
     // Extend header down to eliminate rounded corners at bottom
-    pdf.setFillColor(...this.config.COLORS.SECONDARY);
+    pdf.setFillColor(...secondaryColor);
     pdf.rect(bounds.x, bounds.y + 40, bounds.width, 20, 'F');
 
     let currentY = bounds.y + 20;
@@ -201,7 +205,8 @@ export class PdfGenerator {
     // Event name in header (white text)
     pdf.setFont(this.config.FONTS.PRIMARY, this.config.FONTS.WEIGHTS.BOLD);
     pdf.setFontSize(this.config.FONTS.SIZES.TITLE);
-    pdf.setTextColor(...this.config.COLORS.WHITE);
+    const whiteColor = this.config.COLORS.WHITE as [number, number, number];
+    pdf.setTextColor(...whiteColor);
     
     const eventNameLines = pdf.splitTextToSize(order.events.name, contentWidth * 0.6);
     pdf.text(eventNameLines, contentX + contentWidth - 20, currentY + 15, { align: 'right' });
@@ -231,7 +236,7 @@ export class PdfGenerator {
       title: 'DATE & TIME',
       primaryText: DateUtils.formatDate(order.events.event_date),
       secondaryText: DateUtils.formatTime(order.events.event_date),
-      backgroundColor: [...this.config.COLORS.PRIMARY, 0.1],
+      backgroundColor: [...(this.config.COLORS.PRIMARY as [number, number, number]), 0.1],
     });
 
     // Venue section
@@ -243,7 +248,7 @@ export class PdfGenerator {
         icon: '📍',
         title: 'VENUE',
         primaryText: order.events.venue,
-        backgroundColor: [...this.config.COLORS.SUCCESS, 0.1],
+        backgroundColor: [...(this.config.COLORS.SUCCESS as [number, number, number]), 0.1],
       });
     }
 
@@ -256,7 +261,7 @@ export class PdfGenerator {
       title: 'ATTENDEE',
       primaryText: ticket.customer_name,
       secondaryText: `🎫 ${ticket.ticket_type_name}`,
-      backgroundColor: [...this.config.COLORS.WARNING, 0.1],
+      backgroundColor: [...(this.config.COLORS.WARNING as [number, number, number]), 0.1],
     });
 
     return currentY;
@@ -283,13 +288,15 @@ export class PdfGenerator {
     // Title
     pdf.setFont(this.config.FONTS.PRIMARY, this.config.FONTS.WEIGHTS.NORMAL);
     pdf.setFontSize(this.config.FONTS.SIZES.SMALL);
-    pdf.setTextColor(...this.config.COLORS.MUTED);
+    const mutedColor = this.config.COLORS.MUTED as [number, number, number];
+    pdf.setTextColor(...mutedColor);
     pdf.text(`${options.icon} ${options.title}`, options.x, options.y + 5);
 
     // Primary text
     pdf.setFont(this.config.FONTS.PRIMARY, this.config.FONTS.WEIGHTS.BOLD);
     pdf.setFontSize(this.config.FONTS.SIZES.HEADING);
-    pdf.setTextColor(...this.config.COLORS.SECONDARY);
+    const secondaryColor = this.config.COLORS.SECONDARY as [number, number, number];
+    pdf.setTextColor(...secondaryColor);
     const primaryLines = pdf.splitTextToSize(options.primaryText, options.width);
     pdf.text(primaryLines, options.x, options.y + 18);
 
@@ -297,7 +304,7 @@ export class PdfGenerator {
     if (options.secondaryText) {
       pdf.setFont(this.config.FONTS.PRIMARY, this.config.FONTS.WEIGHTS.NORMAL);
       pdf.setFontSize(this.config.FONTS.SIZES.BODY);
-      pdf.setTextColor(...this.config.COLORS.MUTED);
+      pdf.setTextColor(...mutedColor);
       pdf.text(options.secondaryText, options.x, options.y + 30);
     }
 
@@ -318,18 +325,21 @@ export class PdfGenerator {
     let currentY = startY;
 
     // QR section background
-    pdf.setFillColor(...this.config.COLORS.BACKGROUND);
+    const bgColor = this.config.COLORS.BACKGROUND as [number, number, number];
+    pdf.setFillColor(...bgColor);
     pdf.roundedRect(rightColumnX - 20, currentY - 10, qrSectionWidth, 140, 12, 12, 'F');
 
     // QR section border
-    pdf.setDrawColor(...this.config.COLORS.BORDER);
+    const borderColor = this.config.COLORS.BORDER as [number, number, number];
+    pdf.setDrawColor(...borderColor);
     pdf.setLineWidth(2);
     pdf.roundedRect(rightColumnX - 20, currentY - 10, qrSectionWidth, 140, 12, 12, 'S');
 
     // QR section header
     pdf.setFont(this.config.FONTS.PRIMARY, this.config.FONTS.WEIGHTS.BOLD);
     pdf.setFontSize(this.config.FONTS.SIZES.HEADING);
-    pdf.setTextColor(...this.config.COLORS.SECONDARY);
+    const secondaryColor = this.config.COLORS.SECONDARY as [number, number, number];
+    pdf.setTextColor(...secondaryColor);
     pdf.text("Your Ticket", rightColumnX + (qrSectionWidth/2) - 20, currentY + 5, { align: 'center' });
     currentY += 25;
 
@@ -340,11 +350,13 @@ export class PdfGenerator {
         const qrX = rightColumnX + (qrSectionWidth/2) - 20 - (qrSize/2);
 
         // QR background
-        pdf.setFillColor(...this.config.COLORS.WHITE);
+        const whiteColor = this.config.COLORS.WHITE as [number, number, number];
+        pdf.setFillColor(...whiteColor);
         pdf.roundedRect(qrX - 5, currentY - 5, qrSize + 10, qrSize + 10, 8, 8, 'F');
 
         // QR border
-        pdf.setDrawColor(...this.config.COLORS.BORDER);
+        const qrBorderColor = this.config.COLORS.BORDER as [number, number, number];
+        pdf.setDrawColor(...qrBorderColor);
         pdf.setLineWidth(this.config.LAYOUT.QR_CODE.BORDER_WIDTH);
         pdf.roundedRect(qrX - 5, currentY - 5, qrSize + 10, qrSize + 10, 8, 8, 'S');
 
@@ -361,22 +373,25 @@ export class PdfGenerator {
     // Ticket code
     pdf.setFont(this.config.FONTS.PRIMARY, this.config.FONTS.WEIGHTS.BOLD);
     pdf.setFontSize(this.config.FONTS.SIZES.SMALL);
-    pdf.setTextColor(...this.config.COLORS.MUTED);
+    const mutedColor = this.config.COLORS.MUTED as [number, number, number];
+    pdf.setTextColor(...mutedColor);
     pdf.text("TICKET CODE", rightColumnX + (qrSectionWidth/2) - 20, currentY, { align: 'center' });
 
     pdf.setFont(this.config.FONTS.MONOSPACE, this.config.FONTS.WEIGHTS.BOLD);
     pdf.setFontSize(this.config.FONTS.SIZES.BODY);
-    pdf.setTextColor(...this.config.COLORS.SECONDARY);
+    pdf.setTextColor(...secondaryColor);
     pdf.text(ticket.ticket_code, rightColumnX + (qrSectionWidth/2) - 20, currentY + 12, { align: 'center' });
     currentY += 25;
 
     // Status badge
-    pdf.setFillColor(...this.config.COLORS.SUCCESS, 0.2);
+    const successColor = [...(this.config.COLORS.SUCCESS as [number, number, number]), 0.2] as const;
+    pdf.setFillColor(...successColor);
     pdf.roundedRect(rightColumnX - 5, currentY - 3, qrSectionWidth - 30, 15, 6, 6, 'F');
 
     pdf.setFont(this.config.FONTS.PRIMARY, this.config.FONTS.WEIGHTS.BOLD);
     pdf.setFontSize(this.config.FONTS.SIZES.SMALL);
-    pdf.setTextColor(...this.config.COLORS.SUCCESS);
+    const statusTextColor = this.config.COLORS.SUCCESS as [number, number, number];
+    pdf.setTextColor(...statusTextColor);
     const statusText = `✓ ${ticket.status.toUpperCase()}`;
     pdf.text(statusText, rightColumnX + (qrSectionWidth/2) - 20, currentY + 5, { align: 'center' });
 
@@ -394,14 +409,16 @@ export class PdfGenerator {
     const contentWidth = bounds.width - (padding * 2);
 
     // Footer separator
-    pdf.setDrawColor(...this.config.COLORS.BORDER);
+    const footerBorderColor = this.config.COLORS.BORDER as [number, number, number];
+    pdf.setDrawColor(...footerBorderColor);
     pdf.setLineWidth(1);
     pdf.line(contentX, footerY - 20, contentX + contentWidth, footerY - 20);
 
     // Footer text
     pdf.setFont(this.config.FONTS.PRIMARY, this.config.FONTS.WEIGHTS.NORMAL);
     pdf.setFontSize(this.config.FONTS.SIZES.SMALL);
-    pdf.setTextColor(...this.config.COLORS.MUTED);
+    const footerMutedColor = this.config.COLORS.MUTED as [number, number, number];
+    pdf.setTextColor(...footerMutedColor);
     pdf.text(
       "Please present this ticket at the event entrance",
       contentX + contentWidth / 2,
@@ -413,7 +430,8 @@ export class PdfGenerator {
     if (ticket.price > 0) {
       pdf.setFont(this.config.FONTS.PRIMARY, this.config.FONTS.WEIGHTS.BOLD);
       pdf.setFontSize(this.config.FONTS.SIZES.BODY);
-      pdf.setTextColor(...this.config.COLORS.SECONDARY);
+      const priceSecondaryColor = this.config.COLORS.SECONDARY as [number, number, number];
+      pdf.setTextColor(...priceSecondaryColor);
       pdf.text(
         `$${ticket.price.toFixed(2)}`,
         contentX + contentWidth - 20,

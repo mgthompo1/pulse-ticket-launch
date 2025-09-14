@@ -21,7 +21,12 @@ Deno.serve(async (req) => {
     
     console.log(`🔍 INVESTIGATING ORDER: ${orderId}`);
 
-    const results = {
+    const results: {
+      orderId: string;
+      investigation: Record<string, any>;
+      rootCause?: string;
+      recommendation?: string;
+    } = {
       orderId,
       investigation: {}
     };
@@ -163,9 +168,9 @@ Deno.serve(async (req) => {
     results.investigation.emailQuery = {
       success: !emailError,
       error: emailError?.message,
-      hasEvents: !!emailQuery?.events,
-      hasOrganizations: !!emailQuery?.events?.organizations,
-      hasOrderItems: !!(emailQuery?.order_items && emailQuery.order_items.length > 0)
+      hasEvents: !!(emailQuery as any)?.events,
+      hasOrganizations: !!((emailQuery as any)?.events as any)?.organizations,
+      hasOrderItems: !!((emailQuery as any)?.order_items && (emailQuery as any).order_items.length > 0)
     };
 
     // 6. Determine the root cause

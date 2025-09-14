@@ -108,10 +108,14 @@ serve(async (req) => {
       expectedOrigin,
       expectedRPID: rpID,
       authenticator: {
-        credentialID: new TextEncoder().encode(storedCredential.credential_id),
-        credentialPublicKey: storedCredential.credential_public_key,
-        counter: storedCredential.credential_counter,
-        transports: storedCredential.credential_transports || []
+        credentialID: typeof storedCredential.credential_id === 'string'
+          ? new TextEncoder().encode(storedCredential.credential_id)
+          : storedCredential.credential_id,
+        credentialPublicKey: new Uint8Array(storedCredential.credential_public_key),
+        counter: Number(storedCredential.credential_counter) || 0,
+        transports: Array.isArray(storedCredential.credential_transports)
+          ? storedCredential.credential_transports
+          : []
       },
       requireUserVerification: false
     };
@@ -135,7 +139,7 @@ serve(async (req) => {
     const { error: updateError } = await supabaseClient
       .from("user_credentials")
       .update({
-        credential_counter: verification.authenticationInfo.newCounter,
+        credential_counter: verification.authenticationInfo?.newCounter || 0,
         last_used: new Date().toISOString()
       })
       .eq("id", storedCredential.id);

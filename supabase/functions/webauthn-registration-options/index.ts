@@ -90,7 +90,7 @@ serve(async (req) => {
       rpName,
       rpID,
       userName: user.email ?? "",
-      userID: new TextEncoder().encode(user.id),
+      userID: user.id,
       userDisplayName: user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
       timeout: 60000,
       attestationType: "none",

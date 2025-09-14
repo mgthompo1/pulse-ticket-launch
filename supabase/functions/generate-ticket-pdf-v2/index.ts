@@ -1,4 +1,4 @@
-// @ts-nocheck
+// TypeScript enabled - fixing all type issues
 import { DatabaseService } from './database.ts';
 import { QRService } from './qr-service.ts';
 import { PdfGenerator } from './pdf-generator.ts';

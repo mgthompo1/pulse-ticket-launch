@@ -64,8 +64,8 @@ export class DatabaseService {
       console.log('Order retrieved:', {
         orderId: order.id,
         customerName: order.customer_name,
-        eventName: order.events.name,
-        organizationName: order.events.organizations.name
+        eventName: (order.events as any).name,
+        organizationName: ((order.events as any).organizations as any).name
       });
 
       // Fetch order items with tickets
@@ -106,15 +106,24 @@ export class DatabaseService {
       // Process and flatten tickets
       const tickets: ProcessedTicket[] = [];
       for (const item of orderItems) {
-        for (const ticket of item.tickets) {
-          tickets.push({
-            id: ticket.id,
-            ticket_code: ValidationUtils.sanitizeText(ticket.ticket_code, 'INVALID'),
-            status: ValidationUtils.sanitizeText(ticket.status, 'valid'),
-            order_item: item,
-            ticket_type_name: ValidationUtils.sanitizeText(item.ticket_types.name, 'General Admission'),
-            unit_price: Number(item.unit_price) || 0,
-          });
+        // Handle potentially array-returned relations
+        const ticketTypeName = Array.isArray(item.ticket_types)
+          ? item.ticket_types[0]?.name
+          : item.ticket_types?.name;
+
+        const ticketsArray = Array.isArray(item.tickets) ? item.tickets : [item.tickets];
+
+        for (const ticket of ticketsArray) {
+          if (ticket) {
+            tickets.push({
+              id: ticket.id,
+              ticket_code: ValidationUtils.sanitizeText(ticket.ticket_code, 'INVALID'),
+              status: ValidationUtils.sanitizeText(ticket.status, 'valid'),
+              order_item: item,
+              ticket_type_name: ValidationUtils.sanitizeText(ticketTypeName, 'General Admission'),
+              unit_price: Number(item.unit_price) || 0,
+            });
+          }
         }
       }
 
@@ -129,20 +138,24 @@ export class DatabaseService {
 
       console.log(`Found ${tickets.length} tickets to process`);
 
+      // Handle potentially array-returned relations by accessing first element or direct object
+      const eventsData = Array.isArray(order.events) ? order.events[0] : order.events;
+      const orgsData = Array.isArray(eventsData?.organizations) ? eventsData.organizations[0] : eventsData?.organizations;
+
       return {
         order: {
           id: order.id,
           customer_name: ValidationUtils.sanitizeText(order.customer_name, 'Guest'),
           customer_email: ValidationUtils.sanitizeText(order.customer_email, ''),
           events: {
-            name: ValidationUtils.sanitizeText(order.events.name, 'Event'),
-            event_date: order.events.event_date || new Date().toISOString(),
-            venue: ValidationUtils.sanitizeText(order.events.venue),
-            logo_url: order.events.logo_url,
-            ticket_customization: order.events.ticket_customization,
+            name: ValidationUtils.sanitizeText(eventsData?.name, 'Event'),
+            event_date: eventsData?.event_date || new Date().toISOString(),
+            venue: ValidationUtils.sanitizeText(eventsData?.venue),
+            logo_url: eventsData?.logo_url,
+            ticket_customization: eventsData?.ticket_customization,
             organizations: {
-              name: ValidationUtils.sanitizeText(order.events.organizations.name, 'Organization'),
-              logo_url: order.events.organizations.logo_url,
+              name: ValidationUtils.sanitizeText(orgsData?.name, 'Organization'),
+              logo_url: orgsData?.logo_url,
             },
           },
         },
