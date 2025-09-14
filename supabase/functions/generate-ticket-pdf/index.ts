@@ -2,8 +2,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { jsPDF } from "npm:jspdf@2.5.1";
 import QRCode from "npm:qrcode@1.5.3";
-import React from "npm:react@18.3.1";
-import { renderToString } from "npm:react-dom@18.3.1/server";
+import React from "https://esm.sh/react@18.3.1";
+import { renderToString } from "https://esm.sh/react-dom@18.3.1/server";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
