@@ -77,8 +77,8 @@ Deno.test("Organizer Notification Integration", async (t) => {
     const expectedEmailContent = {
       subject: `New Ticket Sale - ${testOrder.events.name}`,
       to: "organizer@example.com",
-      html: expect.stringMatching(/🎫 New Ticket Sale!/),
-      text: expect.stringMatching(/New Ticket Sale/)
+      htmlPattern: /🎫 New Ticket Sale!/,
+      textPattern: /New Ticket Sale/
     };
 
     // Mock email structure validation
@@ -183,8 +183,8 @@ Deno.test("Notification Content Validation", async (t) => {
     // Validate all required data is present
     for (const field of requiredFields) {
       const fieldValue = field.includes('.')
-        ? field.split('.').reduce((obj, key) => obj?.[key], testOrder)
-        : testOrder[field as keyof typeof testOrder];
+        ? field.split('.').reduce((obj: any, key) => obj?.[key], testOrder)
+        : (testOrder as any)[field];
 
       assertExists(fieldValue, `Should have ${field}`);
     }
