@@ -14,7 +14,11 @@
     "build:server": "vite build --config vite.config.ssr.ts --outDir dist/server",
     "start": "NODE_ENV=production node server.js",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "deno run --allow-net --allow-env --allow-read tests/run-tests.ts",
+    "test:unit": "deno run --allow-net --allow-env --allow-read tests/run-tests.ts unit",
+    "test:integration": "deno run --allow-net --allow-env --allow-read tests/run-tests.ts integration",
+    "test:watch": "deno run --allow-net --allow-env --allow-read --watch tests/run-tests.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

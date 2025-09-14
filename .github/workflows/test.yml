@@ -1,0 +1,151 @@
+name: 🧪 Edge Function Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'supabase/functions/**'
+      - 'tests/**'
+      - '.github/workflows/test.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/functions/**'
+      - 'tests/**'
+
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+jobs:
+  test-functions:
+    name: Test Edge Functions
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        test-category: [unit, integration]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🦕 Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.40.x
+
+      - name: 📦 Cache Deno dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/deno
+            ~/.deno
+          key: ${{ runner.os }}-deno-${{ hashFiles('**/*.ts') }}
+          restore-keys: |
+            ${{ runner.os }}-deno-
+
+      - name: 🔍 Lint TypeScript files
+        run: |
+          deno lint supabase/functions/
+          deno lint tests/
+
+      - name: 🧪 Run ${{ matrix.test-category }} tests
+        run: |
+          cd ${{ github.workspace }}
+          chmod +x tests/run-tests.ts
+          deno run --allow-net --allow-env --allow-read tests/run-tests.ts ${{ matrix.test-category }}
+
+      - name: 📊 Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results-${{ matrix.test-category }}
+          path: test-results/
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🦕 Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.40.x
+
+      - name: 🔒 Check for secrets in code
+        run: |
+          # Basic secret scanning
+          if grep -r "sk_live_" supabase/functions/ || grep -r "pk_live_" supabase/functions/; then
+            echo "❌ Live API keys found in code!"
+            exit 1
+          fi
+          echo "✅ No live API keys detected"
+
+      - name: 🔍 TypeScript type checking
+        run: |
+          deno check supabase/functions/**/*.ts
+          deno check tests/**/*.ts
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [test-functions, security-scan]
+    if: github.ref == 'refs/heads/develop'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🚀 Deploy to Supabase (Staging)
+        run: |
+          # Install Supabase CLI
+          curl -sL https://github.com/supabase/cli/releases/download/v1.100.1/supabase_1.100.1_linux_amd64.tar.gz | tar -xz
+          sudo mv supabase /usr/local/bin/
+
+          # Deploy functions (staging)
+          supabase functions deploy --project-ref ${{ secrets.SUPABASE_STAGING_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+  performance-test:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: test-functions
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🦕 Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.40.x
+
+      - name: ⚡ Run performance benchmarks
+        run: |
+          # Simple performance test
+          echo "Testing email generation performance..."
+          time deno run --allow-net --allow-env tests/performance/email-generation.bench.ts
+        continue-on-error: true
+
+  notify-results:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [test-functions, security-scan]
+    if: always()
+
+    steps:
+      - name: 📊 Test Results Summary
+        run: |
+          if [[ "${{ needs.test-functions.result }}" == "success" && "${{ needs.security-scan.result }}" == "success" ]]; then
+            echo "✅ All tests passed! Ready for deployment."
+          else
+            echo "❌ Tests failed. Check the logs above."
+            exit 1
+          fi
