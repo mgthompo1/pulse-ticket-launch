@@ -837,6 +837,7 @@ const handleCreateConcessionItem = async () => {
     { id: "pos", icon: CreditCard, label: "Point of Sale" },
     { id: "guests", icon: Users, label: "Guest Status" },
     { id: "concessions", icon: Package, label: "Manage Items" },
+    { id: "lanyards", icon: Tag, label: "Lanyard Config" },
     { id: "analytics", icon: BarChart3, label: "Analytics" },
   ];
 
@@ -954,53 +955,85 @@ const handleCreateConcessionItem = async () => {
           {/* Tab Content */}
           {activeTab === "checkin" && (
             <div className="space-y-6">
-              {/* Quick Check-In Card */}
+              {/* Search and Quick Actions Bar */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Quick Check-In</CardTitle>
-                  <CardDescription>Scan or enter ticket codes to check in guests</CardDescription>
+                  <CardTitle>Guest Check-In</CardTitle>
+                  <CardDescription>Search guests by email or scan ticket codes to check in</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="ticketCode">Ticket Code</Label>
-                    <Input
-                      id="ticketCode"
-                      placeholder="Enter or scan ticket code"
-                      value={ticketCode}
-                      onChange={(e) => setTicketCode(e.target.value)}
-                    />
+                <CardContent>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* Search by Email/Name */}
+                    <div className="space-y-2">
+                      <Label htmlFor="guestSearch">Search Guests</Label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <Input
+                          id="guestSearch"
+                          placeholder="Search by name, email, or ticket code..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Quick Scan Check-In */}
+                    <div className="space-y-2">
+                      <Label htmlFor="ticketCode">Quick Scan/Check-In</Label>
+                      <div className="flex space-x-2">
+                        <Input
+                          id="ticketCode"
+                          placeholder="Scan or enter ticket code"
+                          value={ticketCode}
+                          onChange={(e) => setTicketCode(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button onClick={handleCheckIn} disabled={loading}>
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Check In
+                        </Button>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Notes (Optional)</Label>
-                    <Textarea
-                      id="notes"
-                      placeholder="Any additional notes..."
-                      value={checkInNotes}
-                      onChange={(e) => setCheckInNotes(e.target.value)}
-                    />
-                  </div>
-
-                  <Button onClick={handleCheckIn} disabled={loading} className="w-full">
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Check In Guest
-                  </Button>
+                  {/* Notes Section (only show when ticket code is entered) */}
+                  {ticketCode && (
+                    <div className="mt-4 space-y-2">
+                      <Label htmlFor="notes">Check-In Notes (Optional)</Label>
+                      <Textarea
+                        id="notes"
+                        placeholder="Any additional notes for this check-in..."
+                        value={checkInNotes}
+                        onChange={(e) => setCheckInNotes(e.target.value)}
+                        className="h-20"
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
               {/* Guest List Card */}
               <Card>
                 <CardHeader>
-                  <CardTitle>All Guests</CardTitle>
+                  <CardTitle>All Guests ({getFilteredGuests().length})</CardTitle>
                   <CardDescription>
-                    View, check-in, and print lanyards for all guests. Use the search bar above to filter guests.
+                    {searchQuery ? `Showing results for "${searchQuery}"` : 'All event guests - click to check in or print lanyards'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {getFilteredGuests().length === 0 ? (
-                      <div className="text-center py-8 text-gray-500">
-                        {searchQuery ? 'No guests found matching your search.' : 'No guests found.'}
+                      <div className="text-center py-12 text-gray-500">
+                        <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                        <p className="text-lg font-medium">
+                          {searchQuery ? 'No guests found matching your search.' : 'No guests found.'}
+                        </p>
+                        {searchQuery && (
+                          <p className="text-sm mt-2">
+                            Try searching by name, email, or ticket code
+                          </p>
+                        )}
                       </div>
                     ) : (
                       getFilteredGuests().map((guest) => (
@@ -1009,18 +1042,25 @@ const handleCreateConcessionItem = async () => {
                           className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                         >
                           <div className="flex-1">
-                            <div className="flex items-center space-x-3">
+                            <div className="flex items-center space-x-4">
                               <div className="flex-1">
                                 <h3 className="font-medium text-gray-900">{guest.customer_name}</h3>
                                 <p className="text-sm text-gray-500">{guest.customer_email}</p>
-                                <p className="text-xs text-gray-400">Ticket: {guest.ticket_code}</p>
+                                <div className="flex items-center space-x-3 mt-1">
+                                  <p className="text-xs text-gray-400">Ticket: {guest.ticket_code}</p>
+                                  {guest.ticket_type && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {guest.ticket_type}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                               <div className="text-right">
                                 <Badge variant={guest.checked_in ? "default" : "secondary"}>
-                                  {guest.checked_in ? "Checked In" : "Not Checked In"}
+                                  {guest.checked_in ? "✓ Checked In" : "Pending"}
                                 </Badge>
-                                {guest.ticket_type && (
-                                  <p className="text-xs text-gray-500 mt-1">{guest.ticket_type}</p>
+                                {guest.checked_in && guest.lanyard_printed && (
+                                  <p className="text-xs text-green-600 mt-1">Lanyard Printed</p>
                                 )}
                               </div>
                             </div>
@@ -1050,30 +1090,6 @@ const handleCreateConcessionItem = async () => {
                                 Print Lanyard
                               </Button>
                             )}
-
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-md">
-                                <DialogHeader>
-                                  <DialogTitle>Lanyard Preview - {guest.customer_name}</DialogTitle>
-                                </DialogHeader>
-                                <div className="flex justify-center p-4">
-                                  {currentLanyardTemplate && (
-                                    <LanyardPreviewSimple
-                                      template={currentLanyardTemplate}
-                                      data={getRealPreviewData(guest.customer_name)}
-                                    />
-                                  )}
-                                </div>
-                              </DialogContent>
-                            </Dialog>
                           </div>
                         </div>
                       ))
@@ -1499,6 +1515,155 @@ const handleCreateConcessionItem = async () => {
               </CardContent>
             </Card>
           </div>
+          )}
+
+          {/* Lanyard Configuration Tab */}
+          {activeTab === "lanyards" && (
+            <div className="space-y-6">
+              {/* Lanyard Template Preview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Lanyard Template Preview</CardTitle>
+                  <CardDescription>
+                    Preview how lanyards will look for your event guests
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-center p-8 bg-gray-50 rounded-lg">
+                    {currentLanyardTemplate ? (
+                      <div className="space-y-4">
+                        <LanyardPreviewSimple
+                          template={currentLanyardTemplate}
+                          data={getRealPreviewData()}
+                        />
+                        <div className="text-center">
+                          <p className="text-sm text-gray-600">Sample Lanyard Preview</p>
+                          <p className="text-xs text-gray-500">Template: {currentLanyardTemplate.name}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <Tag className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                        <p>Loading lanyard template...</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Quick Actions */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <Eye className="h-8 w-8 mx-auto mb-3 text-blue-500" />
+                    <h3 className="font-medium mb-2">Preview Lanyards</h3>
+                    <p className="text-sm text-gray-600 mb-4">See how lanyards look with real guest data</p>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Eye className="h-4 w-4 mr-1" />
+                          Preview
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-md">
+                        <DialogHeader>
+                          <DialogTitle>Live Lanyard Preview</DialogTitle>
+                        </DialogHeader>
+                        <div className="flex justify-center p-4">
+                          {currentLanyardTemplate && (
+                            <LanyardPreviewSimple
+                              template={currentLanyardTemplate}
+                              data={getRealPreviewData()}
+                            />
+                          )}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <Printer className="h-8 w-8 mx-auto mb-3 text-green-500" />
+                    <h3 className="font-medium mb-2">Test Print</h3>
+                    <p className="text-sm text-gray-600 mb-4">Print a sample lanyard to test layout</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (guests.length > 0) {
+                          handlePrintLanyard(guests[0]);
+                        } else {
+                          toast({ title: "No guests available for test print" });
+                        }
+                      }}
+                      disabled={loading || guests.length === 0}
+                    >
+                      <Printer className="h-4 w-4 mr-1" />
+                      Test Print
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6 text-center">
+                    <Tag className="h-8 w-8 mx-auto mb-3 text-purple-500" />
+                    <h3 className="font-medium mb-2">Template Info</h3>
+                    <p className="text-sm text-gray-600 mb-4">Current template configuration</p>
+                    <Button variant="outline" size="sm" disabled>
+                      <Tag className="h-4 w-4 mr-1" />
+                      {currentLanyardTemplate?.name || 'Loading...'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Bulk Actions */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Bulk Lanyard Actions</CardTitle>
+                  <CardDescription>
+                    Print lanyards for multiple guests at once
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Button
+                      onClick={() => {
+                        const checkedInGuests = guests.filter(g => g.checked_in && !g.lanyard_printed);
+                        checkedInGuests.forEach(guest => handlePrintLanyard(guest));
+                        toast({
+                          title: `Printing ${checkedInGuests.length} lanyards`,
+                          description: "Lanyards will open in separate print dialogs"
+                        });
+                      }}
+                      disabled={loading || guests.filter(g => g.checked_in && !g.lanyard_printed).length === 0}
+                      className="w-full"
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Print All Checked-In ({guests.filter(g => g.checked_in && !g.lanyard_printed).length})
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const allGuests = guests.filter(g => !g.lanyard_printed);
+                        allGuests.forEach(guest => handlePrintLanyard(guest));
+                        toast({
+                          title: `Printing ${allGuests.length} lanyards`,
+                          description: "Lanyards will open in separate print dialogs"
+                        });
+                      }}
+                      disabled={loading || guests.filter(g => !g.lanyard_printed).length === 0}
+                      className="w-full"
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Print All Guests ({guests.filter(g => !g.lanyard_printed).length})
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {/* Analytics Tab */}
