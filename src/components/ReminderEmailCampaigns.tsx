@@ -149,44 +149,34 @@ export const ReminderEmailCampaigns: React.FC<ReminderEmailCampaignsProps> = ({ 
       if (!selectedEvent || !user) return;
 
       try {
-        // This would be the actual Supabase query once the tables are created
-        // For now, we'll use mock data
-        const mockCampaigns: ReminderCampaign[] = [
-          {
-            id: '1',
-            name: 'One Week Reminder',
-            description: 'Sent 7 days before the event',
-            status: 'scheduled',
-            template: createDefaultReminderTemplate(),
-            subject_line: '⏰ @EventName is next week!',
-            send_timing: 'days_before',
-            send_value: 7,
-            recipient_type: 'all_attendees',
-            total_recipients: 156,
-            emails_sent: 0,
-            emails_delivered: 0,
-            emails_opened: 0,
-            emails_clicked: 0,
-          },
-          {
-            id: '2',
-            name: 'Final Reminder',
-            description: 'Sent 24 hours before the event',
-            status: 'draft',
-            template: createDefaultReminderTemplate(),
-            subject_line: '🚨 @EventName is tomorrow!',
-            send_timing: 'hours_before',
-            send_value: 24,
-            recipient_type: 'ticket_holders_only',
-            total_recipients: 142,
-            emails_sent: 0,
-            emails_delivered: 0,
-            emails_opened: 0,
-            emails_clicked: 0,
-          }
-        ];
+        const { data: campaigns, error } = await supabase
+          .from('reminder_email_campaigns')
+          .select('*')
+          .eq('event_id', selectedEvent.id)
+          .order('created_at', { ascending: false });
 
-        setCampaigns(mockCampaigns);
+        if (error) throw error;
+
+        // Transform database campaigns to component format
+        const formattedCampaigns: ReminderCampaign[] = (campaigns || []).map(campaign => ({
+          id: campaign.id,
+          name: campaign.name,
+          description: campaign.description,
+          status: campaign.status,
+          template: campaign.template || createDefaultReminderTemplate(),
+          subject_line: campaign.subject_line,
+          send_timing: campaign.send_timing,
+          send_value: campaign.send_value,
+          send_datetime: campaign.send_datetime,
+          recipient_type: campaign.recipient_type,
+          total_recipients: campaign.total_recipients || 0,
+          emails_sent: campaign.emails_sent || 0,
+          emails_delivered: campaign.emails_delivered || 0,
+          emails_opened: campaign.emails_opened || 0,
+          emails_clicked: campaign.emails_clicked || 0,
+        }));
+
+        setCampaigns(formattedCampaigns);
       } catch (error) {
         console.error('Error loading campaigns:', error);
         toast({
@@ -219,26 +209,91 @@ export const ReminderEmailCampaigns: React.FC<ReminderEmailCampaignsProps> = ({ 
 
   // Handle campaign creation/editing
   const handleSaveCampaign = async (campaign: Partial<ReminderCampaign>) => {
+    if (!selectedEvent || !user) return;
+
     try {
+      // Get user's organization
+      const { data: orgMember } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!orgMember) {
+        throw new Error("Organization not found");
+      }
+
       if (campaign.id) {
         // Update existing campaign
-        // await supabase.from('reminder_email_campaigns').update(campaign).eq('id', campaign.id);
+        const updateData = {
+          name: campaign.name,
+          description: campaign.description,
+          status: campaign.status,
+          template: campaign.template,
+          subject_line: campaign.subject_line,
+          send_timing: campaign.send_timing,
+          send_value: campaign.send_value,
+          send_datetime: campaign.send_datetime,
+          recipient_type: campaign.recipient_type,
+          updated_at: new Date().toISOString(),
+        };
+
+        const { error } = await supabase
+          .from('reminder_email_campaigns')
+          .update(updateData)
+          .eq('id', campaign.id);
+
+        if (error) throw error;
+
+        // Update local state
         setCampaigns(prev => prev.map(c => c.id === campaign.id ? { ...c, ...campaign } as ReminderCampaign : c));
         toast({ title: "Success", description: "Campaign updated successfully" });
       } else {
         // Create new campaign
-        const newId = Math.random().toString(36).substr(2, 9);
+        const insertData = {
+          organization_id: orgMember.organization_id,
+          event_id: selectedEvent.id,
+          name: campaign.name,
+          description: campaign.description,
+          status: campaign.status || 'draft',
+          template: campaign.template,
+          subject_line: campaign.subject_line,
+          send_timing: campaign.send_timing,
+          send_value: campaign.send_value,
+          send_datetime: campaign.send_datetime,
+          recipient_type: campaign.recipient_type || 'all_attendees',
+          timezone: 'UTC',
+          created_by: user.id,
+        };
+
+        const { data: newCampaign, error } = await supabase
+          .from('reminder_email_campaigns')
+          .insert(insertData)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        // Transform to component format and add to local state
         const fullCampaign: ReminderCampaign = {
-          ...campaign,
-          id: newId,
+          id: newCampaign.id,
+          name: newCampaign.name,
+          description: newCampaign.description,
+          status: newCampaign.status,
+          template: newCampaign.template,
+          subject_line: newCampaign.subject_line,
+          send_timing: newCampaign.send_timing,
+          send_value: newCampaign.send_value,
+          send_datetime: newCampaign.send_datetime,
+          recipient_type: newCampaign.recipient_type,
           total_recipients: 0,
           emails_sent: 0,
           emails_delivered: 0,
           emails_opened: 0,
           emails_clicked: 0,
-        } as ReminderCampaign;
+        };
 
-        setCampaigns(prev => [...prev, fullCampaign]);
+        setCampaigns(prev => [fullCampaign, ...prev]);
         toast({ title: "Success", description: "Campaign created successfully" });
       }
 
@@ -271,7 +326,13 @@ export const ReminderEmailCampaigns: React.FC<ReminderEmailCampaignsProps> = ({ 
 
   const handleDeleteCampaign = async (campaignId: string) => {
     try {
-      // await supabase.from('reminder_email_campaigns').delete().eq('id', campaignId);
+      const { error } = await supabase
+        .from('reminder_email_campaigns')
+        .delete()
+        .eq('id', campaignId);
+
+      if (error) throw error;
+
       setCampaigns(prev => prev.filter(c => c.id !== campaignId));
       toast({ title: "Success", description: "Campaign deleted successfully" });
     } catch (error) {
