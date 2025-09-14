@@ -102,8 +102,8 @@ class EmailService {
 
   // Handle ticket generation logic
   private async handleTicketGeneration(order: Order, deliveryMethod: string): Promise<Ticket[]> {
-    if (deliveryMethod === 'confirmation_email') {
-      logStep("Skipping ticket generation for confirmation email");
+    if (deliveryMethod === 'confirmation_email' || deliveryMethod === 'email_confirmation_only' || deliveryMethod === 'email_confirmation') {
+      logStep("Skipping ticket generation for confirmation email", { deliveryMethod });
       return [];
     }
 

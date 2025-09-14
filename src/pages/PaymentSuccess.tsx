@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Calendar, Mail, Download, Eye, Printer, FileText } from "lucide-react";
+import { CheckCircle, Calendar, Mail, Download, Eye, Printer, FileText, Wallet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { TicketDisplay } from "@/components/TicketDisplay";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -153,10 +153,111 @@ const PaymentSuccess = () => {
     }
   };
 
-  const addToWallet = () => {
-    // This would typically integrate with Apple Wallet or Google Pay
-    // For now, we'll show an alert with instructions
-    alert('To add tickets to your mobile wallet:\n\n1. Take a screenshot of your tickets\n2. Save the QR codes to your photos\n3. Show the QR codes at the event entrance\n\nWallet integration coming soon!');
+  const addToWallet = async () => {
+    if (!tickets || tickets.length === 0) {
+      alert('Please view your tickets first before adding to wallet.');
+      return;
+    }
+
+    try {
+      // Detect platform
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+
+      if (isIOS) {
+        // Use Apple Wallet
+        await addToAppleWallet();
+      } else if (isAndroid) {
+        // Use Google Pay
+        await addToGooglePay();
+      } else {
+        // Desktop or unsupported platform
+        showWalletInstructions();
+      }
+    } catch (error) {
+      console.error('Error adding to wallet:', error);
+      alert('Sorry, there was an error adding tickets to your wallet. Please try again or take a screenshot of your tickets instead.');
+    }
+  };
+
+  const addToAppleWallet = async () => {
+    try {
+      // For now, add the first ticket to wallet
+      // In future, you might want to let users choose which ticket or add all
+      const ticket = tickets[0];
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-apple-wallet-pass?ticketCode=${encodeURIComponent(ticket.ticket_code)}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || 'Failed to generate Apple Wallet pass');
+      }
+
+      const data = await response.json();
+
+      if (data?.addToWalletUrl) {
+        // In a real implementation, you would serve a proper .pkpass file
+        // For now, show the generated pass data
+        alert('Apple Wallet pass generated!\n\nIn production, this would automatically add to your wallet.\n\nFor now, you can take a screenshot of your ticket QR code.');
+        console.log('Apple Wallet pass data:', data);
+      } else {
+        throw new Error('No wallet URL generated');
+      }
+
+    } catch (error) {
+      console.error('Apple Wallet error:', error);
+      throw error;
+    }
+  };
+
+  const addToGooglePay = async () => {
+    try {
+      const ticket = tickets[0];
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-google-pay-pass?ticketCode=${encodeURIComponent(ticket.ticket_code)}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || 'Failed to generate Google Pay pass');
+      }
+
+      const data = await response.json();
+
+      if (data?.saveToGooglePayUrl) {
+        // In a real implementation, this would open Google Pay
+        alert('Google Pay pass generated!\n\nIn production, this would open Google Pay to save your ticket.\n\nFor now, you can take a screenshot of your ticket QR code.');
+        console.log('Google Pay pass data:', data);
+      } else {
+        throw new Error('No Google Pay URL generated');
+      }
+
+    } catch (error) {
+      console.error('Google Pay error:', error);
+      throw error;
+    }
+  };
+
+  const showWalletInstructions = () => {
+    alert('Mobile Wallet Instructions:\n\n' +
+          'On iPhone/iPad:\n' +
+          '• Take a screenshot of your tickets\n' +
+          '• The QR codes will be saved to Photos\n' +
+          '• Show the QR codes at event entrance\n\n' +
+          'On Android:\n' +
+          '• Take a screenshot of your tickets\n' +
+          '• Save the QR codes to your gallery\n' +
+          '• Show the QR codes at event entrance\n\n' +
+          'Full wallet integration coming soon!');
   };
 
   const downloadReceipt = async () => {
@@ -524,7 +625,7 @@ const PaymentSuccess = () => {
                           {isGeneratingPDF ? 'Generating...' : 'Save as PDF'}
                         </Button>
                         <Button onClick={addToWallet} variant="outline" className="flex-1">
-                          <Download className="h-4 w-4 mr-2" />
+                          <Wallet className="h-4 w-4 mr-2" />
                           Add to Wallet
                         </Button>
                       </div>

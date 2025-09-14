@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import PersonalizationHelper from "./PersonalizationHelper";
 import type {
   EmailBlock,
   EmailTemplate,
@@ -38,6 +41,12 @@ const blockLabel: Record<EmailBlockType, string> = {
   divider: "Divider",
   image: "Image",
   footer: "Footer",
+  calendar_button: "Add to Calendar",
+  qr_tickets: "QR Code Tickets",
+  order_management: "Order Management",
+  social_links: "Social Media",
+  custom_message: "Custom Message",
+  next_steps: "Next Steps",
 };
 
 export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({ 
@@ -219,6 +228,203 @@ export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({
                 <div className="space-y-2">
                   <Label>Image URL</Label>
                   <Input value={(block as ImageBlock).src} onChange={(e) => updateBlock(block.id, { src: e.target.value })} />
+                </div>
+              )}
+
+              {block.type === "custom_message" && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Custom Message</Label>
+                    <PersonalizationHelper 
+                      onInsertVariable={(variable) => {
+                        const currentMessage = (block as any).message || '';
+                        updateBlock(block.id, { message: currentMessage + variable });
+                      }}
+                      className="text-xs"
+                    />
+                  </div>
+                  <Textarea
+                    rows={3}
+                    value={(block as any).message || ""}
+                    onChange={(e) => updateBlock(block.id, { message: e.target.value })}
+                    placeholder="Thanks for choosing @EventName! We're excited to see you there."
+                  />
+                </div>
+              )}
+
+              {block.type === "next_steps" && (
+                <div className="space-y-2">
+                  <Label>Title</Label>
+                  <Input 
+                    value={(block as any).title || ""} 
+                    onChange={(e) => updateBlock(block.id, { title: e.target.value })} 
+                    placeholder="What to expect next:"
+                  />
+                  <Label>Steps (one per line)</Label>
+                  <Textarea
+                    rows={4}
+                    value={(block as any).steps?.join('\n') || ""}
+                    onChange={(e) => updateBlock(block.id, { steps: e.target.value.split('\n').filter(s => s.trim()) })}
+                    placeholder="Save this email - you'll need it at the event&#10;Add the event to your calendar&#10;Arrive 15 minutes early for check-in"
+                  />
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id={`${block.id}-showIcons`}
+                      checked={(block as any).showIcons !== false}
+                      onCheckedChange={(checked) => updateBlock(block.id, { showIcons: checked })}
+                    />
+                    <Label htmlFor={`${block.id}-showIcons`}>Show numbered emojis</Label>
+                  </div>
+                </div>
+              )}
+
+              {block.type === "calendar_button" && (
+                <div className="space-y-2">
+                  <Label>Button Label</Label>
+                  <Input 
+                    value={(block as any).label || ""} 
+                    onChange={(e) => updateBlock(block.id, { label: e.target.value })} 
+                    placeholder="Add to Calendar"
+                  />
+                  <Label>Alignment</Label>
+                  <Select value={(block as any).align || "center"} onValueChange={(value) => updateBlock(block.id, { align: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="left">Left</SelectItem>
+                      <SelectItem value="center">Center</SelectItem>
+                      <SelectItem value="right">Right</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id={`${block.id}-showIcon`}
+                      checked={(block as any).showIcon !== false}
+                      onCheckedChange={(checked) => updateBlock(block.id, { showIcon: checked })}
+                    />
+                    <Label htmlFor={`${block.id}-showIcon`}>Show calendar icon</Label>
+                  </div>
+                </div>
+              )}
+
+              {block.type === "qr_tickets" && (
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id={`${block.id}-showInline`}
+                      checked={(block as any).showInline !== false}
+                      onCheckedChange={(checked) => updateBlock(block.id, { showInline: checked })}
+                    />
+                    <Label htmlFor={`${block.id}-showInline`}>Show QR codes inline</Label>
+                  </div>
+                  <Label>Layout</Label>
+                  <Select value={(block as any).layout || "grid"} onValueChange={(value) => updateBlock(block.id, { layout: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="grid">Grid</SelectItem>
+                      <SelectItem value="list">List</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {block.type === "order_management" && (
+                <div className="space-y-2">
+                  <Label>Custom Text</Label>
+                  <Input 
+                    value={(block as any).customText || ""} 
+                    onChange={(e) => updateBlock(block.id, { customText: e.target.value })} 
+                    placeholder="Need to make changes?"
+                  />
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`${block.id}-showViewOrder`}
+                        checked={(block as any).showViewOrder !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showViewOrder: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showViewOrder`}>Show "View Order" button</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`${block.id}-showModifyOrder`}
+                        checked={(block as any).showModifyOrder === true}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showModifyOrder: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showModifyOrder`}>Show "Modify Order" button</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`${block.id}-showCancelOrder`}
+                        checked={(block as any).showCancelOrder === true}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showCancelOrder: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showCancelOrder`}>Show "Cancel Order" button</Label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {block.type === "social_links" && (
+                <div className="space-y-2">
+                  <Label>Style</Label>
+                  <Select value={(block as any).style || "icons"} onValueChange={(value) => updateBlock(block.id, { style: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="icons">Icons</SelectItem>
+                      <SelectItem value="buttons">Text Buttons</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Label>Alignment</Label>
+                  <Select value={(block as any).align || "center"} onValueChange={(value) => updateBlock(block.id, { align: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="left">Left</SelectItem>
+                      <SelectItem value="center">Center</SelectItem>
+                      <SelectItem value="right">Right</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="grid grid-cols-1 gap-2">
+                    <div>
+                      <Label>Facebook URL</Label>
+                      <Input 
+                        value={(block as any).platforms?.facebook || ""} 
+                        onChange={(e) => updateBlock(block.id, { platforms: { ...(block as any).platforms, facebook: e.target.value } })} 
+                        placeholder="https://facebook.com/yourpage"
+                      />
+                    </div>
+                    <div>
+                      <Label>Twitter URL</Label>
+                      <Input 
+                        value={(block as any).platforms?.twitter || ""} 
+                        onChange={(e) => updateBlock(block.id, { platforms: { ...(block as any).platforms, twitter: e.target.value } })} 
+                        placeholder="https://twitter.com/yourhandle"
+                      />
+                    </div>
+                    <div>
+                      <Label>Instagram URL</Label>
+                      <Input 
+                        value={(block as any).platforms?.instagram || ""} 
+                        onChange={(e) => updateBlock(block.id, { platforms: { ...(block as any).platforms, instagram: e.target.value } })} 
+                        placeholder="https://instagram.com/yourhandle"
+                      />
+                    </div>
+                    <div>
+                      <Label>Website URL</Label>
+                      <Input 
+                        value={(block as any).platforms?.website || ""} 
+                        onChange={(e) => updateBlock(block.id, { platforms: { ...(block as any).platforms, website: e.target.value } })} 
+                        placeholder="https://yourwebsite.com"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

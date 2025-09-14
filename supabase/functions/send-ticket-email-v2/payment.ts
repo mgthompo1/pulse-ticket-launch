@@ -27,9 +27,31 @@ export class PaymentService {
         apiVersion: '2023-10-16',
       });
 
-      const session = await stripeClient.checkout.sessions.retrieve(stripeSessionId, {
-        expand: ['payment_intent.payment_method']
-      });
+      // Handle both checkout session IDs (cs_*) and payment intent IDs (pi_*)
+      if (stripeSessionId.startsWith('pi_')) {
+        // If it's a payment intent ID, fetch the payment intent directly
+        const paymentIntent = await stripeClient.paymentIntents.retrieve(stripeSessionId, {
+          expand: ['payment_method']
+        });
+
+        if (paymentIntent.payment_method) {
+          const pm = paymentIntent.payment_method;
+          if (pm.card) {
+            const paymentInfo: PaymentMethodInfo = {
+              brand: pm.card.brand.charAt(0).toUpperCase() + pm.card.brand.slice(1),
+              last4: pm.card.last4,
+              type: 'card'
+            };
+            
+            logStep("Payment method retrieved from payment intent", paymentInfo);
+            return paymentInfo;
+          }
+        }
+      } else {
+        // If it's a checkout session ID, fetch the session
+        const session = await stripeClient.checkout.sessions.retrieve(stripeSessionId, {
+          expand: ['payment_intent.payment_method']
+        });
 
       if (session.payment_intent && session.payment_intent.payment_method) {
         const pm = session.payment_intent.payment_method;
@@ -43,6 +65,7 @@ export class PaymentService {
           logStep("Payment method retrieved", paymentInfo);
           return paymentInfo;
         }
+      }
       }
 
       return defaultInfo;

@@ -169,7 +169,7 @@ export class DatabaseService {
       if (!dbTickets || dbTickets.length === 0) return {};
 
       const { data: qrResp } = await this.client.functions.invoke('generate-ticket-qr', {
-        body: { tickets: dbTickets.map((t: any) => ({ id: t.id, code: t.code })) }
+        body: { tickets: dbTickets.map((t: any) => ({ id: t.id, code: t.ticket_code })) }
       });
 
       const urls: Record<string, string> = (qrResp as any)?.urls || {};

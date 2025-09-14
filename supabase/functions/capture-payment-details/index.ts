@@ -179,7 +179,7 @@ serve(async (req) => {
     // Send ticket email (includes receipt and tickets)
     console.log('=== SENDING TICKET EMAIL ===');
     try {
-      const { data: emailData, error: emailError } = await supabaseClient.functions.invoke('send-ticket-email', {
+      const { data: emailData, error: emailError } = await supabaseClient.functions.invoke('send-ticket-email-v2', {
         body: { orderId: orderId }
       });
 

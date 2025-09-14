@@ -71,21 +71,36 @@ export const CONFIG = {
     }
   },
   
-  // Default email blocks
+  // Default email blocks with Humanitix-inspired features
   DEFAULT_EMAIL_BLOCKS: [
-    { type: 'header', title: 'Thank you for your purchase!' },
+    { type: 'header', title: 'Thank you for your purchase, @FirstName!' },
+    { type: 'custom_message', message: 'Thanks for choosing @EventName! We\'re excited to see you there.' },
     { type: 'event_details' },
     { type: 'ticket_list' },
-    { type: 'button', label: 'View Tickets', url: '#', align: 'center' }
+    { type: 'qr_tickets', showInline: true, layout: 'grid' },
+    { type: 'payment_summary' },
+    { type: 'divider' },
+    { type: 'next_steps', title: 'What to expect next:', steps: [
+      'Save this email - you\'ll need it at the event',
+      'Add the event to your calendar',
+      'Arrive 15 minutes early for check-in',
+      'Bring a valid ID if required'
+    ], showIcons: true },
+    { type: 'calendar_button', label: 'Add to Calendar', align: 'center', showIcon: true },
+    { type: 'button', label: 'View Registration Confirmation', url: 'https://www.ticketflo.org/tickets?orderId={{ORDER_ID}}&email={{CUSTOMER_EMAIL}}', align: 'center' },
+    { type: 'order_management', showViewOrder: true, customText: 'Need to make changes?' },
+    { type: 'divider' },
+    { type: 'social_links', align: 'center', style: 'icons' },
+    { type: 'footer', text: 'Questions? Contact us at @ContactEmail' }
   ],
   
-  // Professional monochrome Unicode icons
+  // Professional email-friendly icons
   ICONS: {
-    calendar: '📅\uFE0E', // Calendar (text variant)
-    mapPin: '⌖',         // Position indicator (monochrome)
-    user: '👤\uFE0E',    // Bust in silhouette (text variant)
-    ticket: '🎟\uFE0E',  // Admission tickets (text variant)
-    card: '💳\uFE0E'     // Credit card (text variant)
+    calendar: '📅',      // Calendar emoji
+    mapPin: '📍',        // Round pushpin (more widely supported)
+    user: '👤',         // Bust in silhouette
+    ticket: '🎫',       // Ticket (more widely supported)
+    card: '💳'          // Credit card
   },
   
   // PDF generation settings

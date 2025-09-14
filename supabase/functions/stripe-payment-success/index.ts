@@ -259,7 +259,7 @@ serve(async (req) => {
     // Send ticket email
     console.log("Sending ticket email...");
     try {
-      await supabaseClient.functions.invoke('send-ticket-email', {
+      await supabaseClient.functions.invoke('send-ticket-email-v2', {
         body: { orderId: orderId }
       });
       console.log("Ticket email sent successfully");

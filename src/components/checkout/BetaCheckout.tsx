@@ -41,8 +41,9 @@ const EventHero: React.FC<{
   eventData: EventData;
   theme: Theme;
   onScrollToTickets: () => void;
+  onShowEventInfo: () => void;
   isLoading: boolean;
-}> = React.memo(({ eventData, theme, onScrollToTickets, isLoading }) => (
+}> = React.memo(({ eventData, theme, onScrollToTickets, onShowEventInfo, isLoading }) => (
   <div className="container mx-auto px-4 py-6">
     <div className="max-w-7xl mx-auto">
       <Card className="overflow-hidden" style={{ backgroundColor: theme.cardBackgroundColor }}>
@@ -142,10 +143,7 @@ const EventHero: React.FC<{
             <Button 
               variant="outline"
               size="sm"
-              onClick={() => {
-                console.log('Event info button clicked');
-                setShowEventInfoModal(true);
-              }}
+              onClick={onShowEventInfo}
               className="text-sm"
             >
               Event info
@@ -479,6 +477,11 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
     ticketsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
+  const handleShowEventInfo = useCallback(() => {
+    console.log('Event info button clicked');
+    setShowEventInfoModal(true);
+  }, []);
+
   const isStripePayment = eventData.organizations?.payment_provider === 'stripe';
   const hasTicketsInCart = cartItems.length > 0;
   const totalTickets = cartItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -496,6 +499,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
         eventData={eventData}
         theme={theme}
         onScrollToTickets={scrollToTickets}
+        onShowEventInfo={handleShowEventInfo}
         isLoading={isLoading}
       />
 

@@ -73,10 +73,10 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
       name: eventDetails?.name || 'Sample Event',
       venue: eventDetails?.venue || 'Sample Venue',
       event_date: eventDetails?.event_date || new Date().toISOString(),
-      logo_url: eventDetails?.logo_url || '',
+      ...(eventDetails?.logo_url && { logo_url: eventDetails.logo_url }),
       organizations: {
         name: organizationDetails?.name || 'Sample Organization',
-        logo_url: organizationDetails?.logo_url || ''
+        ...(organizationDetails?.logo_url && { logo_url: organizationDetails.logo_url })
       }
     },
     customer_email: 'customer@example.com',
@@ -115,10 +115,25 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
   // Determine template to use
   let templateToUse: EmailTemplate;
   
+  // Check if we should show "View Tickets" button based on delivery method
+  const shouldShowViewTicketsButton = ticketDeliveryMethod !== 'email_confirmation_only' && ticketDeliveryMethod !== 'email_confirmation';
+  
   if (blocksTemplate && Array.isArray(blocksTemplate.blocks)) {
     templateToUse = blocksTemplate;
   } else if (emailCustomization?.template) {
     // Convert old template format to new blocks format
+    const blocks = [
+      { id: '1', type: 'header', title: emailCustomization.content?.headerText || 'Thank you for your purchase!', align: 'center' },
+      { id: '2', type: 'event_details', showDate: true, showTime: true, showVenue: true, showCustomer: true },
+      { id: '3', type: 'text', html: emailCustomization.content?.bodyText || 'We look forward to seeing you at the event.' },
+      { id: '4', type: 'ticket_list', showCode: true, showPrice: true }
+    ];
+    
+    // Only add View Tickets button for delivery methods that have actual ticket files
+    if (shouldShowViewTicketsButton) {
+      blocks.push({ id: '5', type: 'button', label: 'View Tickets', url: '#', align: 'center' });
+    }
+    
     templateToUse = {
       version: 1,
       subject: 'Your ticket confirmation',
@@ -131,16 +146,21 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
         borderColor: emailCustomization.template.borderColor || '#e2e8f0',
         fontFamily: emailCustomization.template.fontFamily || "'Inter', sans-serif"
       },
-      blocks: [
-        { id: '1', type: 'header', title: emailCustomization.content?.headerText || 'Thank you for your purchase!', align: 'center' },
-        { id: '2', type: 'event_details', showDate: true, showTime: true, showVenue: true, showCustomer: true },
-        { id: '3', type: 'text', html: emailCustomization.content?.bodyText || 'We look forward to seeing you at the event.' },
-        { id: '4', type: 'ticket_list', showCode: true, showPrice: true },
-        { id: '5', type: 'button', label: 'View Tickets', url: '#', align: 'center' }
-      ]
+      blocks
     };
   } else {
     // Default template
+    const blocks = [
+      { id: '1', type: 'header', title: 'Thank you for your purchase!', align: 'center' },
+      { id: '2', type: 'event_details', showDate: true, showTime: true, showVenue: true, showCustomer: true },
+      { id: '3', type: 'ticket_list', showCode: true, showPrice: true }
+    ];
+    
+    // Only add View Tickets button for delivery methods that have actual ticket files
+    if (shouldShowViewTicketsButton) {
+      blocks.push({ id: '4', type: 'button', label: 'View Tickets', url: '#', align: 'center' });
+    }
+    
     templateToUse = {
       version: 1,
       subject: 'Your ticket confirmation',
@@ -153,17 +173,18 @@ export const EmailTemplatePreview: React.FC<EmailTemplatePreviewProps> = ({
         borderColor: '#e2e8f0',
         fontFamily: "'Inter', sans-serif"
       },
-      blocks: [
-        { id: '1', type: 'header', title: 'Thank you for your purchase!', align: 'center' },
-        { id: '2', type: 'event_details', showDate: true, showTime: true, showVenue: true, showCustomer: true },
-        { id: '3', type: 'ticket_list', showCode: true, showPrice: true },
-        { id: '4', type: 'button', label: 'View Tickets', url: '#', align: 'center' }
-      ]
+      blocks
     };
   }
 
-  // Get branding configuration
-  const branding = emailCustomization?.branding || {};
+  // Get branding configuration with proper defaults
+  const branding = {
+    showLogo: true,
+    logoPosition: 'header',
+    logoSize: 'medium',
+    logoSource: 'event', // Always default to event logo first
+    ...emailCustomization?.branding
+  };
 
   // Generate the email HTML using unified renderer
   const emailHtml = emailRenderer.renderEmailHtml(

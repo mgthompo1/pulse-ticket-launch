@@ -159,7 +159,7 @@ serve(async (req) => {
         .single();
 
       if (!eventError && event) {
-        await supabaseClient.functions.invoke('send-ticket-email', {
+        await supabaseClient.functions.invoke('send-ticket-email-v2', {
           body: { orderId: order.id }
         });
         console.log("Ticket email sent successfully");

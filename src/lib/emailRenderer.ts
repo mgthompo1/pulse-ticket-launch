@@ -155,7 +155,12 @@ export class EmailRenderer {
   }
 
   private getLogoUrl(orderData: OrderData, branding: BrandingConfig): string | null {
-    if (!branding.showLogo) return null;
+    // If showLogo is explicitly false, don't show any logo
+    if (branding.showLogo === false) return null;
+    
+    // Default to showing logo if not specified
+    const showLogo = branding.showLogo !== false;
+    if (!showLogo) return null;
     
     const logoSource = branding.logoSource || 'event';
     
@@ -166,7 +171,10 @@ export class EmailRenderer {
         return branding.customLogoUrl || null;
       case 'event':
       default:
-        return orderData.events.logo_url || orderData.events.organizations.logo_url || null;
+        // Always prioritize event logo first, then fall back to organization logo
+        const eventLogo = orderData.events.logo_url?.trim();
+        const orgLogo = orderData.events.organizations.logo_url?.trim();
+        return eventLogo || orgLogo || null;
     }
   }
 
@@ -259,7 +267,7 @@ export class EmailRenderer {
         return this.renderPaymentSummary(orderData, theme, paymentData);
 
       case 'button':
-        return this.renderButton(block as any, theme);
+        return this.renderButton(block as any, theme, deliveryMethod);
 
       case 'divider':
         return `<hr style="border:0;border-top:1px solid ${theme.borderColor};margin:16px 20px;" />`;
@@ -277,6 +285,27 @@ export class EmailRenderer {
         return `<div style="background:${theme.accentColor};padding:16px;text-align:center;border-top:1px solid ${theme.borderColor};">
           <small style="color:#999;">${this.sanitizeHtml(footerBlock.text || '')}</small>
         </div>`;
+
+      case 'calendar_button':
+        return this.renderCalendarButton(block as any, orderData, theme);
+
+      case 'qr_tickets':
+        return this.renderQRTickets(tickets, theme, block as any);
+
+      case 'order_management':
+        return this.renderOrderManagement(block as any, theme);
+
+      case 'social_links':
+        return this.renderSocialLinks(block as any, theme);
+
+      case 'custom_message':
+        return this.renderCustomMessage(block as any, theme);
+
+      case 'next_steps':
+        return this.renderNextSteps(block as any, theme);
+
+      case 'registration_details':
+        return this.renderRegistrationDetails(orderData, theme);
 
       default:
         return '';
@@ -400,16 +429,222 @@ export class EmailRenderer {
     </div>`;
   }
 
-  private renderButton(block: any, theme: ThemeStyles): string {
+  private renderButton(block: any, theme: ThemeStyles, deliveryMethod?: string): string {
     const safeUrl = this.sanitizeUrl(block.url);
     if (safeUrl === '#' && !block.url) return '';
 
     const alignment = block.align === 'left' ? 'left' : block.align === 'right' ? 'right' : 'center';
     
+    // Customize button text based on delivery method
+    let buttonText = block.label || 'Click Here';
+    
+    if (block.label && block.label.toLowerCase().includes('view tickets')) {
+      if (deliveryMethod === 'confirmation_email' || deliveryMethod === 'email_confirmation_only' || deliveryMethod === 'email_confirmation') {
+        buttonText = 'View Registration Confirmation';
+      }
+    }
+    
     return `<div style="padding:16px 20px;text-align:${alignment};" class="email-content mobile-padding mobile-text-center">
       <a href="${safeUrl}" style="display:inline-block;background:${theme.buttonColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:600;font-family:'Manrope', sans-serif;min-width:120px;" class="mobile-button">
-        ${this.sanitizeHtml(block.label || 'Click Here')}
+        ${this.sanitizeHtml(buttonText)}
       </a>
+    </div>`;
+  }
+
+  private renderCalendarButton(block: any, orderData: OrderData, theme: ThemeStyles): string {
+    const eventDate = new Date(orderData.events.event_date);
+    const startTime = eventDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const endTime = new Date(eventDate.getTime() + (2 * 60 * 60 * 1000)).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'; // 2 hours duration
+    
+    const calendarParams = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: orderData.events.name,
+      dates: `${startTime}/${endTime}`,
+      details: `Event: ${orderData.events.name}${orderData.events.venue ? `\nVenue: ${orderData.events.venue}` : ''}`,
+      location: orderData.events.venue || '',
+      sf: 'true',
+      output: 'xml'
+    });
+    
+    const googleCalendarUrl = `https://calendar.google.com/calendar/render?${calendarParams.toString()}`;
+    const alignment = block.align || 'center';
+    const label = block.label || 'Add to Calendar';
+    const showIcon = block.showIcon !== false;
+    
+    return `<div style="padding:16px 20px;text-align:${alignment};" class="email-content mobile-padding mobile-text-center">
+      <a href="${googleCalendarUrl}" style="display:inline-block;background:${theme.accentColor};color:${theme.textColor};border:2px solid ${theme.borderColor};padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:600;font-family:'Manrope', sans-serif;min-width:120px;" class="mobile-button">
+        ${showIcon ? '📅 ' : ''}${this.sanitizeHtml(label)}
+      </a>
+    </div>`;
+  }
+
+  private renderQRTickets(tickets: TicketData[], theme: ThemeStyles, block: any): string {
+    if (tickets.length === 0) return '';
+    
+    const layout = block.layout || 'grid';
+    const showInline = block.showInline !== false;
+    const includeBarcode = block.includeBarcode === true;
+    
+    if (!showInline) {
+      return `<div style="margin:16px 20px;padding:16px;background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:8px;text-align:center;">
+        <h3 style="color:${theme.headerColor};margin-bottom:8px;font-family:'Manrope', sans-serif;">Your QR Tickets</h3>
+        <p style="color:${theme.textColor};font-size:14px;margin:0;">QR codes will be attached as separate files to this email.</p>
+      </div>`;
+    }
+    
+    const ticketStyle = layout === 'grid' 
+      ? 'display:inline-block;margin:8px;vertical-align:top;'
+      : 'display:block;margin:8px 0;';
+    
+    const ticketHtml = tickets.map((ticket, index) => {
+      return `<div style="${ticketStyle}border:1px solid ${theme.borderColor};border-radius:8px;padding:16px;background:${theme.backgroundColor};text-align:center;min-width:200px;">
+        <div style="font-weight:600;color:${theme.headerColor};margin-bottom:8px;">${this.sanitizeHtml(ticket.type)}</div>
+        <div style="color:${theme.textColor};font-size:14px;margin-bottom:8px;">Ticket #${index + 1}</div>
+        <div style="width:100px;height:100px;background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:4px;margin:8px auto;display:flex;align-items:center;justify-content:center;color:${theme.textColor};font-size:12px;">
+          QR Code<br/>Preview
+        </div>
+        <div style="color:${theme.textColor};font-size:10px;font-family:monospace;background:${theme.accentColor};padding:4px;border-radius:4px;word-break:break-all;margin-top:8px;">
+          ${this.sanitizeHtml(ticket.code)}
+        </div>
+      </div>`;
+    }).join('');
+    
+    return `<div style="margin:16px 20px;">
+      <h3 style="color:${theme.headerColor};margin-bottom:16px;font-family:'Manrope', sans-serif;">Your QR Tickets</h3>
+      <div style="text-align:center;">
+        ${ticketHtml}
+      </div>
+    </div>`;
+  }
+
+  private renderOrderManagement(block: any, theme: ThemeStyles): string {
+    const showViewOrder = block.showViewOrder !== false;
+    const showModifyOrder = block.showModifyOrder === true;
+    const showCancelOrder = block.showCancelOrder === true;
+    const customText = block.customText || 'Need help with your order?';
+    
+    const buttons = [];
+    
+    if (showViewOrder) {
+      buttons.push(`<a href="#" style="display:inline-block;margin:4px;background:${theme.buttonColor};color:#fff;padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">View Order</a>`);
+    }
+    
+    if (showModifyOrder) {
+      buttons.push(`<a href="#" style="display:inline-block;margin:4px;background:${theme.accentColor};color:${theme.textColor};border:1px solid ${theme.borderColor};padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">Modify Order</a>`);
+    }
+    
+    if (showCancelOrder) {
+      buttons.push(`<a href="#" style="display:inline-block;margin:4px;background:#ef4444;color:#fff;padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">Cancel Order</a>`);
+    }
+    
+    if (buttons.length === 0) return '';
+    
+    return `<div style="margin:16px 20px;padding:16px;background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:8px;text-align:center;">
+      <p style="color:${theme.textColor};margin-bottom:12px;font-weight:500;">${this.sanitizeHtml(customText)}</p>
+      <div>
+        ${buttons.join('')}
+      </div>
+    </div>`;
+  }
+
+  private renderSocialLinks(block: any, theme: ThemeStyles): string {
+    const platforms = block.platforms || {};
+    const alignment = block.align || 'center';
+    const style = block.style || 'icons';
+    
+    const socialLinks = [];
+    
+    if (platforms.facebook) {
+      const content = style === 'icons' ? '📘' : 'Facebook';
+      socialLinks.push(`<a href="${this.sanitizeUrl(platforms.facebook)}" style="display:inline-block;margin:0 8px;color:${theme.textColor};text-decoration:none;">${content}</a>`);
+    }
+    
+    if (platforms.twitter) {
+      const content = style === 'icons' ? '🐦' : 'Twitter';
+      socialLinks.push(`<a href="${this.sanitizeUrl(platforms.twitter)}" style="display:inline-block;margin:0 8px;color:${theme.textColor};text-decoration:none;">${content}</a>`);
+    }
+    
+    if (platforms.instagram) {
+      const content = style === 'icons' ? '📷' : 'Instagram';
+      socialLinks.push(`<a href="${this.sanitizeUrl(platforms.instagram)}" style="display:inline-block;margin:0 8px;color:${theme.textColor};text-decoration:none;">${content}</a>`);
+    }
+    
+    if (platforms.linkedin) {
+      const content = style === 'icons' ? '💼' : 'LinkedIn';
+      socialLinks.push(`<a href="${this.sanitizeUrl(platforms.linkedin)}" style="display:inline-block;margin:0 8px;color:${theme.textColor};text-decoration:none;">${content}</a>`);
+    }
+    
+    if (platforms.website) {
+      const content = style === 'icons' ? '🌐' : 'Website';
+      socialLinks.push(`<a href="${this.sanitizeUrl(platforms.website)}" style="display:inline-block;margin:0 8px;color:${theme.textColor};text-decoration:none;">${content}</a>`);
+    }
+    
+    if (socialLinks.length === 0) return '';
+    
+    return `<div style="padding:16px 20px;text-align:${alignment};">
+      <div style="color:${theme.textColor};font-size:14px;">
+        ${socialLinks.join('')}
+      </div>
+    </div>`;
+  }
+
+  private renderCustomMessage(block: any, theme: ThemeStyles): string {
+    const message = block.message || block.markdown || '';
+    if (!message) return '';
+    
+    return `<div style="margin:16px 20px;padding:16px;background:${theme.accentColor};border-left:4px solid ${theme.buttonColor};border-radius:4px;">
+      <div style="color:${theme.textColor};line-height:1.6;">
+        ${this.sanitizeHtml(message)}
+      </div>
+    </div>`;
+  }
+
+  private renderNextSteps(block: any, theme: ThemeStyles): string {
+    const steps = block.steps || [];
+    const title = block.title || 'What\'s Next?';
+    const showIcons = block.showIcons !== false;
+    
+    if (steps.length === 0) return '';
+    
+    const stepsHtml = steps.map((step: string, index: number) => {
+      const icon = showIcons ? `${index + 1}️⃣ ` : `${index + 1}. `;
+      return `<li style="margin:8px 0;color:${theme.textColor};line-height:1.5;">
+        ${icon}${this.sanitizeHtml(step)}
+      </li>`;
+    }).join('');
+    
+    return `<div style="margin:16px 20px;padding:16px;background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:8px;">
+      <h3 style="color:${theme.headerColor};margin-bottom:12px;font-family:'Manrope', sans-serif;">${this.sanitizeHtml(title)}</h3>
+      <ul style="margin:0;padding-left:0;list-style:none;">
+        ${stepsHtml}
+      </ul>
+    </div>`;
+  }
+
+  private renderRegistrationDetails(orderData: OrderData, theme: ThemeStyles): string {
+    const itemsHtml = orderData.order_items.map(item => {
+      const name = item.item_type === 'ticket' 
+        ? item.ticket_types?.name || 'General Admission'
+        : item.merchandise?.name || 'Merchandise';
+      
+      return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid ${theme.borderColor};">
+        <div>
+          <div style="font-weight:600;color:${theme.textColor};">${this.sanitizeHtml(name)}</div>
+          <div style="color:${theme.textColor};font-size:14px;">Quantity: ${item.quantity}</div>
+        </div>
+        <div style="color:${theme.textColor};font-weight:600;">$${(item.unit_price * item.quantity).toFixed(2)}</div>
+      </div>`;
+    }).join('');
+
+    return `<div style="margin:16px 20px;">
+      <h3 style="color:${theme.headerColor};margin-bottom:16px;font-family:'Manrope', sans-serif;">Registration Details</h3>
+      <div style="border:1px solid ${theme.borderColor};border-radius:8px;padding:16px;background:${theme.backgroundColor};">
+        ${itemsHtml}
+        <div style="display:flex;justify-content:space-between;padding:16px 0 8px 0;font-weight:600;color:${theme.headerColor};border-top:2px solid ${theme.borderColor};margin-top:16px;">
+          <div>Total</div>
+          <div>$${orderData.total_amount.toFixed(2)}</div>
+        </div>
+      </div>
     </div>`;
   }
 

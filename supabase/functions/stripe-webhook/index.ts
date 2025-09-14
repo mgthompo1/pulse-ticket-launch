@@ -162,7 +162,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
         try {
           console.log("Triggering ticket email for order:", orderId);
           
-          const emailResponse = await supabaseClient.functions.invoke('send-ticket-email', {
+          const emailResponse = await supabaseClient.functions.invoke('send-ticket-email-v2', {
             body: { orderId: orderId }
           });
           
@@ -218,7 +218,7 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent,
         try {
           console.log("Triggering ticket email for order:", order.id);
           
-          const emailResponse = await supabaseClient.functions.invoke('send-ticket-email', {
+          const emailResponse = await supabaseClient.functions.invoke('send-ticket-email-v2', {
             body: { orderId: order.id }
           });
           

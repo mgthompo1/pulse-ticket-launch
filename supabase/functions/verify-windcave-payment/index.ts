@@ -180,7 +180,7 @@ serve(async (req) => {
 
     // Send confirmation email
     try {
-      await supabaseClient.functions.invoke('send-ticket-email', {
+      await supabaseClient.functions.invoke('send-ticket-email-v2', {
         body: {
           orderId: order.id,
           customerEmail: order.customer_email,
