@@ -22,6 +22,7 @@ interface ReminderCampaign {
   send_value?: number;
   send_datetime?: string;
   timezone: string;
+  recipient_type?: string;
 }
 
 interface Event {
@@ -234,7 +235,7 @@ class ReminderCampaignScheduler {
 
     for (const campaignWithEvent of campaignsNeedingScheduling) {
       try {
-        const sendDatetime = this.calculateSendDatetime(campaignWithEvent, campaignWithEvent.events);
+        const sendDatetime = this.calculateSendDatetime(campaignWithEvent, campaignWithEvent.event);
 
         // Only schedule if send time is in the future
         if (sendDatetime > new Date()) {
