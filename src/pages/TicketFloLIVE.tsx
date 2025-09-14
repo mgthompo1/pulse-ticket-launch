@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { CreditCard, Users, CheckCircle, Printer, Plus, ShoppingCart, BarChart3, TrendingUp, DollarSign, Package } from "lucide-react";
+import { CreditCard, Users, CheckCircle, Printer, Plus, ShoppingCart, BarChart3, TrendingUp, DollarSign, Package, Menu, Search, Home, Tag } from "lucide-react";
 
 interface GuestStatus {
   ticket_id: string;
@@ -56,6 +56,11 @@ const TicketFloLIVE = () => {
   const [ticketCode, setTicketCode] = useState("");
   const [checkInNotes, setCheckInNotes] = useState("");
   const [customerInfo, setCustomerInfo] = useState({ name: "", email: "" });
+
+  // Modern UI state
+  const [activeTab, setActiveTab] = useState("checkin");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Concession management state
   const [newItem, setNewItem] = useState({
@@ -710,21 +715,96 @@ const handleCreateConcessionItem = async () => {
     lanyardsPrinted: guests.filter(g => g.lanyard_printed).length,
   };
 
+  // Sidebar navigation items
+  const sidebarItems = [
+    { id: "checkin", icon: CheckCircle, label: "Check-In" },
+    { id: "pos", icon: CreditCard, label: "Point of Sale" },
+    { id: "guests", icon: Users, label: "Guest Status" },
+    { id: "concessions", icon: Package, label: "Manage Items" },
+    { id: "analytics", icon: BarChart3, label: "Analytics" },
+  ];
+
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">TicketFloLIVE - Event Management</h1>
-        <Button
-          onClick={() => navigate('/dashboard')}
-          variant="outline"
-        >
-          ← Back to Dashboard
-        </Button>
+    <div className="flex h-screen bg-gray-50">
+      {/* Vertical Sidebar */}
+      <div className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} transition-all duration-300 bg-gray-900 text-white flex flex-col`}>
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-gray-700">
+          <div className="flex items-center justify-between">
+            {!isSidebarCollapsed && (
+              <h1 className="text-xl font-bold">TicketFloLIVE</h1>
+            )}
+            <button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Navigation Items */}
+        <nav className="flex-1 px-2 py-4 space-y-1">
+          {sidebarItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center px-3 py-2 rounded-lg transition-colors ${
+                  isActive
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                {!isSidebarCollapsed && <span className="ml-3">{item.label}</span>}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Dashboard Button */}
+        <div className="p-2 border-t border-gray-700">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="w-full flex items-center px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors"
+          >
+            <Home className="h-5 w-5" />
+            {!isSidebarCollapsed && <span className="ml-3">Dashboard</span>}
+          </button>
+        </div>
       </div>
-      
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Modern Header */}
+        <header className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">Event Management</h1>
+              <p className="text-sm text-gray-500">Real-time event operations</p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search guests, tickets..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 w-80"
+                />
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <main className="flex-1 overflow-auto p-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Guests</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -753,20 +833,11 @@ const handleCreateConcessionItem = async () => {
             <div className="text-2xl font-bold">{stats.lanyardsPrinted}</div>
           </CardContent>
         </Card>
-      </div>
+          </div>
 
-      <Tabs defaultValue="checkin" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="checkin">Check-In</TabsTrigger>
-          <TabsTrigger value="pos">Point of Sale</TabsTrigger>
-          <TabsTrigger value="guests">Guest Status</TabsTrigger>
-          <TabsTrigger value="concessions">Manage Items</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
-
-        {/* Check-In Tab */}
-        <TabsContent value="checkin">
-          <Card>
+          {/* Tab Content */}
+          {activeTab === "checkin" && (
+            <Card>
             <CardHeader>
               <CardTitle>Guest Check-In</CardTitle>
               <CardDescription>Scan or enter ticket codes to check in guests</CardDescription>
@@ -797,11 +868,11 @@ const handleCreateConcessionItem = async () => {
                 Check In Guest
               </Button>
             </CardContent>
-          </Card>
-        </TabsContent>
+            </Card>
+          )}
 
-        {/* Point of Sale Tab */}
-        <TabsContent value="pos">
+          {/* Point of Sale Tab */}
+          {activeTab === "pos" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Products Section */}
             <div className="lg:col-span-2 space-y-6">
@@ -1051,10 +1122,10 @@ const handleCreateConcessionItem = async () => {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
+          )}
 
-        {/* Guest Status Tab */}
-        <TabsContent value="guests">
+          {/* Guest Status Tab */}
+          {activeTab === "guests" && (
           <Card>
             <CardHeader>
               <CardTitle>Guest Status Overview</CardTitle>
@@ -1094,10 +1165,10 @@ const handleCreateConcessionItem = async () => {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+          )}
 
-        {/* Concessions Management Tab */}
-        <TabsContent value="concessions">
+          {/* Concessions Management Tab */}
+          {activeTab === "concessions" && (
           <div className="space-y-6">
             {/* Add New Item */}
             <Card>
@@ -1215,10 +1286,10 @@ const handleCreateConcessionItem = async () => {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
+          )}
 
-        {/* Analytics Tab */}
-        <TabsContent value="analytics">
+          {/* Analytics Tab */}
+          {activeTab === "analytics" && (
           <div className="space-y-6">
             {/* Revenue Overview */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -1425,8 +1496,9 @@ const handleCreateConcessionItem = async () => {
               </Button>
             </div>
           </div>
-        </TabsContent>
-      </Tabs>
+          )}
+        </main>
+      </div>
     </div>
   );
 };
