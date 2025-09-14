@@ -307,6 +307,22 @@ export class EmailRenderer {
       case 'registration_details':
         return this.renderRegistrationDetails(orderData, theme);
 
+      // Reminder email specific blocks
+      case 'event_countdown':
+        return this.renderEventCountdown(block as any, orderData, theme);
+      case 'attendance_info':
+        return this.renderAttendanceInfo(block as any, orderData, theme);
+      case 'important_updates':
+        return this.renderImportantUpdates(block as any, theme);
+      case 'venue_directions':
+        return this.renderVenueDirections(block as any, orderData, theme);
+      case 'check_in_info':
+        return this.renderCheckInInfo(block as any, theme);
+      case 'weather_info':
+        return this.renderWeatherInfo(block as any, theme);
+      case 'recommended_items':
+        return this.renderRecommendedItems(block as any, theme);
+
       default:
         return '';
     }
@@ -781,6 +797,175 @@ export class EmailRenderer {
     </html>`);
     
     return parts.join('');
+  }
+
+  // Reminder email specific render methods
+  private renderEventCountdown(block: any, orderData: OrderData, theme: ThemeStyles): string {
+    const eventDate = new Date(orderData.events.event_date);
+    const now = new Date();
+    const diffTime = eventDate.getTime() - now.getTime();
+    const daysUntil = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const hoursUntil = Math.ceil(diffTime / (1000 * 60 * 60));
+
+    const align = block.align || 'center';
+    const customText = this.sanitizeHtml(block.customText || 'Don\'t miss out!');
+    const urgencyThreshold = block.urgencyThreshold || 3;
+    const isUrgent = daysUntil <= urgencyThreshold;
+
+    const bgColor = isUrgent ? '#fef2f2' : theme.accentColor;
+    const borderColor = isUrgent ? '#fca5a5' : theme.borderColor;
+    const textColor = isUrgent ? '#dc2626' : theme.textColor;
+
+    return `<div style="background:${bgColor};border:2px solid ${borderColor};margin:16px 20px;padding:24px;border-radius:12px;text-align:${align};">
+      <h3 style="color:${textColor};font-size:20px;margin:0 0 16px 0;font-weight:700;">${customText}</h3>
+      <div style="display:flex;justify-content:center;gap:20px;margin:16px 0;">
+        ${block.showDays && daysUntil > 0 ? `<div style="text-align:center;">
+          <div style="font-size:28px;font-weight:bold;color:${textColor};">${daysUntil}</div>
+          <div style="color:${theme.textColor};font-size:12px;">DAYS</div>
+        </div>` : ''}
+        ${block.showHours && hoursUntil > 0 ? `<div style="text-align:center;">
+          <div style="font-size:28px;font-weight:bold;color:${textColor};">${hoursUntil % 24}</div>
+          <div style="color:${theme.textColor};font-size:12px;">HOURS</div>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  private renderAttendanceInfo(block: any, orderData: OrderData, theme: ThemeStyles): string {
+    const customMessage = this.sanitizeHtml(block.customMessage || 'Here\'s a reminder of your attendance details:');
+
+    return `<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px;">
+      <h3 style="color:${theme.textColor};margin:0 0 12px 0;">${customMessage}</h3>
+      ${block.showTicketCount ? `<div style="color:${theme.textColor};margin:8px 0;">
+        <strong>Tickets:</strong> ${orderData.order_items.reduce((sum, item) => sum + item.quantity, 0)} tickets
+      </div>` : ''}
+      ${block.showTicketTypes ? `<div style="color:${theme.textColor};margin:8px 0;">
+        <strong>Types:</strong> ${orderData.order_items.map(item => item.ticket_types?.name || 'General').join(', ')}
+      </div>` : ''}
+    </div>`;
+  }
+
+  private renderImportantUpdates(block: any, theme: ThemeStyles): string {
+    const title = this.sanitizeHtml(block.title || 'Important Updates');
+    const updates = block.updates || [];
+
+    if (updates.length === 0) {
+      return `<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px;">
+        <h3 style="color:${theme.textColor};margin:0;">${title}</h3>
+        <p style="color:${theme.textColor};margin:8px 0 0 0;">No updates at this time.</p>
+      </div>`;
+    }
+
+    const updatesHtml = updates.map((update: string) =>
+      `<li style="color:${theme.textColor};margin:4px 0;">${this.sanitizeHtml(update)}</li>`
+    ).join('');
+
+    return `<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px;">
+      <h3 style="color:${theme.textColor};margin:0 0 12px 0;">${title}</h3>
+      <ul style="margin:0;padding-left:20px;">${updatesHtml}</ul>
+    </div>`;
+  }
+
+  private renderVenueDirections(block: any, orderData: OrderData, theme: ThemeStyles): string {
+    const venue = orderData.events.venue;
+    if (!venue && !block.customDirections) return '';
+
+    return `<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px;">
+      <h3 style="color:${theme.textColor};margin:0 0 12px 0;">📍 Venue & Directions</h3>
+      ${block.showAddress && venue ? `<div style="color:${theme.textColor};margin:8px 0;">
+        <strong>Address:</strong> ${this.sanitizeHtml(venue)}
+      </div>` : ''}
+      ${block.showMapLink ? `<div style="margin:12px 0;">
+        <a href="#" style="background:${theme.buttonColor};color:white;padding:8px 16px;text-decoration:none;border-radius:6px;display:inline-block;">
+          Get Directions
+        </a>
+      </div>` : ''}
+      ${block.showParkingInfo ? `<div style="color:${theme.textColor};margin:8px 0;">
+        <strong>Parking:</strong> Street parking and nearby parking garages available
+      </div>` : ''}
+      ${block.customDirections ? `<div style="color:${theme.textColor};margin:8px 0;">
+        ${this.sanitizeHtml(block.customDirections)}
+      </div>` : ''}
+    </div>`;
+  }
+
+  private renderCheckInInfo(block: any, theme: ThemeStyles): string {
+    const customInstructions = this.sanitizeHtml(block.customInstructions || '');
+    const checkInProcess = block.showCheckInProcess || [];
+
+    return `<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px;">
+      <h3 style="color:${theme.textColor};margin:0 0 12px 0;">✅ Check-in Information</h3>
+      ${customInstructions ? `<p style="color:${theme.textColor};margin:0 0 12px 0;">${customInstructions}</p>` : ''}
+      ${block.showArrivalTime ? `<div style="color:${theme.textColor};margin:8px 0;">
+        <strong>Recommended Arrival:</strong> 15 minutes before event start
+      </div>` : ''}
+      ${checkInProcess.length > 0 ? `
+        <h4 style="color:${theme.textColor};margin:12px 0 8px 0;">Check-in Process:</h4>
+        <ol style="margin:0;padding-left:20px;">
+          ${checkInProcess.map((step: string) => `<li style="color:${theme.textColor};margin:4px 0;">${this.sanitizeHtml(step)}</li>`).join('')}
+        </ol>
+      ` : ''}
+    </div>`;
+  }
+
+  private renderWeatherInfo(block: any, theme: ThemeStyles): string {
+    const customMessage = this.sanitizeHtml(block.customMessage || 'Check the weather and dress accordingly!');
+
+    return `<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px;">
+      <h3 style="color:${theme.textColor};margin:0 0 12px 0;">🌤️ Weather Information</h3>
+      <p style="color:${theme.textColor};margin:0;">${customMessage}</p>
+      ${block.showForecast ? `<div style="color:${theme.textColor};margin:12px 0;">
+        <strong>Forecast:</strong> Partly cloudy, 22°C (Weather data would be fetched from API)
+      </div>` : ''}
+      ${block.showRecommendations ? `<div style="color:${theme.textColor};margin:8px 0;">
+        <strong>Recommendation:</strong> Light jacket recommended for evening events
+      </div>` : ''}
+    </div>`;
+  }
+
+  private renderRecommendedItems(block: any, theme: ThemeStyles): string {
+    const title = this.sanitizeHtml(block.title || 'What to bring:');
+    const categories = block.categories || {};
+
+    let itemsHtml = '';
+
+    if (categories.bring && categories.bring.length > 0) {
+      itemsHtml += `<div style="margin:8px 0;">
+        <strong style="color:${theme.headerColor};">✅ Bring:</strong>
+        <ul style="margin:4px 0;padding-left:20px;">
+          ${categories.bring.map((item: string) => `<li style="color:${theme.textColor};">${this.sanitizeHtml(item)}</li>`).join('')}
+        </ul>
+      </div>`;
+    }
+
+    if (categories.wear && categories.wear.length > 0) {
+      itemsHtml += `<div style="margin:8px 0;">
+        <strong style="color:${theme.headerColor};">👕 Wear:</strong>
+        <ul style="margin:4px 0;padding-left:20px;">
+          ${categories.wear.map((item: string) => `<li style="color:${theme.textColor};">${this.sanitizeHtml(item)}</li>`).join('')}
+        </ul>
+      </div>`;
+    }
+
+    if (categories.avoid && categories.avoid.length > 0) {
+      itemsHtml += `<div style="margin:8px 0;">
+        <strong style="color:${theme.headerColor};">❌ Avoid:</strong>
+        <ul style="margin:4px 0;padding-left:20px;">
+          ${categories.avoid.map((item: string) => `<li style="color:${theme.textColor};">${this.sanitizeHtml(item)}</li>`).join('')}
+        </ul>
+      </div>`;
+    }
+
+    if (!itemsHtml && block.items && block.items.length > 0) {
+      itemsHtml = `<ul style="margin:8px 0;padding-left:20px;">
+        ${block.items.map((item: string) => `<li style="color:${theme.textColor};">${this.sanitizeHtml(item)}</li>`).join('')}
+      </ul>`;
+    }
+
+    return `<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px;">
+      <h3 style="color:${theme.textColor};margin:0 0 12px 0;">${title}</h3>
+      ${itemsHtml || '<p style="color:' + theme.textColor + ';margin:0;">No specific recommendations at this time.</p>'}
+    </div>`;
   }
 }
 

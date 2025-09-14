@@ -10,6 +10,7 @@ import PersonalizationHelper from "./PersonalizationHelper";
 import type {
   EmailBlock,
   EmailTemplate,
+  EmailTemplateType,
   EmailBlockType,
   HeaderBlock,
   TextBlock,
@@ -19,6 +20,13 @@ import type {
   DividerBlock,
   ImageBlock,
   FooterBlock,
+  EventCountdownBlock,
+  AttendanceInfoBlock,
+  ImportantUpdatesBlock,
+  VenueDirectionsBlock,
+  CheckInInfoBlock,
+  WeatherInfoBlock,
+  RecommendedItemsBlock,
 } from "@/types/email-template";
 
 interface EmailTemplateBuilderProps {
@@ -27,7 +35,7 @@ interface EmailTemplateBuilderProps {
   emailCustomization?: any;
   onEmailCustomizationChange?: (customization: any) => void;
   isAttractionMode?: boolean;
-  templateType?: 'ticket_confirmation' | 'booking_confirmation';
+  templateType?: EmailTemplateType;
 }
 
 const blockLabel: Record<EmailBlockType, string> = {
@@ -47,6 +55,14 @@ const blockLabel: Record<EmailBlockType, string> = {
   social_links: "Social Media",
   custom_message: "Custom Message",
   next_steps: "Next Steps",
+  // Reminder email blocks
+  event_countdown: "Event Countdown",
+  attendance_info: "Attendance Info",
+  important_updates: "Important Updates",
+  venue_directions: "Venue & Directions",
+  check_in_info: "Check-in Information",
+  weather_info: "Weather Forecast",
+  recommended_items: "Recommended Items",
 };
 
 export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({ 
@@ -424,6 +440,312 @@ export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({
                         placeholder="https://yourwebsite.com"
                       />
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Reminder email specific block configurations */}
+              {block.type === "event_countdown" && (
+                <div className="space-y-2">
+                  <Label>Custom Text</Label>
+                  <Input
+                    value={(block as EventCountdownBlock).customText || ""}
+                    onChange={(e) => updateBlock(block.id, { customText: e.target.value })}
+                    placeholder="Don't miss out!"
+                  />
+                  <Label>Urgency Threshold (days)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={(block as EventCountdownBlock).urgencyThreshold || 3}
+                    onChange={(e) => updateBlock(block.id, { urgencyThreshold: parseInt(e.target.value) })}
+                  />
+                  <Label>Alignment</Label>
+                  <Select value={(block as EventCountdownBlock).align || "center"} onValueChange={(value) => updateBlock(block.id, { align: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="left">Left</SelectItem>
+                      <SelectItem value="center">Center</SelectItem>
+                      <SelectItem value="right">Right</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showDays`}
+                        checked={(block as EventCountdownBlock).showDays !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showDays: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showDays`}>Show days</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showHours`}
+                        checked={(block as EventCountdownBlock).showHours === true}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showHours: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showHours`}>Show hours</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showMinutes`}
+                        checked={(block as EventCountdownBlock).showMinutes === true}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showMinutes: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showMinutes`}>Show minutes</Label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {block.type === "attendance_info" && (
+                <div className="space-y-2">
+                  <Label>Custom Message</Label>
+                  <Textarea
+                    rows={2}
+                    value={(block as AttendanceInfoBlock).customMessage || ""}
+                    onChange={(e) => updateBlock(block.id, { customMessage: e.target.value })}
+                    placeholder="Here's a reminder of your attendance details:"
+                  />
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showTicketCount`}
+                        checked={(block as AttendanceInfoBlock).showTicketCount !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showTicketCount: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showTicketCount`}>Show ticket count</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showAttendeeNames`}
+                        checked={(block as AttendanceInfoBlock).showAttendeeNames === true}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showAttendeeNames: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showAttendeeNames`}>Show attendee names</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showTicketTypes`}
+                        checked={(block as AttendanceInfoBlock).showTicketTypes !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showTicketTypes: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showTicketTypes`}>Show ticket types</Label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {block.type === "important_updates" && (
+                <div className="space-y-2">
+                  <Label>Title</Label>
+                  <Input
+                    value={(block as ImportantUpdatesBlock).title || ""}
+                    onChange={(e) => updateBlock(block.id, { title: e.target.value })}
+                    placeholder="Important Updates"
+                  />
+                  <Label>Updates (one per line)</Label>
+                  <Textarea
+                    rows={4}
+                    value={(block as ImportantUpdatesBlock).updates?.join('\n') || ""}
+                    onChange={(e) => updateBlock(block.id, { updates: e.target.value.split('\n').filter(s => s.trim()) })}
+                    placeholder="Enter updates, one per line"
+                  />
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-highlightNew`}
+                        checked={(block as ImportantUpdatesBlock).highlightNew === true}
+                        onCheckedChange={(checked) => updateBlock(block.id, { highlightNew: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-highlightNew`}>Highlight new updates</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showTimestamp`}
+                        checked={(block as ImportantUpdatesBlock).showTimestamp === true}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showTimestamp: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showTimestamp`}>Show timestamps</Label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {block.type === "venue_directions" && (
+                <div className="space-y-2">
+                  <Label>Custom Directions</Label>
+                  <Textarea
+                    rows={3}
+                    value={(block as VenueDirectionsBlock).customDirections || ""}
+                    onChange={(e) => updateBlock(block.id, { customDirections: e.target.value })}
+                    placeholder="Additional directions or instructions"
+                  />
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showAddress`}
+                        checked={(block as VenueDirectionsBlock).showAddress !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showAddress: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showAddress`}>Show venue address</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showMapLink`}
+                        checked={(block as VenueDirectionsBlock).showMapLink !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showMapLink: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showMapLink`}>Show "Get Directions" button</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showParkingInfo`}
+                        checked={(block as VenueDirectionsBlock).showParkingInfo === true}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showParkingInfo: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showParkingInfo`}>Show parking information</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showPublicTransport`}
+                        checked={(block as VenueDirectionsBlock).showPublicTransport === true}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showPublicTransport: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showPublicTransport`}>Show public transport options</Label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {block.type === "check_in_info" && (
+                <div className="space-y-2">
+                  <Label>Custom Instructions</Label>
+                  <Textarea
+                    rows={2}
+                    value={(block as CheckInInfoBlock).customInstructions || ""}
+                    onChange={(e) => updateBlock(block.id, { customInstructions: e.target.value })}
+                    placeholder="Check-in opens @CheckInTime"
+                  />
+                  <Label>Check-in Process (one per line)</Label>
+                  <Textarea
+                    rows={4}
+                    value={(block as CheckInInfoBlock).showCheckInProcess?.join('\n') || ""}
+                    onChange={(e) => updateBlock(block.id, { showCheckInProcess: e.target.value.split('\n').filter(s => s.trim()) })}
+                    placeholder="Arrive at least 15 minutes early&#10;Have your ticket ready (digital or printed)&#10;Bring a valid ID if required"
+                  />
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showQRCodes`}
+                        checked={(block as CheckInInfoBlock).showQRCodes !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showQRCodes: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showQRCodes`}>Show QR codes for check-in</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showArrivalTime`}
+                        checked={(block as CheckInInfoBlock).showArrivalTime !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showArrivalTime: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showArrivalTime`}>Show recommended arrival time</Label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {block.type === "weather_info" && (
+                <div className="space-y-2">
+                  <Label>Custom Message</Label>
+                  <Textarea
+                    rows={2}
+                    value={(block as WeatherInfoBlock).customMessage || ""}
+                    onChange={(e) => updateBlock(block.id, { customMessage: e.target.value })}
+                    placeholder="Check the weather and dress accordingly!"
+                  />
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showForecast`}
+                        checked={(block as WeatherInfoBlock).showForecast !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showForecast: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showForecast`}>Show weather forecast</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showRecommendations`}
+                        checked={(block as WeatherInfoBlock).showRecommendations !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showRecommendations: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showRecommendations`}>Show clothing recommendations</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-autoUpdate`}
+                        checked={(block as WeatherInfoBlock).autoUpdate === true}
+                        onCheckedChange={(checked) => updateBlock(block.id, { autoUpdate: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-autoUpdate`}>Auto-update with live weather data</Label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {block.type === "recommended_items" && (
+                <div className="space-y-2">
+                  <Label>Title</Label>
+                  <Input
+                    value={(block as RecommendedItemsBlock).title || ""}
+                    onChange={(e) => updateBlock(block.id, { title: e.target.value })}
+                    placeholder="What to bring:"
+                  />
+                  <Label>Items to Bring (one per line)</Label>
+                  <Textarea
+                    rows={3}
+                    value={(block as RecommendedItemsBlock).categories?.bring?.join('\n') || ""}
+                    onChange={(e) => updateBlock(block.id, {
+                      categories: {
+                        ...(block as RecommendedItemsBlock).categories,
+                        bring: e.target.value.split('\n').filter(s => s.trim())
+                      }
+                    })}
+                    placeholder="Valid ID&#10;Your ticket&#10;Comfortable shoes"
+                  />
+                  <Label>What to Wear (one per line)</Label>
+                  <Textarea
+                    rows={2}
+                    value={(block as RecommendedItemsBlock).categories?.wear?.join('\n') || ""}
+                    onChange={(e) => updateBlock(block.id, {
+                      categories: {
+                        ...(block as RecommendedItemsBlock).categories,
+                        wear: e.target.value.split('\n').filter(s => s.trim())
+                      }
+                    })}
+                    placeholder="Weather-appropriate clothing&#10;Comfortable footwear"
+                  />
+                  <Label>What to Avoid (one per line)</Label>
+                  <Textarea
+                    rows={2}
+                    value={(block as RecommendedItemsBlock).categories?.avoid?.join('\n') || ""}
+                    onChange={(e) => updateBlock(block.id, {
+                      categories: {
+                        ...(block as RecommendedItemsBlock).categories,
+                        avoid: e.target.value.split('\n').filter(s => s.trim())
+                      }
+                    })}
+                    placeholder="Large bags (check venue policy)&#10;Outside food and drinks"
+                  />
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`${block.id}-showIcons`}
+                      checked={(block as RecommendedItemsBlock).showIcons !== false}
+                      onCheckedChange={(checked) => updateBlock(block.id, { showIcons: checked })}
+                    />
+                    <Label htmlFor={`${block.id}-showIcons`}>Show category icons</Label>
                   </div>
                 </div>
               )}

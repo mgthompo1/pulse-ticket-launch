@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SocialMediaIntegration } from "./SocialMediaIntegration";
+import { ReminderEmailCampaigns } from "./ReminderEmailCampaigns";
 
 interface Event {
   id: string;
@@ -242,61 +243,74 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
         </TabsContent>
 
         <TabsContent value="email" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="w-5 h-5" />
-                Email Marketing
-              </CardTitle>
-              <CardDescription>Send promotional emails to your audience</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email-subject">Subject Line</Label>
-                  <Input
-                    id="email-subject"
-                    value={emailCampaign.subject}
-                    onChange={(e) => setEmailCampaign(prev => ({ ...prev, subject: e.target.value }))}
-                    placeholder="Enter email subject"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email-segment">Audience Segment</Label>
-                  <Select value={emailCampaign.segment} onValueChange={(value) => setEmailCampaign(prev => ({ ...prev, segment: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select audience" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Subscribers</SelectItem>
-                      <SelectItem value="past-attendees">Past Attendees</SelectItem>
-                      <SelectItem value="interests">By Interests</SelectItem>
-                      <SelectItem value="location">By Location</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email-content">Email Content</Label>
-                <Textarea
-                  id="email-content"
-                  value={emailCampaign.content}
-                  onChange={(e) => setEmailCampaign(prev => ({ ...prev, content: e.target.value }))}
-                  placeholder="Write your email content here..."
-                  rows={6}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={handleSendEmail} className="flex-1">
-                  <Mail className="w-4 h-4 mr-2" />
-                  Send Campaign
-                </Button>
-                <Button variant="outline" className="flex-1">
-                  Save Draft
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <Tabs defaultValue="reminder-campaigns" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="reminder-campaigns">Reminder Campaigns</TabsTrigger>
+              <TabsTrigger value="promotional">Promotional Emails</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="reminder-campaigns">
+              <ReminderEmailCampaigns selectedEvent={selectedEvent} />
+            </TabsContent>
+
+            <TabsContent value="promotional" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Mail className="w-5 h-5" />
+                    Promotional Email Marketing
+                  </CardTitle>
+                  <CardDescription>Send promotional emails to your audience</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="email-subject">Subject Line</Label>
+                      <Input
+                        id="email-subject"
+                        value={emailCampaign.subject}
+                        onChange={(e) => setEmailCampaign(prev => ({ ...prev, subject: e.target.value }))}
+                        placeholder="Enter email subject"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email-segment">Audience Segment</Label>
+                      <Select value={emailCampaign.segment} onValueChange={(value) => setEmailCampaign(prev => ({ ...prev, segment: value }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select audience" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Subscribers</SelectItem>
+                          <SelectItem value="past-attendees">Past Attendees</SelectItem>
+                          <SelectItem value="interests">By Interests</SelectItem>
+                          <SelectItem value="location">By Location</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email-content">Email Content</Label>
+                    <Textarea
+                      id="email-content"
+                      value={emailCampaign.content}
+                      onChange={(e) => setEmailCampaign(prev => ({ ...prev, content: e.target.value }))}
+                      placeholder="Write your email content here..."
+                      rows={6}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={handleSendEmail} className="flex-1">
+                      <Mail className="w-4 h-4 mr-2" />
+                      Send Campaign
+                    </Button>
+                    <Button variant="outline" className="flex-1">
+                      Save Draft
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="social" className="space-y-4">
