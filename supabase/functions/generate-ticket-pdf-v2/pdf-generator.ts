@@ -281,7 +281,7 @@ export class PdfGenerator {
     
     // Background
     if (options.backgroundColor.length >= 3) {
-      pdf.setFillColor(...options.backgroundColor.slice(0, 3));
+      pdf.setFillColor(...(options.backgroundColor.slice(0, 3) as [number, number, number]));
       pdf.roundedRect(options.x - 10, options.y - 5, options.width + 20, sectionHeight, 8, 8, 'F');
     }
 

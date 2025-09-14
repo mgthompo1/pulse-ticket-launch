@@ -86,7 +86,7 @@ export class TemplateService {
 
     const branding = emailCustomization?.branding || {};
     const logoUrl = this.getLogoUrl(order, branding);
-    const logoSize = CONFIG.LOGO_SIZES[branding.logoSize as keyof typeof CONFIG.LOGO_SIZES] || CONFIG.LOGO_SIZES.medium;
+    const logoSize = CONFIG.LOGO_SIZES[(branding as any)?.logoSize as keyof typeof CONFIG.LOGO_SIZES] || CONFIG.LOGO_SIZES.medium;
 
     const parts: string[] = [];
     
@@ -99,7 +99,7 @@ export class TemplateService {
     parts.push(`<div style="font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;max-width:600px;margin:0 auto;background:${theme.backgroundColor};border:1px solid ${theme.borderColor};">`);
     
     // Header logo
-    if (branding.showLogo && branding.logoPosition === 'header' && logoUrl) {
+    if ((branding as any)?.showLogo && (branding as any)?.logoPosition === 'header' && logoUrl) {
       parts.push(`<div style="text-align:center;margin-bottom:15px;padding:20px 20px 0 20px;">
         <img src="${logoUrl}" alt="Logo" style="max-width:${logoSize};height:auto;display:block;margin:0 auto;"/>
       </div>`);
@@ -112,7 +112,7 @@ export class TemplateService {
     }
     
     // Footer logo
-    if (branding.showLogo && branding.logoPosition === 'footer' && logoUrl) {
+    if ((branding as any)?.showLogo && (branding as any)?.logoPosition === 'footer' && logoUrl) {
       parts.push(`<div style="text-align:center;margin-top:15px;padding:0 20px 20px 20px;">
         <img src="${logoUrl}" alt="Logo" style="max-width:${logoSize};height:auto;display:block;margin:0 auto;"/>
       </div>`);
@@ -274,18 +274,18 @@ export class TemplateService {
 
   // Get logo URL based on branding configuration
   private getLogoUrl(order: Order, branding: any): string | null {
-    if (!branding.showLogo) return null;
-    
-    const logoSource = branding.logoSource || 'event';
+    if (!(branding as any)?.showLogo) return null;
+
+    const logoSource = (branding as any)?.logoSource || 'event';
     
     switch (logoSource) {
       case 'organization':
-        return order.events.organizations.logo_url || null;
+        return (order.events.organizations as any)?.logo_url || null;
       case 'custom':
-        return branding.customLogoUrl || null;
+        return (branding as any)?.customLogoUrl || null;
       case 'event':
       default:
-        return order.events.logo_url || order.events.organizations.logo_url || null;
+        return order.events.logo_url || (order.events.organizations as any)?.logo_url || null;
     }
   }
 }

@@ -106,7 +106,7 @@ serve(async (req) => {
           throw new Error("Order not found");
         }
 
-        const stripeAccountId = order.events?.organizations?.stripe_account_id;
+        const stripeAccountId = (order.events?.organizations as any)?.stripe_account_id;
         
         if (!stripeAccountId) {
           throw new Error("Stripe account ID not configured for organization");
@@ -184,7 +184,7 @@ serve(async (req) => {
         if (shouldProcessBookingFees) {
           updateData = {
             ...updateData,
-            booking_fee_amount: bookingFeeAmount / 100, // Convert from cents to dollars
+            ...({ booking_fee_amount: bookingFeeAmount / 100 } as any), // Convert from cents to dollars
             booking_fee_enabled: true,
             subtotal_amount: ticketAmount / 100, // Convert from cents to dollars
           };

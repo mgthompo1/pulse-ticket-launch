@@ -66,7 +66,7 @@ serve(async (req) => {
       ? `${event.description.substring(0, 150)}... Join us ${eventDate} at ${event.venue || 'TBD'}. Get your tickets now!`
       : `Join us for ${event.name} on ${eventDate} at ${event.venue || 'TBD'}. Get your tickets now on TicketFlo!`;
 
-    const ogImage = event.featured_image_url || event.organizations?.logo_url || "https://www.ticketflo.org/og-image.jpg";
+    const ogImage = event.featured_image_url || (event.organizations as any)?.logo_url || "https://www.ticketflo.org/og-image.jpg";
     const canonical = `https://www.ticketflo.org/widget/${eventId}`;
 
     const html = `<!DOCTYPE html>

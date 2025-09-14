@@ -86,7 +86,7 @@ const formatDateTime = (dateTimeStr: string) => {
 }
 
 function generateBookingEmail(data: EmailData, customization: any = {}) {
-  const theme = themePresets[customization?.template?.theme || 'minimal'] || themePresets.minimal
+  const theme = (themePresets as any)[customization?.template?.theme || 'minimal'] || themePresets.minimal
   const startDateTime = formatDateTime(data.startTime)
   const endDateTime = formatDateTime(data.endTime)
   
@@ -109,7 +109,7 @@ function generateBookingEmail(data: EmailData, customization: any = {}) {
   `
 
   // Logo rendering
-  const logoHtml = customization?.branding?.showLogo && data.logoUrl ? `
+  const logoHtml = (customization?.branding as any)?.showLogo && data.logoUrl ? `
     <div style="text-align: center; margin-bottom: 20px;">
       <img src="${data.logoUrl}" alt="${data.organizationName}" style="max-width: 150px; height: auto;" />
     </div>

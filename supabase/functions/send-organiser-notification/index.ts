@@ -61,7 +61,7 @@ serve(async (req) => {
       }
 
       // Transform order_items to expected format
-      finalOrderData = (orderWithDetails.order_items as Array<Record<string, any>>).map((item: Record<string, any>) => ({
+      finalOrderData = (orderWithDetails.order_items as Array<Record<string, any>>).map((item: any) => ({
         type: item.item_type,
         name: item.ticket_types?.name || item.merchandise?.name || 'Unknown Item',
         price: item.unit_price,
@@ -121,11 +121,11 @@ serve(async (req) => {
     const organizerEmail = notifications.organiserEmail
 
     // Calculate order summary
-    const ticketItems = finalOrderData.filter((item: Record<string, any>) => item.type === 'ticket')
-    const merchandiseItems = finalOrderData.filter((item: Record<string, any>) => item.type === 'merchandise')
+    const ticketItems = finalOrderData.filter((item: any) => item.type === 'ticket')
+    const merchandiseItems = finalOrderData.filter((item: any) => item.type === 'merchandise')
 
-    const ticketTotal = ticketItems.reduce((sum: number, item: Record<string, any>) => sum + (Number(item.price) * Number(item.quantity)), 0)
-    const merchandiseTotal = merchandiseItems.reduce((sum: number, item: Record<string, any>) => sum + (Number(item.price) * Number(item.quantity)), 0)
+    const ticketTotal = ticketItems.reduce((sum: number, item: any) => sum + (Number(item.price) * Number(item.quantity)), 0)
+    const merchandiseTotal = merchandiseItems.reduce((sum: number, item: any) => sum + (Number(item.price) * Number(item.quantity)), 0)
     const subtotal = ticketTotal + merchandiseTotal
 
     // Generate email content
@@ -162,7 +162,7 @@ serve(async (req) => {
             
             ${ticketItems.length > 0 ? `
               <h3>Tickets</h3>
-              ${ticketItems.map((item: Record<string, any>) => `
+              ${ticketItems.map((item: any) => `
                 <div class="ticket-item">
                   <strong>${item.name}</strong><br>
                   Quantity: ${item.quantity} × $${item.price.toFixed(2)} = $${(item.quantity * item.price).toFixed(2)}
@@ -173,7 +173,7 @@ serve(async (req) => {
 
             ${merchandiseItems.length > 0 ? `
               <h3>Merchandise</h3>
-              ${merchandiseItems.map((item: Record<string, any>) => `
+              ${merchandiseItems.map((item: any) => `
                 <div class="ticket-item">
                   <strong>${item.name}</strong><br>
                   Quantity: ${item.quantity} × $${item.price.toFixed(2)} = $${(item.quantity * item.price).toFixed(2)}
@@ -220,13 +220,13 @@ New Ticket Sale - ${event.name}
 Order Summary:
 ${ticketItems.length > 0 ? `
 Tickets:
-${ticketItems.map((item: Record<string, any>) =>
+${ticketItems.map((item: any) =>
   `${item.name} - Quantity: ${item.quantity} × $${Number(item.price).toFixed(2)} = $${(Number(item.quantity) * Number(item.price)).toFixed(2)}${item.selectedSeats && Array.isArray(item.selectedSeats) && item.selectedSeats.length > 0 ? ` - Seats: ${item.selectedSeats.join(', ')}` : ''}`
 ).join('\n')}
 ` : ''}
 ${merchandiseItems.length > 0 ? `
 Merchandise:
-${merchandiseItems.map((item: Record<string, any>) =>
+${merchandiseItems.map((item: any) =>
   `${item.name} - Quantity: ${item.quantity} × $${Number(item.price).toFixed(2)} = $${(Number(item.quantity) * Number(item.price)).toFixed(2)}${item.selectedSize ? ` - Size: ${item.selectedSize}` : ''}${item.selectedColor ? ` - Color: ${item.selectedColor}` : ''}`
 ).join('\n')}
 ` : ''}

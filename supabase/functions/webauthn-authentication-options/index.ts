@@ -93,7 +93,7 @@ serve(async (req) => {
     const opts: GenerateAuthenticationOptionsOpts = {
       rpID,
       timeout: 60000,
-      allowCredentials: userCredentials.map(cred => ({
+      allowCredentials: userCredentials.map((cred: any) => ({
         id: new TextEncoder().encode(cred.credential_id),
         type: "public-key",
         transports: cred.credential_transports || ["internal", "usb", "ble", "nfc"]

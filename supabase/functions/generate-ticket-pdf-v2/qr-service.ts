@@ -26,7 +26,7 @@ export class QRService {
       );
 
       PerformanceUtils.endTimer(timer);
-      return qrCodeUrl;
+      return qrCodeUrl as string;
     } catch (error) {
       PerformanceUtils.endTimer(timer);
       ErrorUtils.logError('QR code generation failed', error, {
@@ -126,7 +126,7 @@ export class QRService {
         width: 64,
         margin: 1,
         errorCorrectionLevel: 'L',
-      }).then(url => url).catch(() => PDF_CONFIG.QR_CODE.FALLBACK_DATA_URL);
+      }).then((url: any) => url as string).catch(() => PDF_CONFIG.QR_CODE.FALLBACK_DATA_URL);
     } catch {
       // Ultimate fallback
       return PDF_CONFIG.QR_CODE.FALLBACK_DATA_URL;

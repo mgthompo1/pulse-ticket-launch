@@ -49,7 +49,7 @@ export class ValidationUtils {
     try {
       const urlObj = new URL(sanitized);
       
-      if (!PDF_CONFIG.SECURITY.ALLOWED_PROTOCOLS.includes(urlObj.protocol)) {
+      if (!PDF_CONFIG.SECURITY.ALLOWED_PROTOCOLS.includes(urlObj.protocol as 'https:' | 'data:')) {
         return { isValid: false, error: 'Protocol not allowed' };
       }
 
@@ -265,7 +265,7 @@ export class PerformanceUtils {
     maxAttempts: number = PDF_CONFIG.RETRY.MAX_ATTEMPTS,
     backoffMs: number = PDF_CONFIG.RETRY.BACKOFF_MS
   ): Promise<T> {
-    let lastError: Error;
+    let lastError: Error = new Error('Operation failed');
     
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {

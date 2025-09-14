@@ -43,7 +43,7 @@ serve(async (req) => {
           throw new Error("Event not found or organization currency not configured");
         }
         
-        const currency = eventData.organizations.currency?.toLowerCase() || "usd";
+        const currency = (eventData.organizations as any)?.currency?.toLowerCase() || "usd";
         
         const paymentIntent = await stripe.paymentIntents.create({
           amount: Math.round(amount * 100), // Convert to cents

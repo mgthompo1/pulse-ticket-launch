@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
         expectedFee: expectedBookingFee,
         actualFee: actualBookingFee,
         wasProcessed: basicOrder.booking_fee_enabled && actualBookingFee > 0,
-        orgBookingFeeEnabled: event.organizations.stripe_booking_fee_enabled
+        orgBookingFeeEnabled: (event.organizations as any)?.stripe_booking_fee_enabled
       }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

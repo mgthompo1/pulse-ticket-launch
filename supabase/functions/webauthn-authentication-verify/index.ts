@@ -177,8 +177,8 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       verified: true,
       message: "Authentication successful!",
-      accessToken: sessionData.properties?.access_token,
-      refreshToken: sessionData.properties?.refresh_token,
+      accessToken: (sessionData.properties as any)?.access_token,
+      refreshToken: (sessionData.properties as any)?.refresh_token,
       user: {
         id: user.id,
         email: user.email,

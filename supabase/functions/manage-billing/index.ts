@@ -111,7 +111,7 @@ serve(async (req) => {
         const list = await stripe.paymentMethods.list({ customer: billingCustomer.stripe_customer_id, type: 'card' });
         return new Response(JSON.stringify({
           default_payment_method: defaultPmId,
-          payment_methods: list.data.map(pm => ({
+          payment_methods: list.data.map((pm: any) => ({
             id: pm.id,
             brand: (pm.card && pm.card.brand) || undefined,
             last4: (pm.card && pm.card.last4) || undefined,
@@ -354,7 +354,7 @@ serve(async (req) => {
     
     // Add stack trace in development
     if (Deno.env.get('ENVIRONMENT') === 'development') {
-      errorResponse.stack = error.stack;
+      (errorResponse as any).stack = (error as any).stack;
     }
     
     return new Response(JSON.stringify(errorResponse), {

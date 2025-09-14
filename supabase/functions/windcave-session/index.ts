@@ -67,7 +67,7 @@ serve(async (req) => {
         throw new Error("Attraction not found");
       }
 
-      organizationData = attraction.organizations;
+      organizationData = (attraction.organizations as any);
       organizationId = attraction.organization_id;
     } else {
       // Get event and organization details
@@ -87,7 +87,7 @@ serve(async (req) => {
         throw new Error("Event not found");
       }
 
-      organizationData = event.organizations;
+      organizationData = (event.organizations as any);
       organizationId = event.organization_id;
     }
 
@@ -351,7 +351,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       sessionId: windcaveResult.id,
-      links: windcaveResult.links.map(link => ({
+      links: windcaveResult.links.map((link: any) => ({
         ...link,
         sessionId: windcaveResult.id // Add session ID to each link for easy access
       })),
