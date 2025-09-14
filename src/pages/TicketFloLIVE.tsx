@@ -1534,7 +1534,7 @@ const handleCreateConcessionItem = async () => {
                       <div className="space-y-4">
                         <LanyardPreviewSimple
                           template={currentLanyardTemplate}
-                          data={getRealPreviewData()}
+                          previewData={getRealPreviewData()}
                         />
                         <div className="text-center">
                           <p className="text-sm text-gray-600">Sample Lanyard Preview</p>
@@ -1573,7 +1573,7 @@ const handleCreateConcessionItem = async () => {
                           {currentLanyardTemplate && (
                             <LanyardPreviewSimple
                               template={currentLanyardTemplate}
-                              data={getRealPreviewData()}
+                              previewData={getRealPreviewData()}
                             />
                           )}
                         </div>

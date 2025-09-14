@@ -15,6 +15,15 @@ export const LanyardPreviewSimple: React.FC<LanyardPreviewProps> = ({
   scale = 1,
   className = ""
 }) => {
+  // Return null if previewData is not available yet
+  if (!previewData) {
+    return (
+      <div className={`${className} flex items-center justify-center p-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300`}>
+        <p className="text-gray-500">Loading preview data...</p>
+      </div>
+    );
+  }
+
   const { dimensions, background, blocks } = template;
 
   // Base dimensions in pixels (3px per mm is good for screen display)
@@ -50,23 +59,23 @@ export const LanyardPreviewSimple: React.FC<LanyardPreviewProps> = ({
     const getBlockContent = () => {
       switch (block.type) {
         case 'attendee_name':
-          return previewData.attendeeName;
+          return previewData?.attendeeName || 'Attendee Name';
 
         case 'event_title':
-          return (block as any).customText || previewData.eventTitle;
+          return (block as any).customText || previewData?.eventTitle || 'Event Title';
 
         case 'event_date':
-          return previewData.eventDate;
+          return previewData?.eventDate || 'Event Date';
 
         case 'event_time':
-          return previewData.eventTime;
+          return previewData?.eventTime || 'Event Time';
 
         case 'ticket_type':
           const prefix = (block as any).customPrefix || '';
-          return `${prefix}${previewData.ticketType}`.trim();
+          return `${prefix}${previewData?.ticketType || 'Ticket Type'}`.trim();
 
         case 'organization_logo':
-          if (previewData.organizationLogo) {
+          if (previewData?.organizationLogo) {
             return (
               <img
                 src={previewData.organizationLogo}
@@ -82,7 +91,7 @@ export const LanyardPreviewSimple: React.FC<LanyardPreviewProps> = ({
           return (block as any).fallbackText || 'ORG LOGO';
 
         case 'event_logo':
-          if (previewData.eventLogo) {
+          if (previewData?.eventLogo) {
             return (
               <img
                 src={previewData.eventLogo}
@@ -99,10 +108,10 @@ export const LanyardPreviewSimple: React.FC<LanyardPreviewProps> = ({
 
         case 'special_access':
           const accessBlock = block as any;
-          if (accessBlock.showOnlyForVIP && !previewData.ticketType.toLowerCase().includes('vip')) {
+          if (accessBlock.showOnlyForVIP && !previewData?.ticketType?.toLowerCase().includes('vip')) {
             return '';
           }
-          return accessBlock.accessText || previewData.specialAccess || 'SPECIAL ACCESS';
+          return accessBlock.accessText || previewData?.specialAccess || 'SPECIAL ACCESS';
 
         case 'custom_text':
           return (block as any).text || 'Custom Text';
@@ -110,8 +119,8 @@ export const LanyardPreviewSimple: React.FC<LanyardPreviewProps> = ({
         case 'qr_code':
           const qrBlock = block as any;
           const qrData = qrBlock.includeTicketCode ?
-            `${previewData.ticketCode}|${previewData.attendeeName}|${previewData.eventTitle}` :
-            previewData.ticketCode;
+            `${previewData?.ticketCode || 'TICKET-001'}|${previewData?.attendeeName || 'Attendee'}|${previewData?.eventTitle || 'Event'}` :
+            previewData?.ticketCode || 'TICKET-001';
 
           return (
             <QRCodeSVG
