@@ -104,7 +104,7 @@ serve(async (req) => {
     // Event data is already loaded above
 
     // Check if organizer notifications are enabled
-    const emailCustomization = event.email_customization || {}
+    const emailCustomization = event?.email_customization || {}
     const notifications = emailCustomization.notifications || {}
     
     if (!notifications.organiserNotifications || !notifications.organiserEmail) {
@@ -129,7 +129,7 @@ serve(async (req) => {
     const subtotal = ticketTotal + merchandiseTotal
 
     // Generate email content
-    const emailSubject = `New Ticket Sale - ${event.name}`
+    const emailSubject = `New Ticket Sale - ${event?.name || 'Event'}`
     
     const emailHtml = `
       <!DOCTYPE html>
@@ -205,7 +205,7 @@ serve(async (req) => {
           <div style="text-align: center; margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
             <p style="margin: 0; color: #666;">
               This notification was sent automatically by TicketFlo.<br>
-              Event: <strong>${event.name}</strong><br>
+              Event: <strong>${event?.name || 'Event'}</strong><br>
               Date: ${new Date().toLocaleDateString()}
             </p>
           </div>
@@ -215,7 +215,7 @@ serve(async (req) => {
     `
 
     const emailText = `
-New Ticket Sale - ${event.name}
+New Ticket Sale - ${event?.name || 'Event'}
 
 Order Summary:
 ${ticketItems.length > 0 ? `
@@ -245,7 +245,7 @@ ${Object.entries(finalCustomerInfo.customAnswers).map(([question, answer]) => `$
 
 ---
 This notification was sent automatically by TicketFlo.
-Event: ${event.name}
+Event: ${event?.name || 'Event'}
 Date: ${new Date().toLocaleDateString()}
     `
 

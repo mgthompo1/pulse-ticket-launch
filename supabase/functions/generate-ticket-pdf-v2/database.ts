@@ -109,7 +109,7 @@ export class DatabaseService {
         // Handle potentially array-returned relations
         const ticketTypeName = Array.isArray(item.ticket_types)
           ? item.ticket_types[0]?.name
-          : item.ticket_types?.name;
+          : (item.ticket_types as any)?.name;
 
         const ticketsArray = Array.isArray(item.tickets) ? item.tickets : [item.tickets];
 
@@ -119,7 +119,7 @@ export class DatabaseService {
               id: ticket.id,
               ticket_code: ValidationUtils.sanitizeText(ticket.ticket_code, 'INVALID'),
               status: ValidationUtils.sanitizeText(ticket.status, 'valid'),
-              order_item: item,
+              order_item: item as any,
               ticket_type_name: ValidationUtils.sanitizeText(ticketTypeName, 'General Admission'),
               unit_price: Number(item.unit_price) || 0,
             });

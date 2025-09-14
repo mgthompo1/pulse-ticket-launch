@@ -171,7 +171,7 @@ class PdfGenerationService {
       MemoryUtils.logMemoryUsage('Operation End');
       
       // Force garbage collection if available (Deno specific)
-      if (typeof Deno !== 'undefined' && Deno.run) {
+      if (typeof Deno !== 'undefined' && typeof (Deno as any).run === 'function') {
         try {
           // Trigger GC to clean up PDF generation resources
           (globalThis as any).gc?.();

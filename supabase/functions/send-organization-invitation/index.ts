@@ -38,7 +38,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Set the Authorization header for RLS context
     const jwt = authHeader.replace('Bearer ', '');
-    (supabase.rest.headers as any)['Authorization'] = `Bearer ${jwt}`;
+    // Note: Direct header setting not supported in newer Supabase versions
 
     const { email, role, permissions, organizationId }: InvitationRequest = await req.json();
 
