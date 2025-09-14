@@ -1143,6 +1143,17 @@ const OrgDashboard = () => {
                                     <Monitor className="h-4 w-4 mr-2" />
                                     Widget
                                   </Button>
+                                  {event.status === 'published' && (
+                                    <Button
+                                      variant="outline"
+                                      size="default"
+                                      onClick={() => window.open(`/ticketflolive/${event.id}`, '_blank')}
+                                      className="font-manrope font-medium text-sm"
+                                    >
+                                      <Monitor className="h-4 w-4 mr-2" />
+                                      TicketFloLIVE
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                             ))}
