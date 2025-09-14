@@ -37,7 +37,7 @@ jobs:
           deno-version: v1.40.x
 
       - name: 📦 Cache Deno dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/deno
@@ -55,14 +55,14 @@ jobs:
         run: |
           cd ${{ github.workspace }}
           chmod +x tests/run-tests.ts
-          deno run --allow-net --allow-env --allow-read tests/run-tests.ts ${{ matrix.test-category }}
+          deno run --allow-net --allow-env --allow-read tests/run-tests.ts ${{ matrix.test-category }} 2>&1 | tee test-output-${{ matrix.test-category }}.log
 
       - name: 📊 Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-${{ matrix.test-category }}
-          path: test-results/
+          name: test-output-${{ matrix.test-category }}
+          path: test-output-${{ matrix.test-category }}.log
 
   security-scan:
     name: Security Scan
