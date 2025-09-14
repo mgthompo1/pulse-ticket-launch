@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,7 @@ interface WindcaveHITConfig {
 
 const TicketFloLIVE = () => {
   const { eventId } = useParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [guests, setGuests] = useState<GuestStatus[]>([]);
   const [concessionItems, setConcessionItems] = useState<ConcessionItem[]>([]);
@@ -711,7 +712,15 @@ const handleCreateConcessionItem = async () => {
 
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-8">TicketFloLIVE - Event Management</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">TicketFloLIVE - Event Management</h1>
+        <Button
+          onClick={() => navigate('/dashboard')}
+          variant="outline"
+        >
+          ← Back to Dashboard
+        </Button>
+      </div>
       
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
