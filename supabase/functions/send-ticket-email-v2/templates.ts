@@ -198,11 +198,26 @@ export class TemplateService {
         return this.renderEventDetails(order, theme);
 
       case 'ticket_list':
+        // Only render if explicitly requested by the block configuration
+        const showTickets = block.showTickets !== false; // Default to true for backward compatibility
+        const showQRCodes = block.showQRCodes !== false; // Default to true
+        const showWalletButton = block.showWalletButton !== false; // Default to true
+        const customTitle = block.title || 'Your Tickets'; // Allow custom title
+        const hideTitle = block.hideTitle === true; // Allow hiding title entirely
+
+        if (!showTickets) {
+          return ''; // Don't render anything if tickets are disabled
+        }
+
         // Smart routing based on delivery method
         if (deliveryMethod === 'confirmation_email' || deliveryMethod === 'email_confirmation_only' || deliveryMethod === 'email_confirmation') {
           return this.renderOrderSummary(order, theme);
         } else {
-          return this.renderTicketList(tickets, qrUrls, theme);
+          return this.renderTicketListConfigurable(tickets, qrUrls, theme, {
+            showQRCodes,
+            showWalletButton,
+            customTitle: hideTitle ? '' : customTitle
+          });
         }
 
       case 'registration_details':

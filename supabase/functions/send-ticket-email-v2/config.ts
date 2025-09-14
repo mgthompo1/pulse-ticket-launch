@@ -76,8 +76,6 @@ export const CONFIG = {
     { type: 'header', title: 'Thank you for your purchase, @FirstName!' },
     { type: 'custom_message', message: 'Thanks for choosing @EventName! We\'re excited to see you there.' },
     { type: 'event_details' },
-    { type: 'ticket_list' },
-    { type: 'qr_tickets', showInline: true, layout: 'grid' },
     { type: 'payment_summary' },
     { type: 'divider' },
     { type: 'next_steps', title: 'What to expect next:', steps: [
