@@ -13,33 +13,95 @@ serve(async (req) => {
   }
 
   try {
-    const { eventId, orderData, customerInfo } = await req.json()
+    const body = await req.json()
+    const { eventId, orderData, customerInfo, orderId } = body
 
-    if (!eventId || !orderData || !customerInfo) {
-      throw new Error('Missing required parameters: eventId, orderData, customerInfo')
+    // Handle both old format (eventId, orderData, customerInfo) and new format (orderId)
+    let event: any = null
+    let finalOrderData: any[] = []
+    let finalCustomerInfo: any = {}
+
+    if (orderId) {
+      // New format - fetch all data from orderId
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+      // Get order with all related data
+      const { data: orderWithDetails, error: orderError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          events!inner(
+            *,
+            organizations (
+              name,
+              logo_url
+            )
+          ),
+          order_items!inner(
+            *,
+            ticket_types(name, price, description),
+            merchandise(name, price, description)
+          )
+        `)
+        .eq('id', orderId)
+        .single()
+
+      if (orderError || !orderWithDetails) {
+        throw new Error(`Order not found: ${orderId}`)
+      }
+
+      event = orderWithDetails.events
+      finalCustomerInfo = {
+        name: orderWithDetails.customer_name,
+        email: orderWithDetails.customer_email,
+        phone: orderWithDetails.customer_phone,
+        customAnswers: orderWithDetails.custom_answers || {}
+      }
+
+      // Transform order_items to expected format
+      finalOrderData = orderWithDetails.order_items.map((item: any) => ({
+        type: item.item_type,
+        name: item.ticket_types?.name || item.merchandise?.name || 'Unknown Item',
+        price: item.unit_price,
+        quantity: item.quantity,
+        selectedSeats: item.selected_seats || [],
+        selectedSize: item.selected_size,
+        selectedColor: item.selected_color
+      }))
+
+    } else if (eventId && orderData && customerInfo) {
+      // Old format - use provided data
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+      // Get event and organization details
+      const { data: eventData, error: eventError } = await supabase
+        .from('events')
+        .select(`
+          *,
+          organizations (
+            name,
+            logo_url
+          )
+        `)
+        .eq('id', eventId)
+        .single()
+
+      if (eventError || !eventData) {
+        throw new Error('Event not found')
+      }
+
+      event = eventData
+      finalOrderData = orderData
+      finalCustomerInfo = customerInfo
+    } else {
+      throw new Error('Missing required parameters. Provide either orderId or (eventId, orderData, customerInfo)')
     }
 
-    // Create Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-    // Get event and organization details
-    const { data: event, error: eventError } = await supabase
-      .from('events')
-      .select(`
-        *,
-        organizations (
-          name,
-          logo_url
-        )
-      `)
-      .eq('id', eventId)
-      .single()
-
-    if (eventError || !event) {
-      throw new Error('Event not found')
-    }
+    // Event data is already loaded above
 
     // Check if organizer notifications are enabled
     const emailCustomization = event.email_customization || {}
@@ -59,8 +121,8 @@ serve(async (req) => {
     const organizerEmail = notifications.organiserEmail
 
     // Calculate order summary
-    const ticketItems = orderData.filter((item: any) => item.type === 'ticket')
-    const merchandiseItems = orderData.filter((item: any) => item.type === 'merchandise')
+    const ticketItems = finalOrderData.filter((item: any) => item.type === 'ticket')
+    const merchandiseItems = finalOrderData.filter((item: any) => item.type === 'merchandise')
     
     const ticketTotal = ticketItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0)
     const merchandiseTotal = merchandiseItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0)
@@ -129,12 +191,12 @@ serve(async (req) => {
 
           <div class="customer-info">
             <h3>Customer Information</h3>
-            <p><strong>Name:</strong> ${customerInfo.name}</p>
-            <p><strong>Email:</strong> ${customerInfo.email}</p>
-            ${customerInfo.phone ? `<p><strong>Phone:</strong> ${customerInfo.phone}</p>` : ''}
-            ${customerInfo.customAnswers ? `
+            <p><strong>Name:</strong> ${finalCustomerInfo.name}</p>
+            <p><strong>Email:</strong> ${finalCustomerInfo.email}</p>
+            ${finalCustomerInfo.phone ? `<p><strong>Phone:</strong> ${finalCustomerInfo.phone}</p>` : ''}
+            ${finalCustomerInfo.customAnswers ? `
               <h4>Custom Questions:</h4>
-              ${Object.entries(customerInfo.customAnswers).map(([question, answer]) => `
+              ${Object.entries(finalCustomerInfo.customAnswers).map(([question, answer]) => `
                 <p><strong>${question}:</strong> ${answer}</p>
               `).join('')}
             ` : ''}
@@ -173,12 +235,12 @@ Subtotal: $${subtotal.toFixed(2)}
 Total: $${subtotal.toFixed(2)}
 
 Customer Information:
-Name: ${customerInfo.name}
-Email: ${customerInfo.email}
-${customerInfo.phone ? `Phone: ${customerInfo.phone}` : ''}
-${customerInfo.customAnswers ? `
+Name: ${finalCustomerInfo.name}
+Email: ${finalCustomerInfo.email}
+${finalCustomerInfo.phone ? `Phone: ${finalCustomerInfo.phone}` : ''}
+${finalCustomerInfo.customAnswers ? `
 Custom Questions:
-${Object.entries(customerInfo.customAnswers).map(([question, answer]) => `${question}: ${answer}`).join('\n')}
+${Object.entries(finalCustomerInfo.customAnswers).map(([question, answer]) => `${question}: ${answer}`).join('\n')}
 ` : ''}
 
 ---
