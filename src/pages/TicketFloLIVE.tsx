@@ -10,7 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { CreditCard, Users, CheckCircle, Printer, Plus, ShoppingCart, BarChart3, TrendingUp, DollarSign, Package, Menu, Search, Home, Tag } from "lucide-react";
+import { CreditCard, Users, CheckCircle, Printer, Plus, ShoppingCart, BarChart3, TrendingUp, DollarSign, Package, Menu, Search, Home, Tag, Eye, UserCheck } from "lucide-react";
+import { LanyardPreviewData, LanyardTemplate, createDefaultLanyardTemplate } from "@/types/lanyard-template";
+import { LanyardPreviewSimple } from "@/components/LanyardPreviewSimple";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface GuestStatus {
   ticket_id: string;
@@ -61,6 +64,11 @@ const TicketFloLIVE = () => {
   const [activeTab, setActiveTab] = useState("checkin");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Lanyard state
+  const [currentLanyardTemplate, setCurrentLanyardTemplate] = useState<LanyardTemplate | null>(null);
+  const [eventData, setEventData] = useState<any>(null);
+  const [organizationData, setOrganizationData] = useState<any>(null);
   
   // Concession management state
   const [newItem, setNewItem] = useState({
@@ -114,8 +122,96 @@ const [analytics, setAnalytics] = useState<{
       loadTicketTypes();
       loadAnalytics();
       loadOrganizationConfig();
+      loadEventData();
+      loadCurrentLanyardTemplate();
     }
   }, [eventId]);
+
+  const loadEventData = async () => {
+    if (!eventId) return;
+    try {
+      const { data: event, error: eventError } = await supabase
+        .from("events")
+        .select(`
+          *,
+          organizations (*)
+        `)
+        .eq("id", eventId)
+        .single();
+
+      if (eventError || !event) {
+        console.error("Error loading event data:", eventError);
+        return;
+      }
+
+      setEventData(event);
+      setOrganizationData(event.organizations);
+    } catch (error) {
+      console.error("Error loading event data:", error);
+    }
+  };
+
+  const loadCurrentLanyardTemplate = async () => {
+    if (!eventId) return;
+    try {
+      const { data: event, error: eventError } = await supabase
+        .from("events")
+        .select("organization_id")
+        .eq("id", eventId)
+        .single();
+
+      if (eventError || !event) return;
+
+      // Try to load existing template for this organization
+      const { data: templates, error: templateError } = await supabase
+        .from("lanyard_templates")
+        .select("*")
+        .eq("organization_id", event.organization_id)
+        .eq("is_default", true);
+
+      const template = templates && templates.length > 0 ? templates[0] : null;
+
+      if (template && !templateError) {
+        setCurrentLanyardTemplate(template);
+      } else {
+        // If no template exists, RLS policy blocks access, or table doesn't exist, create a default one
+        if (templateError) {
+          console.log("Template loading failed:", templateError);
+        } else {
+          console.log("No default template found for organization, creating default");
+        }
+        const defaultTemplate = createDefaultLanyardTemplate();
+        setCurrentLanyardTemplate({
+          id: 'default',
+          name: 'Default Template',
+          organization_id: event.organization_id,
+          isDefault: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          ...defaultTemplate,
+        } as LanyardTemplate);
+      }
+    } catch (error) {
+      console.error("Error loading lanyard template:", error);
+    }
+  };
+
+  // Generate real preview data for lanyard
+  const getRealPreviewData = (guestName?: string): LanyardPreviewData => {
+    const sampleGuest = guests.length > 0 ? guests[0] : null;
+
+    return {
+      attendeeName: guestName || sampleGuest?.customer_name || "Sample Attendee",
+      eventTitle: eventData?.name || "Sample Event",
+      eventDate: eventData?.event_date ? new Date(eventData.event_date).toLocaleDateString() : new Date().toLocaleDateString(),
+      eventTime: eventData?.event_date ? new Date(eventData.event_date).toLocaleTimeString() : new Date().toLocaleTimeString(),
+      ticketType: sampleGuest?.ticket_type || "General Admission",
+      ticketCode: sampleGuest?.ticket_code || "SAMPLE-001",
+      organizationLogo: organizationData?.logo_url,
+      eventLogo: eventData?.logo_url,
+      specialAccess: sampleGuest?.ticket_type?.includes('VIP') ? 'VIP Access' : undefined
+    };
+  };
 
   const loadOrganizationConfig = async () => {
     if (!eventId) return;
@@ -715,6 +811,26 @@ const handleCreateConcessionItem = async () => {
     lanyardsPrinted: guests.filter(g => g.lanyard_printed).length,
   };
 
+  // Filter guests based on search query
+  const getFilteredGuests = (checkedIn?: boolean) => {
+    let filteredGuests = guests;
+
+    if (checkedIn !== undefined) {
+      filteredGuests = guests.filter(g => g.checked_in === checkedIn);
+    }
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filteredGuests = filteredGuests.filter(g =>
+        g.customer_name.toLowerCase().includes(query) ||
+        g.customer_email.toLowerCase().includes(query) ||
+        g.ticket_code.toLowerCase().includes(query)
+      );
+    }
+
+    return filteredGuests;
+  };
+
   // Sidebar navigation items
   const sidebarItems = [
     { id: "checkin", icon: CheckCircle, label: "Check-In" },
@@ -837,38 +953,135 @@ const handleCreateConcessionItem = async () => {
 
           {/* Tab Content */}
           {activeTab === "checkin" && (
-            <Card>
-            <CardHeader>
-              <CardTitle>Guest Check-In</CardTitle>
-              <CardDescription>Scan or enter ticket codes to check in guests</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="ticketCode">Ticket Code</Label>
-                <Input
-                  id="ticketCode"
-                  placeholder="Enter or scan ticket code"
-                  value={ticketCode}
-                  onChange={(e) => setTicketCode(e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes (Optional)</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Any additional notes..."
-                  value={checkInNotes}
-                  onChange={(e) => setCheckInNotes(e.target.value)}
-                />
-              </div>
-              
-              <Button onClick={handleCheckIn} disabled={loading} className="w-full">
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Check In Guest
-              </Button>
-            </CardContent>
-            </Card>
+            <div className="space-y-6">
+              {/* Quick Check-In Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Quick Check-In</CardTitle>
+                  <CardDescription>Scan or enter ticket codes to check in guests</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="ticketCode">Ticket Code</Label>
+                    <Input
+                      id="ticketCode"
+                      placeholder="Enter or scan ticket code"
+                      value={ticketCode}
+                      onChange={(e) => setTicketCode(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notes (Optional)</Label>
+                    <Textarea
+                      id="notes"
+                      placeholder="Any additional notes..."
+                      value={checkInNotes}
+                      onChange={(e) => setCheckInNotes(e.target.value)}
+                    />
+                  </div>
+
+                  <Button onClick={handleCheckIn} disabled={loading} className="w-full">
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Check In Guest
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Guest List Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>All Guests</CardTitle>
+                  <CardDescription>
+                    View, check-in, and print lanyards for all guests. Use the search bar above to filter guests.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {getFilteredGuests().length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        {searchQuery ? 'No guests found matching your search.' : 'No guests found.'}
+                      </div>
+                    ) : (
+                      getFilteredGuests().map((guest) => (
+                        <div
+                          key={guest.ticket_id}
+                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex-1">
+                                <h3 className="font-medium text-gray-900">{guest.customer_name}</h3>
+                                <p className="text-sm text-gray-500">{guest.customer_email}</p>
+                                <p className="text-xs text-gray-400">Ticket: {guest.ticket_code}</p>
+                              </div>
+                              <div className="text-right">
+                                <Badge variant={guest.checked_in ? "default" : "secondary"}>
+                                  {guest.checked_in ? "Checked In" : "Not Checked In"}
+                                </Badge>
+                                {guest.ticket_type && (
+                                  <p className="text-xs text-gray-500 mt-1">{guest.ticket_type}</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-2 ml-4">
+                            {!guest.checked_in ? (
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setTicketCode(guest.ticket_code);
+                                  handleCheckIn();
+                                }}
+                                disabled={loading}
+                              >
+                                <UserCheck className="h-4 w-4 mr-1" />
+                                Check In
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handlePrintLanyard(guest)}
+                                disabled={loading}
+                              >
+                                <Printer className="h-4 w-4 mr-1" />
+                                Print Lanyard
+                              </Button>
+                            )}
+
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-md">
+                                <DialogHeader>
+                                  <DialogTitle>Lanyard Preview - {guest.customer_name}</DialogTitle>
+                                </DialogHeader>
+                                <div className="flex justify-center p-4">
+                                  {currentLanyardTemplate && (
+                                    <LanyardPreviewSimple
+                                      template={currentLanyardTemplate}
+                                      data={getRealPreviewData(guest.customer_name)}
+                                    />
+                                  )}
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {/* Point of Sale Tab */}
