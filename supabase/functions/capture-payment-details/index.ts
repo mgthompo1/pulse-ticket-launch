@@ -104,7 +104,12 @@ serve(async (req) => {
     }
 
     // Get payment method details
-    let paymentMethodDetails = {};
+    let paymentMethodDetails: {
+      payment_method_type?: string;
+      card_last_four?: string;
+      card_brand?: string;
+      payment_method_id?: string;
+    } = {};
     if (paymentIntent.payment_method) {
       const pmId = typeof paymentIntent.payment_method === 'string' 
         ? paymentIntent.payment_method 

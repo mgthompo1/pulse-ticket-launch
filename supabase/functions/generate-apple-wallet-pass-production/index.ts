@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { createHash } from "https://deno.land/std@0.190.0/crypto/mod.ts";
+import { crypto } from "https://deno.land/std@0.190.0/crypto/mod.ts";
 import { encode as base64Encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 
 const corsHeaders = {
@@ -62,10 +62,10 @@ interface AppleWalletPass {
 }
 
 // Helper function to create SHA-1 hash
-function sha1Hash(data: Uint8Array): string {
-  const hash = createHash("sha1");
-  hash.update(data);
-  return hash.toString("hex");
+async function sha1Hash(data: Uint8Array): Promise<string> {
+  const hashBuffer = await crypto.subtle.digest("SHA-1", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 // Helper function to format date for display
@@ -93,7 +93,7 @@ async function createPkpassFile(pass: AppleWalletPass): Promise<Uint8Array> {
 
   // Create manifest with SHA-1 hashes
   const manifest = {
-    "pass.json": sha1Hash(passJsonBytes)
+    "pass.json": await sha1Hash(passJsonBytes)
   };
 
   const manifestJson = JSON.stringify(manifest, null, 2);
@@ -215,10 +215,10 @@ serve(async (req) => {
       );
     }
 
-    const order = ticket.order_items?.orders;
-    const event = order?.events;
-    const ticketType = ticket.order_items?.ticket_types;
-    const organization = event?.organizations;
+    const order = Array.isArray(ticket.order_items?.orders) ? ticket.order_items.orders[0] : ticket.order_items?.orders;
+    const event = Array.isArray(order?.events) ? order.events[0] : order?.events;
+    const ticketType = Array.isArray(ticket.order_items?.ticket_types) ? ticket.order_items.ticket_types[0] : ticket.order_items?.ticket_types;
+    const organization = Array.isArray(event?.organizations) ? event.organizations[0] : event?.organizations;
 
     if (!event || !order) {
       return new Response(

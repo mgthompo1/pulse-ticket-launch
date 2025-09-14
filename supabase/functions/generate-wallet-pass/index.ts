@@ -143,10 +143,10 @@ serve(async (req) => {
       );
     }
 
-    const order = ticket.order_items?.orders;
-    const event = order?.events;
-    const ticketType = ticket.order_items?.ticket_types;
-    const organization = event?.organizations;
+    const order = Array.isArray(ticket.order_items?.orders) ? ticket.order_items.orders[0] : ticket.order_items?.orders;
+    const event = Array.isArray(order?.events) ? order.events[0] : order?.events;
+    const ticketType = Array.isArray(ticket.order_items?.ticket_types) ? ticket.order_items.ticket_types[0] : ticket.order_items?.ticket_types;
+    const organization = Array.isArray(event?.organizations) ? event.organizations[0] : event?.organizations;
 
     if (format === 'apple') {
       // Generate Apple Wallet pass

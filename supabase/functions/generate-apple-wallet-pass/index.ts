@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { createHash } from "https://deno.land/std@0.190.0/crypto/mod.ts";
+import { crypto } from "https://deno.land/std@0.190.0/crypto/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -61,12 +61,12 @@ interface AppleWalletPass {
 }
 
 // Helper function to create SHA-1 hash
-function sha1Hash(data: string): string {
+async function sha1Hash(data: string): Promise<string> {
   const encoder = new TextEncoder();
   const dataBytes = encoder.encode(data);
-  const hash = createHash("sha1");
-  hash.update(dataBytes);
-  return hash.toString("hex");
+  const hashBuffer = await crypto.subtle.digest("SHA-1", dataBytes);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 // Helper function to format date for display
@@ -153,10 +153,10 @@ serve(async (req) => {
       );
     }
 
-    const order = ticket.order_items?.orders;
-    const event = order?.events;
-    const ticketType = ticket.order_items?.ticket_types;
-    const organization = event?.organizations;
+    const order = Array.isArray(ticket.order_items?.orders) ? ticket.order_items.orders[0] : ticket.order_items?.orders;
+    const event = Array.isArray(order?.events) ? order.events[0] : order?.events;
+    const ticketType = Array.isArray(ticket.order_items?.ticket_types) ? ticket.order_items.ticket_types[0] : ticket.order_items?.ticket_types;
+    const organization = Array.isArray(event?.organizations) ? event.organizations[0] : event?.organizations;
 
     if (!event || !order) {
       return new Response(
@@ -297,7 +297,7 @@ serve(async (req) => {
 
     // Create a basic manifest (in production, you'd hash actual files)
     const manifest = {
-      "pass.json": sha1Hash(passJson)
+      "pass.json": await sha1Hash(passJson)
     };
 
     // Store the pass data (you might want to cache this)
