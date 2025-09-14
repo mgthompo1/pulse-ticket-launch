@@ -175,7 +175,7 @@ Deno.test("Payment Workflow Integration", async (t) => {
   await t.step("refund processing workflow", async () => {
     console.log("🧪 Testing refund processing workflow");
 
-    const originalOrder = TestDataFactory.createTestOrder();
+    const originalOrder = TestDataFactory.createTestOrder() as any;
     originalOrder.status = "completed";
     originalOrder.payment_status = "paid";
     originalOrder.stripe_payment_intent_id = "pi_test_refund_original";
@@ -183,7 +183,7 @@ Deno.test("Payment Workflow Integration", async (t) => {
     // Full refund scenario
     const fullRefundRequest = {
       orderId: originalOrder.id,
-      paymentIntentId: originalOrder.stripe_payment_intent_id,
+      paymentIntentId: (originalOrder as any).stripe_payment_intent_id,
       refundType: "full",
       reason: "event_cancelled"
     };
@@ -207,7 +207,7 @@ Deno.test("Payment Workflow Integration", async (t) => {
     // Partial refund scenario
     const partialRefundRequest = {
       orderId: originalOrder.id,
-      paymentIntentId: originalOrder.stripe_payment_intent_id,
+      paymentIntentId: (originalOrder as any).stripe_payment_intent_id,
       refundType: "partial",
       amount: Math.floor(originalOrder.total_amount / 2),
       reason: "requested_by_customer"
