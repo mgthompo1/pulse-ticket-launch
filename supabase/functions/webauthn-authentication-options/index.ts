@@ -96,7 +96,9 @@ serve(async (req) => {
       allowCredentials: userCredentials.map((cred: any) => ({
         id: new TextEncoder().encode(cred.credential_id),
         type: "public-key",
-        transports: cred.credential_transports || ["internal", "usb", "ble", "nfc"]
+        transports: cred.credential_transports && cred.credential_transports.length > 0
+          ? cred.credential_transports
+          : ["internal"]
       })),
       userVerification: "preferred"
     };

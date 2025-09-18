@@ -86,3 +86,15 @@ verify_jwt = false
 
 [functions.list-org-users]
 verify_jwt = false
+
+[functions.generate-apple-wallet-pass-production]
+verify_jwt = false
+
+[functions.generate-apple-wallet-pass]
+verify_jwt = false
+
+[functions.generate-google-pay-pass]
+verify_jwt = false
+
+[functions.generate-wallet-pass]
+verify_jwt = false

@@ -88,7 +88,7 @@ serve(async (req) => {
       });
     }
 
-    const expectedChallenge = challengeData.challenge;
+    const expectedChallenge = (challengeData as any).challenge;
 
     // Get the origin from the request to determine the correct RP ID and expected origin
     const origin = req.headers.get("origin") || req.headers.get("referer");
@@ -143,8 +143,8 @@ serve(async (req) => {
         p_credential_device_type: registrationInfo.credentialDeviceType || 'unknown',
         p_credential_backed_up: Boolean(registrationInfo.credentialBackedUp),
         p_credential_transports: Array.isArray(credential.response.transports)
-          ? credential.response.transports
-          : [],
+          ? credential.response.transports.filter(t => t === "internal" || t === "hybrid")
+          : ["internal"],
         p_credential_name: credentialName || "My Passkey"
       });
 
@@ -159,7 +159,7 @@ serve(async (req) => {
     // Mark challenge as used
     await supabaseClient
       .rpc("webauthn_mark_challenge_used", {
-        p_challenge_id: challengeData.id
+        p_challenge_id: (challengeData as any).id
       });
 
     console.log("Credential stored successfully");

@@ -92,7 +92,7 @@ serve(async (req) => {
       });
     }
 
-    const expectedChallenge = challengeData.challenge;
+    const expectedChallenge = (challengeData as any).challenge;
 
     // Get the origin from the request to determine the correct RP ID and expected origin
     const origin = req.headers.get("origin") || req.headers.get("referer");
@@ -119,13 +119,13 @@ serve(async (req) => {
       expectedOrigin,
       expectedRPID: rpID,
       authenticator: {
-        credentialID: typeof storedCredential.credential_id === 'string'
-          ? new TextEncoder().encode(storedCredential.credential_id)
-          : storedCredential.credential_id,
-        credentialPublicKey: new Uint8Array(storedCredential.credential_public_key),
-        counter: Number(storedCredential.credential_counter) || 0,
-        transports: Array.isArray(storedCredential.credential_transports)
-          ? storedCredential.credential_transports
+        credentialID: typeof (storedCredential as any).credential_id === 'string'
+          ? new TextEncoder().encode((storedCredential as any).credential_id)
+          : (storedCredential as any).credential_id,
+        credentialPublicKey: new Uint8Array((storedCredential as any).credential_public_key),
+        counter: Number((storedCredential as any).credential_counter) || 0,
+        transports: Array.isArray((storedCredential as any).credential_transports)
+          ? (storedCredential as any).credential_transports
           : []
       },
       requireUserVerification: false
@@ -161,7 +161,7 @@ serve(async (req) => {
     // Mark challenge as used
     await supabaseClient
       .rpc("webauthn_mark_challenge_used", {
-        p_challenge_id: challengeData.id
+        p_challenge_id: (challengeData as any).id
       });
 
     // Create a session for the user

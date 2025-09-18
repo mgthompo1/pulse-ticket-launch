@@ -92,10 +92,10 @@ serve(async (req) => {
       userDisplayName: user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
       timeout: 60000,
       attestationType: "none",
-      excludeCredentials: existingCredentials?.map(cred => ({
+      excludeCredentials: existingCredentials?.map((cred: any) => ({
         id: new TextEncoder().encode(cred.credential_id),
         type: "public-key",
-        transports: ["usb", "ble", "nfc", "internal"]
+        transports: ["internal"]
       })) || [],
       authenticatorSelection: {
         residentKey: "preferred",
