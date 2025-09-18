@@ -62,14 +62,10 @@ serve(async (req) => {
 
     // Get the stored challenge
     const { data: challengeData, error: challengeError } = await supabaseClient
-      .from("challenges")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("challenge_type", "authentication")
-      .eq("used", false)
-      .gte("expires_at", new Date().toISOString())
-      .order("created_at", { ascending: false })
-      .limit(1)
+      .rpc("webauthn_get_challenge", {
+        p_user_id: user.id,
+        p_challenge_type: "authentication"
+      })
       .single();
 
     if (challengeError || !challengeData) {
@@ -83,10 +79,9 @@ serve(async (req) => {
     // Get the credential used for this authentication
     const credentialID = credential.id;
     const { data: storedCredential, error: credError } = await supabaseClient
-      .from("user_credentials")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("credential_id", credentialID)
+      .rpc("webauthn_get_credential", {
+        p_credential_id: credentialID
+      })
       .single();
 
     if (credError || !storedCredential) {
@@ -98,8 +93,24 @@ serve(async (req) => {
     }
 
     const expectedChallenge = challengeData.challenge;
-    const rpID = new URL(Deno.env.get("SUPABASE_URL") ?? "").hostname;
-    const expectedOrigin = Deno.env.get("SUPABASE_URL") ?? "";
+
+    // Get the origin from the request to determine the correct RP ID and expected origin
+    const origin = req.headers.get("origin") || req.headers.get("referer");
+    let rpID = "localhost"; // Default for development
+    let expectedOrigin = "http://localhost:8081"; // Default for development
+
+    if (origin) {
+      try {
+        const originUrl = new URL(origin);
+        rpID = originUrl.hostname;
+        expectedOrigin = origin;
+        console.log(`Using RP ID from origin: ${rpID}, expected origin: ${expectedOrigin}`);
+      } catch (error) {
+        console.log("Could not parse origin, using localhost");
+        rpID = "localhost";
+        expectedOrigin = "http://localhost:8081";
+      }
+    }
 
     // Verify authentication response
     const opts: VerifyAuthenticationResponseOpts = {
@@ -137,12 +148,10 @@ serve(async (req) => {
 
     // Update credential counter and last used
     const { error: updateError } = await supabaseClient
-      .from("user_credentials")
-      .update({
-        credential_counter: verification.authenticationInfo?.newCounter || 0,
-        last_used: new Date().toISOString()
-      })
-      .eq("id", storedCredential.id);
+      .rpc("webauthn_update_counter", {
+        p_credential_id: credentialID,
+        p_new_counter: verification.authenticationInfo?.newCounter || 0
+      });
 
     if (updateError) {
       console.error("Error updating credential:", updateError);
@@ -151,9 +160,9 @@ serve(async (req) => {
 
     // Mark challenge as used
     await supabaseClient
-      .from("challenges")
-      .update({ used: true })
-      .eq("id", challengeData.id);
+      .rpc("webauthn_mark_challenge_used", {
+        p_challenge_id: challengeData.id
+      });
 
     // Create a session for the user
     const { data: sessionData, error: sessionError } = await supabaseClient.auth.admin.generateLink({

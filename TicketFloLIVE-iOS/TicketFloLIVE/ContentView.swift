@@ -1,9 +1,5 @@
 import SwiftUI
 
-// MARK: - Brand Colors
-extension Color {
-    static let ticketFloOrange = Color(red: 1.0, green: 0.302, blue: 0.0) // #ff4d00
-}
 
 // MARK: - Legacy Auth Service Stub
 // This is kept for compatibility with existing views that reference AuthService

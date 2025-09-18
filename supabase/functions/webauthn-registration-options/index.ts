@@ -57,9 +57,7 @@ serve(async (req) => {
 
     // Get existing credentials to exclude from registration
     const { data: existingCredentials, error: credError } = await supabaseClient
-      .from("user_credentials")
-      .select("credential_id")
-      .eq("user_id", user.id);
+      .rpc("webauthn_get_existing_credentials", { p_user_id: user.id });
 
     if (credError) {
       console.error("Error fetching existing credentials:", credError);
@@ -113,12 +111,11 @@ serve(async (req) => {
 
     // Store the challenge for verification
     const { error: challengeError } = await supabaseClient
-      .from("challenges")
-      .insert({
-        user_id: user.id,
-        challenge: options.challenge,
-        challenge_type: "registration",
-        expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString() // 5 minutes
+      .rpc("webauthn_store_challenge", {
+        p_user_id: user.id,
+        p_challenge: options.challenge,
+        p_challenge_type: "registration",
+        p_expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString() // 5 minutes
       });
 
     if (challengeError) {

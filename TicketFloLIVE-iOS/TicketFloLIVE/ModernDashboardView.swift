@@ -693,6 +693,7 @@ struct PointOfSaleTabView: View {
     @State private var customerEmail = ""
     @State private var isProcessingPayment = false
     @State private var showingPaymentSuccess = false
+    @State private var showingTapToPay = false
     @State private var selectedSegment = 0 // 0 for tickets, 1 for merchandise
 
     let selectedEvent: SupabaseEvent
@@ -788,6 +789,29 @@ struct PointOfSaleTabView: View {
             }
         } message: {
             Text("Transaction completed successfully.")
+        }
+        .sheet(isPresented: $showingTapToPay) {
+            // Placeholder for Tap to Pay view
+            VStack(spacing: 24) {
+                Image(systemName: "iphone.and.arrow.forward")
+                    .font(.system(size: 48))
+                    .foregroundColor(.ticketFloOrange)
+
+                Text("Tap to Pay on iPhone")
+                    .font(.title2)
+                    .fontWeight(.bold)
+
+                Text("Coming soon! This feature requires Apple entitlements and Stripe Terminal SDK integration.")
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal)
+
+                Button("Close") {
+                    showingTapToPay = false
+                }
+                .padding(.top)
+            }
+            .padding()
         }
     }
 
@@ -903,25 +927,45 @@ struct PointOfSaleTabView: View {
 
     // MARK: - Payment Button
     private var paymentButton: some View {
-        Button(action: processPayment) {
-            HStack {
-                if isProcessingPayment {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                } else {
-                    Image(systemName: "creditcard.fill")
-                    Text("Process Payment - $\(cartTotal, specifier: "%.2f")")
+        VStack(spacing: 12) {
+            // Tap to Pay Button (if supported) - Placeholder for now
+            #if !targetEnvironment(simulator)
+            Button(action: { showingTapToPay = true }) {
+                HStack {
+                    Image(systemName: "iphone.and.arrow.forward")
+                    Text("Tap to Pay - $\(cartTotal, specifier: "%.2f")")
                         .fontWeight(.semibold)
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(Color.webPrimary)
+                .foregroundColor(.white)
+                .cornerRadius(12)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(Color.ticketFloOrange)
-            .foregroundColor(.white)
-            .cornerRadius(12)
+            .disabled(isProcessingPayment)
+            #endif
+
+            // Traditional Payment Button
+            Button(action: processPayment) {
+                HStack {
+                    if isProcessingPayment {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    } else {
+                        Image(systemName: "creditcard.fill")
+                        Text("Record Payment - $\(cartTotal, specifier: "%.2f")")
+                            .fontWeight(.semibold)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(Color.ticketFloOrange)
+                .foregroundColor(.white)
+                .cornerRadius(12)
+            }
+            .disabled(isProcessingPayment)
         }
-        .disabled(isProcessingPayment)
         .padding(.horizontal, 20)
     }
 
