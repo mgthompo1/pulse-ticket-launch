@@ -153,9 +153,9 @@ serve(async (req) => {
       // Generate Apple Wallet pass
       const applePass: AppleWalletPass = {
         formatVersion: 1,
-        passTypeIdentifier: "pass.com.ticketflo.event", // This would be your registered pass type identifier
+        passTypeIdentifier: Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.com.ticketflo.eventticket", // Your registered pass type identifier
         serialNumber: ticket.id,
-        teamIdentifier: "YOUR_TEAM_ID", // Your Apple Developer Team ID
+        teamIdentifier: Deno.env.get("APPLE_TEAM_ID") || "DA3U3FH5FZ", // Your Apple Developer Team ID
         organizationName: organization?.name || "TicketFlo",
         description: event?.name || "Event Ticket",
         backgroundColor: "rgb(31, 41, 55)",
@@ -250,7 +250,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         type: 'apple',
         pass: applePass,
-        downloadUrl: `/api/wallet/download/apple/${ticket.id}`,
+        downloadUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/generate-apple-wallet-pass?ticketCode=${ticket.ticket_code}`,
         message: 'Apple Wallet pass data generated. In production, this would generate a .pkpass file.'
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -286,7 +286,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         type: 'google',
         pass: googlePass,
-        downloadUrl: `/api/wallet/download/google/${ticket.id}`,
+        downloadUrl: `${Deno.env.get("SUPABASE_URL")}/functions/v1/generate-google-pay-pass?ticketCode=${ticket.ticket_code}`,
         message: 'Google Pay pass data generated. In production, this would generate a signed JWT.'
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

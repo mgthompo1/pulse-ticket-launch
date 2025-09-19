@@ -326,8 +326,8 @@ export class TemplateService {
         ? `<img src="${qrUrl}" alt="QR Code" style="width:100px;height:100px;border:1px solid ${theme.borderColor};border-radius:4px;"/>`
         : '';
 
-      // Generate wallet pass URL (placeholder for now - will be implemented)
-      const walletUrl = `${CONFIG.DOMAIN}/api/wallet/generate?ticketCode=${encodeURIComponent(ticket.code)}`;
+      // Generate wallet pass URL using existing Supabase function
+      const walletUrl = `${CONFIG.SUPABASE_URL}/functions/v1/generate-wallet-pass?ticketCode=${encodeURIComponent(ticket.code)}`;
 
       return `
         <table style="width:100%;border:1px solid ${theme.borderColor};border-radius:8px;margin:8px 0;background:${theme.backgroundColor};border-collapse:separate;border-spacing:0;">
@@ -342,7 +342,7 @@ export class TemplateService {
                       ${sanitizeHtml(ticket.code)}
                     </div>
                     ${config.showWalletButton ? `<div style="margin-top:12px;">
-                      <a href="${walletUrl}" style="display:inline-block;background:#007AFF;color:#ffffff;padding:8px 16px;text-decoration:none;border-radius:6px;font-size:12px;font-weight:600;margin-right:8px;">📱 Add to Wallet</a>
+                      <a href="${walletUrl}" style="display:inline-block;background:#007AFF;color:#ffffff;padding:8px 16px;text-decoration:none;border-radius:6px;font-size:12px;font-weight:600;margin-right:8px;"> Add to Apple Wallet</a>
                     </div>` : ''}
                   </td>
                   ${qrImg ? `<td style="vertical-align:top;text-align:center;width:40%;padding-left:16px;">
@@ -372,8 +372,8 @@ export class TemplateService {
         ? `<img src="${qrUrl}" alt="QR Code" style="width:100px;height:100px;border:1px solid ${theme.borderColor};border-radius:4px;"/>` 
         : '';
 
-      // Generate wallet pass URL (placeholder for now - will be implemented)
-      const walletUrl = `${CONFIG.DOMAIN}/api/wallet/generate?ticketCode=${encodeURIComponent(ticket.code)}`;
+      // Generate wallet pass URL using existing Supabase function
+      const walletUrl = `${CONFIG.SUPABASE_URL}/functions/v1/generate-wallet-pass?ticketCode=${encodeURIComponent(ticket.code)}`;
 
       return `
         <table style="width:100%;border:1px solid ${theme.borderColor};border-radius:8px;margin:8px 0;background:${theme.backgroundColor};border-collapse:separate;border-spacing:0;">
@@ -388,7 +388,7 @@ export class TemplateService {
                       ${sanitizeHtml(ticket.code)}
                     </div>
                     <div style="margin-top:12px;">
-                      <a href="${walletUrl}" style="display:inline-block;background:#007AFF;color:#ffffff;padding:8px 16px;text-decoration:none;border-radius:6px;font-size:12px;font-weight:600;margin-right:8px;">📱 Add to Wallet</a>
+                      <a href="${walletUrl}" style="display:inline-block;background:#007AFF;color:#ffffff;padding:8px 16px;text-decoration:none;border-radius:6px;font-size:12px;font-weight:600;margin-right:8px;"> Add to Apple Wallet</a>
                     </div>
                   </td>
                   ${qrImg ? `<td style="vertical-align:top;text-align:center;width:40%;padding-left:16px;">

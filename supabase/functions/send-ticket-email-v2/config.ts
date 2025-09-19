@@ -2,6 +2,7 @@
 export const CONFIG = {
   // Application URLs
   DOMAIN: Deno.env.get('PUBLIC_APP_BASE_URL') || 'https://www.ticketflo.org',
+  SUPABASE_URL: Deno.env.get('SUPABASE_URL') || '',
   
   // Email configuration
   FROM_EMAIL: 'noreply@ticketflo.org',
