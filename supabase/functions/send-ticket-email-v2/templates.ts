@@ -326,8 +326,8 @@ export class TemplateService {
         ? `<img src="${qrUrl}" alt="QR Code" style="width:100px;height:100px;border:1px solid ${theme.borderColor};border-radius:4px;"/>`
         : '';
 
-      // Generate wallet pass URL using existing Supabase function
-      const walletUrl = `${CONFIG.SUPABASE_URL}/functions/v1/generate-wallet-pass?ticketCode=${encodeURIComponent(ticket.code)}`;
+      // Generate wallet pass URL using production Apple Wallet pass function
+      const walletUrl = `${CONFIG.SUPABASE_URL}/functions/v1/generate-apple-wallet-pass-production?ticketCode=${encodeURIComponent(ticket.code)}&download=true`;
 
       return `
         <table style="width:100%;border:1px solid ${theme.borderColor};border-radius:8px;margin:8px 0;background:${theme.backgroundColor};border-collapse:separate;border-spacing:0;">
@@ -372,8 +372,8 @@ export class TemplateService {
         ? `<img src="${qrUrl}" alt="QR Code" style="width:100px;height:100px;border:1px solid ${theme.borderColor};border-radius:4px;"/>` 
         : '';
 
-      // Generate wallet pass URL using existing Supabase function
-      const walletUrl = `${CONFIG.SUPABASE_URL}/functions/v1/generate-wallet-pass?ticketCode=${encodeURIComponent(ticket.code)}`;
+      // Generate wallet pass URL using production Apple Wallet pass function
+      const walletUrl = `${CONFIG.SUPABASE_URL}/functions/v1/generate-apple-wallet-pass-production?ticketCode=${encodeURIComponent(ticket.code)}&download=true`;
 
       return `
         <table style="width:100%;border:1px solid ${theme.borderColor};border-radius:8px;margin:8px 0;background:${theme.backgroundColor};border-collapse:separate;border-spacing:0;">

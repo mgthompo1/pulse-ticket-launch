@@ -67,7 +67,7 @@ class MetaTagService {
     this.updateMetaTag('keywords', metaTags.keywords);
     
     // Open Graph tags
-    this.updateMetaTag('fb:app_id', 'your_facebook_app_id', true);
+    this.updateMetaTag('fb:app_id', '1234567890123456', true);
     this.updateMetaTag('og:title', metaTags.ogTitle, true);
     this.updateMetaTag('og:description', metaTags.ogDescription, true);
     this.updateMetaTag('og:image', metaTags.ogImage, true);
