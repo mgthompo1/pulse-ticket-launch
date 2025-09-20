@@ -166,8 +166,8 @@ async function createSignature(manifestData: string): Promise<Uint8Array> {
 
     console.log("Certificate found, attempting to create PKCS#7 signature");
     console.log("Certificate Base64 length:", certBase64.length);
+    console.log("Certificate starts with:", certBase64.substring(0, 20));
     console.log("Has password:", !!certPassword);
-    console.log("Certificate starts with:", certBase64.substring(0, 50));
 
     try {
       // Import the forge library for PKCS#7 signature creation
@@ -190,12 +190,19 @@ async function createSignature(manifestData: string): Promise<Uint8Array> {
 
       // Extract certificate and private key
       const bags = p12.getBags({ bagType: forge.pki.oids.certBag });
+      const keyBags = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag });
+
+      // Debug certificate details
+      console.log("Number of certificate bags found:", bags[forge.pki.oids.certBag].length);
+      console.log("Number of key bags found:", keyBags[forge.pki.oids.pkcs8ShroudedKeyBag].length);
+
       const certBag = bags[forge.pki.oids.certBag][0];
       const certificate = certBag.cert;
-
-      const keyBags = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag });
       const keyBag = keyBags[forge.pki.oids.pkcs8ShroudedKeyBag][0];
       const privateKey = keyBag.key;
+
+      // Log certificate subject
+      console.log("Certificate subject:", certificate.subject.getField('CN').value);
 
       // Create PKCS#7 signed data
       const p7 = forge.pkcs7.createSignedData();
@@ -204,6 +211,30 @@ async function createSignature(manifestData: string): Promise<Uint8Array> {
       // Add certificate to the signed data
       p7.addCertificate(certificate);
 
+      // Download and add Apple's intermediate certificate
+      try {
+        console.log("Downloading Apple WWDR G4 certificate...");
+        const appleWwdrResponse = await fetch('https://www.apple.com/certificateauthority/AppleWWDRCAG4.cer');
+
+        if (appleWwdrResponse.ok) {
+          const certBuffer = await appleWwdrResponse.arrayBuffer();
+          const certBytes = new Uint8Array(certBuffer);
+
+          // Convert DER to PEM format for forge
+          const certBase64 = btoa(String.fromCharCode(...certBytes));
+          const certPem = `-----BEGIN CERTIFICATE-----\n${certBase64.match(/.{1,64}/g)?.join('\n')}\n-----END CERTIFICATE-----`;
+
+          const appleIntermediateCert = forge.pki.certificateFromPem(certPem);
+          p7.addCertificate(appleIntermediateCert);
+          console.log("Successfully added Apple WWDR G4 intermediate certificate");
+        } else {
+          console.log("Failed to download Apple WWDR certificate:", appleWwdrResponse.status);
+        }
+      } catch (error) {
+        console.log("Could not download/add Apple intermediate certificate:", error.message);
+        // Continue without intermediate certificate - may work depending on device trust store
+      }
+
       // Add signer (simplified - remove problematic authenticated attributes)
       p7.addSigner({
         key: privateKey,
@@ -211,8 +242,19 @@ async function createSignature(manifestData: string): Promise<Uint8Array> {
         digestAlgorithm: forge.pki.oids.sha256
       });
 
-      // Sign the data
-      p7.sign({ detached: true });
+      // Sign the data with specific options for Apple Wallet
+      p7.sign({
+        detached: true,
+        authenticatedAttributes: [{
+          type: forge.pki.oids.contentTypes,
+          value: forge.pki.oids.data
+        }, {
+          type: forge.pki.oids.messageDigest
+        }, {
+          type: forge.pki.oids.signingTime,
+          value: new Date()
+        }]
+      });
 
       // Convert to DER format
       const derBytes = forge.asn1.toDer(p7.toAsn1()).getBytes();
@@ -318,6 +360,54 @@ async function createPkpassFile(pass: any): Promise<Uint8Array> {
   // Create ZIP file
   const zipData = createZipFile(files);
   console.log(`Created .pkpass ZIP file with ${files.length} files, size: ${zipData.length} bytes`);
+
+  // Add detailed validation logging
+  console.log("PKPass file validation:");
+  console.log(`- Files included: ${files.map(f => f.name).join(', ')}`);
+  console.log(`- Pass.json size: ${files.find(f => f.name === 'pass.json')?.content.length} bytes`);
+  console.log(`- Manifest.json size: ${files.find(f => f.name === 'manifest.json')?.content.length} bytes`);
+  console.log(`- Signature size: ${files.find(f => f.name === 'signature')?.content.length} bytes`);
+  console.log(`- Total ZIP size: ${zipData.length} bytes`);
+
+  // Validate ZIP file structure
+  if (zipData.length < 100) {
+    console.error("WARNING: ZIP file unusually small - likely corrupted");
+  }
+
+  // Additional Apple Wallet validation
+  console.log("Apple Wallet PKPass validation:");
+  console.log(`- ZIP file starts with: ${Array.from(zipData.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+  console.log(`- Expected ZIP signature: 50 4b 03 04`);
+
+  // Validate pass.json structure
+  const passJsonFile = files.find(f => f.name === 'pass.json');
+  if (passJsonFile) {
+    try {
+      const passObj = JSON.parse(new TextDecoder().decode(passJsonFile.content));
+      console.log("Pass.json validation:");
+      console.log(`- Format version: ${passObj.formatVersion}`);
+      console.log(`- Pass type: ${passObj.passTypeIdentifier}`);
+      console.log(`- Team ID: ${passObj.teamIdentifier}`);
+      console.log(`- Organization: ${passObj.organizationName}`);
+      console.log(`- Serial number: ${passObj.serialNumber}`);
+      console.log(`- Has eventTicket: ${!!passObj.eventTicket}`);
+      console.log(`- Barcode format: ${passObj.barcode?.format}`);
+
+      // Check for potential issues
+      if (!passObj.eventTicket) {
+        console.error("ERROR: Missing eventTicket object - Apple Wallet requires this for event tickets");
+      }
+      if (!passObj.barcode || !passObj.barcode.message) {
+        console.error("ERROR: Missing or invalid barcode - Apple Wallet requires valid barcode");
+      }
+      if (passObj.serialNumber && passObj.serialNumber.length > 50) {
+        console.error("WARNING: Serial number too long - Apple recommends max 50 characters");
+      }
+    } catch (e) {
+      console.error("ERROR: Invalid pass.json structure:", e.message);
+    }
+  }
+
   return zipData;
 }
 serve(async function(req) {
@@ -344,6 +434,12 @@ serve(async function(req) {
     // Check for required environment variables
     const teamId = Deno.env.get("APPLE_TEAM_ID");
     const passTypeId = Deno.env.get("APPLE_PASS_TYPE_ID");
+
+    // Debug: Check pass type ID for truncation
+    console.log(`Pass Type ID from env: "${passTypeId}" (length: ${passTypeId?.length})`);
+    if (passTypeId && passTypeId.length > 40) {
+      console.log("WARNING: Pass Type ID might be truncated - Apple Wallet requires exact match with certificate");
+    }
     if (!teamId || !passTypeId) {
       return new Response(JSON.stringify({
         error: 'Apple Developer credentials not configured',
@@ -361,9 +457,82 @@ serve(async function(req) {
         persistSession: false
       }
     });
+    // Debug: Log the ticket code being searched
+    console.log(`Searching for ticket with code: "${ticketCode}" (length: ${ticketCode.length})`);
+    console.log(`Ticket code type: ${typeof ticketCode}`);
+    console.log(`Ticket code chars: ${Array.from(ticketCode).map(c => c.charCodeAt(0)).join(',')}`);
+
     // Fetch ticket details
     const { data: ticket, error: ticketError } = await supabase.from('tickets').select('id,ticket_code,status,created_at,order_items(ticket_types(name,price,description),orders(id,customer_name,customer_email,created_at,events(name,event_date,venue,description,organization_id,logo_url,organizations(name,logo_url))))').eq('ticket_code', ticketCode).single();
+
+    console.log(`Ticket lookup result: found=${!!ticket}, error=${!!ticketError}`);
+    if (ticketError) {
+      console.error('Ticket lookup error details:', JSON.stringify(ticketError, null, 2));
+    }
+
+    if (ticket) {
+      console.log('Ticket data structure:');
+      console.log(`- ticket.id: ${ticket.id}`);
+      console.log(`- ticket.ticket_code: ${ticket.ticket_code}`);
+      console.log(`- Using for serial number: ${ticket.ticket_code}`);
+    }
+
     if (ticketError || !ticket) {
+      // Debug: Show what tickets actually exist
+      console.log('Ticket not found. Checking available tickets...');
+      try {
+        const { data: allTickets, error: listError } = await supabase
+          .from('tickets')
+          .select('ticket_code, status, created_at')
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (allTickets && allTickets.length > 0) {
+          console.log(`Found ${allTickets.length} recent tickets in database:`);
+          allTickets.forEach((t, i) => {
+            console.log(`  ${i + 1}. "${t.ticket_code}" (status: ${t.status}, length: ${t.ticket_code.length})`);
+            // Check if searched ticket code is similar to any existing ones
+            if (t.ticket_code.toLowerCase() === ticketCode.toLowerCase()) {
+              console.log(`    *** CASE MISMATCH: Found "${t.ticket_code}" vs searched "${ticketCode}"`);
+            }
+            if (decodeURIComponent(ticketCode) === t.ticket_code) {
+              console.log(`    *** URL ENCODING MISMATCH: Found "${t.ticket_code}" vs encoded "${ticketCode}"`);
+            }
+          });
+
+          // Try alternative search approaches
+          console.log('Trying alternative searches...');
+
+          // Try case-insensitive search
+          const { data: caseInsensitive } = await supabase
+            .from('tickets')
+            .select('ticket_code')
+            .ilike('ticket_code', ticketCode);
+
+          if (caseInsensitive && caseInsensitive.length > 0) {
+            console.log(`Found with case-insensitive search: ${caseInsensitive.map(t => t.ticket_code).join(', ')}`);
+          }
+
+          // Try URL decoded search
+          const decodedTicketCode = decodeURIComponent(ticketCode);
+          if (decodedTicketCode !== ticketCode) {
+            const { data: decodedSearch } = await supabase
+              .from('tickets')
+              .select('ticket_code')
+              .eq('ticket_code', decodedTicketCode);
+
+            if (decodedSearch && decodedSearch.length > 0) {
+              console.log(`Found with URL decoded search: ${decodedSearch.map(t => t.ticket_code).join(', ')}`);
+            }
+          }
+
+        } else {
+          console.log('No tickets found in database');
+        }
+      } catch (debugError) {
+        console.log('Error checking tickets:', debugError);
+      }
+
       console.error('Ticket lookup error:', ticketError);
       return new Response(JSON.stringify({
         error: 'Ticket not found'
@@ -400,7 +569,7 @@ serve(async function(req) {
     const pass = {
       formatVersion: 1,
       passTypeIdentifier: passTypeId,
-      serialNumber: ticket.id,
+      serialNumber: ticket.ticket_code,
       teamIdentifier: teamId,
       organizationName: organization?.name || "TicketFlo",
       description: `${event.name} - Event Ticket`,
@@ -493,6 +662,37 @@ serve(async function(req) {
     if (event.event_date) {
       (pass as any).relevantDate = new Date(event.event_date).toISOString();
     }
+
+    // Validate pass structure
+    console.log("Pass validation:");
+    console.log(`- Format version: ${pass.formatVersion}`);
+    console.log(`- Pass type ID: ${pass.passTypeIdentifier}`);
+    console.log(`- Team ID: ${pass.teamIdentifier}`);
+    console.log(`- Serial number: ${pass.serialNumber}`);
+    console.log(`- Organization name: ${pass.organizationName}`);
+    console.log(`- Has barcode: ${!!pass.barcode}`);
+    console.log(`- Event ticket fields: ${pass.eventTicket.primaryFields.length} primary, ${pass.eventTicket.secondaryFields.length} secondary, ${pass.eventTicket.backFields.length} back`);
+
+    // Validate required fields are present
+    const requiredFields = ['formatVersion', 'passTypeIdentifier', 'teamIdentifier', 'serialNumber', 'organizationName'];
+    const missingFields = requiredFields.filter(field => !pass[field]);
+    if (missingFields.length > 0) {
+      console.error(`WARNING: Missing required fields: ${missingFields.join(', ')}`);
+    }
+
+    // Additional Apple Wallet validation checks
+    console.log("Apple Wallet validation checks:");
+    console.log(`- Pass type matches certificate: ${pass.passTypeIdentifier}`);
+    console.log(`- Team ID matches certificate: ${pass.teamIdentifier}`);
+    console.log(`- Serial number format: ${pass.serialNumber} (length: ${pass.serialNumber.length})`);
+    console.log(`- Organization name: ${pass.organizationName} (length: ${pass.organizationName.length})`);
+
+    // Check barcode format
+    if (pass.barcode) {
+      console.log(`- Barcode message: ${pass.barcode.message} (length: ${pass.barcode.message.length})`);
+      console.log(`- Barcode format: ${pass.barcode.format}`);
+      console.log(`- Barcode encoding: ${pass.barcode.messageEncoding}`);
+    }
     if (download) {
       // Generate and return the .pkpass file
       try {
@@ -502,7 +702,10 @@ serve(async function(req) {
             ...corsHeaders,
             "Content-Type": "application/vnd.apple.pkpass",
             "Content-Length": pkpassData.length.toString(),
-            "Content-Disposition": `attachment; filename="${event.name.replace(/[^a-zA-Z0-9 ]/g, '_').replace(/\s+/g, '_')}_ticket.pkpass"`
+            "Content-Disposition": `attachment; filename="ticket.pkpass"`,
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
           }
         });
       } catch (error) {

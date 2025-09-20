@@ -279,7 +279,7 @@ export class TemplateService {
                       ${sanitizeHtml(ticket.code)}
                     </div>
                     ${config.showWalletButton ? `<div style="margin-top:12px;">
-                      <a href="${walletUrl}" style="display:inline-block;background:#000000;color:#ffffff;padding:8px 16px;text-decoration:none;border-radius:6px;font-size:12px;font-weight:600;margin-right:8px;border:1px solid #000;">🍎 Add to Apple Wallet</a>
+                      <a href="${walletUrl}" download="ticket.pkpass" style="display:inline-block;background:#000000;color:#ffffff;padding:8px 16px;text-decoration:none;border-radius:6px;font-size:12px;font-weight:600;margin-right:8px;border:1px solid #000;">🍎 Add to Apple Wallet</a>
                     </div>` : ''}
                   </td>
                   ${qrImg ? `<td style="vertical-align:top;text-align:center;width:40%;padding-left:16px;">
@@ -318,7 +318,7 @@ export class TemplateService {
                       ${sanitizeHtml(ticket.code)}
                     </div>
                     <div style="margin-top:12px;">
-                      <a href="${walletUrl}" style="display:inline-block;background:#000000;color:#ffffff;padding:8px 16px;text-decoration:none;border-radius:6px;font-size:12px;font-weight:600;margin-right:8px;border:1px solid #000;">🍎 Add to Apple Wallet</a>
+                      <a href="${walletUrl}" download="ticket.pkpass" style="display:inline-block;background:#000000;color:#ffffff;padding:8px 16px;text-decoration:none;border-radius:6px;font-size:12px;font-weight:600;margin-right:8px;border:1px solid #000;">🍎 Add to Apple Wallet</a>
                     </div>
                   </td>
                   ${qrImg ? `<td style="vertical-align:top;text-align:center;width:40%;padding-left:16px;">
