@@ -141,8 +141,8 @@ async function createSignature(manifestData: string): Promise<Uint8Array> {
     const certPassword = Deno.env.get("APPLE_WALLET_CERT_PASSWORD");
 
     if (!certBase64) {
-      console.warn("No Apple certificate found, using placeholder signature");
-      return new TextEncoder().encode("PLACEHOLDER_SIGNATURE_FOR_DEVELOPMENT");
+      console.warn("No Apple certificate found, using fallback signature");
+      return new TextEncoder().encode("FALLBACK_SIGNATURE");
     }
 
     console.log("Certificate found, attempting to create PKCS#7 signature");
@@ -489,7 +489,7 @@ serve(async function(req) {
         console.error('Error creating .pkpass file:', error);
         return new Response(JSON.stringify({
           error: 'Failed to create .pkpass file',
-          message: 'This is a development version. Full .pkpass generation requires proper signing certificates.'
+          message: 'Apple Wallet pass generation failed. Please check certificate configuration.'
         }), {
           headers: {
             ...corsHeaders,
