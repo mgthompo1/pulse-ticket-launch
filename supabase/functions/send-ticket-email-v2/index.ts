@@ -5,6 +5,7 @@ import { DatabaseService } from './database.ts';
 import { PaymentService } from './payment.ts';
 import { TemplateService } from './templates.ts';
 import { logStep, validateOrderId, validateEmailAddress, EmailServiceError, handleError, withRetry } from './utils.ts';
+import { Order, Ticket, PdfAttachment, PaymentInfo } from './types.ts';
 // Main email service class
 class EmailService {
   database;
@@ -22,7 +23,7 @@ class EmailService {
     this.resend = new Resend(resendApiKey);
   }
   // Main processing method
-  async processOrderEmail(orderId) {
+  async processOrderEmail(orderId: string): Promise<void> {
     // Validate input
     const validOrderId = validateOrderId(orderId);
     logStep("Processing order", {
@@ -48,7 +49,7 @@ class EmailService {
     // Handle ticket generation
     const tickets = await this.handleTicketGeneration(order, deliveryMethod);
     // Get QR code URLs for tickets
-    const orderItemIds = order.order_items.filter((item)=>item.item_type === 'ticket').map((item)=>item.id);
+    const orderItemIds = order.order_items.filter((item: any) => item.item_type === 'ticket').map((item: any) => item.id);
     const qrUrls = await this.database.getTicketQrUrls(orderItemIds);
     // Generate email content
     const emailContent = this.templates.generateEmailContent(order, tickets, deliveryMethod, qrUrls, paymentInfo);
@@ -67,21 +68,21 @@ class EmailService {
     };
   }
   // Handle ticket generation logic
-  async handleTicketGeneration(order, deliveryMethod) {
+  async handleTicketGeneration(order: Order, deliveryMethod: string): Promise<Ticket[]> {
     if (deliveryMethod === 'confirmation_email' || deliveryMethod === 'email_confirmation_only' || deliveryMethod === 'email_confirmation') {
       logStep("Skipping ticket generation for confirmation email", {
         deliveryMethod
       });
       return [];
     }
-    const ticketItems = order.order_items.filter((item)=>item.item_type === 'ticket');
+    const ticketItems = order.order_items.filter((item: any) => item.item_type === 'ticket');
     if (ticketItems.length === 0) return [];
     // Check for existing tickets first
-    const existingTickets = await this.database.getExistingTickets(ticketItems.map((item)=>item.id));
+    const existingTickets = await this.database.getExistingTickets(ticketItems.map((item: any) => item.id));
     if (existingTickets.length > 0) {
       // Use existing tickets
       const tickets = existingTickets.map((ticket)=>{
-        const orderItem = ticketItems.find((item)=>item.id === ticket.order_item_id);
+        const orderItem = ticketItems.find((item: any) => item.id === ticket.order_item_id);
         return {
           code: ticket.ticket_code,
           type: orderItem?.ticket_types?.name || 'General Admission',
@@ -97,12 +98,12 @@ class EmailService {
     return await this.database.generateTickets(ticketItems);
   }
   // Generate PDF attachment
-  async generatePdfAttachment(order, tickets, deliveryMethod) {
+  async generatePdfAttachment(order: Order, tickets: Ticket[], deliveryMethod: string): Promise<PdfAttachment | null> {
     if (deliveryMethod !== 'qr_ticket' || tickets.length === 0) {
       return null;
     }
     try {
-      logStep("Generating PDF attachment");
+      logStep("Generating PDF attachment", {});
       // Add timeout to PDF generation
       const pdfPromise = this.generatePdf(order, tickets);
       const timeoutPromise = new Promise((_, reject)=>setTimeout(()=>reject(new Error('PDF generation timeout')), CONFIG.PDF_CONFIG.timeout));
@@ -110,10 +111,10 @@ class EmailService {
         pdfPromise,
         timeoutPromise
       ]);
-      if (pdfResponse?.content) {
+      if ((pdfResponse as any)?.content) {
         const pdfAttachment = {
           filename: `tickets-${order.id}.pdf`,
-          content: pdfResponse.content,
+          content: (pdfResponse as any).content,
           content_type: 'application/pdf'
         };
         logStep("PDF generated successfully", {
@@ -121,7 +122,7 @@ class EmailService {
         });
         return pdfAttachment;
       }
-      logStep("PDF generation returned no data");
+      logStep("PDF generation returned no data", {});
       return null;
     } catch (error) {
       logStep("PDF generation failed", {
@@ -132,13 +133,13 @@ class EmailService {
     }
   }
   // PDF generation logic (placeholder - implement based on your PDF service)
-  async generatePdf(order, tickets) {
+  async generatePdf(order: Order, tickets: Ticket[]): Promise<any> {
     // This would call your PDF generation service
     // For now, return null to indicate PDF generation is not implemented
     return null;
   }
   // Send email with proper error handling
-  async sendEmail(order, emailContent, pdfAttachment) {
+  async sendEmail(order: Order, emailContent: string, pdfAttachment: PdfAttachment | null): Promise<void> {
     logStep("Sending email", {
       recipient: emailContent.to,
       subject: emailContent.subject,
@@ -154,7 +155,7 @@ class EmailService {
     };
     // Add PDF attachment if available
     if (pdfAttachment) {
-      emailOptions.attachments = [
+      (emailOptions as any).attachments = [
         {
           filename: pdfAttachment.filename,
           content: pdfAttachment.content,
@@ -179,12 +180,12 @@ class EmailService {
     });
   }
   // Send organizer notification if enabled
-  async sendOrganizerNotificationIfEnabled(order, orderId) {
+  async sendOrganizerNotificationIfEnabled(order: Order, orderId: string): Promise<void> {
     try {
       const emailCustomization = order.events.email_customization;
       const notificationsEnabled = emailCustomization?.notifications?.organiserNotifications;
       if (notificationsEnabled) {
-        logStep("Sending organizer notification");
+        logStep("Sending organizer notification", {});
         await this.database.sendOrganizerNotification(orderId);
       }
     } catch (error) {
@@ -204,7 +205,7 @@ Deno.serve(async (req)=>{
     });
   }
   try {
-    logStep("Function started");
+    logStep("Function started", {});
     // Parse request body
     let requestBody;
     try {

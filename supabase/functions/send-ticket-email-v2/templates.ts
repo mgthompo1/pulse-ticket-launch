@@ -1,11 +1,12 @@
 // Email template generation service - FIXED VERSION
 import { CONFIG } from './config.ts';
 import { sanitizeHtml, validateAndSanitizeUrl } from './utils.ts';
+import { Order, Ticket, Theme, QrUrls, EmailBlock, EmailCustomization, PaymentInfo } from './types.ts';
 export class TemplateService {
   // Get theme-based styles with color presets
-  getThemeStyles(theme, template) {
+  getThemeStyles(theme: string, template: any): Theme {
     // Get theme preset or use template colors if custom
-    const themeColors = CONFIG.THEME_PRESETS[theme] || {
+    const themeColors = (CONFIG.THEME_PRESETS as any)[theme] || {
       headerColor: template?.headerColor || "#1f2937",
       backgroundColor: template?.backgroundColor || "#ffffff",
       textColor: template?.textColor || "#374151",
@@ -54,15 +55,15 @@ export class TemplateService {
     }
   }
   // Generate email content based on order and customization
-  generateEmailContent(order, tickets, deliveryMethod, qrUrls, paymentInfo) {
+  generateEmailContent(order: Order, tickets: Ticket[], deliveryMethod: string, qrUrls: QrUrls, paymentInfo: PaymentInfo): string {
     const emailCustomization = order.events.email_customization;
     // Use saved blocks when present; otherwise fall back to defaults
     const blocks = Array.isArray(emailCustomization?.blocks) && emailCustomization.blocks.length > 0 ? emailCustomization.blocks : CONFIG.DEFAULT_EMAIL_BLOCKS;
     console.log('[TEMPLATE] Using blocks:', {
       hasCustomBlocks: Array.isArray(emailCustomization?.blocks) && emailCustomization.blocks.length > 0,
       blockCount: blocks.length,
-      blockTypes: blocks.map((b)=>b.type),
-      hasButtonBlock: blocks.some((b)=>b.type === 'button')
+      blockTypes: blocks.map((b: any) => b.type),
+      hasButtonBlock: blocks.some((b: any) => b.type === 'button')
     });
     const html = this.renderBlocks(blocks, order, tickets, deliveryMethod, qrUrls, emailCustomization, paymentInfo);
     // Generate subject line
@@ -74,7 +75,7 @@ export class TemplateService {
     };
   }
   // Render email blocks into HTML
-  renderBlocks(blocks, order, tickets, deliveryMethod, qrUrls, emailCustomization, paymentInfo) {
+  renderBlocks(blocks: EmailBlock[], order: Order, tickets: Ticket[], deliveryMethod: string, qrUrls: QrUrls, emailCustomization: EmailCustomization, paymentInfo: PaymentInfo): string {
     const theme = this.getThemeStyles(emailCustomization?.template?.theme || 'professional', emailCustomization?.template);
     const branding = {
       showLogo: true,
@@ -84,7 +85,7 @@ export class TemplateService {
       ...emailCustomization?.branding
     };
     const logoUrl = this.getLogoUrl(order, branding);
-    const logoSize = CONFIG.LOGO_SIZES[branding.logoSize] || CONFIG.LOGO_SIZES.medium;
+    const logoSize = (CONFIG.LOGO_SIZES as any)[branding.logoSize] || CONFIG.LOGO_SIZES.medium;
     const parts = [];
     // Add comprehensive HTML structure to match frontend
     parts.push(`<!DOCTYPE html>
@@ -147,7 +148,7 @@ export class TemplateService {
     return parts.join('');
   }
   // Render individual email block
-  renderBlock(block, order, tickets, deliveryMethod, qrUrls, theme, paymentInfo) {
+  renderBlock(block: EmailBlock, order: Order, tickets: Ticket[], deliveryMethod: string, qrUrls: QrUrls, theme: Theme, paymentInfo: PaymentInfo): string {
     console.log('[RENDER-BLOCK] Processing block:', {
       type: block.type,
       block
@@ -225,7 +226,7 @@ export class TemplateService {
     }
   }
   // Render event details block
-  renderEventDetails(order, theme) {
+  renderEventDetails(order: Order, theme: Theme): string {
     const eventDate = new Date(order.events.event_date);
     const formattedDate = eventDate.toLocaleDateString('en-US', {
       weekday: 'long',
@@ -258,9 +259,9 @@ export class TemplateService {
     </div>`;
   }
   // Render configurable ticket list with QR codes
-  renderTicketListConfigurable(tickets, qrUrls, theme, config) {
+  renderTicketListConfigurable(tickets: Ticket[], qrUrls: QrUrls, theme: Theme, config: any): string {
     if (tickets.length === 0) return '';
-    const ticketHtml = tickets.map((ticket, index)=>{
+    const ticketHtml = tickets.map((ticket: Ticket, index: number) => {
       const qrUrl = qrUrls[ticket.code];
       const qrImg = config.showQRCodes && qrUrl ? `<img src="${qrUrl}" alt="QR Code" style="width:100px;height:100px;border:1px solid ${theme.borderColor};border-radius:4px;"/>` : '';
       // FIXED: Generate wallet pass URL using production Apple Wallet pass function with correct parameter name
@@ -297,9 +298,9 @@ export class TemplateService {
     </div>`;
   }
   // Render ticket list with QR codes
-  renderTicketList(tickets, qrUrls, theme) {
+  renderTicketList(tickets: Ticket[], qrUrls: QrUrls, theme: Theme): string {
     if (tickets.length === 0) return '';
-    const ticketHtml = tickets.map((ticket, index)=>{
+    const ticketHtml = tickets.map((ticket: Ticket, index: number) => {
       const qrUrl = qrUrls[ticket.code];
       const qrImg = qrUrl ? `<img src="${qrUrl}" alt="QR Code" style="width:100px;height:100px;border:1px solid ${theme.borderColor};border-radius:4px;"/>` : '';
       // FIXED: Generate wallet pass URL using production Apple Wallet pass function with correct parameter name
@@ -336,8 +337,8 @@ export class TemplateService {
     </div>`;
   }
   // Render order summary for confirmation emails
-  renderOrderSummary(order, theme) {
-    const itemsHtml = order.order_items.map((item)=>{
+  renderOrderSummary(order: Order, theme: Theme): string {
+    const itemsHtml = order.order_items.map((item: any) => {
       const name = item.item_type === 'ticket' ? item.ticket_types?.name || 'General Admission' : item.merchandise?.name || 'Merchandise';
       return `<tr>
         <td style="padding:12px 0;border-bottom:1px solid ${theme.borderColor};vertical-align:top;">
@@ -350,7 +351,7 @@ export class TemplateService {
       </tr>`;
     }).join('');
     // Calculate subtotal from order items
-    const subtotal = order.order_items.reduce((sum, item)=>sum + item.unit_price * item.quantity, 0);
+    const subtotal = order.order_items.reduce((sum: number, item: any) => sum + item.unit_price * item.quantity, 0);
     const processingFee = order.total_amount - subtotal;
     // Build the summary rows using table structure
     let summaryRows = '';
@@ -381,7 +382,7 @@ export class TemplateService {
     </div>`;
   }
   // Render button block
-  renderButton(block, theme, deliveryMethod, order) {
+  renderButton(block: EmailBlock, theme: Theme, deliveryMethod: string, order: Order): string {
     console.log('[BUTTON] renderButton called with:', {
       block,
       deliveryMethod,
@@ -433,7 +434,7 @@ export class TemplateService {
     }
   }
   // Render payment summary block
-  renderPaymentSummary(order, paymentInfo, theme) {
+  renderPaymentSummary(order: Order, paymentInfo: PaymentInfo, theme: Theme): string {
     console.log('[PAYMENT-SUMMARY] renderPaymentSummary called with:', {
       hasPaymentInfo: !!paymentInfo,
       paymentInfo: paymentInfo,
@@ -464,7 +465,7 @@ export class TemplateService {
     </div>`;
   }
   // Get logo URL based on branding configuration
-  getLogoUrl(order, branding) {
+  getLogoUrl(order: Order, branding: any): string {
     // If showLogo is explicitly false, don't show any logo
     if (branding.showLogo === false) return null;
     // Default to showing logo if not specified
@@ -501,7 +502,7 @@ export class TemplateService {
     }
   }
   // Render calendar button block
-  renderCalendarButton(block, order, theme) {
+  renderCalendarButton(block: EmailBlock, order: Order, theme: Theme): string {
     const eventDate = new Date(order.events.event_date);
     const startTime = eventDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     const endTime = new Date(eventDate.getTime() + 2 * 60 * 60 * 1000).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'; // 2 hours duration
@@ -525,7 +526,7 @@ export class TemplateService {
     </div>`;
   }
   // Render QR tickets block
-  renderQRTickets(tickets, qrUrls, theme, block, deliveryMethod) {
+  renderQRTickets(tickets: Ticket[], qrUrls: QrUrls, theme: Theme, block: EmailBlock, deliveryMethod: string): string {
     const layout = block.layout || 'grid';
     const showInline = block.showInline !== false;
     const includeBarcode = block.includeBarcode === true;
@@ -547,7 +548,7 @@ export class TemplateService {
       </div>`;
     }
     const ticketStyle = layout === 'grid' ? 'display:inline-block;margin:8px;vertical-align:top;' : 'display:block;margin:8px 0;';
-    const ticketHtml = tickets.map((ticket, index)=>{
+    const ticketHtml = tickets.map((ticket: Ticket, index: number) => {
       const qrUrl = qrUrls[ticket.code];
       const qrImg = qrUrl ? `<img src="${qrUrl}" alt="QR Code" style="width:100px;height:100px;margin:8px auto;border:1px solid ${theme.borderColor};border-radius:4px;display:block;"/>` : `<div style="width:100px;height:100px;background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:4px;margin:8px auto;display:flex;align-items:center;justify-content:center;color:${theme.textColor};font-size:12px;">QR Code<br/>Preview</div>`;
       return `<div style="${ticketStyle}border:1px solid ${theme.borderColor};border-radius:8px;padding:16px;background:${theme.backgroundColor};text-align:center;min-width:200px;">
@@ -567,7 +568,7 @@ export class TemplateService {
     </div>`;
   }
   // Render order management block
-  renderOrderManagement(block, theme) {
+  renderOrderManagement(block: EmailBlock, theme: Theme): string {
     const showViewOrder = block.showViewOrder !== false;
     const showModifyOrder = block.showModifyOrder === true;
     const showCancelOrder = block.showCancelOrder === true;
@@ -591,7 +592,7 @@ export class TemplateService {
     </div>`;
   }
   // Render social links block
-  renderSocialLinks(block, theme) {
+  renderSocialLinks(block: EmailBlock, theme: Theme): string {
     const platforms = block.platforms || {};
     const alignment = block.align || 'center';
     const style = block.style || 'icons';
@@ -624,7 +625,7 @@ export class TemplateService {
     </div>`;
   }
   // Render custom message block with personalization
-  renderCustomMessage(block, theme, order) {
+  renderCustomMessage(block: EmailBlock, theme: Theme, order: Order): string {
     let message = block.message || block.markdown || '';
     if (!message) return '';
     // Apply personalization variables
@@ -636,12 +637,12 @@ export class TemplateService {
     </div>`;
   }
   // Render next steps block
-  renderNextSteps(block, theme) {
+  renderNextSteps(block: EmailBlock, theme: Theme): string {
     const steps = block.steps || [];
     const title = block.title || 'What\'s Next?';
     const showIcons = block.showIcons !== false;
     if (steps.length === 0) return '';
-    const stepsHtml = steps.map((step, index)=>{
+    const stepsHtml = steps.map((step: any, index: number) => {
       const icon = showIcons ? `${index + 1}️⃣ ` : `${index + 1}. `;
       return `<li style="margin:8px 0;color:${theme.textColor};line-height:1.5;">
         ${icon}${sanitizeHtml(step)}
@@ -655,8 +656,8 @@ export class TemplateService {
     </div>`;
   }
   // Render registration details block (same as order summary but different title)
-  renderRegistrationDetails(order, theme) {
-    const itemsHtml = order.order_items.map((item)=>{
+  renderRegistrationDetails(order: Order, theme: Theme): string {
+    const itemsHtml = order.order_items.map((item: any) => {
       const name = item.item_type === 'ticket' ? item.ticket_types?.name || 'General Admission' : item.merchandise?.name || 'Merchandise';
       return `<tr>
         <td style="padding:12px 0;border-bottom:1px solid ${theme.borderColor};vertical-align:top;">
@@ -669,7 +670,7 @@ export class TemplateService {
       </tr>`;
     }).join('');
     // Calculate subtotal from order items
-    const subtotal = order.order_items.reduce((sum, item)=>sum + item.unit_price * item.quantity, 0);
+    const subtotal = order.order_items.reduce((sum: number, item: any) => sum + item.unit_price * item.quantity, 0);
     const processingFee = order.total_amount - subtotal;
     // Build the summary rows using table structure
     let summaryRows = '';
@@ -700,7 +701,7 @@ export class TemplateService {
     </div>`;
   }
   // Apply personalization variables to text
-  applyPersonalization(text, order) {
+  applyPersonalization(text: string, order: Order): string {
     const eventDate = new Date(order.events.event_date);
     const formattedDate = eventDate.toLocaleDateString('en-US', {
       weekday: 'long',
@@ -727,7 +728,7 @@ export class TemplateService {
       '@EventVenue': order.events.venue || '',
       '@OrderNumber': order.id || 'N/A',
       '@TotalAmount': `$${order.total_amount.toFixed(2)}`,
-      '@TicketCount': order.order_items.filter((item)=>item.item_type === 'ticket').reduce((sum, item)=>sum + item.quantity, 0).toString(),
+      '@TicketCount': order.order_items.filter((item: any) => item.item_type === 'ticket').reduce((sum: number, item: any) => sum + item.quantity, 0).toString(),
       '@OrganizerName': order.events.organizations?.name || '',
       '@ContactEmail': order.events.organizations?.contact_email || order.events?.contact_email || '',
       '@EventDescription': order.events?.description || '',

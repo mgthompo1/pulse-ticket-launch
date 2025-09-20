@@ -1,6 +1,7 @@
 // Database operations for the email service
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { logStep, EmailServiceError, withRetry } from './utils.ts';
+import { Order, OrderItem, Ticket } from './types.ts';
 export class DatabaseService {
   client;
   constructor(){
@@ -11,7 +12,7 @@ export class DatabaseService {
     });
   }
   // Consolidated order query with all related data
-  async getOrderWithDetails(orderId) {
+  async getOrderWithDetails(orderId: string): Promise<Order> {
     logStep("Fetching order details", {
       orderId
     });
@@ -60,7 +61,7 @@ export class DatabaseService {
     return order;
   }
   // Get payment credentials for organization
-  async getPaymentCredentials(organizationId) {
+  async getPaymentCredentials(organizationId: string): Promise<any> {
     const { data: credentialsArray } = await this.client.rpc('get_payment_credentials_for_processing', {
       p_organization_id: organizationId
     });
@@ -73,7 +74,7 @@ export class DatabaseService {
     return credentials;
   }
   // Get existing tickets for order items
-  async getExistingTickets(orderItemIds) {
+  async getExistingTickets(orderItemIds: string[]): Promise<any[]> {
     if (orderItemIds.length === 0) return [];
     const { data: existingTickets } = await this.client.from("tickets").select(`
         id,
@@ -84,7 +85,7 @@ export class DatabaseService {
     return existingTickets || [];
   }
   // Generate and insert new tickets
-  async generateTickets(orderItems) {
+  async generateTickets(orderItems: OrderItem[]): Promise<Ticket[]> {
     const allTickets = [];
     for (const item of orderItems){
       const tickets = [];
@@ -117,7 +118,7 @@ export class DatabaseService {
     return allTickets;
   }
   // Get QR code URLs for tickets
-  async getTicketQrUrls(orderItemIds) {
+  async getTicketQrUrls(orderItemIds: string[]): Promise<{[key: string]: string}> {
     if (orderItemIds.length === 0) return {};
     try {
       const { data: dbTickets } = await this.client.from('tickets').select('id, ticket_code, order_item_id').in('order_item_id', orderItemIds);
@@ -134,7 +135,7 @@ export class DatabaseService {
       const codeToQrUrl = {};
       for (const ticket of dbTickets){
         if (urls[ticket.id]) {
-          codeToQrUrl[ticket.ticket_code] = urls[ticket.id];
+          (codeToQrUrl as any)[ticket.ticket_code] = urls[ticket.id];
         }
       }
       return codeToQrUrl;
@@ -146,7 +147,7 @@ export class DatabaseService {
     }
   }
   // Update order status
-  async updateOrderStatus(orderId, status) {
+  async updateOrderStatus(orderId: string, status: string): Promise<void> {
     const { error } = await this.client.from("orders").update({
       status
     }).eq("id", orderId);
@@ -159,7 +160,7 @@ export class DatabaseService {
     });
   }
   // Send organizer notification
-  async sendOrganizerNotification(orderId) {
+  async sendOrganizerNotification(orderId: string): Promise<void> {
     try {
       await this.client.functions.invoke('send-organiser-notification', {
         body: {

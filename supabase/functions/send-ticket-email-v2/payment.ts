@@ -1,8 +1,9 @@
 // Payment method retrieval service
 import { logStep } from './utils.ts';
+import { PaymentInfo } from './types.ts';
 export class PaymentService {
   // Get payment method information from Stripe
-  async getPaymentMethodInfo(stripeSessionId, stripeSecretKey) {
+  async getPaymentMethodInfo(stripeSessionId: string, stripeSecretKey: string): Promise<PaymentInfo> {
     // Default payment method info
     const defaultInfo = {
       brand: 'Card',
