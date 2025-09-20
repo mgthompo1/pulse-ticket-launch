@@ -3,34 +3,19 @@ export const CONFIG = {
   // Application URLs
   DOMAIN: Deno.env.get('PUBLIC_APP_BASE_URL') || 'https://www.ticketflo.org',
   SUPABASE_URL: Deno.env.get('SUPABASE_URL') || '',
-<<<<<<< HEAD
-  
   // Email configuration
   FROM_EMAIL: 'noreply@ticketflo.org',
-  
-=======
-  // Email configuration
-  FROM_EMAIL: 'noreply@ticketflo.org',
->>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
   // Logo sizes
   LOGO_SIZES: {
     small: '80px',
     medium: '120px',
     large: '150px'
   },
-<<<<<<< HEAD
-  
-=======
->>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
   // Theme presets with improved typography and spacing
   THEME_PRESETS: {
     professional: {
       headerColor: "#0f172a",
-<<<<<<< HEAD
-      backgroundColor: "#ffffff", 
-=======
       backgroundColor: "#ffffff",
->>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       textColor: "#334155",
       buttonColor: "#0f172a",
       accentColor: "#f8fafc",
@@ -40,11 +25,7 @@ export const CONFIG = {
     modern: {
       headerColor: "#1e40af",
       backgroundColor: "#ffffff",
-<<<<<<< HEAD
-      textColor: "#1e293b", 
-=======
       textColor: "#1e293b",
->>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       buttonColor: "#2563eb",
       accentColor: "#eff6ff",
       borderColor: "#bfdbfe",
@@ -54,11 +35,7 @@ export const CONFIG = {
       headerColor: "#581c87",
       backgroundColor: "#ffffff",
       textColor: "#374151",
-<<<<<<< HEAD
-      buttonColor: "#7c3aed", 
-=======
       buttonColor: "#7c3aed",
->>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       accentColor: "#faf5ff",
       borderColor: "#d8b4fe",
       fontFamily: "'Georgia', serif"
@@ -77,11 +54,7 @@ export const CONFIG = {
       backgroundColor: "#ffffff",
       textColor: "#374151",
       buttonColor: "#ec4899",
-<<<<<<< HEAD
-      accentColor: "#fdf2f8", 
-=======
       accentColor: "#fdf2f8",
->>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       borderColor: "#f9a8d4",
       fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
     },
@@ -95,45 +68,6 @@ export const CONFIG = {
       fontFamily: "'system-ui', -apple-system, sans-serif"
     }
   },
-<<<<<<< HEAD
-  
-  // Default email blocks with Humanitix-inspired features
-  DEFAULT_EMAIL_BLOCKS: [
-    { type: 'header', title: 'Thank you for your purchase, @FirstName!' },
-    { type: 'custom_message', message: 'Thanks for choosing @EventName! We\'re excited to see you there.' },
-    { type: 'event_details' },
-    { type: 'payment_summary' },
-    { type: 'divider' },
-    { type: 'next_steps', title: 'What to expect next:', steps: [
-      'Save this email - you\'ll need it at the event',
-      'Add the event to your calendar',
-      'Arrive 15 minutes early for check-in',
-      'Bring a valid ID if required'
-    ], showIcons: true },
-    { type: 'calendar_button', label: 'Add to Calendar', align: 'center', showIcon: true },
-    { type: 'button', label: 'View Registration Confirmation', url: 'https://www.ticketflo.org/tickets?orderId={{ORDER_ID}}&email={{CUSTOMER_EMAIL}}', align: 'center' },
-    { type: 'order_management', showViewOrder: true, customText: 'Need to make changes?' },
-    { type: 'divider' },
-    { type: 'social_links', align: 'center', style: 'icons' },
-    { type: 'footer', text: 'Questions? Contact us at @ContactEmail' }
-  ],
-  
-  // Professional email-friendly icons
-  ICONS: {
-    calendar: '📅',      // Calendar emoji
-    mapPin: '📍',        // Round pushpin (more widely supported)
-    user: '👤',         // Bust in silhouette
-    ticket: '🎫',       // Ticket (more widely supported)
-    card: '💳'          // Credit card
-  },
-  
-  // PDF generation settings
-  PDF_CONFIG: {
-    timeout: 30000, // 30 seconds
-    maxRetries: 2
-  },
-  
-=======
   // Default email blocks with Humanitix-inspired features
   DEFAULT_EMAIL_BLOCKS: [
     {
@@ -207,20 +141,12 @@ export const CONFIG = {
     timeout: 30000,
     maxRetries: 2
   },
->>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
   // Database query settings
   DB_CONFIG: {
     queryTimeout: 10000 // 10 seconds
   }
 };
-<<<<<<< HEAD
-
-export const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-=======
 export const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
->>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
 };
