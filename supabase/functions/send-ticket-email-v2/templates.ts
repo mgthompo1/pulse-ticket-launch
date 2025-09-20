@@ -1,7 +1,7 @@
 // Email template generation service - FIXED VERSION
 import { CONFIG } from './config.ts';
 import { sanitizeHtml, validateAndSanitizeUrl } from './utils.ts';
-import { Order, Ticket, Theme, QrUrls, EmailBlock, EmailCustomization, PaymentInfo } from './types.ts';
+import { Order, Ticket, Theme, QrUrls, EmailBlock, EmailCustomization, PaymentInfo, EmailContent } from './types.ts';
 export class TemplateService {
   // Get theme-based styles with color presets
   getThemeStyles(theme: string, template: any): Theme {
@@ -55,7 +55,7 @@ export class TemplateService {
     }
   }
   // Generate email content based on order and customization
-  generateEmailContent(order: Order, tickets: Ticket[], deliveryMethod: string, qrUrls: QrUrls, paymentInfo: PaymentInfo): string {
+  generateEmailContent(order: Order, tickets: Ticket[], deliveryMethod: string, qrUrls: QrUrls, paymentInfo: PaymentInfo): EmailContent {
     const emailCustomization = order.events.email_customization;
     // Use saved blocks when present; otherwise fall back to defaults
     const blocks = Array.isArray(emailCustomization?.blocks) && emailCustomization.blocks.length > 0 ? emailCustomization.blocks : CONFIG.DEFAULT_EMAIL_BLOCKS;
@@ -76,7 +76,7 @@ export class TemplateService {
   }
   // Render email blocks into HTML
   renderBlocks(blocks: EmailBlock[], order: Order, tickets: Ticket[], deliveryMethod: string, qrUrls: QrUrls, emailCustomization: EmailCustomization, paymentInfo: PaymentInfo): string {
-    const theme = this.getThemeStyles(emailCustomization?.template?.theme || 'professional', emailCustomization?.template);
+    const theme = this.getThemeStyles(emailCustomization?.theme || 'professional', emailCustomization?.template);
     const branding = {
       showLogo: true,
       logoPosition: 'header',
@@ -465,7 +465,7 @@ export class TemplateService {
     </div>`;
   }
   // Get logo URL based on branding configuration
-  getLogoUrl(order: Order, branding: any): string {
+  getLogoUrl(order: Order, branding: any): string | null {
     // If showLogo is explicitly false, don't show any logo
     if (branding.showLogo === false) return null;
     // Default to showing logo if not specified

@@ -3,8 +3,9 @@
 export interface Order {
   id: string;
   customer_email: string;
+  customer_name?: string;
   status: string;
-  stripe_session_id?: string;
+  stripe_session_id?: string | null;
   total_amount: number;
   events: {
     id: string;
@@ -15,11 +16,14 @@ export interface Order {
     logo_url?: string;
     ticket_delivery_method: string;
     email_customization?: any;
+    contact_email?: string;
+    special_instructions?: string;
     organizations: {
       id: string;
       name: string;
       email: string;
       logo_url?: string;
+      contact_email?: string;
     };
   };
   order_items: OrderItem[];
@@ -84,4 +88,17 @@ export interface PdfAttachment {
   filename: string;
   content: string;
   type: string;
+  content_type?: string;
+}
+
+export interface EmailContent {
+  to: string;
+  subject: string;
+  html: string;
+}
+
+export interface ProcessResult {
+  success: boolean;
+  ticketsGenerated: number;
+  emailSent: boolean;
 }

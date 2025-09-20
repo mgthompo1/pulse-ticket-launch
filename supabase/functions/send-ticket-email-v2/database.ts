@@ -105,7 +105,7 @@ export class DatabaseService {
           throw new EmailServiceError(`Failed to insert ticket: ${insertError.message}`, 'TICKET_INSERT_FAILED');
         }
         tickets.push({
-          code: ticketCode,
+          code: ticketCode as string,
           type: item.ticket_types?.name || 'General Admission',
           price: item.unit_price
         });

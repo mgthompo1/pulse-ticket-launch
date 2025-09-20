@@ -5,7 +5,7 @@ import { DatabaseService } from './database.ts';
 import { PaymentService } from './payment.ts';
 import { TemplateService } from './templates.ts';
 import { logStep, validateOrderId, validateEmailAddress, EmailServiceError, handleError, withRetry } from './utils.ts';
-import { Order, Ticket, PdfAttachment, PaymentInfo } from './types.ts';
+import { Order, Ticket, PdfAttachment, PaymentInfo, EmailContent, ProcessResult } from './types.ts';
 // Main email service class
 class EmailService {
   database;
@@ -23,7 +23,7 @@ class EmailService {
     this.resend = new Resend(resendApiKey);
   }
   // Main processing method
-  async processOrderEmail(orderId: string): Promise<void> {
+  async processOrderEmail(orderId: string): Promise<ProcessResult> {
     // Validate input
     const validOrderId = validateOrderId(orderId);
     logStep("Processing order", {
@@ -37,7 +37,7 @@ class EmailService {
     }
     // Get payment method information
     const credentials = await this.database.getPaymentCredentials(order.events.organizations.id);
-    const paymentInfo = await this.payment.getPaymentMethodInfo(order.stripe_session_id || null, credentials?.stripe_secret_key || null);
+    const paymentInfo = await this.payment.getPaymentMethodInfo(order.stripe_session_id || '', credentials?.stripe_secret_key || '');
     // Determine delivery method from event setting (not custom answers)
     // The event's ticket_delivery_method determines whether to generate actual tickets or send confirmation only
     const deliveryMethod = order.events.ticket_delivery_method || 'qr_ticket';
@@ -115,6 +115,7 @@ class EmailService {
         const pdfAttachment = {
           filename: `tickets-${order.id}.pdf`,
           content: (pdfResponse as any).content,
+          type: 'application/pdf',
           content_type: 'application/pdf'
         };
         logStep("PDF generated successfully", {
@@ -139,7 +140,7 @@ class EmailService {
     return null;
   }
   // Send email with proper error handling
-  async sendEmail(order: Order, emailContent: string, pdfAttachment: PdfAttachment | null): Promise<void> {
+  async sendEmail(order: Order, emailContent: EmailContent, pdfAttachment: PdfAttachment | null): Promise<void> {
     logStep("Sending email", {
       recipient: emailContent.to,
       subject: emailContent.subject,
@@ -159,7 +160,7 @@ class EmailService {
         {
           filename: pdfAttachment.filename,
           content: pdfAttachment.content,
-          contentType: pdfAttachment.content_type,
+          contentType: pdfAttachment.content_type || pdfAttachment.type,
           contentDisposition: 'attachment'
         }
       ];
