@@ -18,7 +18,7 @@ function createZipFile(files: Array<{name: string, content: Uint8Array}>): Uint8
   const zipEntries = [];
   const centralDirectory = [];
   let offset = 0;
-  for (const file of files){
+  for (const file of files) {
     // Local file header
     const fileName = new TextEncoder().encode(file.name);
     const fileContent = file.content;
@@ -120,12 +120,12 @@ function createZipFile(files: Array<{name: string, content: Uint8Array}>): Uint8
   const zipData = new Uint8Array(totalSize);
   let currentOffset = 0;
   // Add entries
-  for (const entry of zipEntries){
+  for (const entry of zipEntries) {
     zipData.set(entry, currentOffset);
     currentOffset += entry.length;
   }
   // Add central directory
-  for (const dir of centralDirectory){
+  for (const dir of centralDirectory) {
     zipData.set(dir, currentOffset);
     currentOffset += dir.length;
   }
@@ -343,30 +343,7 @@ serve(async function(req) {
       }
     });
     // Fetch ticket details
-    const { data: ticket, error: ticketError } = await supabase.from('tickets').select(`
-        id,
-        ticket_code,
-        status,
-        created_at,
-        order_items (
-          ticket_types (name, price, description),
-          orders (
-            id,
-            customer_name,
-            customer_email,
-            created_at,
-            events (
-              name,
-              event_date,
-              venue,
-              description,
-              organization_id,
-              logo_url,
-              organizations (name, logo_url)
-            )
-          )
-        )
-      `).eq('ticket_code', ticketCode).single();
+    const { data: ticket, error: ticketError } = await supabase.from('tickets').select('id,ticket_code,status,created_at,order_items(ticket_types(name,price,description),orders(id,customer_name,customer_email,created_at,events(name,event_date,venue,description,organization_id,logo_url,organizations(name,logo_url))))').eq('ticket_code', ticketCode).single();
     if (ticketError || !ticket) {
       console.error('Ticket lookup error:', ticketError);
       return new Response(JSON.stringify({
