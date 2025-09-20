@@ -138,18 +138,86 @@ async function createSignature(manifestData: string): Promise<Uint8Array> {
   try {
     // Get the certificate from environment variable
     const certBase64 = Deno.env.get("APPLE_WALLET_CERT_BASE64");
+    const certPassword = Deno.env.get("APPLE_WALLET_CERT_PASSWORD");
+
     if (!certBase64) {
       console.warn("No Apple certificate found, using placeholder signature");
       return new TextEncoder().encode("PLACEHOLDER_SIGNATURE_FOR_DEVELOPMENT");
     }
-    // For now, return a placeholder signature
-    // In a full implementation, you would:
-    // 1. Parse the P12 certificate file
-    // 2. Extract the private key and certificate
-    // 3. Create a PKCS#7 signature of the manifest
-    // 4. Return the signature bytes
-    console.log("Creating development signature for manifest");
-    return new TextEncoder().encode("DEVELOPMENT_SIGNATURE_PLACEHOLDER");
+
+    console.log("Certificate found, attempting to create PKCS#7 signature");
+    console.log("Certificate Base64 length:", certBase64.length);
+    console.log("Has password:", !!certPassword);
+
+    try {
+      // Import the forge library for PKCS#7 signature creation
+      const forge = await import('https://esm.sh/node-forge@1.3.1');
+
+      // Decode the P12 certificate
+      const certData = forge.util.decode64(certBase64);
+
+      // Parse the P12 file
+      const p12Asn1 = forge.asn1.fromDer(certData);
+      const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, certPassword || '');
+
+      // Extract certificate and private key
+      const bags = p12.getBags({ bagType: forge.pki.oids.certBag });
+      const certBag = bags[forge.pki.oids.certBag][0];
+      const certificate = certBag.cert;
+
+      const keyBags = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag });
+      const keyBag = keyBags[forge.pki.oids.pkcs8ShroudedKeyBag][0];
+      const privateKey = keyBag.key;
+
+      // Create PKCS#7 signed data
+      const p7 = forge.pkcs7.createSignedData();
+      p7.content = forge.util.createBuffer(manifestData, 'utf8');
+
+      // Add certificate to the signed data
+      p7.addCertificate(certificate);
+
+      // Add signer
+      p7.addSigner({
+        key: privateKey,
+        certificate: certificate,
+        digestAlgorithm: forge.pki.oids.sha256,
+        authenticatedAttributes: [{
+          type: forge.pki.oids.contentTypes,
+          value: forge.pki.oids.data
+        }, {
+          type: forge.pki.oids.messageDigest
+        }, {
+          type: forge.pki.oids.signingTime,
+          value: new Date()
+        }]
+      });
+
+      // Sign the data
+      p7.sign({ detached: true });
+
+      // Convert to DER format
+      const derBytes = forge.asn1.toDer(p7.toAsn1()).getBytes();
+      const signature = new Uint8Array(derBytes.length);
+      for (let i = 0; i < derBytes.length; i++) {
+        signature[i] = derBytes.charCodeAt(i);
+      }
+
+      console.log("PKCS#7 signature created successfully");
+      return signature;
+
+    } catch (certError) {
+      console.error("Error processing certificate:", certError);
+      console.error("Certificate error details:", certError.message);
+
+      // Fallback to simple signature if certificate processing fails
+      const manifestBytes = new TextEncoder().encode(manifestData);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", manifestBytes);
+      const hashArray = new Uint8Array(hashBuffer);
+
+      console.log("Using fallback SHA-256 signature, length:", hashArray.length);
+      return hashArray;
+    }
+
   } catch (error) {
     console.error("Error creating signature:", error);
     return new TextEncoder().encode("ERROR_SIGNATURE_PLACEHOLDER");
