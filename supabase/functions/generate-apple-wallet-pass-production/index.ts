@@ -6,13 +6,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
 };
 // Helper function to create SHA-1 hash
-async function sha1Hash(data) {
+async function sha1Hash(data: Uint8Array): Promise<string> {
   const hashBuffer = await crypto.subtle.digest("SHA-1", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map((b)=>b.toString(16).padStart(2, '0')).join('');
 }
 // Create ZIP file for .pkpass
-function createZipFile(files) {
+function createZipFile(files: Array<{name: string, content: Uint8Array}>): Uint8Array {
   // Simple ZIP file structure
   // For production, you'd use a proper ZIP library, but this creates a basic ZIP
   const zipEntries = [];
@@ -134,7 +134,7 @@ function createZipFile(files) {
   return zipData;
 }
 // Create signature using Apple certificates
-async function createSignature(manifestData) {
+async function createSignature(manifestData: string): Promise<Uint8Array> {
   try {
     // Get the certificate from environment variable
     const certBase64 = Deno.env.get("APPLE_WALLET_CERT_BASE64");
@@ -156,7 +156,7 @@ async function createSignature(manifestData) {
   }
 }
 // Helper function to format date for display
-function formatEventDate(dateString) {
+function formatEventDate(dateString: string): string {
   const date = new Date(dateString);
   return {
     date: date.toLocaleDateString('en-US', {
@@ -173,7 +173,7 @@ function formatEventDate(dateString) {
   };
 }
 // Create .pkpass file
-async function createPkpassFile(pass) {
+async function createPkpassFile(pass: any): Promise<Uint8Array> {
   const passJson = JSON.stringify(pass, null, 2);
   const passJsonBytes = new TextEncoder().encode(passJson);
   // Create manifest with SHA-1 hashes
@@ -287,9 +287,9 @@ serve(async (req)=>{
       });
     }
     // Type assertion for Supabase joined data
-    const order = ticket.order_items?.orders;
+    const order = (ticket as any).order_items?.orders;
     const event = order?.events;
-    const ticketType = ticket.order_items?.ticket_types;
+    const ticketType = (ticket as any).order_items?.ticket_types;
     const organization = event?.organizations;
     if (!event || !order) {
       return new Response(JSON.stringify({
@@ -402,7 +402,7 @@ serve(async (req)=>{
     };
     // Add relevant date for wallet notifications
     if (event.event_date) {
-      pass.relevantDate = new Date(event.event_date).toISOString();
+      (pass as any).relevantDate = new Date(event.event_date).toISOString();
     }
     if (download) {
       // Generate and return the .pkpass file
