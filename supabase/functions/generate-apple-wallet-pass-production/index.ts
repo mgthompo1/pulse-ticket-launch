@@ -148,17 +148,26 @@ async function createSignature(manifestData: string): Promise<Uint8Array> {
     console.log("Certificate found, attempting to create PKCS#7 signature");
     console.log("Certificate Base64 length:", certBase64.length);
     console.log("Has password:", !!certPassword);
+    console.log("Certificate starts with:", certBase64.substring(0, 50));
 
     try {
       // Import the forge library for PKCS#7 signature creation
-      const forge = await import('https://esm.sh/node-forge@1.3.1');
+      console.log("Importing node-forge library...");
+      const forgeModule = await import('https://esm.sh/node-forge@1.3.1');
+      const forge = forgeModule.default;
+      console.log("Node-forge imported successfully");
 
       // Decode the P12 certificate
+      console.log("Decoding P12 certificate...");
       const certData = forge.util.decode64(certBase64);
+      console.log("P12 decoded, length:", certData.length);
 
       // Parse the P12 file
+      console.log("Parsing P12 ASN.1 structure...");
       const p12Asn1 = forge.asn1.fromDer(certData);
+      console.log("Converting ASN.1 to PKCS#12...");
       const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, certPassword || '');
+      console.log("P12 parsed successfully");
 
       // Extract certificate and private key
       const bags = p12.getBags({ bagType: forge.pki.oids.certBag });
@@ -176,20 +185,11 @@ async function createSignature(manifestData: string): Promise<Uint8Array> {
       // Add certificate to the signed data
       p7.addCertificate(certificate);
 
-      // Add signer
+      // Add signer (simplified - remove problematic authenticated attributes)
       p7.addSigner({
         key: privateKey,
         certificate: certificate,
-        digestAlgorithm: forge.pki.oids.sha256,
-        authenticatedAttributes: [{
-          type: forge.pki.oids.contentTypes,
-          value: forge.pki.oids.data
-        }, {
-          type: forge.pki.oids.messageDigest
-        }, {
-          type: forge.pki.oids.signingTime,
-          value: new Date()
-        }]
+        digestAlgorithm: forge.pki.oids.sha256
       });
 
       // Sign the data
