@@ -3,13 +3,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { crypto } from "https://deno.land/std@0.190.0/crypto/mod.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 // Helper function to create SHA-1 hash
 async function sha1Hash(data: Uint8Array): Promise<string> {
   const hashBuffer = await crypto.subtle.digest("SHA-1", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b)=>b.toString(16).padStart(2, '0')).join('');
+  return hashArray.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
 }
 // Create ZIP file for .pkpass
 function createZipFile(files: Array<{name: string, content: Uint8Array}>): Uint8Array {
@@ -94,8 +94,8 @@ function createZipFile(files: Array<{name: string, content: Uint8Array}>): Uint8
     offset += entry.length;
   }
   // Calculate total size
-  const entriesSize = zipEntries.reduce((sum, entry)=>sum + entry.length, 0);
-  const centralDirSize = centralDirectory.reduce((sum, dir)=>sum + dir.length, 0);
+  const entriesSize = zipEntries.reduce(function(sum, entry) { return sum + entry.length; }, 0);
+  const centralDirSize = centralDirectory.reduce(function(sum, dir) { return sum + dir.length; }, 0);
   // End of central directory record
   const endRecord = new Uint8Array(22);
   const endView = new DataView(endRecord.buffer);
@@ -301,7 +301,7 @@ async function createPkpassFile(pass: any): Promise<Uint8Array> {
   console.log(`Created .pkpass ZIP file with ${files.length} files, size: ${zipData.length} bytes`);
   return zipData;
 }
-serve(async (req)=>{
+serve(async function(req) {
   if (req.method === "OPTIONS") {
     return new Response(null, {
       headers: corsHeaders
