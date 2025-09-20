@@ -156,7 +156,7 @@ async function createSignature(manifestData: string): Promise<Uint8Array> {
   }
 }
 // Helper function to format date for display
-function formatEventDate(dateString: string): string {
+function formatEventDate(dateString: string): { date: string; time: string } {
   const date = new Date(dateString);
   return {
     date: date.toLocaleDateString('en-US', {
@@ -303,7 +303,7 @@ serve(async (req)=>{
       });
     }
     // Format the event date
-    const eventDateTime = event.event_date ? formatEventDate(event.event_date) : {
+    const eventDateTime: { date: string; time: string } = event.event_date ? formatEventDate(event.event_date) : {
       date: 'TBA',
       time: 'TBA'
     };
