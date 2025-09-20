@@ -11,6 +11,24 @@ async function sha1Hash(data: Uint8Array): Promise<string> {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
 }
+// CRC-32 calculation function
+function crc32(data: Uint8Array): number {
+  const crcTable = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let j = 0; j < 8; j++) {
+      c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    crcTable[i] = c;
+  }
+
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < data.length; i++) {
+    crc = crcTable[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+
 // Create ZIP file for .pkpass
 function createZipFile(files: Array<{name: string, content: Uint8Array}>): Uint8Array {
   // Simple ZIP file structure
@@ -35,8 +53,9 @@ function createZipFile(files: Array<{name: string, content: Uint8Array}>): Uint8
     // Last mod file time & date
     view.setUint16(10, 0, true);
     view.setUint16(12, 0, true);
-    // CRC-32 (simplified - should calculate actual CRC)
-    view.setUint32(14, 0, true);
+    // Calculate CRC-32 for the file content
+    const crc = crc32(fileContent);
+    view.setUint32(14, crc, true);
     // Compressed size
     view.setUint32(18, fileContent.length, true);
     // Uncompressed size
@@ -68,8 +87,8 @@ function createZipFile(files: Array<{name: string, content: Uint8Array}>): Uint8
     // Last mod file time & date
     centralView.setUint16(12, 0, true);
     centralView.setUint16(14, 0, true);
-    // CRC-32
-    centralView.setUint32(16, 0, true);
+    // CRC-32 (same as local header)
+    centralView.setUint32(16, crc, true);
     // Compressed size
     centralView.setUint32(20, fileContent.length, true);
     // Uncompressed size
