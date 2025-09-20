@@ -1,4 +1,5 @@
 // TypeScript interfaces for better type safety
+<<<<<<< HEAD
 export interface Order {
   id: string;
   customer_email: string;
@@ -119,3 +120,5 @@ export interface ThemeStyles {
   border?: string;
   background?: string;
 }
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)

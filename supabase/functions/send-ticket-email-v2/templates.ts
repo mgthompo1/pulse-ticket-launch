@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // Email template generation service
 import { Order, EmailCustomization, ThemeStyles, Ticket } from './types.ts';
 import { CONFIG } from './config.ts';
@@ -8,6 +9,16 @@ export class TemplateService {
   getThemeStyles(theme: string, template?: any): ThemeStyles {
     // Get theme preset or use template colors if custom
     const themeColors = CONFIG.THEME_PRESETS[theme as keyof typeof CONFIG.THEME_PRESETS] || {
+=======
+// Email template generation service - FIXED VERSION
+import { CONFIG } from './config.ts';
+import { sanitizeHtml, validateAndSanitizeUrl } from './utils.ts';
+export class TemplateService {
+  // Get theme-based styles with color presets
+  getThemeStyles(theme, template) {
+    // Get theme preset or use template colors if custom
+    const themeColors = CONFIG.THEME_PRESETS[theme] || {
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       headerColor: template?.headerColor || "#1f2937",
       backgroundColor: template?.backgroundColor || "#ffffff",
       textColor: template?.textColor || "#374151",
@@ -16,6 +27,7 @@ export class TemplateService {
       borderColor: template?.borderColor || "#d1d5db",
       fontFamily: template?.fontFamily || "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
     };
+<<<<<<< HEAD
 
     const baseStyles: ThemeStyles = {
       ...themeColors,
@@ -71,12 +83,68 @@ export class TemplateService {
       ? `Registration confirmation for ${order.events.name}` 
       : `Your tickets for ${order.events.name}`;
 
+=======
+    const baseStyles = {
+      ...themeColors,
+      fontFamily: themeColors.fontFamily || "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+    };
+    // Apply theme-specific styling
+    switch(theme){
+      case 'modern':
+        return {
+          ...baseStyles,
+          borderRadius: '12px',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+        };
+      case 'elegant':
+        return {
+          ...baseStyles,
+          borderRadius: '8px',
+          border: `2px solid ${baseStyles.borderColor}`
+        };
+      case 'minimal':
+        return {
+          ...baseStyles,
+          borderRadius: '4px',
+          border: `1px solid ${baseStyles.borderColor}`
+        };
+      case 'creative':
+        return {
+          ...baseStyles,
+          borderRadius: '16px',
+          background: `linear-gradient(135deg, ${baseStyles.backgroundColor}, ${baseStyles.accentColor}15)`
+        };
+      case 'professional':
+      default:
+        return {
+          ...baseStyles,
+          borderRadius: '8px',
+          border: `1px solid ${baseStyles.borderColor}`
+        };
+    }
+  }
+  // Generate email content based on order and customization
+  generateEmailContent(order, tickets, deliveryMethod, qrUrls, paymentInfo) {
+    const emailCustomization = order.events.email_customization;
+    // Use saved blocks when present; otherwise fall back to defaults
+    const blocks = Array.isArray(emailCustomization?.blocks) && emailCustomization.blocks.length > 0 ? emailCustomization.blocks : CONFIG.DEFAULT_EMAIL_BLOCKS;
+    console.log('[TEMPLATE] Using blocks:', {
+      hasCustomBlocks: Array.isArray(emailCustomization?.blocks) && emailCustomization.blocks.length > 0,
+      blockCount: blocks.length,
+      blockTypes: blocks.map((b)=>b.type),
+      hasButtonBlock: blocks.some((b)=>b.type === 'button')
+    });
+    const html = this.renderBlocks(blocks, order, tickets, deliveryMethod, qrUrls, emailCustomization, paymentInfo);
+    // Generate subject line
+    const subject = deliveryMethod === 'confirmation_email' ? `Registration confirmation for ${order.events.name}` : `Your tickets for ${order.events.name}`;
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     return {
       to: order.customer_email,
       subject,
       html
     };
   }
+<<<<<<< HEAD
 
   // Render email blocks into HTML
   private renderBlocks(
@@ -93,10 +161,16 @@ export class TemplateService {
       emailCustomization?.template
     );
 
+=======
+  // Render email blocks into HTML
+  renderBlocks(blocks, order, tickets, deliveryMethod, qrUrls, emailCustomization, paymentInfo) {
+    const theme = this.getThemeStyles(emailCustomization?.template?.theme || 'professional', emailCustomization?.template);
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     const branding = {
       showLogo: true,
       logoPosition: 'header',
       logoSize: 'medium',
+<<<<<<< HEAD
       logoSource: 'event', // Always default to event logo first
       ...emailCustomization?.branding
     };
@@ -105,6 +179,14 @@ export class TemplateService {
 
     const parts: string[] = [];
     
+=======
+      logoSource: 'event',
+      ...emailCustomization?.branding
+    };
+    const logoUrl = this.getLogoUrl(order, branding);
+    const logoSize = CONFIG.LOGO_SIZES[branding.logoSize] || CONFIG.LOGO_SIZES.medium;
+    const parts = [];
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     // Add comprehensive HTML structure to match frontend
     parts.push(`<!DOCTYPE html>
     <html lang="en">
@@ -114,11 +196,16 @@ export class TemplateService {
       <meta http-equiv="X-UA-Compatible" content="IE=edge">
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
         /* Reset styles */
         body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
         table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
         img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; }
+<<<<<<< HEAD
         
         /* Responsive styles */
         @media screen and (max-width: 600px) {
@@ -129,6 +216,18 @@ export class TemplateService {
           }
           .email-content { 
             padding: 15px !important; 
+=======
+
+        /* Responsive styles */
+        @media screen and (max-width: 600px) {
+          .email-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+          }
+          .email-content {
+            padding: 15px !important;
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
           }
           .mobile-padding {
             padding: 15px !important;
@@ -145,13 +244,17 @@ export class TemplateService {
     </head>
     <body style="margin: 0; padding: 0; background-color: #f3f4f6;">
       <div class="email-container" style="font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;max-width:600px;margin:0 auto;background:${theme.backgroundColor};border:1px solid ${theme.borderColor};">`);
+<<<<<<< HEAD
     
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     // Header logo
     if (branding.showLogo && branding.logoPosition === 'header' && logoUrl) {
       parts.push(`<div style="text-align:center;margin-bottom:15px;padding:20px 20px 0 20px;">
         <img src="${logoUrl}" alt="Logo" style="max-width:${logoSize};height:auto;display:block;margin:0 auto;"/>
       </div>`);
     }
+<<<<<<< HEAD
     
     // Render blocks
     for (const block of blocks) {
@@ -159,12 +262,20 @@ export class TemplateService {
       parts.push(this.renderBlock(block, order, tickets, deliveryMethod, qrUrls, theme, paymentInfo));
     }
     
+=======
+    // Render blocks
+    for (const block of blocks){
+      if (block.hidden) continue;
+      parts.push(this.renderBlock(block, order, tickets, deliveryMethod, qrUrls, theme, paymentInfo));
+    }
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     // Footer logo
     if (branding.showLogo && branding.logoPosition === 'footer' && logoUrl) {
       parts.push(`<div style="text-align:center;margin-top:15px;padding:0 20px 20px 20px;">
         <img src="${logoUrl}" alt="Logo" style="max-width:${logoSize};height:auto;display:block;margin:0 auto;"/>
       </div>`);
     }
+<<<<<<< HEAD
     
     parts.push('</div></body></html>');
     return parts.join('');
@@ -182,21 +293,41 @@ export class TemplateService {
   ): string {
     console.log('[RENDER-BLOCK] Processing block:', { type: block.type, block });
     switch (block.type) {
+=======
+    parts.push('</div></body></html>');
+    return parts.join('');
+  }
+  // Render individual email block
+  renderBlock(block, order, tickets, deliveryMethod, qrUrls, theme, paymentInfo) {
+    console.log('[RENDER-BLOCK] Processing block:', {
+      type: block.type,
+      block
+    });
+    switch(block.type){
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       case 'header':
         return `<div style="background:${theme.headerColor};color:#fff;padding:20px;">
           <h1 style="margin:0;text-align:center;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;">
             ${sanitizeHtml(block.title || 'Thank you')}
           </h1>
         </div>`;
+<<<<<<< HEAD
 
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       case 'text':
         return `<div style="padding:16px 20px;color:${theme.textColor};">
           ${sanitizeHtml(block.html || '')}
         </div>`;
+<<<<<<< HEAD
 
       case 'event_details':
         return this.renderEventDetails(order, theme);
 
+=======
+      case 'event_details':
+        return this.renderEventDetails(order, theme);
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       case 'ticket_list':
         // Only render if explicitly requested by the block configuration
         const showTickets = block.showTickets !== false; // Default to true for backward compatibility
@@ -204,11 +335,17 @@ export class TemplateService {
         const showWalletButton = block.showWalletButton !== false; // Default to true
         const customTitle = block.title || 'Your Tickets'; // Allow custom title
         const hideTitle = block.hideTitle === true; // Allow hiding title entirely
+<<<<<<< HEAD
 
         if (!showTickets) {
           return ''; // Don't render anything if tickets are disabled
         }
 
+=======
+        if (!showTickets) {
+          return ''; // Don't render anything if tickets are disabled
+        }
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
         // Smart routing based on delivery method
         if (deliveryMethod === 'confirmation_email' || deliveryMethod === 'email_confirmation_only' || deliveryMethod === 'email_confirmation') {
           return this.renderOrderSummary(order, theme);
@@ -219,7 +356,10 @@ export class TemplateService {
             customTitle: hideTitle ? '' : customTitle
           });
         }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       case 'registration_details':
         // Smart routing based on delivery method - opposite of ticket_list
         if (deliveryMethod === 'confirmation_email' || deliveryMethod === 'email_confirmation_only' || deliveryMethod === 'email_confirmation') {
@@ -227,6 +367,7 @@ export class TemplateService {
         } else {
           return this.renderTicketList(tickets, qrUrls, theme);
         }
+<<<<<<< HEAD
 
       case 'payment_summary':
         return this.renderPaymentSummary(order, paymentInfo, theme);
@@ -237,17 +378,29 @@ export class TemplateService {
       case 'divider':
         return `<hr style="border:0;border-top:1px solid ${theme.borderColor};margin:16px 20px;" />`;
 
+=======
+      case 'payment_summary':
+        return this.renderPaymentSummary(order, paymentInfo, theme);
+      case 'button':
+        return this.renderButton(block, theme, deliveryMethod, order);
+      case 'divider':
+        return `<hr style="border:0;border-top:1px solid ${theme.borderColor};margin:16px 20px;" />`;
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       case 'image':
         if (!block.src) return '';
         const alignment = block.align || 'center';
         return `<div style="padding:16px 20px;text-align:${alignment};">
           <img src="${block.src}" alt="${sanitizeHtml(block.alt || '')}" style="max-width:100%;height:auto;" />
         </div>`;
+<<<<<<< HEAD
 
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       case 'footer':
         return `<div style="background:${theme.accentColor};padding:16px;text-align:center;border-top:1px solid ${theme.borderColor};">
           <small style="color:#999;">${sanitizeHtml(block.text || '')}</small>
         </div>`;
+<<<<<<< HEAD
 
       case 'calendar_button':
         return this.renderCalendarButton(block, order, theme);
@@ -267,13 +420,32 @@ export class TemplateService {
       case 'next_steps':
         return this.renderNextSteps(block, theme);
 
+=======
+      case 'calendar_button':
+        return this.renderCalendarButton(block, order, theme);
+      case 'qr_tickets':
+        return this.renderQRTickets(tickets, qrUrls, theme, block, deliveryMethod);
+      case 'order_management':
+        return this.renderOrderManagement(block, theme);
+      case 'social_links':
+        return this.renderSocialLinks(block, theme);
+      case 'custom_message':
+        return this.renderCustomMessage(block, theme, order);
+      case 'next_steps':
+        return this.renderNextSteps(block, theme);
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       default:
         return '';
     }
   }
+<<<<<<< HEAD
 
   // Render event details block
   private renderEventDetails(order: Order, theme: ThemeStyles): string {
+=======
+  // Render event details block
+  renderEventDetails(order, theme) {
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     const eventDate = new Date(order.events.event_date);
     const formattedDate = eventDate.toLocaleDateString('en-US', {
       weekday: 'long',
@@ -285,7 +457,10 @@ export class TemplateService {
       hour: '2-digit',
       minute: '2-digit'
     });
+<<<<<<< HEAD
 
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     return `<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px;">
       <strong style="color:${theme.textColor}">${order.events.name}</strong>
       <div style="color:${theme.textColor};font-size:14px;line-height:1.6;margin-top:16px;">
@@ -306,6 +481,7 @@ export class TemplateService {
       </div>
     </div>`;
   }
+<<<<<<< HEAD
 
   // Render configurable ticket list with QR codes
   private renderTicketListConfigurable(
@@ -327,8 +503,18 @@ export class TemplateService {
         : '';
 
       // Generate wallet pass URL using production Apple Wallet pass function
-      const walletUrl = `${CONFIG.SUPABASE_URL}/functions/v1/generate-apple-wallet-pass-production?ticketCode=${encodeURIComponent(ticket.code)}&download=true`;
+      const walletUrl = `${CONFIG.SUPABASE_URL}/functions/v1/generate-apple-wallet-pass-production?ticket_code=${encodeURIComponent(ticket.code)}&download=true`;
 
+=======
+  // Render configurable ticket list with QR codes
+  renderTicketListConfigurable(tickets, qrUrls, theme, config) {
+    if (tickets.length === 0) return '';
+    const ticketHtml = tickets.map((ticket, index)=>{
+      const qrUrl = qrUrls[ticket.code];
+      const qrImg = config.showQRCodes && qrUrl ? `<img src="${qrUrl}" alt="QR Code" style="width:100px;height:100px;border:1px solid ${theme.borderColor};border-radius:4px;"/>` : '';
+      // FIXED: Generate wallet pass URL using production Apple Wallet pass function with correct parameter name
+      const walletUrl = `${CONFIG.SUPABASE_URL}/functions/v1/generate-apple-wallet-pass-production?ticket_code=${encodeURIComponent(ticket.code)}&download=true`;
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       return `
         <table style="width:100%;border:1px solid ${theme.borderColor};border-radius:8px;margin:8px 0;background:${theme.backgroundColor};border-collapse:separate;border-spacing:0;">
           <tr>
@@ -342,7 +528,11 @@ export class TemplateService {
                       ${sanitizeHtml(ticket.code)}
                     </div>
                     ${config.showWalletButton ? `<div style="margin-top:12px;">
+<<<<<<< HEAD
                       <a href="${walletUrl}" style="display:inline-block;background:#007AFF;color:#ffffff;padding:8px 16px;text-decoration:none;border-radius:6px;font-size:12px;font-weight:600;margin-right:8px;"> Add to Apple Wallet</a>
+=======
+                      <a href="${walletUrl}" style="display:inline-block;background:#007AFF;color:#ffffff;padding:8px 16px;text-decoration:none;border-radius:6px;font-size:12px;font-weight:600;margin-right:8px;">📱 Add to Apple Wallet</a>
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
                     </div>` : ''}
                   </td>
                   ${qrImg ? `<td style="vertical-align:top;text-align:center;width:40%;padding-left:16px;">
@@ -355,12 +545,16 @@ export class TemplateService {
           </tr>
         </table>`;
     }).join('');
+<<<<<<< HEAD
 
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     return `<div class="email-content mobile-padding" style="margin:16px 20px;">
       ${config.customTitle ? `<h3 style="color:${theme.headerColor};margin-bottom:16px;font-family:'Manrope', sans-serif;">${sanitizeHtml(config.customTitle)}</h3>` : ''}
       ${ticketHtml}
     </div>`;
   }
+<<<<<<< HEAD
 
   // Render ticket list with QR codes
   private renderTicketList(tickets: Ticket[], qrUrls: Record<string, string>, theme: ThemeStyles): string {
@@ -373,8 +567,18 @@ export class TemplateService {
         : '';
 
       // Generate wallet pass URL using production Apple Wallet pass function
-      const walletUrl = `${CONFIG.SUPABASE_URL}/functions/v1/generate-apple-wallet-pass-production?ticketCode=${encodeURIComponent(ticket.code)}&download=true`;
+      const walletUrl = `${CONFIG.SUPABASE_URL}/functions/v1/generate-apple-wallet-pass-production?ticket_code=${encodeURIComponent(ticket.code)}&download=true`;
 
+=======
+  // Render ticket list with QR codes
+  renderTicketList(tickets, qrUrls, theme) {
+    if (tickets.length === 0) return '';
+    const ticketHtml = tickets.map((ticket, index)=>{
+      const qrUrl = qrUrls[ticket.code];
+      const qrImg = qrUrl ? `<img src="${qrUrl}" alt="QR Code" style="width:100px;height:100px;border:1px solid ${theme.borderColor};border-radius:4px;"/>` : '';
+      // FIXED: Generate wallet pass URL using production Apple Wallet pass function with correct parameter name
+      const walletUrl = `${CONFIG.SUPABASE_URL}/functions/v1/generate-apple-wallet-pass-production?ticket_code=${encodeURIComponent(ticket.code)}&download=true`;
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       return `
         <table style="width:100%;border:1px solid ${theme.borderColor};border-radius:8px;margin:8px 0;background:${theme.backgroundColor};border-collapse:separate;border-spacing:0;">
           <tr>
@@ -388,7 +592,11 @@ export class TemplateService {
                       ${sanitizeHtml(ticket.code)}
                     </div>
                     <div style="margin-top:12px;">
+<<<<<<< HEAD
                       <a href="${walletUrl}" style="display:inline-block;background:#007AFF;color:#ffffff;padding:8px 16px;text-decoration:none;border-radius:6px;font-size:12px;font-weight:600;margin-right:8px;"> Add to Apple Wallet</a>
+=======
+                      <a href="${walletUrl}" style="display:inline-block;background:#007AFF;color:#ffffff;padding:8px 16px;text-decoration:none;border-radius:6px;font-size:12px;font-weight:600;margin-right:8px;">📱 Add to Apple Wallet</a>
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
                     </div>
                   </td>
                   ${qrImg ? `<td style="vertical-align:top;text-align:center;width:40%;padding-left:16px;">
@@ -401,12 +609,16 @@ export class TemplateService {
           </tr>
         </table>`;
     }).join('');
+<<<<<<< HEAD
 
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     return `<div class="email-content mobile-padding" style="margin:16px 20px;">
       <h3 style="color:${theme.headerColor};margin-bottom:16px;font-family:'Manrope', sans-serif;">Your Tickets</h3>
       ${ticketHtml}
     </div>`;
   }
+<<<<<<< HEAD
 
   // Render order summary for confirmation emails
   private renderOrderSummary(order: Order, theme: ThemeStyles): string {
@@ -415,6 +627,12 @@ export class TemplateService {
         ? item.ticket_types?.name || 'General Admission'
         : item.merchandise?.name || 'Merchandise';
       
+=======
+  // Render order summary for confirmation emails
+  renderOrderSummary(order, theme) {
+    const itemsHtml = order.order_items.map((item)=>{
+      const name = item.item_type === 'ticket' ? item.ticket_types?.name || 'General Admission' : item.merchandise?.name || 'Merchandise';
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       return `<tr>
         <td style="padding:12px 0;border-bottom:1px solid ${theme.borderColor};vertical-align:top;">
           <div style="font-weight:600;color:${theme.textColor};margin-bottom:4px;">${sanitizeHtml(name)}</div>
@@ -425,6 +643,7 @@ export class TemplateService {
         </td>
       </tr>`;
     }).join('');
+<<<<<<< HEAD
 
     // Calculate subtotal from order items
     const subtotal = order.order_items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
@@ -433,12 +652,22 @@ export class TemplateService {
     // Build the summary rows using table structure
     let summaryRows = '';
     
+=======
+    // Calculate subtotal from order items
+    const subtotal = order.order_items.reduce((sum, item)=>sum + item.unit_price * item.quantity, 0);
+    const processingFee = order.total_amount - subtotal;
+    // Build the summary rows using table structure
+    let summaryRows = '';
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     // Add subtotal first
     summaryRows += `<tr>
       <td style="padding:8px 0;color:${theme.textColor};border-top:1px solid ${theme.borderColor};">Subtotal</td>
       <td style="padding:8px 0;color:${theme.textColor};text-align:right;border-top:1px solid ${theme.borderColor};">$${subtotal.toFixed(2)}</td>
     </tr>`;
+<<<<<<< HEAD
     
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     // Add processing fee if it exists
     if (processingFee > 0) {
       summaryRows += `<tr>
@@ -446,7 +675,10 @@ export class TemplateService {
         <td style="padding:8px 0;color:${theme.textColor};text-align:right;">$${processingFee.toFixed(2)}</td>
       </tr>`;
     }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     return `<div style="margin:16px 20px;" class="email-content mobile-padding">
       <h3 style="color:${theme.headerColor};margin-bottom:16px;font-family:'Manrope', sans-serif;font-size:20px;">Order Summary</h3>
       <div style="border:1px solid ${theme.borderColor};border-radius:8px;padding:16px;background:${theme.backgroundColor};">
@@ -461,16 +693,29 @@ export class TemplateService {
       </div>
     </div>`;
   }
+<<<<<<< HEAD
 
   // Render button block
   private renderButton(block: any, theme: ThemeStyles, deliveryMethod?: string, order?: Order): string {
     console.log('[BUTTON] renderButton called with:', { block, deliveryMethod, hasOrder: !!order });
     
+=======
+  // Render button block
+  renderButton(block, theme, deliveryMethod, order) {
+    console.log('[BUTTON] renderButton called with:', {
+      block,
+      deliveryMethod,
+      hasOrder: !!order
+    });
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     if (!block.url || block.url === '#') {
       console.log('[BUTTON] No URL or URL is #, skipping');
       return '';
     }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     try {
       // Replace template variables in URL
       let processedUrl = block.url;
@@ -480,6 +725,7 @@ export class TemplateService {
         // Handle legacy {{success_url}} template variable - use tickets page like the old function
         processedUrl = processedUrl.replace('{{success_url}}', `https://www.ticketflo.org/tickets?orderId=${order.id}&email=${encodeURIComponent(order.customer_email)}`);
       }
+<<<<<<< HEAD
       
       console.log('[BUTTON] URL processing:', { originalUrl: block.url, processedUrl });
       
@@ -491,14 +737,35 @@ export class TemplateService {
       // Customize button text based on delivery method
       let buttonText = block.label || 'Click Here';
       
+=======
+      console.log('[BUTTON] URL processing:', {
+        originalUrl: block.url,
+        processedUrl
+      });
+      const safeUrl = validateAndSanitizeUrl(processedUrl);
+      console.log('[BUTTON] URL validation result:', {
+        safeUrl
+      });
+      const alignment = block.align === 'left' ? 'left' : block.align === 'right' ? 'right' : 'center';
+      // Customize button text based on delivery method
+      let buttonText = block.label || 'Click Here';
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       if (block.label && block.label.toLowerCase().includes('view')) {
         if (deliveryMethod === 'confirmation_email' || deliveryMethod === 'email_confirmation_only' || deliveryMethod === 'email_confirmation') {
           buttonText = 'View Registration Confirmation';
         }
       }
+<<<<<<< HEAD
       
       console.log('[BUTTON] Final button text:', { originalLabel: block.label, finalText: buttonText, deliveryMethod });
       
+=======
+      console.log('[BUTTON] Final button text:', {
+        originalLabel: block.label,
+        finalText: buttonText,
+        deliveryMethod
+      });
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       return `<div class="email-content mobile-padding" style="padding:16px 20px;text-align:${alignment};">
         <a href="${safeUrl}" class="mobile-button" style="display:inline-block;background:${theme.buttonColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:600;font-family:'Manrope', sans-serif;">
           ${sanitizeHtml(buttonText)}
@@ -510,20 +777,31 @@ export class TemplateService {
       return '';
     }
   }
+<<<<<<< HEAD
 
   // Render payment summary block
   private renderPaymentSummary(order: Order, paymentInfo: any, theme: ThemeStyles): string {
+=======
+  // Render payment summary block
+  renderPaymentSummary(order, paymentInfo, theme) {
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     console.log('[PAYMENT-SUMMARY] renderPaymentSummary called with:', {
       hasPaymentInfo: !!paymentInfo,
       paymentInfo: paymentInfo,
       hasLast4: !!(paymentInfo && paymentInfo.last4)
     });
+<<<<<<< HEAD
     
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     if (!paymentInfo || !paymentInfo.last4) {
       console.log('[PAYMENT-SUMMARY] Skipping payment summary - missing payment info or last4');
       return '';
     }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     return `<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px;">
       <h3 style="color:${theme.headerColor};margin-bottom:16px;font-family:'Manrope', sans-serif;">Payment Summary</h3>
       <div style="color:${theme.textColor};font-size:14px;line-height:1.6;">
@@ -544,6 +822,7 @@ export class TemplateService {
       </div>
     </div>`;
   }
+<<<<<<< HEAD
 
   // Get logo URL based on branding configuration
   private getLogoUrl(order: Order, branding: any): string | null {
@@ -556,14 +835,28 @@ export class TemplateService {
     
     const logoSource = branding.logoSource || 'event';
     
+=======
+  // Get logo URL based on branding configuration
+  getLogoUrl(order, branding) {
+    // If showLogo is explicitly false, don't show any logo
+    if (branding.showLogo === false) return null;
+    // Default to showing logo if not specified
+    const showLogo = branding.showLogo !== false;
+    if (!showLogo) return null;
+    const logoSource = branding.logoSource || 'event';
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     console.log('[LOGO] Getting logo URL:', {
       logoSource,
       eventLogoUrl: order.events.logo_url,
       orgLogoUrl: order.events.organizations.logo_url,
       branding
     });
+<<<<<<< HEAD
     
     switch (logoSource) {
+=======
+    switch(logoSource){
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       case 'organization':
         const orgUrl = order.events.organizations.logo_url || null;
         console.log('[LOGO] Using organization logo:', orgUrl);
@@ -578,6 +871,7 @@ export class TemplateService {
         const eventLogo = order.events.logo_url?.trim();
         const orgLogo = order.events.organizations.logo_url?.trim();
         const finalUrl = eventLogo || orgLogo || null;
+<<<<<<< HEAD
         console.log('[LOGO] Using event logo (with fallback):', { eventLogo, orgLogo, finalUrl });
         return finalUrl;
     }
@@ -589,6 +883,21 @@ export class TemplateService {
     const startTime = eventDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     const endTime = new Date(eventDate.getTime() + (2 * 60 * 60 * 1000)).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'; // 2 hours duration
     
+=======
+        console.log('[LOGO] Using event logo (with fallback):', {
+          eventLogo,
+          orgLogo,
+          finalUrl
+        });
+        return finalUrl;
+    }
+  }
+  // Render calendar button block
+  renderCalendarButton(block, order, theme) {
+    const eventDate = new Date(order.events.event_date);
+    const startTime = eventDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const endTime = new Date(eventDate.getTime() + 2 * 60 * 60 * 1000).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'; // 2 hours duration
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     const calendarParams = new URLSearchParams({
       action: 'TEMPLATE',
       text: order.events.name,
@@ -598,18 +907,25 @@ export class TemplateService {
       sf: 'true',
       output: 'xml'
     });
+<<<<<<< HEAD
     
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     const googleCalendarUrl = `https://calendar.google.com/calendar/render?${calendarParams.toString()}`;
     const alignment = block.align || 'center';
     const label = block.label || 'Add to Calendar';
     const showIcon = block.showIcon !== false;
+<<<<<<< HEAD
     
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     return `<div style="padding:16px 20px;text-align:${alignment};">
       <a href="${googleCalendarUrl}" style="display:inline-block;background:${theme.accentColor};color:${theme.textColor};border:2px solid ${theme.borderColor};padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:600;font-family:'Manrope', sans-serif;min-width:120px;">
         ${showIcon ? '📅 ' : ''}${sanitizeHtml(label)}
       </a>
     </div>`;
   }
+<<<<<<< HEAD
 
   // Render QR tickets block
   private renderQRTickets(tickets: any[], qrUrls: Record<string, string>, theme: ThemeStyles, block: any, deliveryMethod?: string): string {
@@ -617,11 +933,21 @@ export class TemplateService {
     const showInline = block.showInline !== false;
     const includeBarcode = block.includeBarcode === true;
     
+=======
+  // Render QR tickets block
+  renderQRTickets(tickets, qrUrls, theme, block, deliveryMethod) {
+    const layout = block.layout || 'grid';
+    const showInline = block.showInline !== false;
+    const includeBarcode = block.includeBarcode === true;
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     // For confirmation emails, don't show QR tickets block at all
     if (deliveryMethod === 'confirmation_email' || deliveryMethod === 'email_confirmation_only' || deliveryMethod === 'email_confirmation') {
       return '';
     }
+<<<<<<< HEAD
     
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     // If no tickets, show a placeholder message
     if (tickets.length === 0) {
       return `<div style="margin:16px 20px;padding:16px;background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:8px;text-align:center;">
@@ -629,13 +955,17 @@ export class TemplateService {
         <p style="color:${theme.textColor};font-size:14px;margin:0;">Your QR codes are being generated and will be available shortly in your account.</p>
       </div>`;
     }
+<<<<<<< HEAD
     
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     if (!showInline) {
       return `<div style="margin:16px 20px;padding:16px;background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:8px;text-align:center;">
         <h3 style="color:${theme.headerColor};margin-bottom:8px;font-family:'Manrope', sans-serif;">Your QR Tickets</h3>
         <p style="color:${theme.textColor};font-size:14px;margin:0;">QR codes will be attached as separate files to this email.</p>
       </div>`;
     }
+<<<<<<< HEAD
     
     const ticketStyle = layout === 'grid' 
       ? 'display:inline-block;margin:8px;vertical-align:top;'
@@ -647,6 +977,12 @@ export class TemplateService {
         ? `<img src="${qrUrl}" alt="QR Code" style="width:100px;height:100px;margin:8px auto;border:1px solid ${theme.borderColor};border-radius:4px;display:block;"/>` 
         : `<div style="width:100px;height:100px;background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:4px;margin:8px auto;display:flex;align-items:center;justify-content:center;color:${theme.textColor};font-size:12px;">QR Code<br/>Preview</div>`;
       
+=======
+    const ticketStyle = layout === 'grid' ? 'display:inline-block;margin:8px;vertical-align:top;' : 'display:block;margin:8px 0;';
+    const ticketHtml = tickets.map((ticket, index)=>{
+      const qrUrl = qrUrls[ticket.code];
+      const qrImg = qrUrl ? `<img src="${qrUrl}" alt="QR Code" style="width:100px;height:100px;margin:8px auto;border:1px solid ${theme.borderColor};border-radius:4px;display:block;"/>` : `<div style="width:100px;height:100px;background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:4px;margin:8px auto;display:flex;align-items:center;justify-content:center;color:${theme.textColor};font-size:12px;">QR Code<br/>Preview</div>`;
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       return `<div style="${ticketStyle}border:1px solid ${theme.borderColor};border-radius:8px;padding:16px;background:${theme.backgroundColor};text-align:center;min-width:200px;">
         <div style="font-weight:600;color:${theme.headerColor};margin-bottom:8px;">${sanitizeHtml(ticket.type)}</div>
         <div style="color:${theme.textColor};font-size:14px;margin-bottom:8px;">Ticket #${index + 1}</div>
@@ -656,7 +992,10 @@ export class TemplateService {
         </div>
       </div>`;
     }).join('');
+<<<<<<< HEAD
     
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     return `<div style="margin:16px 20px;">
       <h3 style="color:${theme.headerColor};margin-bottom:16px;font-family:'Manrope', sans-serif;">Your QR Tickets</h3>
       <div style="text-align:center;">
@@ -664,13 +1003,19 @@ export class TemplateService {
       </div>
     </div>`;
   }
+<<<<<<< HEAD
 
   // Render order management block
   private renderOrderManagement(block: any, theme: ThemeStyles): string {
+=======
+  // Render order management block
+  renderOrderManagement(block, theme) {
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     const showViewOrder = block.showViewOrder !== false;
     const showModifyOrder = block.showModifyOrder === true;
     const showCancelOrder = block.showCancelOrder === true;
     const customText = block.customText || 'Need help with your order?';
+<<<<<<< HEAD
     
     const buttons = [];
     
@@ -688,6 +1033,19 @@ export class TemplateService {
     
     if (buttons.length === 0) return '';
     
+=======
+    const buttons = [];
+    if (showViewOrder) {
+      buttons.push(`<a href="#" style="display:inline-block;margin:4px;background:${theme.buttonColor};color:#fff;padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">View Order</a>`);
+    }
+    if (showModifyOrder) {
+      buttons.push(`<a href="#" style="display:inline-block;margin:4px;background:${theme.accentColor};color:${theme.textColor};border:1px solid ${theme.borderColor};padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">Modify Order</a>`);
+    }
+    if (showCancelOrder) {
+      buttons.push(`<a href="#" style="display:inline-block;margin:4px;background:#ef4444;color:#fff;padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">Cancel Order</a>`);
+    }
+    if (buttons.length === 0) return '';
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     return `<div style="margin:16px 20px;padding:16px;background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:8px;text-align:center;">
       <p style="color:${theme.textColor};margin-bottom:12px;font-weight:500;">${sanitizeHtml(customText)}</p>
       <div>
@@ -695,6 +1053,7 @@ export class TemplateService {
       </div>
     </div>`;
   }
+<<<<<<< HEAD
 
   // Render social links block
   private renderSocialLinks(block: any, theme: ThemeStyles): string {
@@ -704,39 +1063,64 @@ export class TemplateService {
     
     const socialLinks = [];
     
+=======
+  // Render social links block
+  renderSocialLinks(block, theme) {
+    const platforms = block.platforms || {};
+    const alignment = block.align || 'center';
+    const style = block.style || 'icons';
+    const socialLinks = [];
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     if (platforms.facebook) {
       const content = style === 'icons' ? '📘' : 'Facebook';
       socialLinks.push(`<a href="${validateAndSanitizeUrl(platforms.facebook)}" style="display:inline-block;margin:0 8px;color:${theme.textColor};text-decoration:none;">${content}</a>`);
     }
+<<<<<<< HEAD
     
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     if (platforms.twitter) {
       const content = style === 'icons' ? '🐦' : 'Twitter';
       socialLinks.push(`<a href="${validateAndSanitizeUrl(platforms.twitter)}" style="display:inline-block;margin:0 8px;color:${theme.textColor};text-decoration:none;">${content}</a>`);
     }
+<<<<<<< HEAD
     
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     if (platforms.instagram) {
       const content = style === 'icons' ? '📷' : 'Instagram';
       socialLinks.push(`<a href="${validateAndSanitizeUrl(platforms.instagram)}" style="display:inline-block;margin:0 8px;color:${theme.textColor};text-decoration:none;">${content}</a>`);
     }
+<<<<<<< HEAD
     
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     if (platforms.linkedin) {
       const content = style === 'icons' ? '💼' : 'LinkedIn';
       socialLinks.push(`<a href="${validateAndSanitizeUrl(platforms.linkedin)}" style="display:inline-block;margin:0 8px;color:${theme.textColor};text-decoration:none;">${content}</a>`);
     }
+<<<<<<< HEAD
     
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     if (platforms.website) {
       const content = style === 'icons' ? '🌐' : 'Website';
       socialLinks.push(`<a href="${validateAndSanitizeUrl(platforms.website)}" style="display:inline-block;margin:0 8px;color:${theme.textColor};text-decoration:none;">${content}</a>`);
     }
+<<<<<<< HEAD
     
     if (socialLinks.length === 0) return '';
     
+=======
+    if (socialLinks.length === 0) return '';
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     return `<div style="padding:16px 20px;text-align:${alignment};">
       <div style="color:${theme.textColor};font-size:14px;">
         ${socialLinks.join('')}
       </div>
     </div>`;
   }
+<<<<<<< HEAD
 
   // Render custom message block with personalization
   private renderCustomMessage(block: any, theme: ThemeStyles, order: Order): string {
@@ -746,12 +1130,21 @@ export class TemplateService {
     // Apply personalization variables
     message = this.applyPersonalization(message, order);
     
+=======
+  // Render custom message block with personalization
+  renderCustomMessage(block, theme, order) {
+    let message = block.message || block.markdown || '';
+    if (!message) return '';
+    // Apply personalization variables
+    message = this.applyPersonalization(message, order);
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     return `<div style="margin:16px 20px;padding:16px;background:${theme.accentColor};border-left:4px solid ${theme.buttonColor};border-radius:4px;">
       <div style="color:${theme.textColor};line-height:1.6;">
         ${sanitizeHtml(message)}
       </div>
     </div>`;
   }
+<<<<<<< HEAD
 
   // Render next steps block
   private renderNextSteps(block: any, theme: ThemeStyles): string {
@@ -762,12 +1155,24 @@ export class TemplateService {
     if (steps.length === 0) return '';
     
     const stepsHtml = steps.map((step: string, index: number) => {
+=======
+  // Render next steps block
+  renderNextSteps(block, theme) {
+    const steps = block.steps || [];
+    const title = block.title || 'What\'s Next?';
+    const showIcons = block.showIcons !== false;
+    if (steps.length === 0) return '';
+    const stepsHtml = steps.map((step, index)=>{
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       const icon = showIcons ? `${index + 1}️⃣ ` : `${index + 1}. `;
       return `<li style="margin:8px 0;color:${theme.textColor};line-height:1.5;">
         ${icon}${sanitizeHtml(step)}
       </li>`;
     }).join('');
+<<<<<<< HEAD
     
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     return `<div style="margin:16px 20px;padding:16px;background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:8px;">
       <h3 style="color:${theme.headerColor};margin-bottom:12px;font-family:'Manrope', sans-serif;">${sanitizeHtml(title)}</h3>
       <ul style="margin:0;padding-left:0;list-style:none;">
@@ -775,6 +1180,7 @@ export class TemplateService {
       </ul>
     </div>`;
   }
+<<<<<<< HEAD
 
   // Render registration details block (same as order summary but different title)
   private renderRegistrationDetails(order: Order, theme: ThemeStyles): string {
@@ -783,6 +1189,12 @@ export class TemplateService {
         ? item.ticket_types?.name || 'General Admission'
         : item.merchandise?.name || 'Merchandise';
       
+=======
+  // Render registration details block (same as order summary but different title)
+  renderRegistrationDetails(order, theme) {
+    const itemsHtml = order.order_items.map((item)=>{
+      const name = item.item_type === 'ticket' ? item.ticket_types?.name || 'General Admission' : item.merchandise?.name || 'Merchandise';
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
       return `<tr>
         <td style="padding:12px 0;border-bottom:1px solid ${theme.borderColor};vertical-align:top;">
           <div style="font-weight:600;color:${theme.textColor};margin-bottom:4px;">${sanitizeHtml(name)}</div>
@@ -793,6 +1205,7 @@ export class TemplateService {
         </td>
       </tr>`;
     }).join('');
+<<<<<<< HEAD
 
     // Calculate subtotal from order items
     const subtotal = order.order_items.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
@@ -801,12 +1214,22 @@ export class TemplateService {
     // Build the summary rows using table structure
     let summaryRows = '';
     
+=======
+    // Calculate subtotal from order items
+    const subtotal = order.order_items.reduce((sum, item)=>sum + item.unit_price * item.quantity, 0);
+    const processingFee = order.total_amount - subtotal;
+    // Build the summary rows using table structure
+    let summaryRows = '';
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     // Add subtotal first
     summaryRows += `<tr>
       <td style="padding:8px 0;color:${theme.textColor};border-top:1px solid ${theme.borderColor};">Subtotal</td>
       <td style="padding:8px 0;color:${theme.textColor};text-align:right;border-top:1px solid ${theme.borderColor};">$${subtotal.toFixed(2)}</td>
     </tr>`;
+<<<<<<< HEAD
     
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     // Add processing fee if it exists
     if (processingFee > 0) {
       summaryRows += `<tr>
@@ -814,7 +1237,10 @@ export class TemplateService {
         <td style="padding:8px 0;color:${theme.textColor};text-align:right;">$${processingFee.toFixed(2)}</td>
       </tr>`;
     }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     return `<div style="margin:16px 20px;" class="email-content mobile-padding">
       <h3 style="color:${theme.headerColor};margin-bottom:16px;font-family:'Manrope', sans-serif;font-size:20px;">Registration Details</h3>
       <div style="border:1px solid ${theme.borderColor};border-radius:8px;padding:16px;background:${theme.backgroundColor};">
@@ -829,9 +1255,14 @@ export class TemplateService {
       </div>
     </div>`;
   }
+<<<<<<< HEAD
 
   // Apply personalization variables to text
   private applyPersonalization(text: string, order: Order): string {
+=======
+  // Apply personalization variables to text
+  applyPersonalization(text, order) {
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     const eventDate = new Date(order.events.event_date);
     const formattedDate = eventDate.toLocaleDateString('en-US', {
       weekday: 'long',
@@ -843,13 +1274,19 @@ export class TemplateService {
       hour: '2-digit',
       minute: '2-digit'
     });
+<<<<<<< HEAD
 
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     // Extract customer name from email if not available
     const customerName = order.customer_name || order.customer_email.split('@')[0];
     const nameParts = customerName.split(' ');
     const firstName = nameParts[0] || customerName;
     const lastName = nameParts.slice(1).join(' ') || '';
+<<<<<<< HEAD
 
+=======
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
     const variables = {
       '@FirstName': firstName,
       '@LastName': lastName,
@@ -860,6 +1297,7 @@ export class TemplateService {
       '@EventVenue': order.events.venue || '',
       '@OrderNumber': order.id || 'N/A',
       '@TotalAmount': `$${order.total_amount.toFixed(2)}`,
+<<<<<<< HEAD
       '@TicketCount': order.order_items.filter(item => item.item_type === 'ticket').reduce((sum, item) => sum + item.quantity, 0).toString(),
       '@OrganizerName': order.events.organizations?.name || '',
       '@ContactEmail': (order.events.organizations as any)?.contact_email || (order.events as any)?.contact_email || '',
@@ -875,3 +1313,18 @@ export class TemplateService {
     return result;
   }
 }
+=======
+      '@TicketCount': order.order_items.filter((item)=>item.item_type === 'ticket').reduce((sum, item)=>sum + item.quantity, 0).toString(),
+      '@OrganizerName': order.events.organizations?.name || '',
+      '@ContactEmail': order.events.organizations?.contact_email || order.events?.contact_email || '',
+      '@EventDescription': order.events?.description || '',
+      '@SpecialInstructions': order.events?.special_instructions || ''
+    };
+    let result = text;
+    Object.entries(variables).forEach(([key, value])=>{
+      result = result.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), value);
+    });
+    return result;
+  }
+}
+>>>>>>> 379c136 (fix: Apple Wallet button parameter name in send-ticket-email-v2)
