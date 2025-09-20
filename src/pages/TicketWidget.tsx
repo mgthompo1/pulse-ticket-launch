@@ -689,16 +689,20 @@ const TicketWidget = () => {
 
   // Optimize custom questions with useMemo
   const customQuestions = useMemo(() => {
-    const questions = eventData?.widget_customization?.customQuestions || [];
+    const customQuestionsConfig = eventData?.widget_customization?.customQuestions;
+    const questions = customQuestionsConfig?.questions || [];
 
-    // Only log once when questions change
+    // Debug logging
+    console.log("=== CUSTOM QUESTIONS DEBUG ===");
+    console.log("Custom questions config:", customQuestionsConfig);
+    console.log("Custom questions enabled:", customQuestionsConfig?.enabled);
+    console.log("Custom questions count:", questions.length);
     if (questions.length > 0) {
-      console.log("=== CUSTOM QUESTIONS DEBUG ===");
-      console.log("Custom questions count:", questions.length);
       console.log("First question:", questions[0]);
     }
 
-    return questions;
+    // Only return questions if custom questions are enabled
+    return customQuestionsConfig?.enabled ? questions : [];
   }, [eventData?.widget_customization?.customQuestions]);
 
   // Validate custom questions before checkout
