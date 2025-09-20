@@ -482,6 +482,7 @@ serve(async function(req) {
           headers: {
             ...corsHeaders,
             "Content-Type": "application/vnd.apple.pkpass",
+            "Content-Length": pkpassData.length.toString(),
             "Content-Disposition": `attachment; filename="${event.name.replace(/[^a-zA-Z0-9 ]/g, '_').replace(/\s+/g, '_')}_ticket.pkpass"`
           }
         });
