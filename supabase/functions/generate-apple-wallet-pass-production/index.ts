@@ -1,91 +1,29 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { crypto } from "https://deno.land/std@0.190.0/crypto/mod.ts";
-import { encode as base64Encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
-import { decode as base64Decode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type"
 };
-
-// Apple Wallet pass structure
-interface AppleWalletPass {
-  formatVersion: number;
-  passTypeIdentifier: string;
-  serialNumber: string;
-  teamIdentifier: string;
-  organizationName: string;
-  description: string;
-  backgroundColor: string;
-  foregroundColor: string;
-  labelColor: string;
-  eventTicket: {
-    primaryFields: Array<{
-      key: string;
-      label: string;
-      value: string;
-      textAlignment?: string;
-    }>;
-    secondaryFields: Array<{
-      key: string;
-      label: string;
-      value: string;
-      textAlignment?: string;
-    }>;
-    auxiliaryFields: Array<{
-      key: string;
-      label: string;
-      value: string;
-      textAlignment?: string;
-    }>;
-    backFields: Array<{
-      key: string;
-      label: string;
-      value: string;
-      textAlignment?: string;
-    }>;
-  };
-  barcode: {
-    message: string;
-    format: string;
-    messageEncoding: string;
-  };
-  locations?: Array<{
-    latitude: number;
-    longitude: number;
-    relevantText: string;
-  }>;
-  relevantDate?: string;
-  logoText?: string;
-  webServiceURL?: string;
-  authenticationToken?: string;
-}
-
 // Helper function to create SHA-1 hash
-async function sha1Hash(data: Uint8Array): Promise<string> {
+async function sha1Hash(data) {
   const hashBuffer = await crypto.subtle.digest("SHA-1", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashArray.map((b)=>b.toString(16).padStart(2, '0')).join('');
 }
-
 // Create ZIP file for .pkpass
-function createZipFile(files: Array<{ name: string; content: Uint8Array }>): Uint8Array {
+function createZipFile(files) {
   // Simple ZIP file structure
   // For production, you'd use a proper ZIP library, but this creates a basic ZIP
-
-  const zipEntries: Uint8Array[] = [];
-  const centralDirectory: Uint8Array[] = [];
+  const zipEntries = [];
+  const centralDirectory = [];
   let offset = 0;
-
-  for (const file of files) {
+  for (const file of files){
     // Local file header
     const fileName = new TextEncoder().encode(file.name);
     const fileContent = file.content;
-
     const localHeader = new Uint8Array(30 + fileName.length);
     const view = new DataView(localHeader.buffer);
-
     // Local file header signature
     view.setUint32(0, 0x04034b50, true);
     // Version needed to extract
@@ -107,21 +45,16 @@ function createZipFile(files: Array<{ name: string; content: Uint8Array }>): Uin
     view.setUint16(26, fileName.length, true);
     // Extra field length
     view.setUint16(28, 0, true);
-
     // Copy filename
     localHeader.set(fileName, 30);
-
     // Combine header and content
     const entry = new Uint8Array(localHeader.length + fileContent.length);
     entry.set(localHeader, 0);
     entry.set(fileContent, localHeader.length);
-
     zipEntries.push(entry);
-
     // Central directory header
     const centralHeader = new Uint8Array(46 + fileName.length);
     const centralView = new DataView(centralHeader.buffer);
-
     // Central file header signature
     centralView.setUint32(0, 0x02014b50, true);
     // Version made by
@@ -155,22 +88,17 @@ function createZipFile(files: Array<{ name: string; content: Uint8Array }>): Uin
     centralView.setUint32(38, 0, true);
     // Relative offset of local header
     centralView.setUint32(42, offset, true);
-
     // Copy filename
     centralHeader.set(fileName, 46);
-
     centralDirectory.push(centralHeader);
     offset += entry.length;
   }
-
   // Calculate total size
-  const entriesSize = zipEntries.reduce((sum, entry) => sum + entry.length, 0);
-  const centralDirSize = centralDirectory.reduce((sum, dir) => sum + dir.length, 0);
-
+  const entriesSize = zipEntries.reduce((sum, entry)=>sum + entry.length, 0);
+  const centralDirSize = centralDirectory.reduce((sum, dir)=>sum + dir.length, 0);
   // End of central directory record
   const endRecord = new Uint8Array(22);
   const endView = new DataView(endRecord.buffer);
-
   // End of central dir signature
   endView.setUint32(0, 0x06054b50, true);
   // Number of this disk
@@ -187,33 +115,26 @@ function createZipFile(files: Array<{ name: string; content: Uint8Array }>): Uin
   endView.setUint32(16, entriesSize, true);
   // ZIP file comment length
   endView.setUint16(20, 0, true);
-
   // Combine all parts
   const totalSize = entriesSize + centralDirSize + endRecord.length;
   const zipData = new Uint8Array(totalSize);
-
   let currentOffset = 0;
-
   // Add entries
-  for (const entry of zipEntries) {
+  for (const entry of zipEntries){
     zipData.set(entry, currentOffset);
     currentOffset += entry.length;
   }
-
   // Add central directory
-  for (const dir of centralDirectory) {
+  for (const dir of centralDirectory){
     zipData.set(dir, currentOffset);
     currentOffset += dir.length;
   }
-
   // Add end record
   zipData.set(endRecord, currentOffset);
-
   return zipData;
 }
-
 // Create signature using Apple certificates
-async function createSignature(manifestData: string): Promise<Uint8Array> {
+async function createSignature(manifestData) {
   try {
     // Get the certificate from environment variable
     const certBase64 = Deno.env.get("APPLE_WALLET_CERT_BASE64");
@@ -221,25 +142,21 @@ async function createSignature(manifestData: string): Promise<Uint8Array> {
       console.warn("No Apple certificate found, using placeholder signature");
       return new TextEncoder().encode("PLACEHOLDER_SIGNATURE_FOR_DEVELOPMENT");
     }
-
     // For now, return a placeholder signature
     // In a full implementation, you would:
     // 1. Parse the P12 certificate file
     // 2. Extract the private key and certificate
     // 3. Create a PKCS#7 signature of the manifest
     // 4. Return the signature bytes
-
     console.log("Creating development signature for manifest");
     return new TextEncoder().encode("DEVELOPMENT_SIGNATURE_PLACEHOLDER");
-
   } catch (error) {
     console.error("Error creating signature:", error);
     return new TextEncoder().encode("ERROR_SIGNATURE_PLACEHOLDER");
   }
 }
-
 // Helper function to format date for display
-function formatEventDate(dateString: string): { date: string; time: string } {
+function formatEventDate(dateString) {
   const date = new Date(dateString);
   return {
     date: date.toLocaleDateString('en-US', {
@@ -255,90 +172,85 @@ function formatEventDate(dateString: string): { date: string; time: string } {
     })
   };
 }
-
 // Create .pkpass file
-async function createPkpassFile(pass: AppleWalletPass): Promise<Uint8Array> {
+async function createPkpassFile(pass) {
   const passJson = JSON.stringify(pass, null, 2);
   const passJsonBytes = new TextEncoder().encode(passJson);
-
   // Create manifest with SHA-1 hashes
   const manifest = {
     "pass.json": await sha1Hash(passJsonBytes)
   };
-
   const manifestJson = JSON.stringify(manifest, null, 2);
   const manifestBytes = new TextEncoder().encode(manifestJson);
-
   // In a real implementation, you would:
   // 1. Sign the manifest with your Apple certificate
   // 2. Create a ZIP file with pass.json, manifest.json, signature, and any images
   // 3. Return the ZIP as .pkpass file
-
   // Create signature using Apple certificates
   const signatureBytes = await createSignature(manifestJson);
-
   // Create proper ZIP file with all components
   const files = [
-    { name: 'pass.json', content: passJsonBytes },
-    { name: 'manifest.json', content: manifestBytes },
-    { name: 'signature', content: signatureBytes }
+    {
+      name: 'pass.json',
+      content: passJsonBytes
+    },
+    {
+      name: 'manifest.json',
+      content: manifestBytes
+    },
+    {
+      name: 'signature',
+      content: signatureBytes
+    }
   ];
-
   // Create ZIP file
   const zipData = createZipFile(files);
-
   console.log(`Created .pkpass ZIP file with ${files.length} files, size: ${zipData.length} bytes`);
-
   return zipData;
 }
-
-serve(async (req) => {
+serve(async (req)=>{
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, {
+      headers: corsHeaders
+    });
   }
-
   try {
     const url = new URL(req.url);
     const ticketCode = url.searchParams.get('ticketCode');
     const download = url.searchParams.get('download') === 'true';
-
     if (!ticketCode) {
-      return new Response(
-        JSON.stringify({ error: 'Ticket code is required' }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400
-        }
-      );
+      return new Response(JSON.stringify({
+        error: 'Ticket code is required'
+      }), {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json"
+        },
+        status: 400
+      });
     }
-
     // Check for required environment variables
     const teamId = Deno.env.get("APPLE_TEAM_ID");
     const passTypeId = Deno.env.get("APPLE_PASS_TYPE_ID");
-
     if (!teamId || !passTypeId) {
-      return new Response(
-        JSON.stringify({
-          error: 'Apple Developer credentials not configured',
-          message: 'Please set APPLE_TEAM_ID and APPLE_PASS_TYPE_ID environment variables'
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500
-        }
-      );
+      return new Response(JSON.stringify({
+        error: 'Apple Developer credentials not configured',
+        message: 'Please set APPLE_TEAM_ID and APPLE_PASS_TYPE_ID environment variables'
+      }), {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json"
+        },
+        status: 500
+      });
     }
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } }
-    );
-
+    const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", {
+      auth: {
+        persistSession: false
+      }
+    });
     // Fetch ticket details
-    const { data: ticket, error: ticketError } = await supabase
-      .from('tickets')
-      .select(`
+    const { data: ticket, error: ticketError } = await supabase.from('tickets').select(`
         id,
         ticket_code,
         status,
@@ -361,42 +273,42 @@ serve(async (req) => {
             )
           )
         )
-      `)
-      .eq('ticket_code', ticketCode)
-      .single();
-
+      `).eq('ticket_code', ticketCode).single();
     if (ticketError || !ticket) {
       console.error('Ticket lookup error:', ticketError);
-      return new Response(
-        JSON.stringify({ error: 'Ticket not found' }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 404
-        }
-      );
+      return new Response(JSON.stringify({
+        error: 'Ticket not found'
+      }), {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json"
+        },
+        status: 404
+      });
     }
-
     // Type assertion for Supabase joined data
-    const order = (ticket.order_items as any)?.orders;
-    const event = (order as any)?.events;
-    const ticketType = (ticket.order_items as any)?.ticket_types;
-    const organization = (event as any)?.organizations;
-
+    const order = ticket.order_items?.orders;
+    const event = order?.events;
+    const ticketType = ticket.order_items?.ticket_types;
+    const organization = event?.organizations;
     if (!event || !order) {
-      return new Response(
-        JSON.stringify({ error: 'Event or order data not found' }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 404
-        }
-      );
+      return new Response(JSON.stringify({
+        error: 'Event or order data not found'
+      }), {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json"
+        },
+        status: 404
+      });
     }
-
     // Format the event date
-    const eventDateTime = event.event_date ? formatEventDate(event.event_date) : { date: 'TBA', time: 'TBA' };
-
+    const eventDateTime = event.event_date ? formatEventDate(event.event_date) : {
+      date: 'TBA',
+      time: 'TBA'
+    };
     // Create the pass
-    const pass: AppleWalletPass = {
+    const pass = {
       formatVersion: 1,
       passTypeIdentifier: passTypeId,
       serialNumber: ticket.id,
@@ -488,17 +400,14 @@ serve(async (req) => {
         messageEncoding: "iso-8859-1"
       }
     };
-
     // Add relevant date for wallet notifications
     if (event.event_date) {
       pass.relevantDate = new Date(event.event_date).toISOString();
     }
-
     if (download) {
       // Generate and return the .pkpass file
       try {
         const pkpassData = await createPkpassFile(pass);
-
         return new Response(pkpassData, {
           headers: {
             ...corsHeaders,
@@ -508,16 +417,16 @@ serve(async (req) => {
         });
       } catch (error) {
         console.error('Error creating .pkpass file:', error);
-        return new Response(
-          JSON.stringify({
-            error: 'Failed to create .pkpass file',
-            message: 'This is a development version. Full .pkpass generation requires proper signing certificates.'
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500
-          }
-        );
+        return new Response(JSON.stringify({
+          error: 'Failed to create .pkpass file',
+          message: 'This is a development version. Full .pkpass generation requires proper signing certificates.'
+        }), {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json"
+          },
+          status: 500
+        });
       }
     } else {
       // Return pass data for preview
@@ -538,19 +447,24 @@ serve(async (req) => {
           "4. Test on iOS device"
         ]
       }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json"
+        },
+        status: 200
       });
     }
-
-  } catch (error: any) {
+  } catch (error) {
     console.error("generate-apple-wallet-pass-production error:", error);
     return new Response(JSON.stringify({
       error: error.message || String(error),
       message: 'Apple Wallet pass generation failed'
     }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json"
+      },
+      status: 500
     });
   }
 });

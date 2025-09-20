@@ -265,7 +265,7 @@ export class TemplateService {
       const qrUrl = qrUrls[ticket.code];
       const qrImg = config.showQRCodes && qrUrl ? `<img src="${qrUrl}" alt="QR Code" style="width:100px;height:100px;border:1px solid ${theme.borderColor};border-radius:4px;"/>` : '';
       // FIXED: Generate wallet pass URL using production Apple Wallet pass function with correct parameter name
-      const walletUrl = `${CONFIG.SUPABASE_URL}/functions/v1/generate-apple-wallet-pass-production?ticket_code=${encodeURIComponent(ticket.code)}&download=true`;
+      const walletUrl = `${CONFIG.SUPABASE_URL}/functions/v1/generate-apple-wallet-pass-production?ticketCode=${encodeURIComponent(ticket.code)}&download=true`;
       return `
         <table style="width:100%;border:1px solid ${theme.borderColor};border-radius:8px;margin:8px 0;background:${theme.backgroundColor};border-collapse:separate;border-spacing:0;">
           <tr>
@@ -304,7 +304,7 @@ export class TemplateService {
       const qrUrl = qrUrls[ticket.code];
       const qrImg = qrUrl ? `<img src="${qrUrl}" alt="QR Code" style="width:100px;height:100px;border:1px solid ${theme.borderColor};border-radius:4px;"/>` : '';
       // FIXED: Generate wallet pass URL using production Apple Wallet pass function with correct parameter name
-      const walletUrl = `${CONFIG.SUPABASE_URL}/functions/v1/generate-apple-wallet-pass-production?ticket_code=${encodeURIComponent(ticket.code)}&download=true`;
+      const walletUrl = `${CONFIG.SUPABASE_URL}/functions/v1/generate-apple-wallet-pass-production?ticketCode=${encodeURIComponent(ticket.code)}&download=true`;
       return `
         <table style="width:100%;border:1px solid ${theme.borderColor};border-radius:8px;margin:8px 0;background:${theme.backgroundColor};border-collapse:separate;border-spacing:0;">
           <tr>
