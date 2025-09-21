@@ -5,6 +5,7 @@ import express from 'express';
 import compression from 'compression';
 import sirv from 'sirv';
 import fetch from 'node-fetch';
+import { addAppleWalletRoutes } from './apple-wallet-routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isProduction = process.env.NODE_ENV === 'production';
@@ -17,6 +18,12 @@ const app = express();
 
 // Add compression middleware
 app.use(compression());
+
+// Add JSON parsing middleware for Apple Wallet signing
+app.use('/api/apple-wallet', express.json({ limit: '10mb' }));
+
+// Add Apple Wallet signing routes
+addAppleWalletRoutes(app);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -43,9 +50,14 @@ if (isProduction) {
   app.locals.vite = vite;
 }
 
-// SSR middleware (catch-all)
+// SSR middleware (catch-all) - Skip API routes
 app.use('/', async (req, res, next) => {
   const url = req.originalUrl;
+
+  // Skip SSR for API routes
+  if (url.startsWith('/api/')) {
+    return next();
+  }
   
   try {
     let template;
