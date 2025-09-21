@@ -19,8 +19,8 @@ const app = express();
 // Add compression middleware
 app.use(compression());
 
-// Add JSON parsing middleware for Apple Wallet signing
-app.use('/api/apple-wallet', express.json({ limit: '10mb' }));
+// Add global JSON parsing middleware
+app.use(express.json({ limit: '10mb' }));
 
 // Add Apple Wallet signing routes
 addAppleWalletRoutes(app);
