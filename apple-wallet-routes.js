@@ -8,6 +8,14 @@ import { createRequire } from 'module';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
+// Import node-forge at module level to avoid runtime issues
+let forge;
+try {
+  forge = require('node-forge');
+} catch (e) {
+  console.error('Failed to load node-forge:', e.message);
+}
+
 export function addAppleWalletRoutes(app) {
 
   // Apple Wallet signing endpoint
@@ -48,8 +56,9 @@ export function addAppleWalletRoutes(app) {
 
         console.log('🔧 Processing certificate with node-forge...');
 
-        // Import node-forge using createRequire, avoiding problematic log module
-        const forge = require('node-forge/lib/forge');
+        if (!forge) {
+          throw new Error('node-forge not available');
+        }
 
         // Extract certificate and private key from P12 using node-forge
         const p12Der = forge.util.decode64(cert);
