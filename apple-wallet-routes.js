@@ -3,8 +3,10 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
 
 export function addAppleWalletRoutes(app) {
 
@@ -46,25 +48,24 @@ export function addAppleWalletRoutes(app) {
 
         console.log('🔧 Processing certificate with node-forge...');
 
-        // Dynamic import of node-forge to handle ES module compatibility
-        const forge = await import('node-forge');
-        const forgeLib = forge.default || forge;
+        // Import node-forge using createRequire for ES module compatibility
+        const forge = require('node-forge');
 
         // Extract certificate and private key from P12 using node-forge
-        const p12Der = forgeLib.util.decode64(cert);
-        const p12Asn1 = forgeLib.asn1.fromDer(p12Der);
-        const p12 = forgeLib.pkcs12.pkcs12FromAsn1(p12Asn1, password || '');
+        const p12Der = forge.util.decode64(cert);
+        const p12Asn1 = forge.asn1.fromDer(p12Der);
+        const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, password || '');
 
         // Get certificate and private key
-        const certBags = p12.getBags({ bagType: forgeLib.pki.oids.certBag });
-        const keyBags = p12.getBags({ bagType: forgeLib.pki.oids.pkcs8ShroudedKeyBag });
+        const certBags = p12.getBags({ bagType: forge.pki.oids.certBag });
+        const keyBags = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag });
 
-        const certificate = certBags[forgeLib.pki.oids.certBag][0].cert;
-        const privateKey = keyBags[forgeLib.pki.oids.pkcs8ShroudedKeyBag][0].key;
+        const certificate = certBags[forge.pki.oids.certBag][0].cert;
+        const privateKey = keyBags[forge.pki.oids.pkcs8ShroudedKeyBag][0].key;
 
         // Convert to PEM format for OpenSSL
-        const certPem = forgeLib.pki.certificateToPem(certificate);
-        const keyPem = forgeLib.pki.privateKeyToPem(privateKey);
+        const certPem = forge.pki.certificateToPem(certificate);
+        const keyPem = forge.pki.privateKeyToPem(privateKey);
 
         const certPemFile = path.join(tempDir, `cert_${timestamp}.pem`);
         const keyPemFile = path.join(tempDir, `key_${timestamp}.pem`);
