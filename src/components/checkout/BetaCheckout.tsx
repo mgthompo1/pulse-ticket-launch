@@ -7,12 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Calendar, 
-  MapPin, 
-  Ticket, 
-  Plus, 
-  Minus, 
+import {
+  Calendar,
+  MapPin,
+  Ticket,
+  Plus,
+  Minus,
   CreditCard,
   Shield,
   Clock,
@@ -24,6 +24,7 @@ import {
   ArrowRight,
   Lock
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { TicketType, CartItem, MerchandiseCartItem, CustomerInfo, EventData, CustomQuestion } from '@/types/widget';
 import { Theme } from '@/types/theme';
@@ -105,7 +106,7 @@ const EventHero: React.FC<{
               )}
               
               <span className="px-3 py-1 rounded-full border" style={{ borderColor: theme.borderColor, backgroundColor: theme.backgroundColor }}>
-                Instant mobile tickets
+                {eventData.widget_customization?.branding?.instantTicketsText || 'Instant mobile tickets'}
               </span>
             </div>
             
@@ -537,11 +538,11 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
               {/* Left Column - Customer Details and Ticket Selection */}
               <div className="lg:col-span-8 space-y-6">
                 {/* Customer Details Section - Show first if tickets are selected */}
-                {hasTicketsInCart && (
+                {(hasTicketsInCart || safeCustomQuestions.length > 0) && (
                   <Card style={{ backgroundColor: theme.cardBackgroundColor }}>
                     <CardHeader>
                       <CardTitle style={{ color: theme.headerTextColor }}>
-                        Your Details
+                        {hasTicketsInCart ? 'Your Details' : 'Event Information'}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -600,26 +601,67 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                       </div>
 
                       {/* Custom Questions */}
-                      {safeCustomQuestions.map((question) => (
-                        <div key={question.id} className="space-y-2">
-                          <Label style={{ color: theme.headerTextColor }}>
-                            {question.label}
-                            {question.required && <span className="text-red-500 ml-1">*</span>}
-                          </Label>
-                          <Input
-                            value={customerInfo.customAnswers[question.id] || ''}
-                            onChange={(e) => handleCustomAnswerChange(question.id, e.target.value)}
-                            style={{ backgroundColor: theme.inputBackgroundColor }}
-                            className={errors[question.id] ? 'border-red-500' : ''}
-                          />
-                          {errors[question.id] && (
-                            <p className="text-sm text-red-500 flex items-center gap-1">
-                              <AlertCircle className="h-3 w-3" />
-                              {errors[question.id]}
-                            </p>
-                          )}
-                        </div>
-                      ))}
+                      {safeCustomQuestions.map((question) => {
+                        const questionOptions = Array.isArray(question.options)
+                          ? question.options
+                          : typeof question.options === 'string'
+                            ? question.options.split('\n').map(opt => opt.trim()).filter(opt => opt.length > 0)
+                            : [];
+
+                        return (
+                          <div key={question.id} className="space-y-2">
+                            <Label style={{ color: theme.headerTextColor }}>
+                              {question.label}
+                              {question.required && <span className="text-red-500 ml-1">*</span>}
+                            </Label>
+
+                            {question.type === 'select' ? (
+                              <Select
+                                value={customerInfo.customAnswers[question.id] || ''}
+                                onValueChange={(value) => handleCustomAnswerChange(question.id, value)}
+                              >
+                                <SelectTrigger
+                                  style={{ backgroundColor: theme.inputBackgroundColor }}
+                                  className={errors[question.id] ? 'border-red-500' : ''}
+                                >
+                                  <SelectValue placeholder={`Select ${question.label.toLowerCase()}`} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {questionOptions.map((option, index) => (
+                                    <SelectItem key={index} value={option}>
+                                      {option}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : question.type === 'textarea' ? (
+                              <textarea
+                                className={`w-full min-h-[80px] px-3 py-2 border rounded-md resize-y ${errors[question.id] ? 'border-red-500' : 'border-input'}`}
+                                style={{ backgroundColor: theme.inputBackgroundColor }}
+                                value={customerInfo.customAnswers[question.id] || ''}
+                                onChange={(e) => handleCustomAnswerChange(question.id, e.target.value)}
+                                placeholder={question.label}
+                              />
+                            ) : (
+                              <Input
+                                type={question.type === 'email' ? 'email' : question.type === 'phone' ? 'tel' : 'text'}
+                                value={customerInfo.customAnswers[question.id] || ''}
+                                onChange={(e) => handleCustomAnswerChange(question.id, e.target.value)}
+                                style={{ backgroundColor: theme.inputBackgroundColor }}
+                                className={errors[question.id] ? 'border-red-500' : ''}
+                                placeholder={question.label}
+                              />
+                            )}
+
+                            {errors[question.id] && (
+                              <p className="text-sm text-red-500 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                {errors[question.id]}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
                     </CardContent>
                   </Card>
                 )}
@@ -887,17 +929,6 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                             )}
                           </Button>
 
-                          {/* Trust indicators */}
-                          <div className="flex items-center justify-center gap-4 pt-4 text-xs" style={{ color: theme.bodyTextColor }}>
-                            <div className="flex items-center gap-1">
-                              <Shield className="h-3 w-3" />
-                              SSL Secure
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Star className="h-3 w-3" />
-                              Trusted Platform
-                            </div>
-                          </div>
                         </div>
                       )}
                     </CardContent>
