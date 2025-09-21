@@ -39,6 +39,12 @@ export function addAppleWalletRoutes(app) {
       }
 
       console.log('📝 Creating signature for Apple Wallet manifest...');
+      console.log('🔍 Certificate data analysis:');
+      console.log('- cert type:', typeof cert);
+      console.log('- cert length:', cert?.length || 'undefined');
+      console.log('- cert starts with:', cert?.substring(0, 50) || 'undefined');
+      console.log('- cert ends with:', cert?.substring(cert.length - 50) || 'undefined');
+      console.log('- password provided:', !!password);
 
       // Create temporary directory
       const tempDir = path.join(__dirname, 'temp');
@@ -61,8 +67,15 @@ export function addAppleWalletRoutes(app) {
         }
 
         // Extract certificate and private key from P12 using node-forge
+        console.log('🔧 Decoding base64 certificate...');
         const p12Der = forge.util.decode64(cert);
+        console.log('- p12Der length:', p12Der.length);
+        console.log('- p12Der type:', typeof p12Der);
+
+        console.log('🔧 Parsing ASN.1 structure...');
         const p12Asn1 = forge.asn1.fromDer(p12Der);
+
+        console.log('🔧 Extracting PKCS#12...');
         const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, password || '');
 
         // Get certificate and private key
