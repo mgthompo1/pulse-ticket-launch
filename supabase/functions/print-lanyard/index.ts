@@ -12,21 +12,33 @@ serve(async (req) => {
   }
 
   try {
-    const { ticketId, guestInfo } = await req.json();
+    const { ticketId, guestInfo, template, eventData, organizationData } = await req.json();
+
+    console.log("🖨️ Print function received template:", template?.name);
+    console.log("📋 Template blocks count:", template?.blocks?.length);
+    console.log("👤 Guest info:", guestInfo?.customer_name);
+    console.log("🎨 Template background:", template?.background?.color);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Generate lanyard data (this would typically integrate with a printer API)
-    const lanyardData = {
-      guestName: guestInfo.customer_name,
-      eventName: guestInfo.event_name,
-      ticketType: guestInfo.ticket_type,
-      ticketCode: guestInfo.ticket_code,
-      checkInTime: new Date().toISOString(),
-      qrCode: `https://your-app.com/verify/${guestInfo.ticket_code}`, // For verification
+    // Generate lanyard preview data
+    const previewData = {
+      attendeeName: guestInfo.customer_name || "Attendee Name",
+      eventTitle: eventData?.name || "Event Title",
+      eventDate: eventData?.event_date ? new Date(eventData.event_date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      }) : "Event Date",
+      eventTime: eventData?.event_time || "Event Time",
+      ticketType: guestInfo.ticket_type || "Ticket Type",
+      ticketCode: guestInfo.ticket_code || "TICKET-001",
+      organizationLogo: organizationData?.logo_url,
+      eventLogo: eventData?.logo_url,
+      specialAccess: ""
     };
 
     // Mark lanyard as printed in check-ins
@@ -37,34 +49,160 @@ serve(async (req) => {
 
     if (updateError) throw updateError;
 
-    // In a real implementation, you would send this data to a thermal printer
-    // For now, we return the print data that could be used by the frontend
+    // Generate HTML that matches the preview exactly
+    const generateBlockHTML = (block: any) => {
+      const blockStyle = `
+        position: absolute;
+        left: ${block.position.x}%;
+        top: ${block.position.y}%;
+        width: ${block.size.width}%;
+        height: ${block.size.height}%;
+        font-size: ${(block.style.fontSize || 12) * 3}px;
+        font-weight: ${block.style.fontWeight || 'normal'};
+        color: ${block.style.color || '#000000'};
+        text-align: ${block.style.textAlign || 'center'};
+        background-color: ${block.style.backgroundColor === 'transparent' ? 'transparent' : (block.style.backgroundColor || 'transparent')};
+        border-radius: ${(block.style.borderRadius || 0) * 3}px;
+        padding: ${(block.style.padding || 4) * 3}px;
+        display: flex;
+        align-items: center;
+        justify-content: ${block.style.textAlign === 'left' ? 'flex-start' : block.style.textAlign === 'right' ? 'flex-end' : 'center'};
+        overflow: hidden;
+        box-sizing: border-box;
+        font-family: 'Inter', 'Manrope', sans-serif;
+        line-height: 1.2;
+        word-break: break-word;
+      `;
+
+      const getBlockContent = () => {
+        switch (block.type) {
+          case 'attendee_name':
+            return previewData.attendeeName;
+          case 'event_title':
+            return block.customText || previewData.eventTitle;
+          case 'event_date':
+            return previewData.eventDate;
+          case 'event_time':
+            return previewData.eventTime;
+          case 'ticket_type':
+            const prefix = block.customPrefix || '';
+            return `${prefix}${previewData.ticketType}`.trim();
+          case 'organization_logo':
+            if (previewData.organizationLogo) {
+              return `<img src="${previewData.organizationLogo}" alt="Organization Logo" style="width: 100%; height: 100%; object-fit: contain;" />`;
+            }
+            return block.fallbackText || 'ORG LOGO';
+          case 'event_logo':
+            if (previewData.eventLogo) {
+              return `<img src="${previewData.eventLogo}" alt="Event Logo" style="width: 100%; height: 100%; object-fit: contain;" />`;
+            }
+            return block.fallbackText || 'EVENT LOGO';
+          case 'special_access':
+            if (block.showOnlyForVIP && !previewData.ticketType.toLowerCase().includes('vip')) {
+              return '';
+            }
+            return block.accessText || previewData.specialAccess || 'SPECIAL ACCESS';
+          case 'custom_text':
+            return block.text || 'Custom Text';
+          case 'qr_code':
+            const qrData = block.includeTicketCode ?
+              `${previewData.ticketCode}|${previewData.attendeeName}|${previewData.eventTitle}` :
+              previewData.ticketCode;
+            // Generate QR code SVG using a simple implementation
+            return `<div style="width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; color: white; font-size: 8px;">QR: ${qrData}</div>`;
+          default:
+            return 'Block';
+        }
+      };
+
+      // Handle divider line
+      if (block.type === 'divider_line') {
+        return `<div style="
+          position: absolute;
+          left: ${block.position.x}%;
+          top: ${block.position.y}%;
+          width: ${block.size.width}%;
+          height: ${(block.lineThickness || 1) * 3}px;
+          background-color: ${block.lineColor || '#e2e8f0'};
+          border-radius: ${(block.style.borderRadius || 0) * 3}px;
+        "></div>`;
+      }
+
+      const content = getBlockContent();
+      if (!content) return '';
+
+      return `<div style="${blockStyle}">
+        ${typeof content === 'string' && !content.includes('<img') && !content.includes('<div')
+          ? `<span style="font-size: inherit; font-weight: inherit; text-align: inherit; width: 100%;">${content}</span>`
+          : content
+        }
+      </div>`;
+    };
+
+    // Generate the complete lanyard HTML
+    const width = (template?.dimensions?.width || 85) * 3 * 0.8; // Scale for print
+    const height = (template?.dimensions?.height || 120) * 3 * 0.8;
+
     const printHTML = `
-      <div style="width: 300px; padding: 20px; border: 2px solid #000; font-family: Arial;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h2 style="margin: 0; font-size: 24px;">${lanyardData.eventName}</h2>
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Lanyard - ${previewData.attendeeName}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap');
+          body { margin: 0; padding: 20px; font-family: 'Inter', 'Manrope', sans-serif; }
+          .lanyard-container { margin: 0 auto; position: relative; }
+          @media print {
+            body { padding: 0; }
+            .lanyard-container { margin: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="lanyard-container" style="
+          position: relative;
+          width: ${width}px;
+          height: ${height}px;
+          background-color: ${template?.background?.color || '#ffffff'};
+          background-image: ${template?.background?.imageUrl ? `url(${template.background.imageUrl})` : 'none'};
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
+          border: 2px solid #e2e8f0;
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+          font-family: 'Inter', 'Manrope', sans-serif;
+        ">
+          <!-- Lanyard hole -->
+          <div style="
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #f0f0f0;
+            border: 2px solid #ddd;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+            z-index: 10;
+          "></div>
+
+          <!-- Template blocks -->
+          ${template?.blocks?.map(generateBlockHTML).join('') || ''}
         </div>
-        <div style="text-align: center; margin-bottom: 15px;">
-          <h3 style="margin: 0; font-size: 20px;">${lanyardData.guestName}</h3>
-        </div>
-        <div style="text-align: center; margin-bottom: 15px;">
-          <p style="margin: 0; font-size: 16px;">${lanyardData.ticketType}</p>
-        </div>
-        <div style="text-align: center; margin-bottom: 15px;">
-          <p style="margin: 0; font-size: 12px;">Ticket: ${lanyardData.ticketCode}</p>
-        </div>
-        <div style="text-align: center;">
-          <div style="width: 100px; height: 100px; border: 1px solid #000; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
-            QR CODE
-          </div>
-        </div>
-      </div>
+      </body>
+      </html>
     `;
 
+    console.log("📄 Generated HTML length:", printHTML.length);
+    console.log("🔍 First 500 chars of HTML:", printHTML.substring(0, 500));
+
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: true,
-        lanyardData,
         printHTML,
         message: "Lanyard ready for printing"
       }),

@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { CreditCard, Users, CheckCircle, Printer, Plus, ShoppingCart, BarChart3, TrendingUp, DollarSign, Package, Menu, Search, Home, Tag, Eye, UserCheck } from "lucide-react";
-import { LanyardPreviewData, LanyardTemplate, createDefaultLanyardTemplate } from "@/types/lanyard-template";
+import { LanyardPreviewData, LanyardTemplate, createDefaultLanyardTemplate, getAllLanyardTemplates } from "@/types/lanyard-template";
 import { LanyardPreviewSimple } from "@/components/LanyardPreviewSimple";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
@@ -181,15 +181,19 @@ const [analytics, setAnalytics] = useState<{
           console.log("No default template found for organization, creating default");
         }
         const defaultTemplate = createDefaultLanyardTemplate();
-        setCurrentLanyardTemplate({
-          id: 'default',
-          name: 'Default Template',
+        const newTemplate = {
+          id: `template-${defaultTemplate.name?.toLowerCase().replace(/\s+/g, '-')}`,
           organization_id: event.organization_id,
           isDefault: true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           ...defaultTemplate,
-        } as LanyardTemplate);
+        } as LanyardTemplate;
+
+        setCurrentLanyardTemplate(newTemplate);
+
+        // Auto-save the default template
+        await saveTemplateToDatabase(newTemplate);
       }
     } catch (error) {
       console.error("Error loading lanyard template:", error);
@@ -481,28 +485,80 @@ const handleCreateConcessionItem = async () => {
     }
   };
 
+  // Save template to database
+  const saveTemplateToDatabase = async (template: LanyardTemplate) => {
+    try {
+      const { error } = await supabase
+        .from('lanyard_templates')
+        .upsert({
+          id: template.id,
+          name: template.name,
+          organization_id: template.organization_id,
+          dimensions: template.dimensions,
+          background: template.background,
+          blocks: template.blocks,
+          is_default: true, // Mark as default for this organization
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      console.log("✅ Template saved:", template.name);
+      toast({
+        title: "Template saved",
+        description: `${template.name} template saved successfully`
+      });
+    } catch (error) {
+      console.error("❌ Error saving template:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
+      toast({
+        title: "Error saving template",
+        description: "Failed to save template to database",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handlePrintLanyard = async (guest: GuestStatus) => {
     setLoading(true);
     try {
+      console.log("🖨️ Printing lanyard with template:", currentLanyardTemplate?.name);
+      console.log("📋 Template data:", currentLanyardTemplate);
+
       const { data, error } = await supabase.functions.invoke("print-lanyard", {
         body: {
           ticketId: guest.ticket_id,
           guestInfo: guest,
+          template: currentLanyardTemplate,
+          eventData: eventData,
+          organizationData: organizationData,
         },
       });
 
       if (error) throw error;
 
       if (data.success) {
-        // Open print dialog with the generated HTML
+        console.log("📄 Received HTML length:", data.printHTML?.length);
+        console.log("🔍 First 500 chars:", data.printHTML?.substring(0, 500));
+
+        // Open print dialog with the generated HTML that matches preview exactly
         const printWindow = window.open("", "_blank");
         if (printWindow) {
           printWindow.document.write(data.printHTML);
           printWindow.document.close();
-          printWindow.print();
+
+          // Wait for content to load, then print
+          printWindow.onload = () => {
+            setTimeout(() => {
+              printWindow.print();
+            }, 500);
+          };
         }
-        
-        toast({ title: "Lanyard printed successfully!" });
+
+        toast({
+          title: "Lanyard printed successfully!",
+          description: `Lanyard for ${guest.customer_name} opened in print dialog`
+        });
         loadGuests();
       }
     } catch (error) {
@@ -1608,12 +1664,85 @@ const handleCreateConcessionItem = async () => {
                 <Card>
                   <CardContent className="p-6 text-center">
                     <Tag className="h-8 w-8 mx-auto mb-3 text-purple-500" />
-                    <h3 className="font-medium mb-2">Template Info</h3>
-                    <p className="text-sm text-gray-600 mb-4">Current template configuration</p>
-                    <Button variant="outline" size="sm" disabled>
-                      <Tag className="h-4 w-4 mr-1" />
-                      {currentLanyardTemplate?.name || 'Loading...'}
-                    </Button>
+                    <h3 className="font-medium mb-2">Template Selection</h3>
+                    <p className="text-sm text-gray-600 mb-4">Choose from professional templates</p>
+                    <div className="space-y-3">
+                      <Select
+                        value={currentLanyardTemplate?.name || ''}
+                        onValueChange={async (templateName) => {
+                          const templates = getAllLanyardTemplates();
+                          const selectedTemplate = templates.find(t => t.name === templateName);
+                          if (selectedTemplate) {
+                            const newTemplate = {
+                              id: `template-${templateName.toLowerCase().replace(/\s+/g, '-')}`,
+                              organization_id: eventData?.organization_id || 'default',
+                              isDefault: false,
+                              createdAt: new Date().toISOString(),
+                              updatedAt: new Date().toISOString(),
+                              ...selectedTemplate,
+                            } as LanyardTemplate;
+
+                            setCurrentLanyardTemplate(newTemplate);
+
+                            // Auto-save template to database
+                            await saveTemplateToDatabase(newTemplate);
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select template" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getAllLanyardTemplates().map((template) => (
+                            <SelectItem key={template.name} value={template.name || 'default'}>
+                              <div className="flex items-center gap-2">
+                                <Tag className="h-3 w-3" />
+                                {template.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Custom Text Configuration */}
+                      {currentLanyardTemplate && currentLanyardTemplate.blocks?.some(block => block.type === 'custom_text' && (block as any).text) && (
+                        <div className="pt-2 border-t space-y-2">
+                          <Label className="text-xs font-medium">Custom Text</Label>
+                          {currentLanyardTemplate.blocks
+                            .filter(block => block.type === 'custom_text' && (block as any).text)
+                            .map((block, index) => (
+                              <div key={block.id} className="space-y-1">
+                                <Label className="text-xs text-gray-600">
+                                  {(block as any).text === 'VIP ACCESS' ? 'VIP Badge Text' : `Custom Text ${index + 1}`}
+                                </Label>
+                                <Input
+                                  value={(block as any).text || ''}
+                                  onChange={async (e) => {
+                                    const updatedTemplate = {
+                                      ...currentLanyardTemplate!,
+                                      blocks: currentLanyardTemplate!.blocks?.map(b =>
+                                        b.id === block.id
+                                          ? { ...b, text: e.target.value }
+                                          : b
+                                      ) || []
+                                    };
+
+                                    setCurrentLanyardTemplate(updatedTemplate);
+
+                                    // Auto-save custom text changes with debounce
+                                    clearTimeout((window as any).customTextSaveTimeout);
+                                    (window as any).customTextSaveTimeout = setTimeout(async () => {
+                                      await saveTemplateToDatabase(updatedTemplate);
+                                    }, 1000); // Save 1 second after user stops typing
+                                  }}
+                                  placeholder="Enter custom text..."
+                                  className="text-xs"
+                                />
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </div>

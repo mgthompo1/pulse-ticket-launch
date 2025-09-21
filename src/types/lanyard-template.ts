@@ -135,8 +135,9 @@ export interface LanyardPreviewData {
   specialAccess?: string;
 }
 
+// Professional Corporate Template
 export const createDefaultLanyardTemplate = (): Partial<LanyardTemplate> => ({
-  name: "Professional Lanyard",
+  name: "Professional Corporate",
   dimensions: {
     width: 85,
     height: 120,
@@ -147,41 +148,40 @@ export const createDefaultLanyardTemplate = (): Partial<LanyardTemplate> => ({
     pattern: 'none'
   },
   blocks: [
-    // QR Code at the top (professional standard)
+    // Header gradient bar
     {
-      id: 'qr-code',
-      type: 'qr_code',
-      position: { x: 32.5, y: 8 },
-      size: { width: 20, height: 20 },
+      id: 'header-bar',
+      type: 'custom_text',
+      position: { x: 0, y: 0 },
+      size: { width: 100, height: 8 },
       style: {
-        backgroundColor: 'transparent'
-      },
-      qrSize: 120,
-      includeTicketCode: true
-    } as QrCodeBlock,
-
-    // Header divider line under QR
-    {
-      id: 'header-divider',
-      type: 'divider_line',
-      position: { x: 15, y: 32 },
-      size: { width: 55, height: 1 },
-      style: {
-        backgroundColor: '#e2e8f0',
+        backgroundColor: '#1e40af',
         borderRadius: 0
       },
-      lineThickness: 1,
-      lineColor: '#d1d5db'
-    } as DividerLineBlock,
+      text: ''
+    } as CustomTextBlock,
+
+    // Organization logo at top
+    {
+      id: 'org-logo',
+      type: 'organization_logo',
+      position: { x: 20, y: 12 },
+      size: { width: 60, height: 15 },
+      style: {
+        textAlign: 'center',
+        backgroundColor: 'transparent'
+      },
+      fallbackText: ''
+    } as OrganizationLogoBlock,
 
     // Attendee name (prominent)
     {
       id: 'attendee-name',
       type: 'attendee_name',
-      position: { x: 8, y: 38 },
-      size: { width: 69, height: 18 },
+      position: { x: 8, y: 35 },
+      size: { width: 84, height: 16 },
       style: {
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: 'bold',
         textAlign: 'center',
         color: '#1f2937',
@@ -190,63 +190,395 @@ export const createDefaultLanyardTemplate = (): Partial<LanyardTemplate> => ({
       }
     } as AttendeeNameBlock,
 
-    // Ticket type/title (professional subtitle)
+    // Event title with styling
+    {
+      id: 'event-title',
+      type: 'event_title',
+      position: { x: 8, y: 55 },
+      size: { width: 84, height: 14 },
+      style: {
+        fontSize: 14,
+        fontWeight: '600',
+        textAlign: 'center',
+        color: '#1e40af',
+        backgroundColor: '#f8fafc',
+        borderRadius: 8,
+        padding: 6
+      }
+    } as EventTitleBlock,
+
+    // Ticket type badge
     {
       id: 'ticket-type',
       type: 'ticket_type',
-      position: { x: 8, y: 58 },
-      size: { width: 69, height: 12 },
+      position: { x: 25, y: 73 },
+      size: { width: 50, height: 8 },
       style: {
-        fontSize: 11,
-        fontWeight: '500',
+        fontSize: 10,
+        fontWeight: 'bold',
         textAlign: 'center',
-        color: '#6b7280',
-        backgroundColor: '#f9fafb',
-        borderRadius: 2,
-        padding: 3
+        color: '#ffffff',
+        backgroundColor: '#10b981',
+        borderRadius: 12,
+        padding: 4
       },
       customPrefix: ''
     } as TicketTypeBlock,
 
-    // Event title
+    // QR Code positioned elegantly
     {
-      id: 'event-title',
-      type: 'event_title',
-      position: { x: 8, y: 75 },
-      size: { width: 69, height: 16 },
+      id: 'qr-code',
+      type: 'qr_code',
+      position: { x: 30, y: 85 },
+      size: { width: 40, height: 12 },
       style: {
-        fontSize: 13,
-        fontWeight: '600',
-        textAlign: 'center',
-        color: '#111827'
-      }
-    } as EventTitleBlock,
-
-    // Event date and time
-    {
-      id: 'event-date',
-      type: 'event_date',
-      position: { x: 8, y: 94 },
-      size: { width: 69, height: 10 },
-      style: {
-        fontSize: 9,
-        textAlign: 'center',
-        color: '#6b7280'
+        backgroundColor: 'transparent'
       },
-      dateFormat: 'MMM dd, yyyy'
-    } as EventDateBlock,
+      qrSize: 120,
+      includeTicketCode: true
+    } as QrCodeBlock,
 
-    // Organization logo at bottom
+    // Footer bar
+    {
+      id: 'footer-bar',
+      type: 'custom_text',
+      position: { x: 0, y: 99 },
+      size: { width: 100, height: 1 },
+      style: {
+        backgroundColor: '#e5e7eb',
+        borderRadius: 0
+      },
+      text: ''
+    } as CustomTextBlock
+  ]
+});
+
+// Modern Minimalist Template
+export const createMinimalistLanyardTemplate = (): Partial<LanyardTemplate> => ({
+  name: "Modern Minimalist",
+  dimensions: {
+    width: 85,
+    height: 120,
+    unit: 'mm'
+  },
+  background: {
+    color: '#fafafa',
+    pattern: 'none'
+  },
+  blocks: [
+    // Centered logo area
     {
       id: 'org-logo',
       type: 'organization_logo',
-      position: { x: 25, y: 106 },
-      size: { width: 35, height: 12 },
+      position: { x: 25, y: 8 },
+      size: { width: 50, height: 18 },
       style: {
         textAlign: 'center',
         backgroundColor: 'transparent'
       },
       fallbackText: ''
-    } as OrganizationLogoBlock
+    } as OrganizationLogoBlock,
+
+    // Clean divider
+    {
+      id: 'divider-1',
+      type: 'divider_line',
+      position: { x: 20, y: 30 },
+      size: { width: 60, height: 1 },
+      style: {
+        backgroundColor: 'transparent',
+        borderRadius: 0
+      },
+      lineThickness: 2,
+      lineColor: '#3b82f6'
+    } as DividerLineBlock,
+
+    // Attendee name - clean typography
+    {
+      id: 'attendee-name',
+      type: 'attendee_name',
+      position: { x: 10, y: 38 },
+      size: { width: 80, height: 20 },
+      style: {
+        fontSize: 20,
+        fontWeight: 'light',
+        textAlign: 'center',
+        color: '#111827',
+        backgroundColor: 'transparent',
+        padding: 4
+      }
+    } as AttendeeNameBlock,
+
+    // Event title - subtle
+    {
+      id: 'event-title',
+      type: 'event_title',
+      position: { x: 10, y: 62 },
+      size: { width: 80, height: 12 },
+      style: {
+        fontSize: 12,
+        fontWeight: 'normal',
+        textAlign: 'center',
+        color: '#6b7280',
+        backgroundColor: 'transparent'
+      }
+    } as EventTitleBlock,
+
+    // Clean QR code
+    {
+      id: 'qr-code',
+      type: 'qr_code',
+      position: { x: 35, y: 78 },
+      size: { width: 30, height: 20 },
+      style: {
+        backgroundColor: '#ffffff',
+        borderRadius: 8,
+        padding: 8
+      },
+      qrSize: 100,
+      includeTicketCode: true
+    } as QrCodeBlock
   ]
 });
+
+// Conference/Event Template
+export const createConferenceLanyardTemplate = (): Partial<LanyardTemplate> => ({
+  name: "Conference Style",
+  dimensions: {
+    width: 85,
+    height: 120,
+    unit: 'mm'
+  },
+  background: {
+    color: '#ffffff',
+    pattern: 'none'
+  },
+  blocks: [
+    // Event logo prominent at top
+    {
+      id: 'event-logo',
+      type: 'event_logo',
+      position: { x: 15, y: 5 },
+      size: { width: 70, height: 20 },
+      style: {
+        textAlign: 'center',
+        backgroundColor: 'transparent'
+      },
+      fallbackText: ''
+    } as EventLogoBlock,
+
+    // Speaker/Attendee badge
+    {
+      id: 'special-access',
+      type: 'special_access',
+      position: { x: 60, y: 28 },
+      size: { width: 35, height: 8 },
+      style: {
+        fontSize: 8,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        color: '#ffffff',
+        backgroundColor: '#ef4444',
+        borderRadius: 4,
+        padding: 2
+      },
+      accessText: 'SPEAKER',
+      showOnlyForVIP: false
+    } as SpecialAccessBlock,
+
+    // Large attendee name
+    {
+      id: 'attendee-name',
+      type: 'attendee_name',
+      position: { x: 8, y: 40 },
+      size: { width: 84, height: 22 },
+      style: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        color: '#1f2937',
+        backgroundColor: '#f1f5f9',
+        borderRadius: 12,
+        padding: 8
+      }
+    } as AttendeeNameBlock,
+
+    // Event title
+    {
+      id: 'event-title',
+      type: 'event_title',
+      position: { x: 8, y: 68 },
+      size: { width: 84, height: 12 },
+      style: {
+        fontSize: 13,
+        fontWeight: '600',
+        textAlign: 'center',
+        color: '#1e40af'
+      }
+    } as EventTitleBlock,
+
+    // Date and time
+    {
+      id: 'event-date',
+      type: 'event_date',
+      position: { x: 8, y: 83 },
+      size: { width: 42, height: 8 },
+      style: {
+        fontSize: 9,
+        textAlign: 'center',
+        color: '#6b7280'
+      },
+      dateFormat: 'MMM dd'
+    } as EventDateBlock,
+
+    {
+      id: 'event-time',
+      type: 'event_time',
+      position: { x: 50, y: 83 },
+      size: { width: 42, height: 8 },
+      style: {
+        fontSize: 9,
+        textAlign: 'center',
+        color: '#6b7280'
+      },
+      timeFormat: '12h',
+      showTimeZone: false
+    } as EventTimeBlock,
+
+    // QR code
+    {
+      id: 'qr-code',
+      type: 'qr_code',
+      position: { x: 35, y: 95 },
+      size: { width: 30, height: 20 },
+      style: {
+        backgroundColor: 'transparent'
+      },
+      qrSize: 100,
+      includeTicketCode: true
+    } as QrCodeBlock
+  ]
+});
+
+// VIP/Premium Template
+export const createVIPLanyardTemplate = (): Partial<LanyardTemplate> => ({
+  name: "VIP Premium",
+  dimensions: {
+    width: 85,
+    height: 120,
+    unit: 'mm'
+  },
+  background: {
+    color: '#111827',
+    pattern: 'none'
+  },
+  blocks: [
+    // Premium header
+    {
+      id: 'vip-header',
+      type: 'custom_text',
+      position: { x: 0, y: 0 },
+      size: { width: 100, height: 12 },
+      style: {
+        backgroundColor: '#fbbf24',
+        borderRadius: 0
+      },
+      text: ''
+    } as CustomTextBlock,
+
+    // VIP text
+    {
+      id: 'vip-text',
+      type: 'custom_text',
+      position: { x: 25, y: 16 },
+      size: { width: 50, height: 8 },
+      style: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        color: '#fbbf24',
+        backgroundColor: 'transparent'
+      },
+      text: 'VIP ACCESS'
+    } as CustomTextBlock,
+
+    // Organization logo
+    {
+      id: 'org-logo',
+      type: 'organization_logo',
+      position: { x: 20, y: 28 },
+      size: { width: 60, height: 15 },
+      style: {
+        textAlign: 'center',
+        backgroundColor: 'transparent'
+      },
+      fallbackText: ''
+    } as OrganizationLogoBlock,
+
+    // Attendee name - gold on black
+    {
+      id: 'attendee-name',
+      type: 'attendee_name',
+      position: { x: 8, y: 48 },
+      size: { width: 84, height: 18 },
+      style: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        color: '#fbbf24',
+        backgroundColor: 'transparent',
+        padding: 4
+      }
+    } as AttendeeNameBlock,
+
+    // Event title
+    {
+      id: 'event-title',
+      type: 'event_title',
+      position: { x: 8, y: 70 },
+      size: { width: 84, height: 14 },
+      style: {
+        fontSize: 14,
+        fontWeight: '600',
+        textAlign: 'center',
+        color: '#ffffff'
+      }
+    } as EventTitleBlock,
+
+    // Premium QR with border
+    {
+      id: 'qr-code',
+      type: 'qr_code',
+      position: { x: 30, y: 88 },
+      size: { width: 40, height: 20 },
+      style: {
+        backgroundColor: '#ffffff',
+        borderRadius: 8,
+        padding: 6
+      },
+      qrSize: 120,
+      includeTicketCode: true
+    } as QrCodeBlock,
+
+    // Premium footer
+    {
+      id: 'premium-footer',
+      type: 'custom_text',
+      position: { x: 0, y: 110 },
+      size: { width: 100, height: 10 },
+      style: {
+        backgroundColor: '#fbbf24',
+        borderRadius: 0
+      },
+      text: ''
+    } as CustomTextBlock
+  ]
+});
+
+// Get all available templates
+export const getAllLanyardTemplates = (): Partial<LanyardTemplate>[] => [
+  createDefaultLanyardTemplate(),
+  createMinimalistLanyardTemplate(),
+  createConferenceLanyardTemplate(),
+  createVIPLanyardTemplate()
+];
