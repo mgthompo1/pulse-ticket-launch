@@ -85,6 +85,12 @@ export const CONFIG = {
       type: 'payment_summary'
     },
     {
+      type: 'ticket_list',
+      showQRCodes: true,
+      showWalletButton: true,
+      title: 'Your Tickets'
+    },
+    {
       type: 'divider'
     },
     {
