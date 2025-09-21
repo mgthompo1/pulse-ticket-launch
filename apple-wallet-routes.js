@@ -48,8 +48,8 @@ export function addAppleWalletRoutes(app) {
 
         console.log('🔧 Processing certificate with node-forge...');
 
-        // Import node-forge using createRequire for ES module compatibility
-        const forge = require('node-forge');
+        // Import node-forge using createRequire, avoiding problematic log module
+        const forge = require('node-forge/lib/forge');
 
         // Extract certificate and private key from P12 using node-forge
         const p12Der = forge.util.decode64(cert);
