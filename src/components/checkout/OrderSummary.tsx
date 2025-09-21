@@ -17,6 +17,7 @@ interface OrderSummaryProps {
   currentStep?: string;
   customerInfo?: CustomerInfo | null;
   onUpdateTicketQuantity?: (ticketTypeId: string, quantity: number) => void;
+  onUpdateMerchandiseQuantity?: (index: number, quantity: number) => void;
   onBack?: () => void;
   theme: Theme;
 }
@@ -28,6 +29,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   currentStep,
   customerInfo,
   onUpdateTicketQuantity,
+  onUpdateMerchandiseQuantity,
   onBack,
   theme
 }) => {
@@ -265,31 +267,76 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           <div className="space-y-3">
             <h4 className="font-medium text-sm" style={{ color: theme.headerTextColor }}>Merchandise</h4>
             {merchandiseCart.map((item, index) => (
-              <div key={index} className="flex justify-between items-start">
-                <div className="flex-1">
-                                      <p className="font-medium text-sm" style={{ color: theme.bodyTextColor }}>{item.merchandise.name}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="secondary" className="text-xs">
-                      Qty: {item.quantity}
-                    </Badge>
-                    {item.selectedSize && (
-                      <Badge variant="outline" className="text-xs">
-                        {item.selectedSize}
-                      </Badge>
-                    )}
-                    {item.selectedColor && (
-                      <Badge variant="outline" className="text-xs">
-                        {item.selectedColor}
-                      </Badge>
+              <div key={index} className="space-y-2">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <p className="font-medium text-sm" style={{ color: theme.bodyTextColor }}>{item.merchandise.name}</p>
+                    <span className="text-xs text-muted-foreground" style={{ color: theme.bodyTextColor }}>
+                      ${item.merchandise.price.toFixed(2)} each
+                    </span>
+                    {/* Size and Color Options */}
+                    {(item.selectedSize || item.selectedColor) && (
+                      <div className="flex items-center gap-2 mt-1">
+                        {item.selectedSize && (
+                          <Badge variant="outline" className="text-xs">
+                            {item.selectedSize}
+                          </Badge>
+                        )}
+                        {item.selectedColor && (
+                          <Badge variant="outline" className="text-xs">
+                            {item.selectedColor}
+                          </Badge>
+                        )}
+                      </div>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground" style={{ color: theme.bodyTextColor }}>
-                    ${item.merchandise.price.toFixed(2)} each
-                  </span>
+                  <p className="font-medium text-sm" style={{ color: theme.bodyTextColor }}>
+                    ${(item.merchandise.price * item.quantity).toFixed(2)}
+                  </p>
                 </div>
-                <p className="font-medium text-sm" style={{ color: theme.bodyTextColor }}>
-                  ${(item.merchandise.price * item.quantity).toFixed(2)}
-                </p>
+
+                {/* Quantity Controls - Only show if onUpdateMerchandiseQuantity is provided */}
+                {onUpdateMerchandiseQuantity && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onUpdateMerchandiseQuantity(index, Math.max(0, item.quantity - 1))}
+                        disabled={item.quantity <= 1}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <Badge variant="secondary" className="text-xs min-w-[3rem] text-center">
+                        Qty: {item.quantity}
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onUpdateMerchandiseQuantity(index, item.quantity + 1)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onUpdateMerchandiseQuantity(index, 0)}
+                      className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+
+                {/* Static quantity display when no update function */}
+                {!onUpdateMerchandiseQuantity && (
+                  <Badge variant="secondary" className="text-xs">
+                    Qty: {item.quantity}
+                  </Badge>
+                )}
               </div>
             ))}
           </div>

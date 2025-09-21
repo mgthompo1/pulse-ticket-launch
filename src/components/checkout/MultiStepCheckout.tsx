@@ -105,9 +105,21 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
       if (quantity === 0) {
         return prev.filter(item => item.id !== ticketTypeId);
       }
-      
+
       return prev.map(item =>
         item.id === ticketTypeId ? { ...item, quantity } : item
+      );
+    });
+  };
+
+  const updateMerchandiseQuantity = (index: number, quantity: number) => {
+    setMerchandiseCart(prev => {
+      if (quantity === 0) {
+        return prev.filter((_, i) => i !== index);
+      }
+
+      return prev.map((item, i) =>
+        i === index ? { ...item, quantity } : item
       );
     });
   };
@@ -411,6 +423,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
               currentStep={currentStep}
               customerInfo={customerInfo}
               onUpdateTicketQuantity={updateTicketQuantity}
+              onUpdateMerchandiseQuantity={updateMerchandiseQuantity}
               onBack={prevStep}
               theme={theme}
             />

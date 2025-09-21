@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Minus, ShoppingCart } from 'lucide-react';
+import { Plus, ShoppingCart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Theme } from '@/types/theme';
@@ -81,11 +80,10 @@ const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCa
     }
   };
 
-  const addToCart = (item: MerchandiseItem, size?: string, color?: string) => {
-    const existingItem = cart.find(cartItem => 
-      cartItem.merchandise.id === item.id && 
-      cartItem.selectedSize === size && 
-      cartItem.selectedColor === color
+  const addToCart = (item: MerchandiseItem) => {
+    // For now, add without size/color options (can be enhanced later)
+    const existingItem = cart.find(cartItem =>
+      cartItem.merchandise.id === item.id
     );
 
     if (existingItem) {
@@ -95,11 +93,9 @@ const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCa
           : cartItem
       ));
     } else {
-      setCart([...cart, { 
-        merchandise: item, 
-        quantity: 1, 
-        selectedSize: size, 
-        selectedColor: color 
+      setCart([...cart, {
+        merchandise: item,
+        quantity: 1
       }]);
     }
 
@@ -119,177 +115,63 @@ const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCa
   }
 
   return (
-    <Card className="animate-in fade-in-0" style={{ backgroundColor: theme?.cardBackgroundColor, border: theme?.borderEnabled ? `1px solid ${theme?.borderColor}` : undefined }}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2" style={{ color: theme?.headerTextColor || '#111827' }}>
-          <ShoppingCart className="h-5 w-5" />
-          Event Merchandise
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {merchandise.length === 0 ? (
-          <div className="text-center py-8">
-            <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">No merchandise available for this event.</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {merchandise.map((item) => (
-              <div 
-                key={item.id} 
-                className="border rounded-lg p-4 hover:shadow-md transition-all duration-200 hover-lift animate-in fade-in-0"
-                style={{ backgroundColor: theme?.cardBackgroundColor, border: theme?.borderEnabled ? `1px solid ${theme?.borderColor}` : undefined }}
-              >
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                  <div className="flex gap-4 flex-1">
-                    {item.image_url && (
-                      <img
-                        src={item.image_url}
-                        alt={item.name}
-                        className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
-                      />
-                    )}
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{item.name}</h3>
-                      {item.description && (
-                        <p className="text-muted-foreground text-sm mt-1">{item.description}</p>
-                      )}
-                      <div className="text-lg font-bold text-neutral-900 mt-2">${item.price}</div>
-                      <div className="flex items-center gap-2 mt-2">
-                        <Badge variant="outline" className="text-xs">
-                          {item.stock_quantity} in stock
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs capitalize">
-                          {item.category}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <MerchandiseCardControls
-                    item={item}
-                    onAddToCart={addToCart}
-                    theme={theme}
-                  />
+    <div className="space-y-4">
+      {merchandise.map((item) => {
+        const isAvailable = item.stock_quantity > 0;
+
+        return (
+          <Card
+            key={item.id}
+            className={!isAvailable ? 'opacity-50' : ''}
+            style={{ backgroundColor: theme?.cardBackgroundColor, border: theme?.borderEnabled ? `1px solid ${theme?.borderColor}` : undefined }}
+          >
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-lg" style={{ color: theme?.headerTextColor || '#111827' }}>{item.name}</CardTitle>
+                  {item.description && (
+                    <CardDescription className="mt-1" style={{ color: theme?.bodyTextColor }}>
+                      {item.description}
+                    </CardDescription>
+                  )}
+                </div>
+                <div className="text-right">
+                  <div className="text-xl font-bold" style={{ color: theme?.headerTextColor || '#111827' }}>${item.price}</div>
+                  <Badge variant={isAvailable ? "secondary" : "secondary"}>
+                    {isAvailable
+                      ? `${item.stock_quantity} available`
+                      : 'Out of stock'
+                    }
+                  </Badge>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+            </CardHeader>
 
-  );
-};
-
-interface MerchandiseCardControlsProps {
-  item: MerchandiseItem;
-  onAddToCart: (item: MerchandiseItem, size?: string, color?: string) => void;
-  theme?: Theme;
-}
-
-const MerchandiseCardControls: React.FC<MerchandiseCardControlsProps> = ({ item, onAddToCart, theme }) => {
-  const [selectedSize, setSelectedSize] = useState<string>('');
-  const [selectedColor, setSelectedColor] = useState<string>('');
-  const [quantity, setQuantity] = useState(0);
-
-  const canAddToCart = () => {
-    const needsSize = item.size_options && item.size_options.length > 0;
-    const needsColor = item.color_options && item.color_options.length > 0;
-    
-    if (needsSize && !selectedSize) return false;
-    if (needsColor && !selectedColor) return false;
-    
-    return true;
-  };
-
-  const handleAddToCart = () => {
-    if (canAddToCart() && quantity > 0) {
-      for (let i = 0; i < quantity; i++) {
-        onAddToCart(item, selectedSize || undefined, selectedColor || undefined);
-      }
-      setQuantity(0);
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-3 sm:min-w-[200px]">
-      {/* Size Selection */}
-      {item.size_options && item.size_options.length > 0 && (
-        <div>
-          <label className="text-sm font-medium">Size:</label>
-          <Select value={selectedSize} onValueChange={setSelectedSize}>
-            <SelectTrigger className="mt-1 h-8" style={{ backgroundColor: theme?.inputBackgroundColor, border: theme?.borderEnabled ? `1px solid ${theme?.borderColor}` : undefined }}>
-              <SelectValue placeholder="Select size" />
-            </SelectTrigger>
-            <SelectContent>
-              {item.size_options.map((size) => (
-                <SelectItem key={size} value={size}>
-                  {size}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {/* Color Selection */}
-      {item.color_options && item.color_options.length > 0 && (
-        <div>
-          <label className="text-sm font-medium">Color:</label>
-          <Select value={selectedColor} onValueChange={setSelectedColor}>
-            <SelectTrigger className="mt-1 h-8" style={{ backgroundColor: theme?.inputBackgroundColor, border: theme?.borderEnabled ? `1px solid ${theme?.borderColor}` : undefined }}>
-              <SelectValue placeholder="Select color" />
-            </SelectTrigger>
-            <SelectContent>
-              {item.color_options.map((color) => (
-                <SelectItem key={color} value={color}>
-                  {color}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {/* Quantity Controls */}
-      <div className="flex items-center gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setQuantity(Math.max(0, quantity - 1))}
-          disabled={quantity <= 0}
-          className="h-8 w-8 p-0"
-        >
-          <Minus className="h-3 w-3" />
-        </Button>
-        <span className="w-8 text-center text-sm font-medium">{quantity}</span>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setQuantity(Math.min(item.stock_quantity, quantity + 1))}
-          disabled={quantity >= item.stock_quantity}
-          className="h-8 w-8 p-0"
-        >
-          <Plus className="h-3 w-3" />
-        </Button>
-      </div>
-
-      {/* Add to Cart Button */}
-      {quantity > 0 && (
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={handleAddToCart}
-          disabled={!canAddToCart() || item.stock_quantity === 0}
-          className="w-full border-0"
-          style={{ backgroundColor: theme?.primaryColor, color: theme?.buttonTextColor }}
-        >
-          Add {quantity} to Cart
-        </Button>
-      )}
+            {isAvailable && (
+              <CardContent>
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => addToCart(item)}
+                    variant="secondary"
+                    className="border-0"
+                    disabled={item.stock_quantity <= 0}
+                    style={{
+                      backgroundColor: theme?.primaryColor,
+                      color: theme?.buttonTextColor
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add to Cart
+                  </Button>
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        );
+      })}
     </div>
   );
 };
+
 
 export default MerchandiseSelector;

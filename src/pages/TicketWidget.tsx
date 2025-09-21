@@ -632,6 +632,23 @@ const TicketWidget = () => {
     }
   };
 
+  // Merchandise cart management functions
+  const removeMerchandiseFromCart = (index: number) => {
+    setMerchandiseCart(prevCart => prevCart.filter((_, i) => i !== index));
+  };
+
+  const updateMerchandiseQuantity = (index: number, quantity: number) => {
+    if (quantity <= 0) {
+      removeMerchandiseFromCart(index);
+    } else {
+      setMerchandiseCart(prevCart =>
+        prevCart.map((item, i) =>
+          i === index ? { ...item, quantity } : item
+        )
+      );
+    }
+  };
+
   const handleSeatsSelected = (seats: string[]) => {
     if (pendingSeatSelection) {
       const newCartItem = {
@@ -1942,10 +1959,31 @@ const TicketWidget = () => {
                             </p>
                           </div>
                           <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updateMerchandiseQuantity(index, item.quantity - 1)}
+                              className="h-8 w-8 p-0 hover-scale"
+                              style={{
+                                borderColor: primaryColor,
+                                color: primaryColor
+                              }}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
                             <span className="w-8 text-center font-medium" style={{ color: headerTextColor }}>{item.quantity}</span>
-                            <span className="text-sm font-medium" style={{ color: headerTextColor }}>
-                              ${(item.merchandise.price * item.quantity).toFixed(2)}
-                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => updateMerchandiseQuantity(index, item.quantity + 1)}
+                              className="h-8 w-8 p-0 hover-scale"
+                              style={{
+                                borderColor: primaryColor,
+                                color: primaryColor
+                              }}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
                           </div>
                         </div>
                       ))}
