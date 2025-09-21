@@ -493,7 +493,7 @@ serve(async function(req) {
               }
             }
           }
-        };
+        } as any;
       } else {
         // Debug: Show what tickets actually exist
         console.log('Ticket not found. Checking available tickets...');
@@ -587,7 +587,7 @@ serve(async function(req) {
     const pass = {
       formatVersion: 1,
       passTypeIdentifier: passTypeId,
-      serialNumber: ticket.ticket_code,
+      serialNumber: ticket?.ticket_code || 'unknown',
       teamIdentifier: teamId,
       organizationName: organization?.name || "TicketFlo",
       description: `${event.name} - Event Ticket`,
@@ -654,7 +654,7 @@ serve(async function(req) {
           {
             key: "ticket-code",
             label: "Ticket Code",
-            value: ticket.ticket_code
+            value: ticket?.ticket_code || 'unknown'
           },
           {
             key: "ticket-holder",
@@ -690,7 +690,7 @@ serve(async function(req) {
       },
       barcodes: [
         {
-          message: ticket.ticket_code,
+          message: ticket?.ticket_code || 'unknown',
           format: "PKBarcodeFormatQR",
           messageEncoding: "iso-8859-1"
         }
