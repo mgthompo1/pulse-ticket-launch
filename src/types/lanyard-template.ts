@@ -136,7 +136,7 @@ export interface LanyardPreviewData {
 }
 
 export const createDefaultLanyardTemplate = (): Partial<LanyardTemplate> => ({
-  name: "Default Lanyard",
+  name: "Professional Lanyard",
   dimensions: {
     width: 85,
     height: 120,
@@ -147,76 +147,106 @@ export const createDefaultLanyardTemplate = (): Partial<LanyardTemplate> => ({
     pattern: 'none'
   },
   blocks: [
-    {
-      id: 'org-logo',
-      type: 'organization_logo',
-      position: { x: 10, y: 10 },
-      size: { width: 65, height: 20 },
-      style: {
-        textAlign: 'center',
-        backgroundColor: 'transparent'
-      }
-    } as OrganizationLogoBlock,
-    {
-      id: 'event-title',
-      type: 'event_title',
-      position: { x: 10, y: 35 },
-      size: { width: 65, height: 15 },
-      style: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        color: '#000000'
-      }
-    } as EventTitleBlock,
-    {
-      id: 'attendee-name',
-      type: 'attendee_name',
-      position: { x: 10, y: 55 },
-      size: { width: 65, height: 20 },
-      style: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        color: '#2563eb',
-        backgroundColor: '#f1f5f9',
-        borderRadius: 4,
-        padding: 8
-      }
-    } as AttendeeNameBlock,
-    {
-      id: 'ticket-type',
-      type: 'ticket_type',
-      position: { x: 10, y: 80 },
-      size: { width: 35, height: 12 },
-      style: {
-        fontSize: 12,
-        textAlign: 'center',
-        color: '#64748b'
-      }
-    } as TicketTypeBlock,
+    // QR Code at the top (professional standard)
     {
       id: 'qr-code',
       type: 'qr_code',
-      position: { x: 50, y: 75 },
-      size: { width: 25, height: 25 },
+      position: { x: 32.5, y: 8 },
+      size: { width: 20, height: 20 },
       style: {
         backgroundColor: 'transparent'
       },
-      qrSize: 100,
+      qrSize: 120,
       includeTicketCode: true
     } as QrCodeBlock,
+
+    // Header divider line under QR
+    {
+      id: 'header-divider',
+      type: 'divider_line',
+      position: { x: 15, y: 32 },
+      size: { width: 55, height: 1 },
+      style: {
+        backgroundColor: '#e2e8f0',
+        borderRadius: 0
+      },
+      lineThickness: 1,
+      lineColor: '#d1d5db'
+    } as DividerLineBlock,
+
+    // Attendee name (prominent)
+    {
+      id: 'attendee-name',
+      type: 'attendee_name',
+      position: { x: 8, y: 38 },
+      size: { width: 69, height: 18 },
+      style: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        color: '#1f2937',
+        backgroundColor: 'transparent',
+        padding: 4
+      }
+    } as AttendeeNameBlock,
+
+    // Ticket type/title (professional subtitle)
+    {
+      id: 'ticket-type',
+      type: 'ticket_type',
+      position: { x: 8, y: 58 },
+      size: { width: 69, height: 12 },
+      style: {
+        fontSize: 11,
+        fontWeight: '500',
+        textAlign: 'center',
+        color: '#6b7280',
+        backgroundColor: '#f9fafb',
+        borderRadius: 2,
+        padding: 3
+      },
+      customPrefix: ''
+    } as TicketTypeBlock,
+
+    // Event title
+    {
+      id: 'event-title',
+      type: 'event_title',
+      position: { x: 8, y: 75 },
+      size: { width: 69, height: 16 },
+      style: {
+        fontSize: 13,
+        fontWeight: '600',
+        textAlign: 'center',
+        color: '#111827'
+      }
+    } as EventTitleBlock,
+
+    // Event date and time
     {
       id: 'event-date',
       type: 'event_date',
-      position: { x: 10, y: 105 },
-      size: { width: 65, height: 10 },
+      position: { x: 8, y: 94 },
+      size: { width: 69, height: 10 },
       style: {
-        fontSize: 10,
+        fontSize: 9,
         textAlign: 'center',
-        color: '#64748b'
+        color: '#6b7280'
       },
       dateFormat: 'MMM dd, yyyy'
-    } as EventDateBlock
+    } as EventDateBlock,
+
+    // Organization logo at bottom
+    {
+      id: 'org-logo',
+      type: 'organization_logo',
+      position: { x: 25, y: 106 },
+      size: { width: 35, height: 12 },
+      style: {
+        textAlign: 'center',
+        backgroundColor: 'transparent'
+      },
+      fallbackText: ''
+    } as OrganizationLogoBlock
   ]
 });
