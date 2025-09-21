@@ -1,6 +1,9 @@
 # Use Node.js 18 LTS Alpine for smaller image size
 FROM node:18-alpine
 
+# Install OpenSSL for Apple Wallet signing
+RUN apk add --no-cache openssl openssl-dev
+
 # Set working directory
 WORKDIR /app
 
@@ -16,8 +19,9 @@ COPY . .
 # Build the application
 RUN npm run build:ssr
 
-# Remove dev dependencies to reduce image size
+# Remove dev dependencies to reduce image size (keep node-forge for Apple Wallet signing)
 RUN npm prune --production
+RUN npm install node-forge --save
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
