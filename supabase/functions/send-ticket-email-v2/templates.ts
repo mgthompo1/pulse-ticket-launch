@@ -286,7 +286,7 @@ export class TemplateService {
                             <!--[if mso]>
                             <a href="${walletUrl}" target="_blank">
                               <img
-                                src="${CONFIG.DOMAIN}/images/add-to-apple-wallet.png"
+                                src="${CONFIG.SUPABASE_URL}/storage/v1/object/public/event-logos/add-to-apple-wallet.png"
                                 width="110" height="35"
                                 alt="Add to Apple Wallet"
                                 style="display:block;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;">
@@ -296,9 +296,9 @@ export class TemplateService {
                             <a href="${walletUrl}" target="_blank"
                                style="text-decoration:none;display:inline-block;line-height:0;">
                               <img
-                                src="${CONFIG.DOMAIN}/images/add-to-apple-wallet.png"
-                                srcset="${CONFIG.DOMAIN}/images/add-to-apple-wallet.png 1x,
-                                        ${CONFIG.DOMAIN}/images/add-to-apple-wallet@2x.png 2x"
+                                src="${CONFIG.SUPABASE_URL}/storage/v1/object/public/event-logos/add-to-apple-wallet.png"
+                                srcset="${CONFIG.SUPABASE_URL}/storage/v1/object/public/event-logos/add-to-apple-wallet.png 1x,
+                                        ${CONFIG.SUPABASE_URL}/storage/v1/object/public/event-logos/add-to-apple-wallet@2x.png 2x"
                                 width="110" height="35"
                                 alt="Add to Apple Wallet"
                                 style="display:block;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;">
@@ -356,7 +356,7 @@ export class TemplateService {
                             <!--[if mso]>
                             <a href="${walletUrl}" target="_blank">
                               <img
-                                src="${CONFIG.DOMAIN}/images/add-to-apple-wallet.png"
+                                src="${CONFIG.SUPABASE_URL}/storage/v1/object/public/event-logos/add-to-apple-wallet.png"
                                 width="110" height="35"
                                 alt="Add to Apple Wallet"
                                 style="display:block;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;">
@@ -366,9 +366,9 @@ export class TemplateService {
                             <a href="${walletUrl}" target="_blank"
                                style="text-decoration:none;display:inline-block;line-height:0;">
                               <img
-                                src="${CONFIG.DOMAIN}/images/add-to-apple-wallet.png"
-                                srcset="${CONFIG.DOMAIN}/images/add-to-apple-wallet.png 1x,
-                                        ${CONFIG.DOMAIN}/images/add-to-apple-wallet@2x.png 2x"
+                                src="${CONFIG.SUPABASE_URL}/storage/v1/object/public/event-logos/add-to-apple-wallet.png"
+                                srcset="${CONFIG.SUPABASE_URL}/storage/v1/object/public/event-logos/add-to-apple-wallet.png 1x,
+                                        ${CONFIG.SUPABASE_URL}/storage/v1/object/public/event-logos/add-to-apple-wallet@2x.png 2x"
                                 width="110" height="35"
                                 alt="Add to Apple Wallet"
                                 style="display:block;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;">
