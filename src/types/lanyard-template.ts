@@ -324,12 +324,12 @@ export const createMinimalistLanyardTemplate = (): Partial<LanyardTemplate> => (
       }
     } as EventTitleBlock,
 
-    // Clean QR code
+    // Clean QR code - fixed positioning
     {
       id: 'qr-code',
       type: 'qr_code',
-      position: { x: 35, y: 78 },
-      size: { width: 30, height: 20 },
+      position: { x: 35, y: 76 },
+      size: { width: 30, height: 18 },
       style: {
         backgroundColor: '#ffffff',
         borderRadius: 8,
@@ -445,12 +445,12 @@ export const createConferenceLanyardTemplate = (): Partial<LanyardTemplate> => (
       showTimeZone: false
     } as EventTimeBlock,
 
-    // QR code
+    // QR code - fixed positioning
     {
       id: 'qr-code',
       type: 'qr_code',
-      position: { x: 35, y: 95 },
-      size: { width: 30, height: 20 },
+      position: { x: 35, y: 78 },
+      size: { width: 30, height: 18 },
       style: {
         backgroundColor: 'transparent'
       },
@@ -545,12 +545,12 @@ export const createVIPLanyardTemplate = (): Partial<LanyardTemplate> => ({
       }
     } as EventTitleBlock,
 
-    // Premium QR with border
+    // Premium QR with border - fixed positioning
     {
       id: 'qr-code',
       type: 'qr_code',
-      position: { x: 30, y: 88 },
-      size: { width: 40, height: 20 },
+      position: { x: 30, y: 78 },
+      size: { width: 40, height: 18 },
       style: {
         backgroundColor: '#ffffff',
         borderRadius: 8,

@@ -108,8 +108,9 @@ serve(async (req) => {
             const qrData = block.includeTicketCode ?
               `${previewData.ticketCode}|${previewData.attendeeName}|${previewData.eventTitle}` :
               previewData.ticketCode;
-            // Generate QR code SVG using a simple implementation
-            return `<div style="width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; color: white; font-size: 8px;">QR: ${qrData}</div>`;
+            // Generate QR code using QR Server API (reliable external service)
+            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}&format=png&ecc=M&margin=10&qzone=0`;
+            return `<img src="${qrApiUrl}" alt="QR Code" style="width: 100%; height: 100%; object-fit: contain;" />`;
           default:
             return 'Block';
         }
@@ -139,9 +140,10 @@ serve(async (req) => {
       </div>`;
     };
 
-    // Generate the complete lanyard HTML
-    const width = (template?.dimensions?.width || 85) * 3 * 0.8; // Scale for print
-    const height = (template?.dimensions?.height || 120) * 3 * 0.8;
+    // Generate the complete lanyard HTML - matching preview scaling
+    const baseScale = 3;
+    const width = (template?.dimensions?.width || 85) * baseScale;
+    const height = (template?.dimensions?.height || 120) * baseScale;
 
     const printHTML = `
       <!DOCTYPE html>

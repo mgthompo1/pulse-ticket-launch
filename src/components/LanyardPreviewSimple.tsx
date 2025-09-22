@@ -122,17 +122,23 @@ export const LanyardPreviewSimple: React.FC<LanyardPreviewProps> = ({
             `${previewData?.ticketCode || 'TICKET-001'}|${previewData?.attendeeName || 'Attendee'}|${previewData?.eventTitle || 'Event'}` :
             previewData?.ticketCode || 'TICKET-001';
 
+          // Calculate the QR code size based on the container dimensions
+          const containerWidth = dimensions.width * baseScale * scale * (block.size.width / 100);
+          const containerHeight = dimensions.height * baseScale * scale * (block.size.height / 100);
+          const qrSize = Math.min(containerWidth, containerHeight) * 0.8; // 80% of container to account for padding
+
           return (
             <QRCodeSVG
               value={qrData}
-              size={Math.min(parseInt(blockStyle.width as string) || 80, parseInt(blockStyle.height as string) || 80)}
+              size={qrSize}
               level="M"
               includeMargin={false}
               style={{
                 width: '100%',
                 height: '100%',
                 maxWidth: '100%',
-                maxHeight: '100%'
+                maxHeight: '100%',
+                objectFit: 'contain'
               }}
             />
           );
