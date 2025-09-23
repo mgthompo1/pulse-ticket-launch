@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { CreditCard, Users, CheckCircle, Printer, Plus, ShoppingCart, BarChart3, TrendingUp, DollarSign, Package, Menu, Search, Home, Tag, Eye, UserCheck } from "lucide-react";
 import { LanyardPreviewData, LanyardTemplate, createDefaultLanyardTemplate, getAllLanyardTemplates } from "@/types/lanyard-template";
@@ -52,6 +53,7 @@ const TicketFloLIVE = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
   const [guests, setGuests] = useState<GuestStatus[]>([]);
   const [concessionItems, setConcessionItems] = useState<ConcessionItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -123,9 +125,15 @@ const [analytics, setAnalytics] = useState<{
       loadAnalytics();
       loadOrganizationConfig();
       loadEventData();
-      loadCurrentLanyardTemplate();
     }
   }, [eventId]);
+
+  // Load lanyard template when both eventId and user are available
+  useEffect(() => {
+    if (eventId && user && !authLoading) {
+      loadCurrentLanyardTemplate();
+    }
+  }, [eventId, user, authLoading]);
 
   const loadEventData = async () => {
     if (!eventId) return;
@@ -153,6 +161,13 @@ const [analytics, setAnalytics] = useState<{
 
   const loadCurrentLanyardTemplate = async () => {
     if (!eventId) return;
+
+    // Only load lanyard templates if user is authenticated
+    if (!user) {
+      console.log("User not authenticated, skipping lanyard template loading");
+      return;
+    }
+
     try {
       const { data: event, error: eventError } = await supabase
         .from("events")
@@ -487,6 +502,15 @@ const handleCreateConcessionItem = async () => {
 
   // Save template to database
   const saveTemplateToDatabase = async (template: LanyardTemplate) => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to save template changes",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('lanyard_templates')
@@ -893,7 +917,7 @@ const handleCreateConcessionItem = async () => {
     { id: "pos", icon: CreditCard, label: "Point of Sale" },
     { id: "guests", icon: Users, label: "Guest Status" },
     { id: "concessions", icon: Package, label: "Manage Items" },
-    { id: "lanyards", icon: Tag, label: "Lanyard Config" },
+    ...(user ? [{ id: "lanyards", icon: Tag, label: "Lanyard Config" }] : []),
     { id: "analytics", icon: BarChart3, label: "Analytics" },
   ];
 
