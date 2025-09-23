@@ -57,17 +57,17 @@ serve(async (req) => {
         top: ${block.position.y}%;
         width: ${block.size.width}%;
         height: ${block.size.height}%;
-        font-size: ${(block.style.fontSize || 12) * 3}px;
+        font-size: ${(block.style.fontSize || 12)}px;
         font-weight: ${block.style.fontWeight || 'normal'};
         color: ${block.style.color || '#000000'};
         text-align: ${block.style.textAlign || 'center'};
         background-color: ${block.style.backgroundColor === 'transparent' ? 'transparent' : (block.style.backgroundColor || 'transparent')};
-        border-radius: ${(block.style.borderRadius || 0) * 3}px;
-        padding: ${(block.style.padding || 4) * 3}px;
+        border-radius: ${(block.style.borderRadius || 0)}px;
+        padding: ${(block.style.padding || 4)}px;
         display: flex;
         align-items: center;
         justify-content: ${block.style.textAlign === 'left' ? 'flex-start' : block.style.textAlign === 'right' ? 'flex-end' : 'center'};
-        overflow: hidden;
+        overflow: visible;
         box-sizing: border-box;
         font-family: 'Inter', 'Manrope', sans-serif;
         line-height: 1.2;
@@ -103,7 +103,7 @@ serve(async (req) => {
             }
             return block.accessText || previewData.specialAccess || 'SPECIAL ACCESS';
           case 'custom_text':
-            return block.text || 'Custom Text';
+            return block.text || '';
           case 'qr_code':
             const qrData = block.includeTicketCode ?
               `${previewData.ticketCode}|${previewData.attendeeName}|${previewData.eventTitle}` :
@@ -123,14 +123,15 @@ serve(async (req) => {
           left: ${block.position.x}%;
           top: ${block.position.y}%;
           width: ${block.size.width}%;
-          height: ${(block.lineThickness || 1) * 3}px;
+          height: ${(block.lineThickness || 1)}px;
           background-color: ${block.lineColor || '#e2e8f0'};
-          border-radius: ${(block.style.borderRadius || 0) * 3}px;
+          border-radius: ${(block.style.borderRadius || 0)}px;
         "></div>`;
       }
 
       const content = getBlockContent();
-      if (!content) return '';
+      // Always render custom_text blocks even when empty (for background styling)
+      if (!content && block.type !== 'custom_text') return '';
 
       return `<div style="${blockStyle}">
         ${typeof content === 'string' && !content.includes('<img') && !content.includes('<div')
@@ -173,25 +174,10 @@ serve(async (req) => {
           background-repeat: no-repeat;
           border: 2px solid #e2e8f0;
           border-radius: 12px;
-          overflow: hidden;
+          overflow: visible;
           box-shadow: 0 4px 16px rgba(0,0,0,0.1);
           font-family: 'Inter', 'Manrope', sans-serif;
         ">
-          <!-- Lanyard hole -->
-          <div style="
-            position: absolute;
-            top: 8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background-color: #f0f0f0;
-            border: 2px solid #ddd;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
-            z-index: 10;
-          "></div>
-
           <!-- Template blocks -->
           ${template?.blocks?.map(generateBlockHTML).join('') || ''}
         </div>

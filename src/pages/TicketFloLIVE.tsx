@@ -1705,11 +1705,11 @@ const handleCreateConcessionItem = async () => {
                       </Select>
 
                       {/* Custom Text Configuration */}
-                      {currentLanyardTemplate && currentLanyardTemplate.blocks?.some(block => block.type === 'custom_text' && (block as any).text) && (
+                      {currentLanyardTemplate && currentLanyardTemplate.blocks?.some(block => block.type === 'custom_text') && (
                         <div className="pt-2 border-t space-y-2">
                           <Label className="text-xs font-medium">Custom Text</Label>
                           {currentLanyardTemplate.blocks
-                            .filter(block => block.type === 'custom_text' && (block as any).text)
+                            .filter(block => block.type === 'custom_text')
                             .map((block, index) => (
                               <div key={block.id} className="space-y-1">
                                 <Label className="text-xs text-gray-600">
@@ -1728,18 +1728,25 @@ const handleCreateConcessionItem = async () => {
                                     };
 
                                     setCurrentLanyardTemplate(updatedTemplate);
-
-                                    // Auto-save custom text changes with debounce
-                                    clearTimeout((window as any).customTextSaveTimeout);
-                                    (window as any).customTextSaveTimeout = setTimeout(async () => {
-                                      await saveTemplateToDatabase(updatedTemplate);
-                                    }, 1000); // Save 1 second after user stops typing
                                   }}
                                   placeholder="Enter custom text..."
                                   className="text-xs"
                                 />
                               </div>
                             ))}
+                          <div className="pt-3 mt-3 border-t">
+                            <Button
+                              onClick={async () => {
+                                if (currentLanyardTemplate) {
+                                  await saveTemplateToDatabase(currentLanyardTemplate);
+                                }
+                              }}
+                              className="w-full"
+                              size="sm"
+                            >
+                              Save Template Changes
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>

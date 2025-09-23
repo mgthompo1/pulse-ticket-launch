@@ -114,7 +114,7 @@ export const LanyardPreviewSimple: React.FC<LanyardPreviewProps> = ({
           return accessBlock.accessText || previewData?.specialAccess || 'SPECIAL ACCESS';
 
         case 'custom_text':
-          return (block as any).text || 'Custom Text';
+          return (block as any).text || '';
 
         case 'qr_code':
           const qrBlock = block as any;
@@ -164,7 +164,8 @@ export const LanyardPreviewSimple: React.FC<LanyardPreviewProps> = ({
     }
 
     const content = getBlockContent();
-    if (!content) return null;
+    // Always render custom_text blocks even when empty (for background styling)
+    if (!content && block.type !== 'custom_text') return null;
 
     return (
       <div key={block.id} style={blockStyle}>
@@ -195,30 +196,13 @@ export const LanyardPreviewSimple: React.FC<LanyardPreviewProps> = ({
     backgroundRepeat: 'no-repeat',
     border: '2px solid #e2e8f0',
     borderRadius: '12px',
-    overflow: 'hidden',
+    overflow: 'visible',
     boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
     fontFamily: '"Inter", "Manrope", sans-serif'
   };
 
   return (
     <div className={className} style={containerStyle}>
-      {/* Lanyard hole */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '8px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: '12px',
-          height: '12px',
-          borderRadius: '50%',
-          backgroundColor: '#f0f0f0',
-          border: '2px solid #ddd',
-          boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.2)',
-          zIndex: 10
-        }}
-      />
-
       {/* Render all blocks */}
       {blocks.map(renderBlock)}
     </div>

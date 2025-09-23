@@ -473,17 +473,22 @@ export const createVIPLanyardTemplate = (): Partial<LanyardTemplate> => ({
     pattern: 'none'
   },
   blocks: [
-    // Premium header
+    // Premium header bar
     {
       id: 'vip-header',
       type: 'custom_text',
       position: { x: 0, y: 0 },
       size: { width: 100, height: 12 },
       style: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        color: '#111827',
         backgroundColor: '#fbbf24',
-        borderRadius: 0
+        borderRadius: 0,
+        padding: 4
       },
-      text: ''
+      text: 'PREMIUM EVENT'
     } as CustomTextBlock,
 
     // VIP text
@@ -515,14 +520,28 @@ export const createVIPLanyardTemplate = (): Partial<LanyardTemplate> => ({
       fallbackText: ''
     } as OrganizationLogoBlock,
 
-    // Attendee name - gold on black
+    // Event title - moved higher up
+    {
+      id: 'event-title',
+      type: 'event_title',
+      position: { x: 8, y: 42 },
+      size: { width: 84, height: 12 },
+      style: {
+        fontSize: 13,
+        fontWeight: '600',
+        textAlign: 'center',
+        color: '#ffffff'
+      }
+    } as EventTitleBlock,
+
+    // Attendee name - moved higher up
     {
       id: 'attendee-name',
       type: 'attendee_name',
-      position: { x: 8, y: 48 },
-      size: { width: 84, height: 18 },
+      position: { x: 8, y: 56 },
+      size: { width: 84, height: 15 },
       style: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: 'bold',
         textAlign: 'center',
         color: '#fbbf24',
@@ -531,46 +550,37 @@ export const createVIPLanyardTemplate = (): Partial<LanyardTemplate> => ({
       }
     } as AttendeeNameBlock,
 
-    // Event title
-    {
-      id: 'event-title',
-      type: 'event_title',
-      position: { x: 8, y: 70 },
-      size: { width: 84, height: 14 },
-      style: {
-        fontSize: 14,
-        fontWeight: '600',
-        textAlign: 'center',
-        color: '#ffffff'
-      }
-    } as EventTitleBlock,
-
-    // Premium QR with border - fixed positioning
+    // Premium QR with border - positioned at bottom before footer
     {
       id: 'qr-code',
       type: 'qr_code',
-      position: { x: 30, y: 78 },
-      size: { width: 40, height: 18 },
+      position: { x: 30, y: 72 },
+      size: { width: 40, height: 12 },
       style: {
         backgroundColor: '#ffffff',
-        borderRadius: 8,
-        padding: 6
+        borderRadius: 6,
+        padding: 3
       },
       qrSize: 120,
       includeTicketCode: true
     } as QrCodeBlock,
 
-    // Premium footer
+    // Premium footer - within bounds
     {
       id: 'premium-footer',
       type: 'custom_text',
-      position: { x: 0, y: 110 },
-      size: { width: 100, height: 10 },
+      position: { x: 0, y: 87 },
+      size: { width: 100, height: 8 },
       style: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        color: '#111827',
         backgroundColor: '#fbbf24',
-        borderRadius: 0
+        borderRadius: 0,
+        padding: 2
       },
-      text: ''
+      text: 'EXCLUSIVE ACCESS'
     } as CustomTextBlock
   ]
 });
