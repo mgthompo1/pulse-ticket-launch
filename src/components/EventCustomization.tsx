@@ -2147,51 +2147,6 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   Save Event Details
                 </Button>
 
-                <Button
-                  variant="destructive"
-                  onClick={async () => {
-                    const confirmed = window.confirm(
-                      "Are you sure you want to delete this event? This action cannot be undone and will delete all tickets, orders, and related data."
-                    );
-
-                    if (!confirmed) return;
-
-                    try {
-                      setLoading(true);
-
-                      // Delete the event (cascade deletes will handle related data)
-                      const { error } = await supabase
-                        .from("events")
-                        .delete()
-                        .eq("id", eventId);
-
-                      if (error) throw error;
-
-                      toast({
-                        title: "Event Deleted",
-                        description: "The event and all related data have been permanently deleted."
-                      });
-
-                      // Redirect to dashboard or events list
-                      if (onSave) onSave();
-
-                    } catch (error) {
-                      console.error("❌ Error deleting event:", error);
-                      toast({
-                        title: "Error",
-                        description: "Failed to delete event. Please try again.",
-                        variant: "destructive"
-                      });
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  className="w-full md:w-auto"
-                  disabled={loading}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Event
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -2625,6 +2580,66 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Delete Event Section */}
+          <Card className="border-destructive/20">
+            <CardHeader>
+              <CardTitle className="text-destructive flex items-center gap-2">
+                <Trash2 className="h-5 w-5" />
+                Danger Zone
+              </CardTitle>
+              <CardDescription>
+                Permanently delete this event and all associated data. This action cannot be undone.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  const confirmed = window.confirm(
+                    "Are you sure you want to delete this event? This action cannot be undone and will delete all tickets, orders, and related data."
+                  );
+
+                  if (!confirmed) return;
+
+                  try {
+                    setLoading(true);
+
+                    // Delete the event (cascade deletes will handle related data)
+                    const { error } = await supabase
+                      .from("events")
+                      .delete()
+                      .eq("id", eventId);
+
+                    if (error) throw error;
+
+                    toast({
+                      title: "Event Deleted",
+                      description: "The event and all related data have been permanently deleted."
+                    });
+
+                    // Redirect to dashboard or events list
+                    if (onSave) onSave();
+
+                  } catch (error) {
+                    console.error("❌ Error deleting event:", error);
+                    toast({
+                      title: "Error",
+                      description: "Failed to delete event. Please try again.",
+                      variant: "destructive"
+                    });
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                className="w-full md:w-auto"
+                disabled={loading}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Event
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
