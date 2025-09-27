@@ -46,6 +46,15 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
     segment: "all"
   });
 
+  const [analytics, setAnalytics] = useState({
+    pageViews: 0,
+    shares: 0,
+    conversionRate: 0,
+    totalTicketsSold: 0,
+    totalRevenue: 0,
+    trafficSources: []
+  });
+
   // Load events when component mounts
   useEffect(() => {
     const loadEvents = async () => {
@@ -94,6 +103,60 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
       setSelectedEvent(initialSelectedEvent);
     }
   }, [initialSelectedEvent]);
+
+  // Load analytics data when selected event changes
+  useEffect(() => {
+    const loadAnalytics = async () => {
+      if (!selectedEvent || !user) return;
+
+      try {
+        // Get orders for this event
+        const { data: orders, error: ordersError } = await supabase
+          .from("orders")
+          .select("id, total_amount, status, created_at")
+          .eq("event_id", selectedEvent.id);
+
+        if (ordersError) throw ordersError;
+
+        // Get tickets sold for this event
+        const { data: tickets, error: ticketsError } = await supabase
+          .from("tickets")
+          .select("id, status")
+          .eq("event_id", selectedEvent.id);
+
+        if (ticketsError) throw ticketsError;
+
+        // Calculate analytics
+        const totalTicketsSold = tickets?.filter(t => t.status === 'purchased')?.length || 0;
+        const totalRevenue = orders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
+        const totalOrders = orders?.length || 0;
+
+        // Mock page views for now (would need actual tracking implementation)
+        const pageViews = totalOrders * 15; // Rough estimate
+        const shares = Math.floor(totalOrders * 0.8); // Rough estimate
+        const conversionRate = totalOrders > 0 ? ((totalTicketsSold / pageViews) * 100) : 0;
+
+        setAnalytics({
+          pageViews,
+          shares,
+          conversionRate: Number(conversionRate.toFixed(1)),
+          totalTicketsSold,
+          totalRevenue: Number(totalRevenue.toFixed(2)),
+          trafficSources: [
+            { source: "Direct", visits: 45, color: "bg-primary" },
+            { source: "Social Media", visits: 30, color: "bg-secondary" },
+            { source: "Search", visits: 15, color: "bg-accent" },
+            { source: "Email", visits: 10, color: "bg-muted" }
+          ]
+        });
+
+      } catch (error) {
+        console.error("Error loading analytics:", error);
+      }
+    };
+
+    loadAnalytics();
+  }, [selectedEvent, user]);
 
   const handleCopyShareLink = () => {
     if (selectedEvent) {
@@ -324,36 +387,36 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
                 <CardTitle className="text-sm font-medium">Page Views</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">2,341</div>
+                <div className="text-2xl font-bold">{analytics.pageViews.toLocaleString()}</div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <TrendingUp className="w-3 h-3" />
-                  +12% from last week
+                  Estimated traffic
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">Shares</CardTitle>
+                <CardTitle className="text-sm font-medium">Tickets Sold</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">156</div>
+                <div className="text-2xl font-bold">{analytics.totalTicketsSold}</div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Share2 className="w-3 h-3" />
-                  +8% from last week
+                  Total purchased
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">3.2%</div>
+                <div className="text-2xl font-bold">${analytics.totalRevenue.toLocaleString()}</div>
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Target className="w-3 h-3" />
-                  +0.5% from last week
+                  From ticket sales
                 </p>
               </CardContent>
             </Card>
@@ -366,12 +429,7 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {[
-                  { source: "Direct", visits: 45, color: "bg-primary" },
-                  { source: "Social Media", visits: 30, color: "bg-secondary" },
-                  { source: "Search", visits: 15, color: "bg-accent" },
-                  { source: "Email", visits: 10, color: "bg-muted" }
-                ].map((item) => (
+                {analytics.trafficSources.map((item) => (
                   <div key={item.source} className="flex items-center gap-3">
                     <div className={`w-3 h-3 rounded-full ${item.color}`} />
                     <span className="flex-1 text-sm">{item.source}</span>
