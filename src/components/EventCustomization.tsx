@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog } from "lucide-react";
+import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone } from "lucide-react";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import MerchandiseManager from "@/components/MerchandiseManager";
@@ -56,6 +56,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showSeatMapDesigner, setShowSeatMapDesigner] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [organizationId, setOrganizationId] = useState<string>("");
   const [organizationData, setOrganizationData] = useState<{
     name: string;
@@ -108,7 +109,9 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       showOrgLogo: true,
       customCss: "",
       customHeaderText: "",
-      customFooterText: ""
+      customFooterText: "",
+      buttonText: "Get Tickets",
+      buttonTextType: "default" as 'default' | 'register' | 'buy' | 'donate' | 'buynow' | 'rsvp' | 'custom'
     },
     seatMaps: {
       enabled: false
@@ -772,6 +775,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
             <Users className="h-4 w-4" />
             Attendees
           </TabsTrigger>
+          <TabsTrigger value="preview" className="flex items-center gap-2">
+            <Eye className="h-4 w-4" />
+            Preview
+          </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Cog className="h-4 w-4" />
             Settings
@@ -990,72 +997,12 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 )}
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Layout className="h-5 w-5" />
-                  Layout
-                </CardTitle>
-                <CardDescription>Control what information to display</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="showEventImage">Show Event Image</Label>
-                  <Switch
-                    id="showEventImage"
-                    checked={widgetCustomization.layout.showEventImage}
-                    onCheckedChange={(checked) => updateWidgetCustomization(['layout', 'showEventImage'], checked)}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="showDescription">Show Description</Label>
-                  <Switch
-                    id="showDescription"
-                    checked={widgetCustomization.layout.showDescription}
-                    onCheckedChange={(checked) => updateWidgetCustomization(['layout', 'showDescription'], checked)}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="showVenue">Show Venue</Label>
-                  <Switch
-                    id="showVenue"
-                    checked={widgetCustomization.layout.showVenue}
-                    onCheckedChange={(checked) => updateWidgetCustomization(['layout', 'showVenue'], checked)}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="showCapacity">Show Capacity</Label>
-                  <Switch
-                    id="showCapacity"
-                    checked={widgetCustomization.layout.showCapacity}
-                    onCheckedChange={(checked) => updateWidgetCustomization(['layout', 'showCapacity'], checked)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ticketLayout">Ticket Layout</Label>
-                  <Select
-                    value={widgetCustomization.layout.ticketLayout}
-                    onValueChange={(value) => updateWidgetCustomization(['layout', 'ticketLayout'], value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="list">List View</SelectItem>
-                      <SelectItem value="grid">Grid View</SelectItem>
-                      <SelectItem value="compact">Compact View</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           <Card>
             <CardHeader>
               <CardTitle>Custom Branding</CardTitle>
-              <CardDescription>Add custom text and styling</CardDescription>
+              <CardDescription>Add organization logo and custom header text</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
@@ -1075,24 +1022,53 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   placeholder="Welcome to our event!"
                 />
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="customFooterText">Custom Footer Text</Label>
-                <Input
-                  id="customFooterText"
-                  value={widgetCustomization.branding.customFooterText}
-                  onChange={(e) => updateWidgetCustomization(['branding', 'customFooterText'], e.target.value)}
-                  placeholder="Contact us for questions"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="customCss">Custom CSS</Label>
-                <Textarea
-                  id="customCss"
-                  value={widgetCustomization.branding.customCss}
-                  onChange={(e) => updateWidgetCustomization(['branding', 'customCss'], e.target.value)}
-                  placeholder=".custom-button { background: linear-gradient(...) }"
-                  rows={4}
-                />
+                <Label htmlFor="buttonTextType">Ticket Button Text</Label>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Primary button text for your event page
+                </p>
+                <Select
+                  value={widgetCustomization.branding.buttonTextType}
+                  onValueChange={(value) => {
+                    updateWidgetCustomization(['branding', 'buttonTextType'], value);
+                    // Update buttonText based on selection
+                    const textMap: Record<string, string> = {
+                      'default': 'Get Tickets',
+                      'register': 'Register',
+                      'buy': 'Buy Tickets',
+                      'donate': 'Donate',
+                      'buynow': 'Buy Now',
+                      'rsvp': 'RSVP'
+                    };
+                    if (value !== 'custom') {
+                      updateWidgetCustomization(['branding', 'buttonText'], textMap[value] || 'Get Tickets');
+                    }
+                  }}
+                >
+                  <SelectTrigger id="buttonTextType">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">Get Tickets (Default)</SelectItem>
+                    <SelectItem value="register">Register</SelectItem>
+                    <SelectItem value="buy">Buy Tickets</SelectItem>
+                    <SelectItem value="donate">Donate</SelectItem>
+                    <SelectItem value="buynow">Buy Now</SelectItem>
+                    <SelectItem value="rsvp">RSVP</SelectItem>
+                    <SelectItem value="custom">Custom</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {widgetCustomization.branding.buttonTextType === 'custom' && (
+                  <Input
+                    id="customButtonText"
+                    value={widgetCustomization.branding.buttonText}
+                    onChange={(e) => updateWidgetCustomization(['branding', 'buttonText'], e.target.value)}
+                    placeholder="Enter custom button text"
+                    className="mt-2"
+                  />
+                )}
               </div>
             </CardContent>
           </Card>
@@ -2020,6 +1996,83 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           <AttendeeManagement eventId={eventId} />
         </TabsContent>
 
+        <TabsContent value="preview" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5" />
+                Widget Preview
+              </CardTitle>
+              <CardDescription>
+                Preview how your ticket widget will look to customers. This shows all customizations including colors, fonts, and branding.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* View Toggle */}
+              <div className="flex items-center gap-2 p-1 bg-muted rounded-lg w-fit">
+                <Button
+                  variant={previewMode === 'desktop' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setPreviewMode('desktop')}
+                  className="flex items-center gap-2"
+                >
+                  <Monitor className="h-4 w-4" />
+                  Desktop View
+                </Button>
+                <Button
+                  variant={previewMode === 'mobile' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setPreviewMode('mobile')}
+                  className="flex items-center gap-2"
+                >
+                  <Smartphone className="h-4 w-4" />
+                  Mobile View
+                </Button>
+              </div>
+
+              {/* Desktop Preview */}
+              {previewMode === 'desktop' && (
+                <div className="border rounded-lg overflow-hidden bg-white" style={{ height: "800px" }}>
+                  <iframe
+                    src={`/widget/${eventId}`}
+                    className="w-full h-full"
+                    title="Desktop Widget Preview"
+                    style={{ border: "none" }}
+                  />
+                </div>
+              )}
+
+              {/* Mobile Preview */}
+              {previewMode === 'mobile' && (
+                <div className="flex justify-center py-4">
+                  <div
+                    className="relative bg-gray-900 rounded-[3rem] p-3 shadow-2xl"
+                    style={{ width: "375px", height: "812px" }}
+                  >
+                    {/* Phone notch */}
+                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-40 h-7 bg-gray-900 rounded-b-3xl z-10"></div>
+
+                    {/* Phone screen */}
+                    <div className="relative h-full w-full bg-white rounded-[2.5rem] overflow-hidden">
+                      <iframe
+                        src={`/widget/${eventId}`}
+                        className="w-full h-full"
+                        title="Mobile Widget Preview"
+                        style={{ border: "none" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <HelpCircle className="h-4 w-4" />
+                <span>Changes to widget customization may take a moment to appear in the preview. Refresh the page if needed.</span>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="settings" className="space-y-6">
           <Card>
             <CardHeader>
@@ -2578,6 +2631,52 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   <p className="text-xs text-muted-foreground">
                     Perfect for embedded widgets - redirect customers back to your site after purchase
                   </p>
+                </div>
+              </div>
+
+              {/* Danger Zone - Delete Event */}
+              <div className="space-y-3 p-4 border-2 border-red-200 rounded-lg bg-red-50/50">
+                <div className="space-y-2">
+                  <Label className="text-base font-medium text-red-700">Danger Zone</Label>
+                  <p className="text-sm text-red-600">
+                    Permanently delete this event and all associated data. This action cannot be undone.
+                  </p>
+                  <Button
+                    variant="destructive"
+                    onClick={async () => {
+                      if (!confirm('Are you sure you want to delete this event? This action cannot be undone and will permanently delete all tickets, orders, and event data.')) {
+                        return;
+                      }
+
+                      try {
+                        const { error } = await supabase
+                          .from("events")
+                          .delete()
+                          .eq("id", eventId);
+
+                        if (error) throw error;
+
+                        toast({
+                          title: "Event Deleted",
+                          description: "The event has been permanently deleted"
+                        });
+
+                        // Navigate back to dashboard
+                        window.location.href = '/dashboard';
+                      } catch (error) {
+                        console.error("Error deleting event:", error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to delete event. Please try again.",
+                          variant: "destructive"
+                        });
+                      }
+                    }}
+                    className="w-full"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Event Permanently
+                  </Button>
                 </div>
               </div>
             </CardContent>

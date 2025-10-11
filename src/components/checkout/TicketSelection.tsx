@@ -16,6 +16,7 @@ interface TicketSelectionProps {
   theme: Theme;
   hideHeader?: boolean;
   hideContinueButton?: boolean;
+  buttonText?: string;
 }
 
 export const TicketSelection: React.FC<TicketSelectionProps> = ({
@@ -25,7 +26,8 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
   onNext,
   theme,
   hideHeader = false,
-  hideContinueButton = false
+  hideContinueButton = false,
+  buttonText = "Add to Cart"
 }) => {
   const [showSeatSelection, setShowSeatSelection] = useState(false);
   const [pendingSeatSelection, setPendingSeatSelection] = useState<TicketType | null>(null);
@@ -174,7 +176,7 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
                       }}
                     >
                       <Plus className="h-4 w-4 mr-2" />
-                      Add to Cart
+                      {buttonText}
                     </Button>
                   </div>
                 </CardContent>

@@ -1835,7 +1835,7 @@ const TicketWidget = () => {
                                 ) : (
                                   <>
                                     <Plus className="h-4 w-4 mr-2" />
-                                    Add to Cart
+                                    {eventData.widget_customization?.branding?.buttonText || "Add to Cart"}
                                   </>
                                 )}
                               </Button>
