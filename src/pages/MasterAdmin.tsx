@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 
 import { Progress } from "@/components/ui/progress";
@@ -13,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { useLandingPageContent } from "@/hooks/useLandingPageContent";
 import { supabase } from "@/integrations/supabase/client";
-import { 
+import {
   Users,
   Building2,
   Calendar,
@@ -31,7 +30,11 @@ import {
   FileText,
   Mail,
   Copy,
-  UserPlus
+  UserPlus,
+  AlertCircle,
+  XCircle,
+  Activity,
+  RefreshCw
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -61,7 +64,11 @@ const MasterAdmin = () => {
   const [systemHealth, setSystemHealth] = useState({
     apiResponseTime: 0,
     dbPerformance: 0,
-    serverUptime: 99.9
+    serverUptime: 99.9,
+    loading: true,
+    database: { status: 'operational' as 'operational' | 'degraded' | 'down', responseTime: 0 },
+    storage: { status: 'operational' as 'operational' | 'degraded' | 'down', responseTime: 0 },
+    functions: { status: 'operational' as 'operational' | 'degraded' | 'down', responseTime: 0 },
   });
   const [analytics, setAnalytics] = useState({
     loading: true,
@@ -205,12 +212,41 @@ const MasterAdmin = () => {
   }, []);
 
   useEffect(() => {
-    // Simulate system health (replace with real monitoring if available)
-    setSystemHealth({
-      apiResponseTime: 85, // ms
-      dbPerformance: 92, // %
-      serverUptime: 99.9 // %
-    });
+    const fetchSystemHealth = async () => {
+      const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+      if (!adminToken) return;
+
+      try {
+        const { data, error } = await supabase.functions.invoke('system-health', {
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+          },
+        });
+
+        if (error) throw error;
+
+        if (data.success && data.metrics) {
+          setSystemHealth({
+            apiResponseTime: data.metrics.performance.avgApiResponseTime,
+            dbPerformance: data.metrics.performance.dbPerformance,
+            serverUptime: data.metrics.uptime.percentage,
+            loading: false,
+            database: data.metrics.database,
+            storage: data.metrics.storage,
+            functions: data.metrics.functions,
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching system health:', error);
+        // Fallback to default values
+        setSystemHealth(prev => ({ ...prev, loading: false }));
+      }
+    };
+
+    fetchSystemHealth();
+    // Refresh health data every 30 seconds
+    const interval = setInterval(fetchSystemHealth, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -560,817 +596,993 @@ const MasterAdmin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-accent/5 to-primary/5">
-      {/* Header */}
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center">
-                <Shield className="w-6 w-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold gradient-text">TicketFlo Master Admin</h1>
-                <p className="text-sm text-muted-foreground">Welcome back, {adminUser}</p>
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-background via-accent/5 to-primary/5 flex">
+      {/* Left Sidebar Navigation */}
+      <div className="w-64 border-r bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex flex-col">
+        {/* Logo/Header */}
+        <div className="p-6 border-b">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center">
+              <Shield className="w-6 w-6 text-primary-foreground" />
             </div>
-            <Button 
-              variant="outline" 
-              onClick={handleLogout}
-              className="flex items-center gap-2"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </Button>
+            <div>
+              <h1 className="text-lg font-bold gradient-text">TicketFlo</h1>
+              <p className="text-xs text-muted-foreground">Master Admin</p>
+            </div>
           </div>
+        </div>
+
+        {/* Navigation Links */}
+        <nav className="flex-1 p-4 space-y-1">
+          <button
+            onClick={() => setActiveTab("overview")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "overview"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <Shield className="w-4 h-4" />
+            Overview
+          </button>
+          <button
+            onClick={() => setActiveTab("organizations")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "organizations"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <Building2 className="w-4 h-4" />
+            Organizations
+          </button>
+          <button
+            onClick={() => setActiveTab("users")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "users"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            User Management
+          </button>
+          <button
+            onClick={() => setActiveTab("enquiries")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "enquiries"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <Mail className="w-4 h-4" />
+            Contact Enquiries
+          </button>
+          <button
+            onClick={() => setActiveTab("content")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "content"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            Content
+          </button>
+          <button
+            onClick={() => setActiveTab("analytics")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "analytics"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <DollarSign className="w-4 h-4" />
+            Analytics
+          </button>
+          <button
+            onClick={() => setActiveTab("system")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "system"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <Server className="w-4 h-4" />
+            System Health
+          </button>
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "settings"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <Database className="w-4 h-4" />
+            Settings
+          </button>
+        </nav>
+
+        {/* User Info and Logout at Bottom */}
+        <div className="p-4 border-t">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm">
+              <p className="font-medium">{adminUser}</p>
+              <p className="text-xs text-muted-foreground">Administrator</p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2"
+            size="sm"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
+          </Button>
         </div>
       </div>
 
-      <div className="container mx-auto p-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-8">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="organizations">Organizations</TabsTrigger>
-            <TabsTrigger value="users">User Management</TabsTrigger>
-            <TabsTrigger value="enquiries">Contact Enquiries</TabsTrigger>
-            <TabsTrigger value="content">Content</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="system">System</TabsTrigger>
-            <TabsTrigger value="billing">Billing</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-auto">
+        {/* Top Bar with Page Title */}
+        <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-10">
+          <div className="px-8 py-4">
+            <h2 className="text-2xl font-bold">
+              {activeTab === "overview" && "Dashboard Overview"}
+              {activeTab === "organizations" && "Organizations"}
+              {activeTab === "users" && "User Management"}
+              {activeTab === "enquiries" && "Contact Enquiries"}
+              {activeTab === "content" && "Content Management"}
+              {activeTab === "analytics" && "Analytics & Reports"}
+              {activeTab === "system" && "System Health & Monitoring"}
+              {activeTab === "settings" && "Platform Settings"}
+            </h2>
+          </div>
+        </div>
 
+        <div className="p-8">
           {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            {metrics.loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin" />
-                <span className="ml-2">Loading metrics...</span>
-              </div>
-            ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Organizations</CardTitle>
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{metrics.organizations}</div>
-                </CardContent>
-              </Card>
-              <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Events</CardTitle>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{metrics.events}</div>
-                </CardContent>
-              </Card>
-              <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Platform Fee Revenue</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">${metrics.platformRevenue.toLocaleString()}</div>
-                </CardContent>
-              </Card>
-              <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Tickets Sold</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{metrics.tickets}</div>
-                </CardContent>
-              </Card>
-            </div>
-            )}
+          {activeTab === "overview" && (
+            <div className="space-y-6">
+              {metrics.loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span className="ml-2">Loading metrics...</span>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Total Organizations</CardTitle>
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{metrics.organizations}</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Active Events</CardTitle>
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{metrics.events}</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Platform Fee Revenue</CardTitle>
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">${metrics.platformRevenue.toLocaleString()}</div>
+                    </CardContent>
+                  </Card>
+                  <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Total Tickets Sold</CardTitle>
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{metrics.tickets}</div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
-            {/* Recent Activity */}
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Activity</CardTitle>
-                  <CardDescription>Latest platform activities</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {recentActivities.length === 0 ? (
-                    <div className="text-muted-foreground">No recent activity found.</div>
-                  ) : (
-                    recentActivities.map((activity, idx) => (
-                      <div key={idx} className="flex items-center space-x-4">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{activity.type}: {activity.name}</p>
-                          <p className="text-xs text-muted-foreground">{format(new Date(activity.created_at), 'PPpp')}</p>
+              {/* Recent Activity */}
+              <div className="grid gap-6 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Activity</CardTitle>
+                    <CardDescription>Latest platform activities</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {recentActivities.length === 0 ? (
+                      <div className="text-muted-foreground">No recent activity found.</div>
+                    ) : (
+                      recentActivities.map((activity, idx) => (
+                        <div key={idx} className="flex items-center space-x-4">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{activity.type}: {activity.name}</p>
+                            <p className="text-xs text-muted-foreground">{format(new Date(activity.created_at), 'PPpp')}</p>
+                          </div>
                         </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* System Health */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>System Health</CardTitle>
+                    <CardDescription>Platform status overview</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">API Response Time</span>
+                      <div className="flex items-center gap-2">
+                        <Progress value={systemHealth.apiResponseTime} className="w-20" />
+                        <span className="text-sm text-green-600">{systemHealth.apiResponseTime}ms</span>
                       </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* System Health */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>System Health</CardTitle>
-                  <CardDescription>Platform status overview</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">API Response Time</span>
-                    <div className="flex items-center gap-2">
-                      <Progress value={systemHealth.apiResponseTime} className="w-20" />
-                      <span className="text-sm text-green-600">{systemHealth.apiResponseTime}ms</span>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Database Performance</span>
-                    <div className="flex items-center gap-2">
-                      <Progress value={systemHealth.dbPerformance} className="w-20" />
-                      <span className="text-sm text-green-600">{systemHealth.dbPerformance}%</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Database Performance</span>
+                      <div className="flex items-center gap-2">
+                        <Progress value={systemHealth.dbPerformance} className="w-20" />
+                        <span className="text-sm text-green-600">{systemHealth.dbPerformance}%</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Server Uptime</span>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span className="text-sm text-green-600">{systemHealth.serverUptime}%</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Server Uptime</span>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <span className="text-sm text-green-600">{systemHealth.serverUptime}%</span>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
-          </TabsContent>
-
-          {/* Billing Tab - Scheduler status and manual run */}
-          <TabsContent value="billing" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Monthly Billing Scheduler</CardTitle>
-                <CardDescription>View status and run the billing processor for testing</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 border rounded-lg">
-                    <div className="text-sm text-muted-foreground">Next Billing Due (sample)</div>
-                    <div className="text-lg font-semibold">{new Date().toLocaleDateString()}</div>
-                  </div>
-                  <div className="p-4 border rounded-lg">
-                    <div className="text-sm text-muted-foreground">Last Run (sample)</div>
-                    <div className="text-lg font-semibold">—</div>
-                  </div>
-                  <div className="p-4 border rounded-lg">
-                    <div className="text-sm text-muted-foreground">Schedule</div>
-                    <div className="text-lg font-semibold">Daily 02:00</div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    onClick={async () => {
-                      try {
-                        const { error } = await supabase.functions.invoke('publish-monthly-billing', { body: {} });
-                        if (error) throw error;
-                        toast({ title: 'Billing run started', description: 'Check logs for results.' });
-                      } catch (e) {
-                        toast({ title: 'Error', description: 'Failed to start billing run', variant: 'destructive' });
-                      }
-                    }}
-                  >
-                    Run Now (Test)
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          )}
 
           {/* Organizations Tab */}
-          <TabsContent value="organizations" className="space-y-6">
-            {/* Send Sign-Up Link Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserPlus className="w-5 h-5" />
-                  Send Sign-Up Invitation
-                </CardTitle>
-                <CardDescription>
-                  Generate and send a sign-up link to invite new users to the platform
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <Label htmlFor="signup-email">Email Address</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="Enter email address to invite"
-                      value={signUpEmail}
-                      onChange={(e) => setSignUpEmail(e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <Button 
-                      onClick={generateSignUpLink}
-                      disabled={isGeneratingLink || !signUpEmail.trim()}
-                      className="flex items-center gap-2"
-                    >
-                      {isGeneratingLink ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Mail className="h-4 w-4" />
-                      )}
-                      Generate Link
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Generated Link Display */}
-                {signUpLink && (
-                  <div className="border rounded-lg p-4 bg-muted/50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <Label className="text-sm font-medium">Generated Sign-Up Link</Label>
-                        <div className="mt-1 text-sm text-muted-foreground break-all">
-                          {signUpLink}
-                        </div>
-                      </div>
-                      <div className="flex gap-2 ml-4">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={copySignUpLink}
-                          className="flex items-center gap-2"
-                        >
-                          <Copy className="h-3 w-3" />
-                          Copy
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={sendSignUpEmail}
-                          className="flex items-center gap-2"
-                        >
-                          <Mail className="h-3 w-3" />
-                          Send Email
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Organizations List */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Organizations</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {organizations.length === 0 ? (
-                  <div className="text-muted-foreground">No organizations found.</div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm border">
-                      <thead>
-                        <tr className="bg-muted">
-                          <th className="px-4 py-2 text-left">Name</th>
-                          <th className="px-4 py-2 text-left">Email</th>
-                          <th className="px-4 py-2 text-left">Status</th>
-                          <th className="px-4 py-2 text-left">Created At</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {organizations.map(org => (
-                          <tr key={org.id} className="border-b">
-                            <td className="px-4 py-2">{org.name}</td>
-                            <td className="px-4 py-2">{org.email || "N/A"}</td>
-                            <td className="px-4 py-2">{org.status || "N/A"}</td>
-                            <td className="px-4 py-2">{org.created_at ? new Date(org.created_at).toLocaleDateString() : "N/A"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* User Management Tab */}
-          <TabsContent value="users" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  User Management
-                </CardTitle>
-                <CardDescription>
-                  Manage user accounts and reset passwords
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="user-email">User Email</Label>
+          {activeTab === "organizations" && (
+            <div className="space-y-6">
+              {/* Send Sign-Up Link Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserPlus className="w-5 h-5" />
+                    Send Sign-Up Invitation
+                  </CardTitle>
+                  <CardDescription>
+                    Generate and send a sign-up link to invite new users to the platform
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <Label htmlFor="signup-email">Email Address</Label>
                       <Input
-                        id="user-email"
+                        id="signup-email"
                         type="email"
-                        placeholder="user@example.com"
-                        value={userManagement.email}
-                        onChange={(e) => setUserManagement(prev => ({
-                          ...prev,
-                          email: e.target.value
-                        }))}
+                        placeholder="Enter email address to invite"
+                        value={signUpEmail}
+                        onChange={(e) => setSignUpEmail(e.target.value)}
+                        className="mt-1"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-password">New Password</Label>
-                      <Input
-                        id="new-password"
-                        type="password"
-                        placeholder="Enter new password"
-                        value={userManagement.newPassword}
-                        onChange={(e) => setUserManagement(prev => ({
-                          ...prev,
-                          newPassword: e.target.value
-                        }))}
-                      />
-                    </div>
-                  </div>
-                  <Button 
-                    onClick={handleUserPasswordReset}
-                    disabled={userManagement.isResetting || !userManagement.email || !userManagement.newPassword}
-                    className="w-full"
-                  >
-                    {userManagement.isResetting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Resetting Password...
-                      </>
-                    ) : (
-                      <>
-                        <Shield className="h-4 w-4 mr-2" />
-                        Reset User Password
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Contact Enquiries Tab */}
-          <TabsContent value="enquiries" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Mail className="w-5 h-5" />
-                  Contact Enquiries
-                </CardTitle>
-                <CardDescription>
-                  Manage contact enquiries and support tickets from users
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {contactEnquiries.length === 0 ? (
-                  <div className="text-muted-foreground text-center py-8">No contact enquiries found.</div>
-                ) : (
-                  <div className="space-y-4">
-                    {contactEnquiries.map((enquiry) => (
-                      <div key={enquiry.id} className="border rounded-lg p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded-full ${
-                              enquiry.status === 'open' ? 'bg-yellow-500' :
-                              enquiry.status === 'in_progress' ? 'bg-blue-500' :
-                              'bg-green-500'
-                            }`}></div>
-                            <span className="font-medium">{enquiry.name}</span>
-                            <span className="text-sm text-muted-foreground">({enquiry.email})</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              enquiry.enquiry_type === 'support' 
-                                ? 'bg-blue-100 text-blue-800' 
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {enquiry.enquiry_type === 'support' ? 'Support Ticket' : 'General Enquiry'}
-                            </span>
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              enquiry.status === 'open' ? 'bg-yellow-100 text-yellow-800' :
-                              enquiry.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                              'bg-green-100 text-green-800'
-                            }`}>
-                              {enquiry.status.replace('_', ' ')}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {enquiry.phone && (
-                          <p className="text-sm text-muted-foreground">Phone: {enquiry.phone}</p>
-                        )}
-                        
-                        <div className="bg-muted/50 p-3 rounded text-sm">
-                          {enquiry.message}
-                        </div>
-                        
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>Created: {new Date(enquiry.created_at).toLocaleString()}</span>
-                          {enquiry.updated_at !== enquiry.created_at && (
-                            <span>Updated: {new Date(enquiry.updated_at).toLocaleString()}</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Content Management Tab */}
-          <TabsContent value="content" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Type className="w-5 h-5" />
-                  Landing Page Content Management
-                </CardTitle>
-                <CardDescription>
-                  Edit all text content that appears on the customer-facing landing page
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {contentLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                    <span className="ml-2">Loading content...</span>
-                  </div>
-                ) : (
-                  <div className="space-y-8">
-                    {Object.entries(groupContentBySection()).map(([section, items]) => (
-                      <div key={section} className="space-y-4">
-                        <div className="border-b pb-2">
-                          <h3 className="text-lg font-semibold capitalize flex items-center gap-2">
-                            <FileText className="w-4 h-4" />
-                            {section.replace('_', ' ')} Section
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            {section === 'hero' && 'Main banner section at the top of the page'}
-                            {section === 'hero_stats' && 'Statistics displayed in the hero section'}
-                            {section === 'features' && 'Features section content'}
-                            {section === 'pricing' && 'Pricing section content'}
-                            {section === 'pricing_bottom' && 'Additional pricing information'}
-                          </p>
-                        </div>
-                        
-                        <div className="grid gap-4">
-                          {items.map((item) => (
-                            <div key={item.id} className="border rounded-lg p-4 space-y-3">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <label className="font-medium text-sm">
-                                    {item.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                  </label>
-                                  {item.description && (
-                                    <p className="text-xs text-muted-foreground">{item.description}</p>
-                                  )}
-                                </div>
-                                <div className="flex gap-2">
-                                  {editingContent[item.id] !== undefined ? (
-                                    <>
-                                      <Button
-                                        size="sm"
-                                        onClick={() => handleContentSave(item.id)}
-                                        disabled={savingContent[item.id]}
-                                        className="h-8"
-                                      >
-                                        {savingContent[item.id] ? (
-                                          <Loader2 className="h-3 w-3 animate-spin" />
-                                        ) : (
-                                          <Save className="h-3 w-3" />
-                                        )}
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => handleContentCancel(item.id)}
-                                        disabled={savingContent[item.id]}
-                                        className="h-8"
-                                      >
-                                        Cancel
-                                      </Button>
-                                    </>
-                                  ) : (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleContentEdit(item.id, item.value)}
-                                      className="h-8"
-                                    >
-                                      <Edit className="h-3 w-3" />
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                              
-                              {editingContent[item.id] !== undefined ? (
-                                <div className="space-y-2">
-                                  {item.content_type === 'text' && item.value.length > 100 ? (
-                                    <Textarea
-                                      value={editingContent[item.id]}
-                                      onChange={(e) => setEditingContent(prev => ({ 
-                                        ...prev, 
-                                        [item.id]: e.target.value 
-                                      }))}
-                                      className="min-h-[100px]"
-                                      placeholder="Enter content..."
-                                    />
-                                  ) : (
-                                    <Input
-                                      value={editingContent[item.id]}
-                                      onChange={(e) => setEditingContent(prev => ({ 
-                                        ...prev, 
-                                        [item.id]: e.target.value 
-                                      }))}
-                                      placeholder="Enter content..."
-                                    />
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="bg-muted/50 p-3 rounded text-sm">
-                                  {item.value}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                    
-                    <div className="flex justify-center pt-4">
-                      <Button 
-                        variant="outline" 
-                        onClick={refreshContent}
-                        disabled={contentLoading}
+                    <div className="flex items-end">
+                      <Button
+                        onClick={generateSignUpLink}
+                        disabled={isGeneratingLink || !signUpEmail.trim()}
+                        className="flex items-center gap-2"
                       >
-                        <Database className="h-4 w-4 mr-2" />
-                        Refresh Content
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Analytics Tab */}
-          <TabsContent value="analytics" className="space-y-6">
-            {analytics.loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin" />
-                <span className="ml-2">Loading analytics...</span>
-              </div>
-            ) : (
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Revenue Analytics</CardTitle>
-                  <CardDescription>Platform revenue breakdown</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span>Transaction Fees</span>
-                      <span className="font-medium">${analytics.transactionFees.toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Platform Revenue</span>
-                      <span className="font-medium">${analytics.platformRevenue.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>User & Event Analytics</CardTitle>
-                  <CardDescription>Platform usage statistics</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span>Daily Active Users</span>
-                      <span className="font-medium">{analytics.dailyActiveUsers}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Active Events</span>
-                      <span className="font-medium">{analytics.activeEvents}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Tickets Sold</span>
-                      <span className="font-medium">{analytics.ticketsSold}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            )}
-          </TabsContent>
-
-          {/* System Tab */}
-          <TabsContent value="system" className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>System Status</CardTitle>
-                  <CardDescription>Current system performance</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Server className="h-4 w-4" />
-                      <span>Application Server</span>
-                    </div>
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Database className="h-4 w-4" />
-                      <span>Database</span>
-                    </div>
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Globe className="h-4 w-4" />
-                      <span>CDN</span>
-                    </div>
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Platform Configuration</CardTitle>
-                  <CardDescription>System settings and configuration</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Platform Fee Percentage</Label>
-                    <Input type="number" placeholder="5" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Maximum File Upload Size (MB)</Label>
-                    <Input type="number" placeholder="10" />
-                  </div>
-                  <Button className="w-full">Update Configuration</Button>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Settings Tab */}
-          <TabsContent value="settings" className="space-y-6">
-            <div className="grid gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Stripe Platform Configuration</CardTitle>
-                  <CardDescription>Manage platform-wide Stripe settings</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {platformConfig.loading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                      <span className="ml-2">Loading platform configuration...</span>
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label>Platform Fee Percentage (%)</Label>
-                          <Input 
-                            type="number" 
-                            step="0.01"
-                            value={platformConfig.platform_fee_percentage}
-                            onChange={(e) => setPlatformConfig(prev => ({
-                              ...prev,
-                              platform_fee_percentage: parseFloat(e.target.value) || 0
-                            }))}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Percentage fee charged on each transaction
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Platform Fixed Fee ($)</Label>
-                          <Input 
-                            type="number" 
-                            step="0.01"
-                            value={platformConfig.platform_fee_fixed}
-                            onChange={(e) => setPlatformConfig(prev => ({
-                              ...prev,
-                              platform_fee_fixed: parseFloat(e.target.value) || 0
-                            }))}
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Fixed fee charged per transaction
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label>Stripe Platform Publishable Key</Label>
-                          <Input 
-                            type="text"
-                            value={platformConfig.stripe_platform_publishable_key}
-                            onChange={(e) => setPlatformConfig(prev => ({
-                              ...prev,
-                              stripe_platform_publishable_key: e.target.value
-                            }))}
-                            placeholder="pk_..."
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Your Stripe platform publishable key (safe to expose)
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Stripe Platform Secret Key</Label>
-                          <Input 
-                            type="password"
-                            value={platformConfig.stripe_platform_secret_key}
-                            onChange={(e) => setPlatformConfig(prev => ({
-                              ...prev,
-                              stripe_platform_secret_key: e.target.value
-                            }))}
-                            placeholder="sk_..."
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Your Stripe platform secret key (kept secure)
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <Button 
-                        onClick={handlePlatformConfigSave}
-                        disabled={savingPlatformConfig}
-                        className="w-full"
-                      >
-                        {savingPlatformConfig ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Saving Configuration...
-                          </>
+                        {isGeneratingLink ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          <>
-                            <Save className="h-4 w-4 mr-2" />
-                            Save Platform Configuration
-                          </>
+                          <Mail className="h-4 w-4" />
                         )}
+                        Generate Link
                       </Button>
+                    </div>
+                  </div>
+
+                  {/* Generated Link Display */}
+                  {signUpLink && (
+                    <div className="border rounded-lg p-4 bg-muted/50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <Label className="text-sm font-medium">Generated Sign-Up Link</Label>
+                          <div className="mt-1 text-sm text-muted-foreground break-all">
+                            {signUpLink}
+                          </div>
+                        </div>
+                        <div className="flex gap-2 ml-4">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={copySignUpLink}
+                            className="flex items-center gap-2"
+                          >
+                            <Copy className="h-3 w-3" />
+                            Copy
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={sendSignUpEmail}
+                            className="flex items-center gap-2"
+                          >
+                            <Mail className="h-3 w-3" />
+                            Send Email
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </CardContent>
               </Card>
-              
+
+              {/* Organizations List */}
               <Card>
                 <CardHeader>
-                  <CardTitle>General Settings</CardTitle>
-                  <CardDescription>Platform-wide general settings</CardDescription>
+                  <CardTitle>Organizations</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {organizations.length === 0 ? (
+                    <div className="text-muted-foreground">No organizations found.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm border">
+                        <thead>
+                          <tr className="bg-muted">
+                            <th className="px-4 py-2 text-left">Name</th>
+                            <th className="px-4 py-2 text-left">Email</th>
+                            <th className="px-4 py-2 text-left">Status</th>
+                            <th className="px-4 py-2 text-left">Created At</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {organizations.map(org => (
+                            <tr key={org.id} className="border-b">
+                              <td className="px-4 py-2">{org.name}</td>
+                              <td className="px-4 py-2">{org.email || "N/A"}</td>
+                              <td className="px-4 py-2">{org.status || "N/A"}</td>
+                              <td className="px-4 py-2">{org.created_at ? new Date(org.created_at).toLocaleDateString() : "N/A"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* User Management Tab */}
+          {activeTab === "users" && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    User Management
+                  </CardTitle>
+                  <CardDescription>
+                    Manage user accounts and reset passwords
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Platform Name</Label>
-                      <Input defaultValue="TicketFlo" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Support Email</Label>
-                      <Input defaultValue="support@ticketflo.com" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Maintenance Mode</Label>
-                      <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="maintenance" />
-                        <label htmlFor="maintenance" className="text-sm">
-                          Enable maintenance mode
-                        </label>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="user-email">User Email</Label>
+                        <Input
+                          id="user-email"
+                          type="email"
+                          placeholder="user@example.com"
+                          value={userManagement.email}
+                          onChange={(e) => setUserManagement(prev => ({
+                            ...prev,
+                            email: e.target.value
+                          }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="new-password">New Password</Label>
+                        <Input
+                          id="new-password"
+                          type="password"
+                          placeholder="Enter new password"
+                          value={userManagement.newPassword}
+                          onChange={(e) => setUserManagement(prev => ({
+                            ...prev,
+                            newPassword: e.target.value
+                          }))}
+                        />
                       </div>
                     </div>
+                    <Button
+                      onClick={handleUserPasswordReset}
+                      disabled={userManagement.isResetting || !userManagement.email || !userManagement.newPassword}
+                      className="w-full"
+                    >
+                      {userManagement.isResetting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Resetting Password...
+                        </>
+                      ) : (
+                        <>
+                          <Shield className="h-4 w-4 mr-2" />
+                          Reset User Password
+                        </>
+                      )}
+                    </Button>
                   </div>
-                  <Button>Save General Settings</Button>
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-        </Tabs>
+          )}
+
+          {/* Contact Enquiries Tab */}
+          {activeTab === "enquiries" && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Mail className="w-5 h-5" />
+                    Contact Enquiries
+                  </CardTitle>
+                  <CardDescription>
+                    Manage contact enquiries and support tickets from users
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {contactEnquiries.length === 0 ? (
+                    <div className="text-muted-foreground text-center py-8">No contact enquiries found.</div>
+                  ) : (
+                    <div className="space-y-4">
+                      {contactEnquiries.map((enquiry) => (
+                        <div key={enquiry.id} className="border rounded-lg p-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-3 h-3 rounded-full ${
+                                enquiry.status === 'open' ? 'bg-yellow-500' :
+                                enquiry.status === 'in_progress' ? 'bg-blue-500' :
+                                'bg-green-500'
+                              }`}></div>
+                              <span className="font-medium">{enquiry.name}</span>
+                              <span className="text-sm text-muted-foreground">({enquiry.email})</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                enquiry.enquiry_type === 'support'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {enquiry.enquiry_type === 'support' ? 'Support Ticket' : 'General Enquiry'}
+                              </span>
+                              <span className={`px-2 py-1 rounded text-xs ${
+                                enquiry.status === 'open' ? 'bg-yellow-100 text-yellow-800' :
+                                enquiry.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                                'bg-green-100 text-green-800'
+                              }`}>
+                                {enquiry.status.replace('_', ' ')}
+                              </span>
+                            </div>
+                          </div>
+
+                          {enquiry.phone && (
+                            <p className="text-sm text-muted-foreground">Phone: {enquiry.phone}</p>
+                          )}
+
+                          <div className="bg-muted/50 p-3 rounded text-sm">
+                            {enquiry.message}
+                          </div>
+
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>Created: {new Date(enquiry.created_at).toLocaleString()}</span>
+                            {enquiry.updated_at !== enquiry.created_at && (
+                              <span>Updated: {new Date(enquiry.updated_at).toLocaleString()}</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Content Management Tab */}
+          {activeTab === "content" && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Type className="w-5 h-5" />
+                    Landing Page Content Management
+                  </CardTitle>
+                  <CardDescription>
+                    Edit all text content that appears on the customer-facing landing page
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {contentLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <span className="ml-2">Loading content...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-8">
+                      {Object.entries(groupContentBySection()).map(([section, items]) => (
+                        <div key={section} className="space-y-4">
+                          <div className="border-b pb-2">
+                            <h3 className="text-lg font-semibold capitalize flex items-center gap-2">
+                              <FileText className="w-4 h-4" />
+                              {section.replace('_', ' ')} Section
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {section === 'hero' && 'Main banner section at the top of the page'}
+                              {section === 'hero_stats' && 'Statistics displayed in the hero section'}
+                              {section === 'features' && 'Features section content'}
+                              {section === 'pricing' && 'Pricing section content'}
+                              {section === 'pricing_bottom' && 'Additional pricing information'}
+                            </p>
+                          </div>
+
+                          <div className="grid gap-4">
+                            {items.map((item) => (
+                              <div key={item.id} className="border rounded-lg p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <label className="font-medium text-sm">
+                                      {item.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                    </label>
+                                    {item.description && (
+                                      <p className="text-xs text-muted-foreground">{item.description}</p>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    {editingContent[item.id] !== undefined ? (
+                                      <>
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleContentSave(item.id)}
+                                          disabled={savingContent[item.id]}
+                                          className="h-8"
+                                        >
+                                          {savingContent[item.id] ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                          ) : (
+                                            <Save className="h-3 w-3" />
+                                          )}
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handleContentCancel(item.id)}
+                                          disabled={savingContent[item.id]}
+                                          className="h-8"
+                                        >
+                                          Cancel
+                                        </Button>
+                                      </>
+                                    ) : (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleContentEdit(item.id, item.value)}
+                                        className="h-8"
+                                      >
+                                        <Edit className="h-3 w-3" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {editingContent[item.id] !== undefined ? (
+                                  <div className="space-y-2">
+                                    {item.content_type === 'text' && item.value.length > 100 ? (
+                                      <Textarea
+                                        value={editingContent[item.id]}
+                                        onChange={(e) => setEditingContent(prev => ({
+                                          ...prev,
+                                          [item.id]: e.target.value
+                                        }))}
+                                        className="min-h-[100px]"
+                                        placeholder="Enter content..."
+                                      />
+                                    ) : (
+                                      <Input
+                                        value={editingContent[item.id]}
+                                        onChange={(e) => setEditingContent(prev => ({
+                                          ...prev,
+                                          [item.id]: e.target.value
+                                        }))}
+                                        placeholder="Enter content..."
+                                      />
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="bg-muted/50 p-3 rounded text-sm">
+                                    {item.value}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+
+                      <div className="flex justify-center pt-4">
+                        <Button
+                          variant="outline"
+                          onClick={refreshContent}
+                          disabled={contentLoading}
+                        >
+                          <Database className="h-4 w-4 mr-2" />
+                          Refresh Content
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Analytics Tab */}
+          {activeTab === "analytics" && (
+            <div className="space-y-6">
+              {analytics.loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span className="ml-2">Loading analytics...</span>
+                </div>
+              ) : (
+                <div className="grid gap-6 md:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Revenue Analytics</CardTitle>
+                      <CardDescription>Platform revenue breakdown</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span>Transaction Fees</span>
+                          <span className="font-medium">${analytics.transactionFees.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Platform Revenue</span>
+                          <span className="font-medium">${analytics.platformRevenue.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>User & Event Analytics</CardTitle>
+                      <CardDescription>Platform usage statistics</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span>Daily Active Users</span>
+                          <span className="font-medium">{analytics.dailyActiveUsers}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Active Events</span>
+                          <span className="font-medium">{analytics.activeEvents}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>Tickets Sold</span>
+                          <span className="font-medium">{analytics.ticketsSold}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* System Tab */}
+          {activeTab === "system" && (
+            <div className="space-y-6">
+              {systemHealth.loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="ml-3 text-lg">Loading system health...</span>
+                </div>
+              ) : (
+                <>
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            <Activity className="h-5 w-5" />
+                            System Status
+                          </CardTitle>
+                          <CardDescription>Real-time platform health monitoring</CardDescription>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.location.reload()}
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Refresh
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="grid gap-4 md:grid-cols-3">
+                        {/* Database Status */}
+                        <div className={`flex items-center justify-between p-4 border-2 rounded-lg ${
+                          systemHealth.database.status === 'operational' ? 'border-green-200 bg-green-50' :
+                          systemHealth.database.status === 'degraded' ? 'border-yellow-200 bg-yellow-50' :
+                          'border-red-200 bg-red-50'
+                        }`}>
+                          <div className="flex items-center gap-3">
+                            <Database className={`h-5 w-5 ${
+                              systemHealth.database.status === 'operational' ? 'text-green-600' :
+                              systemHealth.database.status === 'degraded' ? 'text-yellow-600' :
+                              'text-red-600'
+                            }`} />
+                            <div>
+                              <p className="text-sm font-medium">Database</p>
+                              <p className="text-xs text-muted-foreground capitalize">
+                                {systemHealth.database.status}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {systemHealth.database.responseTime}ms
+                              </p>
+                            </div>
+                          </div>
+                          {systemHealth.database.status === 'operational' ? (
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                          ) : systemHealth.database.status === 'degraded' ? (
+                            <AlertCircle className="h-5 w-5 text-yellow-600" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-red-600" />
+                          )}
+                        </div>
+
+                        {/* Storage Status */}
+                        <div className={`flex items-center justify-between p-4 border-2 rounded-lg ${
+                          systemHealth.storage.status === 'operational' ? 'border-green-200 bg-green-50' :
+                          systemHealth.storage.status === 'degraded' ? 'border-yellow-200 bg-yellow-50' :
+                          'border-red-200 bg-red-50'
+                        }`}>
+                          <div className="flex items-center gap-3">
+                            <Server className={`h-5 w-5 ${
+                              systemHealth.storage.status === 'operational' ? 'text-green-600' :
+                              systemHealth.storage.status === 'degraded' ? 'text-yellow-600' :
+                              'text-red-600'
+                            }`} />
+                            <div>
+                              <p className="text-sm font-medium">Storage</p>
+                              <p className="text-xs text-muted-foreground capitalize">
+                                {systemHealth.storage.status}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {systemHealth.storage.responseTime}ms
+                              </p>
+                            </div>
+                          </div>
+                          {systemHealth.storage.status === 'operational' ? (
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                          ) : systemHealth.storage.status === 'degraded' ? (
+                            <AlertCircle className="h-5 w-5 text-yellow-600" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-red-600" />
+                          )}
+                        </div>
+
+                        {/* Functions Status */}
+                        <div className={`flex items-center justify-between p-4 border-2 rounded-lg ${
+                          systemHealth.functions.status === 'operational' ? 'border-green-200 bg-green-50' :
+                          systemHealth.functions.status === 'degraded' ? 'border-yellow-200 bg-yellow-50' :
+                          'border-red-200 bg-red-50'
+                        }`}>
+                          <div className="flex items-center gap-3">
+                            <Globe className={`h-5 w-5 ${
+                              systemHealth.functions.status === 'operational' ? 'text-green-600' :
+                              systemHealth.functions.status === 'degraded' ? 'text-yellow-600' :
+                              'text-red-600'
+                            }`} />
+                            <div>
+                              <p className="text-sm font-medium">Edge Functions</p>
+                              <p className="text-xs text-muted-foreground capitalize">
+                                {systemHealth.functions.status}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {systemHealth.functions.responseTime}ms
+                              </p>
+                            </div>
+                          </div>
+                          {systemHealth.functions.status === 'operational' ? (
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                          ) : systemHealth.functions.status === 'degraded' ? (
+                            <AlertCircle className="h-5 w-5 text-yellow-600" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-red-600" />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="border-t pt-6">
+                        <h3 className="text-lg font-semibold mb-4">Performance Metrics</h3>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">Average API Response Time</span>
+                            <div className="flex items-center gap-2">
+                              <Progress value={Math.min(systemHealth.apiResponseTime, 100)} className="w-32" />
+                              <span className={`text-sm font-medium ${
+                                systemHealth.apiResponseTime < 100 ? 'text-green-600' :
+                                systemHealth.apiResponseTime < 200 ? 'text-yellow-600' :
+                                'text-red-600'
+                              }`}>
+                                {systemHealth.apiResponseTime}ms
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">Database Performance</span>
+                            <div className="flex items-center gap-2">
+                              <Progress value={systemHealth.dbPerformance} className="w-32" />
+                              <span className="text-sm font-medium text-green-600">
+                                {systemHealth.dbPerformance}%
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">Platform Uptime (30 days)</span>
+                            <div className="flex items-center gap-2">
+                              <Progress value={systemHealth.serverUptime} className="w-32" />
+                              <span className="text-sm font-medium text-green-600">
+                                {systemHealth.serverUptime}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="border-t pt-6">
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                          <span>Health checks refresh automatically every 30 seconds</span>
+                          <span className="flex items-center gap-1">
+                            <Activity className="h-3 w-3 animate-pulse" />
+                            Live monitoring
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Settings Tab */}
+          {activeTab === "settings" && (
+            <div className="space-y-6">
+              <div className="grid gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Stripe Platform Configuration</CardTitle>
+                    <CardDescription>Manage platform-wide Stripe settings</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {platformConfig.loading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                        <span className="ml-2">Loading platform configuration...</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label>Platform Fee Percentage (%)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={platformConfig.platform_fee_percentage}
+                              onChange={(e) => setPlatformConfig(prev => ({
+                                ...prev,
+                                platform_fee_percentage: parseFloat(e.target.value) || 0
+                              }))}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Percentage fee charged on each transaction
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Platform Fixed Fee ($)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={platformConfig.platform_fee_fixed}
+                              onChange={(e) => setPlatformConfig(prev => ({
+                                ...prev,
+                                platform_fee_fixed: parseFloat(e.target.value) || 0
+                              }))}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Fixed fee charged per transaction
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Stripe Platform Publishable Key</Label>
+                            <Input
+                              type="text"
+                              value={platformConfig.stripe_platform_publishable_key}
+                              onChange={(e) => setPlatformConfig(prev => ({
+                                ...prev,
+                                stripe_platform_publishable_key: e.target.value
+                              }))}
+                              placeholder="pk_..."
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Your Stripe platform publishable key (safe to expose)
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Stripe Platform Secret Key</Label>
+                            <Input
+                              type="password"
+                              value={platformConfig.stripe_platform_secret_key}
+                              onChange={(e) => setPlatformConfig(prev => ({
+                                ...prev,
+                                stripe_platform_secret_key: e.target.value
+                              }))}
+                              placeholder="sk_..."
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Your Stripe platform secret key (kept secure)
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button
+                          onClick={handlePlatformConfigSave}
+                          disabled={savingPlatformConfig}
+                          className="w-full"
+                        >
+                          {savingPlatformConfig ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Saving Configuration...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="h-4 w-4 mr-2" />
+                              Save Platform Configuration
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
