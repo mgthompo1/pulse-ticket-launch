@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Headphones, Ticket, Clock, CheckCircle, AlertCircle } from "lucide-react";
+import { Headphones, Ticket, Clock, CheckCircle, AlertCircle, BookOpen, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface SupportTicket {
   id: string;
@@ -169,6 +170,31 @@ const Support = () => {
             </p>
           </header>
 
+          {/* Knowledge Base Banner */}
+          <Card className="mb-8 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <BookOpen className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-1">Looking for quick answers?</h3>
+                    <p className="text-muted-foreground">
+                      Browse our knowledge base for guides, tutorials, and FAQs
+                    </p>
+                  </div>
+                </div>
+                <Link to="/help">
+                  <Button size="lg" className="gap-2">
+                    Visit Help Center
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Create Support Ticket */}
             <Card>
@@ -280,11 +306,28 @@ const Support = () => {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div>
-                  <h4 className="font-medium mb-2">Common Issues</h4>
+                  <h4 className="font-medium mb-2">Popular Help Topics</h4>
                   <ul className="text-muted-foreground space-y-1">
-                    <li>• Payment setup problems</li>
-                    <li>• Event publishing issues</li>
-                    <li>• Ticket customization help</li>
+                    <li>
+                      <Link to="/help/getting-started/create-your-first-event" className="hover:text-primary">
+                        • Creating your first event
+                      </Link>
+                    </li>
+                    <li>
+                      <Link to="/help/payments/setup-stripe" className="hover:text-primary">
+                        • Setting up payments
+                      </Link>
+                    </li>
+                    <li>
+                      <Link to="/help/customization/confirmation-emails" className="hover:text-primary">
+                        • Customizing emails
+                      </Link>
+                    </li>
+                    <li>
+                      <Link to="/help/events-management/publish-event" className="hover:text-primary">
+                        • Publishing your event
+                      </Link>
+                    </li>
                   </ul>
                 </div>
                 <div>

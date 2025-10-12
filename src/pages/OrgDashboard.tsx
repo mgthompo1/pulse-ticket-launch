@@ -19,7 +19,7 @@ import EventCustomization from "@/components/EventCustomization";
 import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, BarChart3, Monitor, LogOut, Menu, HelpCircle, DollarSign } from "lucide-react";
+import { Calendar, Users, Ticket, BarChart3, Monitor, LogOut, Menu, HelpCircle, DollarSign, ExternalLink, Clock, CheckCircle } from "lucide-react";
 import OrganizationSettings from "@/components/OrganizationSettings";
 import OrganizationOnboarding from "@/components/OrganizationOnboarding";
 
@@ -109,6 +109,7 @@ const OrgDashboard = () => {
 
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState({
     totalEvents: 0,
     totalOrders: 0,
@@ -1312,7 +1313,219 @@ const OrgDashboard = () => {
 
                 {canAccessIntegrations() && (
                   <TabsContent value="integrations" className="space-y-6">
-                    <XeroIntegration organizationId={organizationId} />
+                    {selectedIntegration === 'xero' ? (
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedIntegration(null)}
+                          >
+                            ← Back to Apps
+                          </Button>
+                        </div>
+                        <XeroIntegration organizationId={organizationId} />
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        <div>
+                          <h2 className="text-2xl font-bold mb-2">Apps & Integrations</h2>
+                          <p className="text-muted-foreground">
+                            Connect TicketFlo with your favorite tools to streamline your workflow
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {/* Xero Integration */}
+                          <Card className="hover:shadow-lg transition-shadow duration-200 flex flex-col">
+                            <CardHeader>
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-12 h-12 rounded-lg border border-gray-200 bg-white flex items-center justify-center p-1">
+                                    <img src="/xero-logo.png" alt="Xero" className="w-full h-full object-contain" />
+                                  </div>
+                                  <div>
+                                    <CardTitle className="text-lg">Xero</CardTitle>
+                                    <Badge variant="secondary" className="mt-1 text-xs">
+                                      Accounting
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="flex-1 flex flex-col justify-between">
+                              <CardDescription className="mb-4">
+                                Sync your ticket sales, invoices, and customer data with Xero accounting software.
+                              </CardDescription>
+                              <Button
+                                className="w-full"
+                                onClick={() => setSelectedIntegration('xero')}
+                              >
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Connect to Xero
+                              </Button>
+                            </CardContent>
+                          </Card>
+
+                          {/* HubSpot Integration */}
+                          <Card className="hover:shadow-lg transition-shadow duration-200 flex flex-col">
+                            <CardHeader>
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-12 h-12 rounded-lg border border-gray-200 bg-[#FF7A59] flex items-center justify-center p-2">
+                                    <svg viewBox="0 0 512 512" className="w-full h-full" fill="white">
+                                      <path d="M267.4 211.6c-25.1 23.7-40.8 57.3-40.8 94.6 0 29.3 9.7 56.3 26 78L203.1 434c-4.4-1.6-9.1-2.5-14-2.5-10.8 0-20.9 4.2-28.5 11.8-7.6 7.6-11.8 17.8-11.8 28.6s4.2 20.9 11.8 28.5c7.6 7.6 17.8 11.6 28.5 11.6 10.8 0 20.9-3.9 28.6-11.6 7.6-7.6 11.8-17.8 11.8-28.5 0-4.2-.6-8.2-1.9-12.1l50-50.2c22 16.9 49.4 26.9 79.3 26.9 71.9 0 130-58.3 130-130.2 0-65.2-47.7-119.2-110.2-128.7V116c17.5-7.4 28.2-23.8 28.2-42.9 0-26.1-20.9-47.9-47-47.9S311.2 47 311.2 73.1c0 19.1 10.7 35.5 28.2 42.9v61.2c-15.2 2.1-29.6 6.7-42.7 13.6-27.6-20.9-117.5-85.7-168.9-124.8 1.2-4.4 2-9 2-13.8C129.8 23.4 106.3 0 77.4 0 48.6 0 25.2 23.4 25.2 52.2c0 28.9 23.4 52.3 52.2 52.3 9.8 0 18.9-2.9 26.8-7.6l163.2 114.7zm89.5 163.6c-38.1 0-69-30.9-69-69s30.9-69 69-69 69 30.9 69 69-30.9 69-69 69z"/>
+                                    </svg>
+                                  </div>
+                                  <div>
+                                    <CardTitle className="text-lg">HubSpot</CardTitle>
+                                    <Badge variant="secondary" className="mt-1 text-xs">
+                                      CRM
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <Badge variant="secondary" className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Coming Soon
+                                </Badge>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="flex-1 flex flex-col justify-between">
+                              <CardDescription className="mb-4">
+                                Connect your customer data and event attendees with HubSpot CRM for powerful marketing automation.
+                              </CardDescription>
+                              <Button className="w-full" variant="outline" disabled>
+                                Coming Soon
+                              </Button>
+                            </CardContent>
+                          </Card>
+
+                          {/* Zapier Integration */}
+                          <Card className="hover:shadow-lg transition-shadow duration-200 flex flex-col">
+                            <CardHeader>
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-12 h-12 rounded-lg border border-gray-200 bg-white flex items-center justify-center p-1">
+                                    <img src="/zapier-logo.svg" alt="Zapier" className="w-full h-full object-contain" />
+                                  </div>
+                                  <div>
+                                    <CardTitle className="text-lg">Zapier</CardTitle>
+                                    <Badge variant="secondary" className="mt-1 text-xs">
+                                      Automation
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <Badge variant="secondary" className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Coming Soon
+                                </Badge>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="flex-1 flex flex-col justify-between">
+                              <CardDescription className="mb-4">
+                                Automate workflows by connecting TicketFlo with 5,000+ apps through Zapier integrations.
+                              </CardDescription>
+                              <Button className="w-full" variant="outline" disabled>
+                                Coming Soon
+                              </Button>
+                            </CardContent>
+                          </Card>
+
+                          {/* QuickBooks Integration */}
+                          <Card className="hover:shadow-lg transition-shadow duration-200 flex flex-col">
+                            <CardHeader>
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-12 h-12 rounded-lg border border-gray-200 bg-white flex items-center justify-center p-1">
+                                    <img src="/quickbooks-logo.png" alt="QuickBooks" className="w-full h-full object-contain" />
+                                  </div>
+                                  <div>
+                                    <CardTitle className="text-lg">QuickBooks</CardTitle>
+                                    <Badge variant="secondary" className="mt-1 text-xs">
+                                      Accounting
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <Badge variant="secondary" className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Coming Soon
+                                </Badge>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="flex-1 flex flex-col justify-between">
+                              <CardDescription className="mb-4">
+                                Connect your sales and financial data with QuickBooks for seamless accounting management.
+                              </CardDescription>
+                              <Button className="w-full" variant="outline" disabled>
+                                Coming Soon
+                              </Button>
+                            </CardContent>
+                          </Card>
+
+                          {/* NetSuite Integration */}
+                          <Card className="hover:shadow-lg transition-shadow duration-200 flex flex-col">
+                            <CardHeader>
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-12 h-12 rounded-lg border border-gray-200 bg-white flex items-center justify-center p-1">
+                                    <img src="/netsuite-logo.png" alt="NetSuite" className="w-full h-full object-contain" />
+                                  </div>
+                                  <div>
+                                    <CardTitle className="text-lg">NetSuite</CardTitle>
+                                    <Badge variant="secondary" className="mt-1 text-xs">
+                                      ERP
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <Badge variant="secondary" className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Coming Soon
+                                </Badge>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="flex-1 flex flex-col justify-between">
+                              <CardDescription className="mb-4">
+                                Integrate with NetSuite ERP for enterprise-level financial management and reporting.
+                              </CardDescription>
+                              <Button className="w-full" variant="outline" disabled>
+                                Coming Soon
+                              </Button>
+                            </CardContent>
+                          </Card>
+
+                          {/* Windcave Integration */}
+                          <Card className="hover:shadow-lg transition-shadow duration-200 flex flex-col">
+                            <CardHeader>
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-12 h-12 rounded-lg border border-gray-200 bg-white flex items-center justify-center p-1">
+                                    <img src="/windcave-logo.png" alt="Windcave" className="w-full h-full object-contain" />
+                                  </div>
+                                  <div>
+                                    <CardTitle className="text-lg">Windcave</CardTitle>
+                                    <Badge variant="secondary" className="mt-1 text-xs">
+                                      Payments
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="flex-1 flex flex-col justify-between">
+                              <CardDescription className="mb-4">
+                                Accept secure payments with Windcave's payment gateway. Sign up for an account to get started.
+                              </CardDescription>
+                              <Button
+                                className="w-full"
+                                onClick={() => window.open('https://sec.windcave.com/pxmi3/signup?promocode=acq', '_blank')}
+                              >
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Sign Up
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        </div>
+                      </div>
+                    )}
                   </TabsContent>
                 )}
 
