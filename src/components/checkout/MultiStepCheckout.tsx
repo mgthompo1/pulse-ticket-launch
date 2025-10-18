@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,12 +12,42 @@ import { OrderSummary } from './OrderSummary';
 import { StripePaymentModal } from './StripePaymentModal';
 import { TicketType, CartItem, MerchandiseCartItem, CustomerInfo, EventData, CustomQuestion } from '@/types/widget';
 import { Theme } from '@/types/theme';
+import { usePromoCodeAndDiscounts } from '@/hooks/usePromoCodeAndDiscounts';
+import { useTicketReservation } from '@/hooks/useTicketReservation';
+
+interface PromoCodeHooks {
+  promoCode: string;
+  setPromoCode: (code: string) => void;
+  promoCodeId: string | null;
+  promoDiscount: number;
+  promoError: string | null;
+  isValidating: boolean;
+  groupDiscount: number;
+  groupDiscountTier: number | null;
+  applyPromoCode: () => void;
+  clearPromoCode: () => void;
+  getTotalDiscount: () => number;
+  calculateFinalTotal: (subtotal: number) => number;
+}
+
+interface ReservationHooks {
+  reservations: any[];
+  timeRemaining: number;
+  reserveTickets: (ticketTypeId: string, quantity: number) => Promise<void>;
+  reserveMultipleTickets: (tickets: Array<{ ticketTypeId: string; quantity: number }>) => Promise<void>;
+  completeAllReservations: (orderId: string) => Promise<void>;
+  cancelAllReservations: () => Promise<void>;
+  formatTimeRemaining: () => string;
+  hasActiveReservations: () => boolean;
+}
 
 interface MultiStepCheckoutProps {
   eventData: EventData;
   ticketTypes: TicketType[];
   customQuestions: CustomQuestion[];
   onClose?: () => void;
+  promoCodeHooks?: PromoCodeHooks;
+  reservationHooks?: ReservationHooks;
 }
 
 
@@ -28,6 +58,8 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   eventData,
   ticketTypes,
   customQuestions,
+  promoCodeHooks,
+  reservationHooks,
 }) => {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('event');
@@ -71,6 +103,23 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
       ];
 
   const currentStepData = steps.find(step => step.key === currentStep);
+
+  // Calculate totals for promo code hooks
+  const ticketCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const ticketTotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const merchandiseTotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
+  const subtotal = ticketTotal + merchandiseTotal;
+
+  // Initialize promo code hooks with MultiStepCheckout's own data
+  const localPromoCodeHooks = usePromoCodeAndDiscounts({
+    eventId: eventData.id,
+    customerEmail: customerInfo?.email || '',
+    ticketCount,
+    subtotal,
+  });
+
+  // Initialize reservation hooks with MultiStepCheckout's own data
+  const localReservationHooks = useTicketReservation(eventData.id);
 
   const addToCart = (ticketType: TicketType & { selectedSeats?: string[] }) => {
     setCartItems(prev => {
@@ -427,6 +476,8 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
               onUpdateMerchandiseQuantity={updateMerchandiseQuantity}
               onBack={prevStep}
               theme={theme}
+              promoCodeHooks={localPromoCodeHooks}
+              reservationHooks={localReservationHooks}
             />
           </div>
         </div>
@@ -442,6 +493,8 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
           merchandiseCart={merchandiseCart}
           customerInfo={customerInfo}
           theme={theme}
+          promoCodeId={localPromoCodeHooks.promoCodeId}
+          promoDiscount={localPromoCodeHooks.getTotalDiscount()}
         />
       )}
     </div>

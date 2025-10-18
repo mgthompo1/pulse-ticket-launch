@@ -11,13 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone } from "lucide-react";
+import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound } from "lucide-react";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import MerchandiseManager from "@/components/MerchandiseManager";
 import TicketTypesManager from "@/components/TicketTypesManager";
 import { EventLogoUploader } from "@/components/events/EventLogoUploader";
 import { EmailTemplatePreview } from "@/components/EmailTemplatePreview";
+import PromoCodesManager from "@/pages/PromoCodesManager";
+import GroupDiscountsManager from "@/pages/GroupDiscountsManager";
 
 // Type definitions for better type safety
 interface EmailBlock {
@@ -775,9 +777,19 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
             <Users className="h-4 w-4" />
             Attendees
           </TabsTrigger>
+<<<<<<< HEAD
           <TabsTrigger value="preview" className="flex items-center gap-2">
             <Eye className="h-4 w-4" />
             Preview
+=======
+          <TabsTrigger value="promo-codes" className="flex items-center gap-2">
+            <Tag className="h-4 w-4" />
+            Promo Codes
+          </TabsTrigger>
+          <TabsTrigger value="group-discounts" className="flex items-center gap-2">
+            <UsersRound className="h-4 w-4" />
+            Group Discounts
+>>>>>>> c10fc3a (Add comprehensive promo codes and group discounts system)
           </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Cog className="h-4 w-4" />
@@ -2741,6 +2753,14 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="promo-codes" className="space-y-6">
+          <PromoCodesManager eventId={eventId} />
+        </TabsContent>
+
+        <TabsContent value="group-discounts" className="space-y-6">
+          <GroupDiscountsManager eventId={eventId} />
         </TabsContent>
       </Tabs>
       

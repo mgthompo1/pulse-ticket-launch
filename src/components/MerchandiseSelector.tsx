@@ -115,61 +115,69 @@ const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCa
   }
 
   return (
-    <div className="space-y-4">
-      {merchandise.map((item) => {
-        const isAvailable = item.stock_quantity > 0;
+    <Card className="animate-in fade-in-0" style={{ backgroundColor: theme?.cardBackgroundColor, border: theme?.borderEnabled ? `1px solid ${theme?.borderColor}` : undefined }}>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-2xl font-bold" style={{ color: theme?.headerTextColor || '#111827' }}>
+          <ShoppingCart className="h-6 w-6" />
+          Merchandise
+        </CardTitle>
+        <p className="text-gray-600 mt-2">Add merchandise to your order</p>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {merchandise.map((item) => {
+            const isAvailable = item.stock_quantity > 0;
 
-        return (
-          <Card
-            key={item.id}
-            className={!isAvailable ? 'opacity-50' : ''}
-            style={{ backgroundColor: theme?.cardBackgroundColor, border: theme?.borderEnabled ? `1px solid ${theme?.borderColor}` : undefined }}
-          >
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg" style={{ color: theme?.headerTextColor || '#111827' }}>{item.name}</CardTitle>
-                  {item.description && (
-                    <CardDescription className="mt-1" style={{ color: theme?.bodyTextColor }}>
-                      {item.description}
-                    </CardDescription>
-                  )}
-                </div>
-                <div className="text-right">
-                  <div className="text-xl font-bold" style={{ color: theme?.headerTextColor || '#111827' }}>${item.price}</div>
-                  <Badge variant={isAvailable ? "secondary" : "secondary"}>
-                    {isAvailable
-                      ? `${item.stock_quantity} available`
-                      : 'Out of stock'
-                    }
-                  </Badge>
+            return (
+              <div
+                key={item.id}
+                className={`group border-2 border-gray-200 rounded-2xl p-6 hover:border-blue-300 hover:shadow-xl transition-all duration-300 bg-white ${!isAvailable ? 'opacity-50' : ''}`}
+              >
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-bold text-lg text-gray-900 leading-tight">{item.name}</h3>
+                      <div className="text-right">
+                        <div className="text-xl font-bold text-gray-900">${item.price}</div>
+                        <div className="text-sm text-gray-500 font-medium">
+                          {isAvailable ? `${item.stock_quantity} available` : 'Out of stock'}
+                        </div>
+                      </div>
+                    </div>
+                    {item.description && (
+                      <p className="text-gray-600 text-sm leading-relaxed">{item.description}</p>
+                    )}
+                  </div>
+
+                  {/* Add to Cart Button */}
+                  <div className="lg:ml-8">
+                    <Button
+                      onClick={() => addToCart(item)}
+                      className="w-full lg:w-auto font-semibold rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
+                      disabled={!isAvailable}
+                      style={{
+                        backgroundColor: theme?.primaryColor,
+                        color: theme?.buttonTextColor
+                      }}
+                      size="default"
+                    >
+                      {!isAvailable ? (
+                        "Out of Stock"
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add to Cart
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </CardHeader>
-
-            {isAvailable && (
-              <CardContent>
-                <div className="flex justify-end">
-                  <Button
-                    onClick={() => addToCart(item)}
-                    variant="secondary"
-                    className="border-0"
-                    disabled={item.stock_quantity <= 0}
-                    style={{
-                      backgroundColor: theme?.primaryColor,
-                      color: theme?.buttonTextColor
-                    }}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add to Cart
-                  </Button>
-                </div>
-              </CardContent>
-            )}
-          </Card>
-        );
-      })}
-    </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

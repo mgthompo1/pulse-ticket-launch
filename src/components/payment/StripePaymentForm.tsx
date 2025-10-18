@@ -20,6 +20,7 @@ interface StripePaymentFormProps {
   bookingFee?: number;
   publishableKey: string;
   currency?: string;
+  promoCodeId?: string | null;
 }
 
 const CheckoutForm = ({ 
@@ -229,20 +230,21 @@ const CheckoutForm = ({
   );
 };
 
-export const StripePaymentForm = ({ 
-  publishableKey, 
-  eventId, 
-  cart, 
-  merchandiseCart, 
-  customerInfo, 
-  total, 
+export const StripePaymentForm = ({
+  publishableKey,
+  eventId,
+  cart,
+  merchandiseCart,
+  customerInfo,
+  total,
   theme,
   onCancel,
   onSuccess,
   bookingFeesEnabled = false,
   subtotal = 0,
   bookingFee = 0,
-  currency
+  currency,
+  promoCodeId = null
 }: StripePaymentFormProps) => {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -267,12 +269,13 @@ export const StripePaymentForm = ({
         console.log("subtotal:", subtotal);
         console.log("bookingFee:", bookingFee);
 
-        const requestBody = { 
-          eventId, 
+        const requestBody = {
+          eventId,
           total,
           subtotal,
           bookingFee,
           bookingFeesEnabled,
+          promoCodeId,
           items: [
             ...cart.map(item => ({
               id: item.id,
@@ -281,7 +284,7 @@ export const StripePaymentForm = ({
               unit_price: item.price,
               type: 'ticket'
             })),
-            ...merchandiseCart.map(item => ({ 
+            ...merchandiseCart.map(item => ({
               id: item.merchandise.id,
               merchandise_id: item.merchandise.id,
               quantity: item.quantity,

@@ -14,14 +14,17 @@ import { GuestSeatSelector } from "@/components/GuestSeatSelector";
 import MerchandiseSelector from "@/components/MerchandiseSelector";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { usePromoCodeAndDiscounts } from "@/hooks/usePromoCodeAndDiscounts";
+import { useTicketReservation } from "@/hooks/useTicketReservation";
+import { PromoCodeInput } from "@/components/checkout/PromoCodeInput";
 // Stripe will be loaded dynamically when needed
-import { 
-  EventData, 
-  TicketType, 
-  CartItem, 
-  MerchandiseCartItem, 
-  CustomerInfo, 
-  WindcaveLink, 
+import {
+  EventData,
+  TicketType,
+  CartItem,
+  MerchandiseCartItem,
+  CustomerInfo,
+  WindcaveLink,
   CustomQuestion
 } from "@/types/widget";
 import { MultiStepCheckout } from "@/components/checkout/MultiStepCheckout";
@@ -312,6 +315,45 @@ const TicketWidget = () => {
   const [customErrors, setCustomErrors] = useState<Record<string, string>>({});
   // State for checkout mode
   const [checkoutMode, setCheckoutMode] = useState<'onepage' | 'multistep' | 'beta'>('onepage');
+
+  // Calculate totals for promo code and discount hooks
+  const ticketCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const ticketTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const merchandiseTotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
+  const subtotalBeforeDiscounts = ticketTotal + merchandiseTotal;
+
+  // Promo code and group discount hook
+  const {
+    promoCode,
+    setPromoCode,
+    promoCodeId,
+    promoDiscount,
+    promoError,
+    isValidating,
+    groupDiscount,
+    groupDiscountTier,
+    applyPromoCode,
+    clearPromoCode,
+    getTotalDiscount,
+    calculateFinalTotal,
+  } = usePromoCodeAndDiscounts({
+    eventId: eventId || '',
+    customerEmail: customerInfo.email,
+    ticketCount,
+    subtotal: subtotalBeforeDiscounts,
+  });
+
+  // Ticket reservation hook for race condition prevention
+  const {
+    reservations,
+    timeRemaining,
+    reserveTickets,
+    reserveMultipleTickets,
+    completeAllReservations,
+    cancelAllReservations,
+    formatTimeRemaining,
+    hasActiveReservations,
+  } = useTicketReservation(eventId || '');
 
   const loadEventData = useCallback(async () => {
     try {
@@ -689,19 +731,26 @@ const TicketWidget = () => {
     const ticketTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const merchandiseTotal = getMerchandiseTotal();
     const subtotal = ticketTotal + merchandiseTotal;
-    
+
     // Get booking fees setting from eventData
     const bookingFeesEnabled = eventData?.organizations?.stripe_booking_fee_enabled || false;
-    
+
     // Calculate booking fee (1% + $0.50) when enabled for Stripe
-    const bookingFee = bookingFeesEnabled && eventData?.organizations?.payment_provider === 'stripe' 
+    const bookingFee = bookingFeesEnabled && eventData?.organizations?.payment_provider === 'stripe'
       ? (subtotal * 0.01) + 0.50
       : 0;
-    
+
     // Apply credit card processing fee if configured
     const processingFeeAmount = creditCardProcessingFee > 0 ? (subtotal * creditCardProcessingFee / 100) : 0;
-    
-    return subtotal + processingFeeAmount + bookingFee;
+
+    // Calculate base total before discounts
+    const baseTotal = subtotal + processingFeeAmount + bookingFee;
+
+    // Apply discounts (promo or group, whichever is better)
+    const totalDiscount = getTotalDiscount();
+    const finalTotal = Math.max(0, baseTotal - totalDiscount);
+
+    return finalTotal;
   };
 
   // Optimize custom questions with useMemo
@@ -1326,6 +1375,30 @@ const TicketWidget = () => {
           eventData={eventData!}
           ticketTypes={ticketTypes}
           customQuestions={customQuestions}
+          promoCodeHooks={{
+            promoCode,
+            setPromoCode,
+            promoCodeId,
+            promoDiscount,
+            promoError,
+            isValidating,
+            groupDiscount,
+            groupDiscountTier,
+            applyPromoCode,
+            clearPromoCode,
+            getTotalDiscount,
+            calculateFinalTotal,
+          }}
+          reservationHooks={{
+            reservations,
+            timeRemaining,
+            reserveTickets,
+            reserveMultipleTickets,
+            completeAllReservations,
+            cancelAllReservations,
+            formatTimeRemaining,
+            hasActiveReservations,
+          }}
         />
       </>
     );
@@ -1373,6 +1446,30 @@ const TicketWidget = () => {
           eventData={eventData!}
           ticketTypes={ticketTypes}
           customQuestions={customQuestions}
+          promoCodeHooks={{
+            promoCode,
+            setPromoCode,
+            promoCodeId,
+            promoDiscount,
+            promoError,
+            isValidating,
+            groupDiscount,
+            groupDiscountTier,
+            applyPromoCode,
+            clearPromoCode,
+            getTotalDiscount,
+            calculateFinalTotal,
+          }}
+          reservationHooks={{
+            reservations,
+            timeRemaining,
+            reserveTickets,
+            reserveMultipleTickets,
+            completeAllReservations,
+            cancelAllReservations,
+            formatTimeRemaining,
+            hasActiveReservations,
+          }}
         />
       </>
     );
@@ -1987,7 +2084,33 @@ const TicketWidget = () => {
                           </div>
                         </div>
                       ))}
-                      
+
+                      {/* Promo Code Input - Show in sidebar when cart has items */}
+                      {(cart.length > 0 || merchandiseCart.length > 0) && (
+                        <div className="border-t pt-3 pb-3">
+                          <h3 className="font-semibold text-sm mb-3" style={{ color: headerTextColor }}>Promo Code</h3>
+                          <PromoCodeInput
+                            promoCode={promoCode}
+                            setPromoCode={setPromoCode}
+                            promoDiscount={promoDiscount}
+                            promoError={promoError}
+                            isValidating={isValidating}
+                            onApply={applyPromoCode}
+                            onClear={clearPromoCode}
+                          />
+                          {groupDiscountTier && ticketCount >= groupDiscountTier && (
+                            <p className="text-xs text-green-600 font-medium mt-2">
+                              ✨ Group discount active! Saving with {ticketCount}+ tickets
+                            </p>
+                          )}
+                          {hasActiveReservations() && (
+                            <div className="mt-3 p-2 bg-orange-50 border border-orange-300 rounded text-xs text-orange-800">
+                              ⏱️ <strong>Tickets reserved!</strong> Complete within <strong>{formatTimeRemaining()}</strong>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <div className="border-t pt-3">
                         {/* Subtotal breakdown */}
                         {cart.length > 0 && (
@@ -2003,13 +2126,36 @@ const TicketWidget = () => {
                           </div>
                         )}
                          
-                        {/* Show subtotal if there are fees */}
-                        {(creditCardProcessingFee > 0 || (eventData?.organizations?.stripe_booking_fee_enabled && eventData?.organizations?.payment_provider === 'stripe')) && (
+                        {/* Show subtotal if there are fees or discounts */}
+                        {(creditCardProcessingFee > 0 || getTotalDiscount() > 0 || (eventData?.organizations?.stripe_booking_fee_enabled && eventData?.organizations?.payment_provider === 'stripe')) && (
                           <>
                             <div className="flex justify-between items-center mb-2">
                               <span className="text-sm">Subtotal:</span>
                               <span className="text-sm">${(cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()).toFixed(2)}</span>
                             </div>
+
+                            {/* Show discounts */}
+                            {getTotalDiscount() > 0 && (
+                              <div className="bg-green-50 -mx-2 px-2 py-2 rounded mb-2">
+                                {promoDiscount > 0 && promoDiscount >= groupDiscount && (
+                                  <div className="flex justify-between items-center text-green-700">
+                                    <span className="text-sm font-semibold">🎟️ Promo: {promoCode}</span>
+                                    <span className="text-sm font-semibold">-${promoDiscount.toFixed(2)}</span>
+                                  </div>
+                                )}
+                                {groupDiscount > 0 && groupDiscount > promoDiscount && (
+                                  <div className="flex justify-between items-center text-green-700">
+                                    <span className="text-sm font-semibold">👥 Group Discount ({groupDiscountTier}+)</span>
+                                    <span className="text-sm font-semibold">-${groupDiscount.toFixed(2)}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between items-center text-green-800 border-t border-green-200 mt-1 pt-1">
+                                  <span className="text-xs font-bold">Total Savings:</span>
+                                  <span className="text-sm font-bold">-${getTotalDiscount().toFixed(2)}</span>
+                                </div>
+                              </div>
+                            )}
+
                             {creditCardProcessingFee > 0 && (
                               <div className="flex justify-between items-center mb-2">
                                 <span className="text-sm">Credit Card Processing Fee ({creditCardProcessingFee}%):</span>
@@ -2024,11 +2170,20 @@ const TicketWidget = () => {
                             )}
                           </>
                         )}
-                         
+
                         <div className="flex justify-between items-center text-lg font-bold border-t pt-2">
                           <span>Total:</span>
-                                                      <span style={{ color: headerTextColor }}>${getTotalAmount().toFixed(2)}</span>
+                          <span style={{ color: headerTextColor }}>${getTotalAmount().toFixed(2)}</span>
                         </div>
+
+                        {/* Show savings highlight */}
+                        {getTotalDiscount() > 0 && (
+                          <div className="mt-2 text-center p-2 bg-green-100 border border-green-300 rounded">
+                            <p className="text-xs text-green-800 font-semibold">
+                              🎉 You're saving ${getTotalDiscount().toFixed(2)}!
+                            </p>
+                          </div>
+                        )}
                       </div>
                        
                       <Button 
@@ -2180,15 +2335,16 @@ const TicketWidget = () => {
                         theme={theme}
                         bookingFeesEnabled={eventData?.organizations?.stripe_booking_fee_enabled || false}
                         subtotal={cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()}
-                        bookingFee={eventData?.organizations?.stripe_booking_fee_enabled && eventData?.organizations?.payment_provider === 'stripe' 
+                        bookingFee={eventData?.organizations?.stripe_booking_fee_enabled && eventData?.organizations?.payment_provider === 'stripe'
                           ? ((cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) + getMerchandiseTotal()) * 0.01) + 0.50
                           : 0}
                         currency={eventData?.organizations?.currency || 'USD'}
+                        promoCodeId={promoCodeId}
                         onSuccess={(orderId: string) => {
                           setCart([]);
                           setMerchandiseCart([]);
                           setShowPayment(false);
-                          
+
                           // Redirect to payment success page with order ID
                           window.location.href = `/payment-success?orderId=${orderId}`;
                         }}
