@@ -43,7 +43,7 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
   const [emailCampaign, setEmailCampaign] = useState({
     subject: "",
     content: "",
-    segment: "all"
+    segment: "all-ticket-holders"
   });
 
   const [analytics, setAnalytics] = useState({
@@ -343,10 +343,12 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
                           <SelectValue placeholder="Select audience" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">All Subscribers</SelectItem>
-                          <SelectItem value="past-attendees">Past Attendees</SelectItem>
-                          <SelectItem value="interests">By Interests</SelectItem>
-                          <SelectItem value="location">By Location</SelectItem>
+                          <SelectItem value="all-ticket-holders">All Confirmed Ticket Holders</SelectItem>
+                          <SelectItem value="ticket-type">By Ticket Type</SelectItem>
+                          <SelectItem value="purchase-date">By Purchase Date Range</SelectItem>
+                          <SelectItem value="vip-tickets">VIP Ticket Holders Only</SelectItem>
+                          <SelectItem value="past-attendees">Past Event Attendees</SelectItem>
+                          <SelectItem value="custom-segment">Custom Segment</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
