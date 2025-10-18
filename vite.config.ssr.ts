@@ -25,8 +25,10 @@ export default defineConfig({
     // Don't externalize these packages for SSR
     noExternal: [
       'react-helmet-async',
+      'uuid',
+      'react-markdown',
       '@radix-ui/react-dialog',
-      '@radix-ui/react-select', 
+      '@radix-ui/react-select',
       '@radix-ui/react-tabs',
       '@radix-ui/react-accordion',
       '@radix-ui/react-alert-dialog',
