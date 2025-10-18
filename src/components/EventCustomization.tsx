@@ -777,11 +777,6 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
             <Users className="h-4 w-4" />
             Attendees
           </TabsTrigger>
-<<<<<<< HEAD
-          <TabsTrigger value="preview" className="flex items-center gap-2">
-            <Eye className="h-4 w-4" />
-            Preview
-=======
           <TabsTrigger value="promo-codes" className="flex items-center gap-2">
             <Tag className="h-4 w-4" />
             Promo Codes
@@ -789,7 +784,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           <TabsTrigger value="group-discounts" className="flex items-center gap-2">
             <UsersRound className="h-4 w-4" />
             Group Discounts
->>>>>>> c10fc3a (Add comprehensive promo codes and group discounts system)
+          </TabsTrigger>
+          <TabsTrigger value="preview" className="flex items-center gap-2">
+            <Eye className="h-4 w-4" />
+            Preview
           </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Cog className="h-4 w-4" />
