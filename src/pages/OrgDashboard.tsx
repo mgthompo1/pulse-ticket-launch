@@ -844,61 +844,53 @@ const OrgDashboard = () => {
 
   return (
     <SidebarProvider>
-      <div className="h-screen bg-background flex flex-col w-full" style={{ width: '100%', maxWidth: 'none' }}>
-        {/* Header with minimal controls */}
-        <header className="border-b border-gray-200/60 bg-white flex-shrink-0 w-full" style={{ width: '100%', maxWidth: 'none' }}>
-          <div className="px-4 py-3 w-full" style={{ width: '100%', maxWidth: 'none' }}>
-            <div className="flex items-center justify-between gap-4 w-full" style={{ width: '100%' }}>
-              {/* Mobile sidebar trigger - only shows on mobile */}
-              <div className="flex items-center gap-2 md:hidden">
-                <MobileSidebarTrigger />
-              </div>
-              
-              {/* Dashboard Title */}
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-blue-50 border border-blue-200/60">
-                  <BarChart3 className="h-4 w-4 text-blue-600" />
+      <div className="h-screen bg-background flex w-full" style={{ width: '100%', maxWidth: 'none' }}>
+        {/* Sidebar */}
+        <div className="flex-shrink-0">
+          <AppSidebar
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            selectedEvent={selectedEvent ? { id: selectedEvent.id, name: selectedEvent.name, event_date: selectedEvent.event_date, status: selectedEvent.status } : null}
+          />
+        </div>
+
+        {/* Main content area with header and content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Header with minimal controls */}
+          <header className="border-b border-gray-200/60 bg-white flex-shrink-0 h-[52px]" style={{ width: '100%', maxWidth: 'none' }}>
+            <div className="px-4 h-full w-full flex items-center" style={{ width: '100%', maxWidth: 'none' }}>
+              <div className="flex items-center justify-between gap-4 w-full" style={{ width: '100%' }}>
+                {/* Mobile sidebar trigger - only shows on mobile */}
+                <div className="flex items-center gap-2 md:hidden">
+                  <MobileSidebarTrigger />
                 </div>
-                <div>
-                  <h1 className="font-manrope font-semibold text-base text-gray-900">
-                    Dashboard
-                  </h1>
+
+                {/* Spacer for mobile, empty on desktop */}
+                <div className="flex-1 md:flex-none"></div>
+
+                <div className="flex items-center gap-2" style={{ marginLeft: 'auto', width: 'auto' }}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowHelp(true)}
+                    className="font-manrope font-medium text-sm"
+                  >
+                    <HelpCircle className="h-4 w-4 mr-2" />
+                    Help
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate("/")}
+                    className="font-manrope font-medium text-sm"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Exit
+                  </Button>
                 </div>
-              </div>
-              
-              <div className="flex items-center gap-2 ml-auto" style={{ marginLeft: 'auto', width: 'auto' }}>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setShowHelp(true)}
-                  className="font-manrope font-medium text-sm"
-                >
-                  <HelpCircle className="h-4 w-4 mr-2" />
-                  Help
-                </Button>
-                <Button 
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate("/")}
-                  className="font-manrope font-medium text-sm"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Exit
-                </Button>
               </div>
             </div>
-          </div>
-        </header>
-
-        {/* Sidebar and content below header - takes remaining space */}
-        <div className="flex flex-1 min-h-0 w-full" style={{ maxWidth: 'none', width: '100%', minWidth: '100%' }}>
-          <div className="flex-shrink-0">
-            <AppSidebar 
-              activeTab={activeTab} 
-              setActiveTab={setActiveTab} 
-              selectedEvent={selectedEvent ? { id: selectedEvent.id, name: selectedEvent.name, event_date: selectedEvent.event_date, status: selectedEvent.status } : null} 
-            />
-          </div>
+          </header>
           
           <main className="flex-1 min-w-0 flex-shrink-0 p-4 md:p-6 overflow-y-auto overflow-x-hidden bg-white">
             <div className="w-full" style={{ maxWidth: 'none', margin: '0', padding: '0', width: '100%', minWidth: '100%' }}>
