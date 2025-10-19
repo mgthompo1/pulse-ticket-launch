@@ -122,6 +122,15 @@ class SupabaseService: ObservableObject {
 
     private init() {}
 
+    // MARK: - Caching
+    private var guestCache: [String: (guests: [SupabaseGuest], timestamp: Date)] = [:]
+    private let cacheExpiry: TimeInterval = 30 // 30 seconds
+
+    func shouldUseCache(for eventId: String) -> Bool {
+        guard let cached = guestCache[eventId] else { return false }
+        return Date().timeIntervalSince(cached.timestamp) < cacheExpiry
+    }
+
     // MARK: - Authentication
     func signIn(email: String, password: String) async -> Bool {
         await MainActor.run {
@@ -268,6 +277,13 @@ class SupabaseService: ObservableObject {
         guests = []
         ticketTypes = []
         merchandise = []
+        clearCaches()
+    }
+
+    // MARK: - Clear Caches
+    func clearCaches() {
+        guestCache.removeAll()
+        print("🗑️ Caches cleared")
     }
 
     // MARK: - Fetch Events
@@ -324,6 +340,16 @@ class SupabaseService: ObservableObject {
     func fetchGuests(for eventId: String? = nil) async {
         print("🎫 Starting fetchGuests for eventId: \(eventId ?? "all events")")
 
+        // ✅ Check cache first
+        if let eventId = eventId, shouldUseCache(for: eventId) {
+            print("⚡️ Using cached guest data")
+            await MainActor.run {
+                self.guests = guestCache[eventId]!.guests
+                self.isLoading = false
+            }
+            return
+        }
+
         await MainActor.run {
             isLoading = true
             error = nil
@@ -340,13 +366,20 @@ class SupabaseService: ObservableObject {
         }
 
         do {
-            // Build the URL with event filtering
-            var urlString = "\(supabaseURL)/rest/v1/tickets?select=*,order_items(id,order_id,orders(customer_name,customer_email,event_id))"
+            // Build the URL with event filtering using proper PostgREST embedding syntax
+            // Using !inner twice to ensure ONLY tickets with valid order_items AND orders are returned
+            var urlString = "\(supabaseURL)/rest/v1/tickets?select=*,order_items!inner(id,order_id,orders!inner(customer_name,customer_email,event_id))"
 
-            // Add event filter if provided
+            // Add event filter if provided - this filters at the orders level
             if let eventId = eventId {
                 urlString += "&order_items.orders.event_id=eq.\(eventId)"
             }
+
+            // CRITICAL: Add not.is.null filters to ensure orders data exists
+            // This ensures we don't get tickets where orders is null
+            // Filter by both customer_name and customer_email to ensure complete order data
+            urlString += "&order_items.orders.customer_name=not.is.null"
+            urlString += "&order_items.orders.customer_email=not.is.null"
 
             print("🌐 Fetching guests from URL: \(urlString)")
 
@@ -383,34 +416,31 @@ class SupabaseService: ObservableObject {
                 }
 
                 let checkedIn = ticketDict["checked_in"] as? Bool ?? false
+                let checkedInAt = ticketDict["used_at"] as? String
 
-                // Extract customer info from orders through order_items
-                var customerName = "Unknown Guest" // Better fallback name
-                var customerEmail = "guest@event.com" // Generic fallback email
+                // Extract customer info - NO FALLBACK!
+                var customerName: String?
+                var customerEmail: String?
 
                 if let orderItemData = ticketDict["order_items"] as? [String: Any],
                    let ordersData = orderItemData["orders"] as? [String: Any] {
-                    // Extract customer data with null checking
-                    if let name = ordersData["customer_name"] as? String, !name.isEmpty {
-                        customerName = name
-                    }
-                    if let email = ordersData["customer_email"] as? String, !email.isEmpty {
-                        customerEmail = email
-                    }
-                    print("✅ Ticket \(index + 1): \(customerName) (\(customerEmail))")
-                } else {
-                    // If no order data, create a meaningful fallback based on ticket code
-                    let ticketSuffix = String(ticketCode.suffix(6))
-                    customerName = "Ticket #\(ticketSuffix)"
-                    print("⚠️ Ticket \(index + 1): Using fallback data - \(customerName) (\(customerEmail))")
+                    customerName = ordersData["customer_name"] as? String
+                    customerEmail = ordersData["customer_email"] as? String
                 }
 
-                let checkedInAt = ticketDict["used_at"] as? String
+                // ✅ SKIP tickets without valid customer data
+                guard let name = customerName, !name.isEmpty,
+                      let email = customerEmail, !email.isEmpty else {
+                    print("⚠️ Skipping ticket \(ticketCode) - incomplete data")
+                    continue
+                }
+
+                print("✅ Ticket \(index + 1): \(name) (\(email))")
 
                 let guest = SupabaseGuest(
                     id: ticketId,
-                    name: customerName,
-                    email: customerEmail,
+                    name: name,
+                    email: email,
                     ticketCode: ticketCode,
                     checkedIn: checkedIn,
                     checkedInAt: checkedInAt
@@ -421,6 +451,12 @@ class SupabaseService: ObservableObject {
 
             print("✅ Successfully parsed \(parsedGuests.count) guests")
             let finalGuests = parsedGuests
+
+            // ✅ Store in cache after fetching
+            if let eventId = eventId {
+                guestCache[eventId] = (guests: finalGuests, timestamp: Date())
+            }
+
             await MainActor.run {
                 self.guests = finalGuests
                 self.isLoading = false
@@ -435,34 +471,79 @@ class SupabaseService: ObservableObject {
         }
     }
 
+    // MARK: - Update Local Guest State
+    private func updateLocalGuest(ticketCode: String, checkedIn: Bool) async {
+        await MainActor.run {
+            if let index = self.guests.firstIndex(where: { $0.ticketCode == ticketCode }) {
+                let updatedGuest = SupabaseGuest(
+                    id: self.guests[index].id,
+                    name: self.guests[index].name,
+                    email: self.guests[index].email,
+                    ticketCode: self.guests[index].ticketCode,
+                    checkedIn: checkedIn,
+                    checkedInAt: checkedIn ? ISO8601DateFormatter().string(from: Date()) : nil
+                )
+                self.guests[index] = updatedGuest
+                print("✅ Updated local state for ticket: \(ticketCode)")
+            }
+        }
+    }
+
     // MARK: - Check In Guest
     func checkInGuest(ticketCode: String) async -> Bool {
+        print("🎫 Starting check-in for ticket code: \(ticketCode)")
+
         do {
-            let url = URL(string: "\(supabaseURL)/rest/v1/tickets?ticket_code=eq.\(ticketCode)")!
+            // Use the edge function for check-in to ensure proper validation and logging
+            let url = URL(string: "\(supabaseURL)/functions/v1/check-in-guest")!
             var request = URLRequest(url: url)
-            request.httpMethod = "PATCH"
+            request.httpMethod = "POST"
             request.setValue("Bearer \(supabaseKey)", forHTTPHeaderField: "Authorization")
             request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.setValue("return=minimal", forHTTPHeaderField: "Prefer")
 
-            let updateData: [String: Any] = [
-                "checked_in": true,
-                "used_at": ISO8601DateFormatter().string(from: Date())
+            let checkInData: [String: Any] = [
+                "ticketCode": ticketCode,
+                "staffId": userEmail ?? "ios-app", // Use logged in user email or fallback
+                "notes": "Checked in via iOS app"
             ]
 
-            request.httpBody = try JSONSerialization.data(withJSONObject: updateData)
+            request.httpBody = try JSONSerialization.data(withJSONObject: checkInData)
 
-            let (_, response) = try await URLSession.shared.data(for: request)
+            let (data, response) = try await URLSession.shared.data(for: request)
 
             if let httpResponse = response as? HTTPURLResponse {
-                print("Check-in API Response Status: \(httpResponse.statusCode)")
-                return httpResponse.statusCode == 200 || httpResponse.statusCode == 204
+                print("✅ Check-in API Response Status: \(httpResponse.statusCode)")
+
+                if let responseString = String(data: data, encoding: .utf8) {
+                    print("📄 Check-in API Response: \(responseString)")
+                }
+
+                if httpResponse.statusCode == 200 {
+                    // Parse the response to get guest info
+                    if let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let success = responseJSON["success"] as? Bool {
+
+                        // ✅ Just update the local guest state instead of refetching
+                        await updateLocalGuest(ticketCode: ticketCode, checkedIn: true)
+
+                        return success
+                    }
+                }
+
+                // Handle specific error cases
+                if httpResponse.statusCode == 400 {
+                    if let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let errorMessage = responseJSON["error"] as? String {
+                        print("⚠️ Check-in validation failed: \(errorMessage)")
+                    }
+                }
             }
 
             return false
+
         } catch {
-            print("Error checking in guest: \(error)")
+            print("❌ Error checking in guest: \(error)")
             return false
         }
     }
