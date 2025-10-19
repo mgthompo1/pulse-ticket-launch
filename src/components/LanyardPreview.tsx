@@ -97,12 +97,13 @@ export const LanyardPreview = ({
           return previewData.eventLogo ? null : (eventBlock.fallbackText || 'EVENT LOGO');
         }
 
-        case 'special_access':
+        case 'special_access': {
           const accessBlock = block as any;
           if (accessBlock.showOnlyForVIP && !previewData.ticketType.toLowerCase().includes('vip')) {
             return '';
           }
           return accessBlock.accessText || previewData.specialAccess || 'SPECIAL ACCESS';
+        }
 
         case 'custom_text':
           return (block as any).text || 'Custom Text';
