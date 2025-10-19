@@ -124,11 +124,30 @@ class SupabaseService: ObservableObject {
 
     // MARK: - Caching
     private var guestCache: [String: (guests: [SupabaseGuest], timestamp: Date)] = [:]
-    private let cacheExpiry: TimeInterval = 30 // 30 seconds
+    private var ticketTypesCache: [String: (types: [TicketType], timestamp: Date)] = [:]
+    private var merchandiseCache: [String: (items: [MerchandiseItem], timestamp: Date)] = [:]
+
+    private let guestCacheExpiry: TimeInterval = 30 // 30 seconds for dynamic guest data
+    private let staticDataCacheExpiry: TimeInterval = 300 // 5 minutes for ticket types & merchandise
+
+    // MARK: - Request Deduplication
+    private var ongoingGuestFetches: [String: Task<[SupabaseGuest], Error>] = [:]
+    private var ongoingTicketTypeFetches: [String: Task<[TicketType], Error>] = [:]
+    private var ongoingMerchandiseFetches: [String: Task<[MerchandiseItem], Error>] = [:]
 
     func shouldUseCache(for eventId: String) -> Bool {
         guard let cached = guestCache[eventId] else { return false }
-        return Date().timeIntervalSince(cached.timestamp) < cacheExpiry
+        return Date().timeIntervalSince(cached.timestamp) < guestCacheExpiry
+    }
+
+    private func shouldUseTicketTypesCache(for eventId: String) -> Bool {
+        guard let cached = ticketTypesCache[eventId] else { return false }
+        return Date().timeIntervalSince(cached.timestamp) < staticDataCacheExpiry
+    }
+
+    private func shouldUseMerchandiseCache(for eventId: String) -> Bool {
+        guard let cached = merchandiseCache[eventId] else { return false }
+        return Date().timeIntervalSince(cached.timestamp) < staticDataCacheExpiry
     }
 
     // MARK: - Authentication
@@ -350,6 +369,25 @@ class SupabaseService: ObservableObject {
             return
         }
 
+        // ✅ Request deduplication - if there's already an ongoing fetch, wait for it
+        let cacheKey = eventId ?? "all"
+        if let ongoingTask = ongoingGuestFetches[cacheKey] {
+            print("⏳ Waiting for ongoing guest fetch to complete")
+            do {
+                let guests = try await ongoingTask.value
+                await MainActor.run {
+                    self.guests = guests
+                    self.isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = "Failed to fetch guests: \(error.localizedDescription)"
+                    self.isLoading = false
+                }
+            }
+            return
+        }
+
         await MainActor.run {
             isLoading = true
             error = nil
@@ -365,6 +403,39 @@ class SupabaseService: ObservableObject {
             return
         }
 
+        // ✅ Create a new task and store it for deduplication
+        let fetchTask = Task<[SupabaseGuest], Error> {
+            return try await performGuestFetch(for: eventId)
+        }
+        ongoingGuestFetches[cacheKey] = fetchTask
+
+        do {
+            let guests = try await fetchTask.value
+
+            // ✅ Store in cache
+            if let eventId = eventId {
+                guestCache[eventId] = (guests: guests, timestamp: Date())
+            }
+
+            await MainActor.run {
+                self.guests = guests
+                self.isLoading = false
+            }
+            print("✅ Successfully parsed \(guests.count) guests")
+        } catch {
+            await MainActor.run {
+                self.error = "Failed to fetch guests: \(error.localizedDescription)"
+                self.isLoading = false
+            }
+            print("Error fetching guests: \(error)")
+        }
+
+        // ✅ Clean up the ongoing task
+        ongoingGuestFetches.removeValue(forKey: cacheKey)
+    }
+
+    // MARK: - Actual Fetch Logic (separated for deduplication)
+    private func performGuestFetch(for eventId: String?) async throws -> [SupabaseGuest] {
         do {
             // Build the URL with event filtering using proper PostgREST embedding syntax
             // Using !inner twice to ensure ONLY tickets with valid order_items AND orders are returned
@@ -449,25 +520,11 @@ class SupabaseService: ObservableObject {
                 parsedGuests.append(guest)
             }
 
-            print("✅ Successfully parsed \(parsedGuests.count) guests")
-            let finalGuests = parsedGuests
-
-            // ✅ Store in cache after fetching
-            if let eventId = eventId {
-                guestCache[eventId] = (guests: finalGuests, timestamp: Date())
-            }
-
-            await MainActor.run {
-                self.guests = finalGuests
-                self.isLoading = false
-            }
+            return parsedGuests
 
         } catch {
-            await MainActor.run {
-                self.error = "Failed to fetch guests: \(error.localizedDescription)"
-                self.isLoading = false
-            }
-            print("Error fetching guests: \(error)")
+            print("Error in performGuestFetch: \(error)")
+            throw error
         }
     }
 
@@ -561,6 +618,34 @@ class SupabaseService: ObservableObject {
     func fetchTicketTypes(for eventId: String) async {
         print("🎫 Starting fetchTicketTypes for eventId: \(eventId)")
 
+        // ✅ Check cache first
+        if shouldUseTicketTypesCache(for: eventId) {
+            print("⚡️ Using cached ticket types data")
+            await MainActor.run {
+                self.ticketTypes = ticketTypesCache[eventId]!.types
+                self.isLoading = false
+            }
+            return
+        }
+
+        // ✅ Request deduplication
+        if let ongoingTask = ongoingTicketTypeFetches[eventId] {
+            print("⏳ Waiting for ongoing ticket types fetch to complete")
+            do {
+                let types = try await ongoingTask.value
+                await MainActor.run {
+                    self.ticketTypes = types
+                    self.isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = "Failed to fetch ticket types: \(error.localizedDescription)"
+                    self.isLoading = false
+                }
+            }
+            return
+        }
+
         await MainActor.run {
             isLoading = true
             error = nil
@@ -576,6 +661,36 @@ class SupabaseService: ObservableObject {
             return
         }
 
+        // ✅ Create task for deduplication
+        let fetchTask = Task<[SupabaseTicketType], Error> {
+            return try await performTicketTypesFetch(for: eventId)
+        }
+        ongoingTicketTypeFetches[eventId] = fetchTask
+
+        do {
+            let types = try await fetchTask.value
+
+            // ✅ Store in cache
+            ticketTypesCache[eventId] = (types: types, timestamp: Date())
+
+            await MainActor.run {
+                self.ticketTypes = types
+                self.isLoading = false
+            }
+            print("✅ Successfully fetched \(types.count) ticket types")
+        } catch {
+            await MainActor.run {
+                self.error = "Failed to fetch ticket types: \(error.localizedDescription)"
+                self.isLoading = false
+            }
+            print("❌ Error fetching ticket types: \(error)")
+        }
+
+        // ✅ Clean up
+        ongoingTicketTypeFetches.removeValue(forKey: eventId)
+    }
+
+    private func performTicketTypesFetch(for eventId: String) async throws -> [SupabaseTicketType] {
         do {
             let url = URL(string: "\(supabaseURL)/rest/v1/ticket_types?select=*&event_id=eq.\(eventId)")!
             var request = URLRequest(url: url)
@@ -595,34 +710,56 @@ class SupabaseService: ObservableObject {
 
             let ticketTypes = try JSONDecoder().decode([SupabaseTicketType].self, from: data)
 
-            await MainActor.run {
-                // Filter out ticket types with null/invalid data
-                self.ticketTypes = ticketTypes.filter { ticketType in
-                    // Basic validation
-                    guard !ticketType.name.isEmpty,
-                          ticketType.price >= 0,
-                          ticketType.quantity_available > 0 else {
-                        return false
-                    }
-                    return true
+            // Filter out ticket types with null/invalid data
+            let validTypes = ticketTypes.filter { ticketType in
+                // Basic validation
+                guard !ticketType.name.isEmpty,
+                      ticketType.price >= 0,
+                      ticketType.quantity_available > 0 else {
+                    return false
                 }
-                self.isLoading = false
+                return true
             }
 
-            print("✅ Successfully fetched \(ticketTypes.count) ticket types")
+            return validTypes
 
         } catch {
-            await MainActor.run {
-                self.error = "Failed to fetch ticket types: \(error.localizedDescription)"
-                self.isLoading = false
-            }
-            print("❌ Error fetching ticket types: \(error)")
+            print("❌ Error in performTicketTypesFetch: \(error)")
+            throw error
         }
     }
 
     // MARK: - Fetch Merchandise for Event
     func fetchMerchandise(for eventId: String) async {
         print("🛍️ Starting fetchMerchandise for eventId: \(eventId)")
+
+        // ✅ Check cache first
+        if shouldUseMerchandiseCache(for: eventId) {
+            print("⚡️ Using cached merchandise data")
+            await MainActor.run {
+                self.merchandise = merchandiseCache[eventId]!.items
+                self.isLoading = false
+            }
+            return
+        }
+
+        // ✅ Request deduplication
+        if let ongoingTask = ongoingMerchandiseFetches[eventId] {
+            print("⏳ Waiting for ongoing merchandise fetch to complete")
+            do {
+                let items = try await ongoingTask.value
+                await MainActor.run {
+                    self.merchandise = items
+                    self.isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.error = "Failed to fetch merchandise: \(error.localizedDescription)"
+                    self.isLoading = false
+                }
+            }
+            return
+        }
 
         await MainActor.run {
             isLoading = true
@@ -639,6 +776,36 @@ class SupabaseService: ObservableObject {
             return
         }
 
+        // ✅ Create task for deduplication
+        let fetchTask = Task<[SupabaseMerchandise], Error> {
+            return try await performMerchandiseFetch(for: eventId)
+        }
+        ongoingMerchandiseFetches[eventId] = fetchTask
+
+        do {
+            let items = try await fetchTask.value
+
+            // ✅ Store in cache
+            merchandiseCache[eventId] = (items: items, timestamp: Date())
+
+            await MainActor.run {
+                self.merchandise = items
+                self.isLoading = false
+            }
+            print("✅ Successfully fetched \(items.count) merchandise items")
+        } catch {
+            await MainActor.run {
+                self.error = "Failed to fetch merchandise: \(error.localizedDescription)"
+                self.isLoading = false
+            }
+            print("❌ Error fetching merchandise: \(error)")
+        }
+
+        // ✅ Clean up
+        ongoingMerchandiseFetches.removeValue(forKey: eventId)
+    }
+
+    private func performMerchandiseFetch(for eventId: String) async throws -> [SupabaseMerchandise] {
         do {
             let url = URL(string: "\(supabaseURL)/rest/v1/merchandise?select=*&event_id=eq.\(eventId)")!
             var request = URLRequest(url: url)
@@ -658,28 +825,22 @@ class SupabaseService: ObservableObject {
 
             let merchandise = try JSONDecoder().decode([SupabaseMerchandise].self, from: data)
 
-            await MainActor.run {
-                // Filter out merchandise with null/invalid data and only show available items
-                self.merchandise = merchandise.filter { item in
-                    // Basic validation
-                    guard !item.name.isEmpty,
-                          item.price > 0,
-                          item.isAvailable else {
-                        return false
-                    }
-                    return true
+            // Filter out merchandise with null/invalid data and only show available items
+            let validItems = merchandise.filter { item in
+                // Basic validation
+                guard !item.name.isEmpty,
+                      item.price > 0,
+                      item.isAvailable else {
+                    return false
                 }
-                self.isLoading = false
+                return true
             }
 
-            print("✅ Successfully fetched \(merchandise.count) merchandise items (\(self.merchandise.count) available)")
+            return validItems
 
         } catch {
-            await MainActor.run {
-                self.error = "Failed to fetch merchandise: \(error.localizedDescription)"
-                self.isLoading = false
-            }
-            print("❌ Error fetching merchandise: \(error)")
+            print("❌ Error in performMerchandiseFetch: \(error)")
+            throw error
         }
     }
 
