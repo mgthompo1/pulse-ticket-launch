@@ -79,7 +79,7 @@ export const useOrganizations = () => {
       }
 
       if (memberships && memberships.length > 0) {
-        memberships.forEach((membership: any) => {
+        memberships.forEach((membership: { role: string; organizations: Organization }) => {
           if (membership.organizations) {
             const org = membership.organizations;
             // Don't duplicate if user is already listed as owner
