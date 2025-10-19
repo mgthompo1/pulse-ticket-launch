@@ -37,6 +37,7 @@ interface ReservationHooks {
   reserveMultipleTickets: (tickets: Array<{ ticketTypeId: string; quantity: number }>) => Promise<void>;
   completeAllReservations: (orderId: string) => Promise<void>;
   cancelAllReservations: () => Promise<void>;
+  extendReservation: () => boolean;
   formatTimeRemaining: () => string;
   hasActiveReservations: () => boolean;
 }

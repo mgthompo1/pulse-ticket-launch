@@ -143,6 +143,18 @@ export const useTicketReservation = (eventId: string) => {
     }
   }, [sessionId, reservations.length]);
 
+  // Extend reservation by 10 minutes
+  const extendReservation = useCallback(() => {
+    if (reservationExpiry && reservations.length > 0) {
+      // Add 10 more minutes to current expiry
+      const newExpiry = new Date(reservationExpiry.getTime() + 10 * 60 * 1000);
+      setReservationExpiry(newExpiry);
+      console.log('✅ Reservation extended by 10 minutes. New expiry:', newExpiry);
+      return true;
+    }
+    return false;
+  }, [reservationExpiry, reservations.length]);
+
   // Format time remaining for display
   const formatTimeRemaining = () => {
     const minutes = Math.floor(timeRemaining / 60);
@@ -186,6 +198,7 @@ export const useTicketReservation = (eventId: string) => {
     reserveMultipleTickets,
     completeAllReservations,
     cancelAllReservations,
+    extendReservation,
     formatTimeRemaining,
     hasActiveReservations,
   };

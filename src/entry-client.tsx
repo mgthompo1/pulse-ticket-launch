@@ -3,9 +3,15 @@ import React from 'react';
 import { hydrateRoot, createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
+import * as Sentry from "@sentry/react";
 import './index.css';
 import './App.css';
 import App from './App';
+import { initSentry } from './lib/sentry';
+import { ErrorFallback } from './components/ErrorFallback';
+
+// Initialize Sentry
+initSentry();
 
 const container = document.getElementById('root')!;
 
@@ -17,11 +23,13 @@ const isSSR = container.firstElementChild !== null;
 const w = window as unknown as { __appRoot?: any };
 
 const appTree = (
-  <HelmetProvider>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </HelmetProvider>
+  <Sentry.ErrorBoundary fallback={ErrorFallback}>
+    <HelmetProvider>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </HelmetProvider>
+  </Sentry.ErrorBoundary>
 );
 
 if (w.__appRoot) {

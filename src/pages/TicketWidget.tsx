@@ -351,6 +351,7 @@ const TicketWidget = () => {
     reserveMultipleTickets,
     completeAllReservations,
     cancelAllReservations,
+    extendReservation,
     formatTimeRemaining,
     hasActiveReservations,
   } = useTicketReservation(eventId || '');
@@ -1396,6 +1397,7 @@ const TicketWidget = () => {
             reserveMultipleTickets,
             completeAllReservations,
             cancelAllReservations,
+            extendReservation,
             formatTimeRemaining,
             hasActiveReservations,
           }}
@@ -1467,6 +1469,7 @@ const TicketWidget = () => {
             reserveMultipleTickets,
             completeAllReservations,
             cancelAllReservations,
+            extendReservation,
             formatTimeRemaining,
             hasActiveReservations,
           }}

@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, idempotency-key, x-idempotency-key",
 };
 
 serve(async (req) => {
@@ -16,6 +16,13 @@ serve(async (req) => {
     const requestBody = await req.json();
     console.log("=== RECEIVED REQUEST BODY ===");
     console.log("Request body:", JSON.stringify(requestBody, null, 2));
+
+    // Get idempotency key from headers or generate fallback
+    const idempotencyKey = req.headers.get('idempotency-key') ||
+                           req.headers.get('x-idempotency-key') ||
+                           `fallback_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+    console.log("=== IDEMPOTENCY KEY ===", idempotencyKey);
     
     // Check if this is an attraction payment (simple format) or event payment (complex format)
     const isAttractionPayment = requestBody.amount && requestBody.currency && requestBody.customer_email;
@@ -38,6 +45,30 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
+
+    // Check for existing payment intent with this idempotency key
+    console.log("=== CHECKING IDEMPOTENCY ===");
+    const { data: existingIntent, error: idempotencyError } = await supabaseClient
+      .from('payment_intents_log')
+      .select('*')
+      .eq('idempotency_key', idempotencyKey)
+      .single();
+
+    if (existingIntent && !idempotencyError) {
+      console.log("=== RETURNING CACHED PAYMENT INTENT ===", existingIntent.payment_intent_id);
+      return new Response(JSON.stringify({
+        success: true,
+        paymentIntentId: existingIntent.payment_intent_id,
+        client_secret: existingIntent.client_secret,
+        orderId: existingIntent.order_id,
+        cached: true
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    console.log("=== NO CACHED INTENT FOUND, PROCEEDING WITH NEW PAYMENT ===");
 
     let stripeSecretKey: string;
     let currency: string;
@@ -396,9 +427,33 @@ serve(async (req) => {
     
     console.log("About to create Payment Intent with params:", paymentIntentParams);
     
-    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams, {
+      idempotencyKey: idempotencyKey // Use Stripe's built-in idempotency
+    });
 
     console.log("=== PAYMENT INTENT CREATED ===", paymentIntent.id);
+
+    // Log the payment intent for future idempotency checks
+    console.log("=== LOGGING PAYMENT INTENT ===");
+    const { error: logError } = await supabaseClient
+      .from('payment_intents_log')
+      .insert({
+        idempotency_key: idempotencyKey,
+        order_id: orderId,
+        payment_intent_id: paymentIntent.id,
+        client_secret: paymentIntent.client_secret,
+        status: paymentIntent.status,
+        amount: amountInCents / 100,
+        currency: currency.toLowerCase(),
+        metadata: metadata
+      });
+
+    if (logError) {
+      console.error("Error logging payment intent:", logError);
+      // Don't fail the whole process for this logging error
+    } else {
+      console.log("✅ Payment intent logged successfully");
+    }
 
     // Update record with Stripe payment intent ID if we have an order/booking
     if (orderId) {

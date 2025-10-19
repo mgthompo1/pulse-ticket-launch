@@ -29,6 +29,8 @@ import Support from "./pages/Support";
 import Tickets from "./pages/Tickets";
 import KnowledgeBase from "./pages/KnowledgeBase";
 import NotFound from "./pages/NotFound";
+import SentryTest from "./pages/SentryTest";
+import ErrorMonitoring from "./pages/ErrorMonitoring";
 import { InvitationPasswordSetup } from "./components/InvitationPasswordSetup";
 import { InvitationAcceptance } from "./components/InvitationAcceptance";
 
@@ -65,7 +67,15 @@ const App = () => (
             <Route path="/help/:categorySlug/:articleSlug" element={<KnowledgeBase />} />
             <Route path="/invite" element={<InvitationAcceptance />} />
             <Route path="/invitation-setup" element={<InvitationPasswordSetup />} />
-            
+            <Route path="/sentry-test" element={<SentryTest />} />
+            <Route path="/error-monitoring" element={
+              <ThemeProvider>
+                <ProtectedRoute>
+                  <ErrorMonitoring />
+                </ProtectedRoute>
+              </ThemeProvider>
+            } />
+
             {/* Authenticated routes - WITH theme context */}
             <Route path="/support" element={
               <ThemeProvider>

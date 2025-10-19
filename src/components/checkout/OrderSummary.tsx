@@ -10,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
 import { Theme } from '@/types/theme';
 import { PromoCodeInput } from './PromoCodeInput';
+import { ReservationTimer } from '@/components/ReservationTimer';
 
 interface PromoCodeHooks {
   promoCode: string;
@@ -33,6 +34,7 @@ interface ReservationHooks {
   reserveMultipleTickets: (tickets: Array<{ ticketTypeId: string; quantity: number }>) => Promise<void>;
   completeAllReservations: (orderId: string) => Promise<void>;
   cancelAllReservations: () => Promise<void>;
+  extendReservation: () => boolean;
   formatTimeRemaining: () => string;
   hasActiveReservations: () => boolean;
 }
@@ -229,6 +231,18 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
 
         <Separator />
+
+        {/* Reservation Timer */}
+        {reservationHooks && reservationHooks.hasActiveReservations() && (
+          <>
+            <ReservationTimer
+              timeRemaining={reservationHooks.timeRemaining}
+              onExtend={reservationHooks.extendReservation}
+              showExtendButton={true}
+            />
+            <Separator />
+          </>
+        )}
 
         {/* Ticket Items */}
         {cartItems.length > 0 && (
