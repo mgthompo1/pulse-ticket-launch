@@ -54,7 +54,7 @@ const OrganizationOnboarding: React.FC<OrganizationOnboardingProps> = ({ onCompl
 
     setLoading(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("organizations")
         .insert({
           user_id: user.id,
@@ -67,10 +67,16 @@ const OrganizationOnboarding: React.FC<OrganizationOnboardingProps> = ({ onCompl
           payment_provider: "stripe",
           currency: "NZD"
         })
-        .select()
-        .single();
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Insert error:", error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error("Organization created but no data returned");
+      }
 
       toast({
         title: "Success!",
@@ -78,11 +84,11 @@ const OrganizationOnboarding: React.FC<OrganizationOnboardingProps> = ({ onCompl
       });
 
       onComplete();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating organization:", error);
       toast({
         title: "Error",
-        description: "Failed to create organization. Please try again.",
+        description: error?.message || "Failed to create organization. Please try again.",
         variant: "destructive"
       });
     } finally {
