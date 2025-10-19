@@ -225,7 +225,7 @@ const OrgDashboard = () => {
         loadAttractionAnalyticsData(currentOrganization.id);
       }
     }
-  }, [currentOrganization]);
+  }, [currentOrganization?.id]); // Only re-run when organization ID changes, not object reference
 
   const loadAttractions = useCallback(async (orgId: string) => {
     console.log("Loading attractions for org:", orgId);
