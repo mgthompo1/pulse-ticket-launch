@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrganizations } from "@/hooks/useOrganizations";
+import { OrganizationSwitcher } from "@/components/OrganizationSwitcher";
 
 import { EventAnalytics } from "@/components/EventAnalytics";
 import AIChatbot from "@/components/AIChatbot";
@@ -87,27 +89,48 @@ const OrgDashboard = () => {
   const [selectedAttraction, setSelectedAttraction] = useState<any>(null);
   const [attractions, setAttractions] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
-  const [organizationId, setOrganizationId] = useState<string>("");
-  const [organization, setOrganization] = useState<Organization | null>(null);
-  const [userRole, setUserRole] = useState<'owner' | 'admin' | 'editor' | 'viewer' | null>(null);
+
+  // Use the organizations hook for multi-organization support
+  const {
+    organizations,
+    currentOrganization,
+    loading: orgLoading,
+    showOnboarding: showOrgOnboarding,
+    switchOrganization,
+    reloadOrganizations,
+  } = useOrganizations();
   
-  // Simple loading guard to prevent duplicate organization loads
-  const organizationLoaded = useRef(false);
-  
-  // Permission checking functions
-  const canAccessAnalytics = () => userRole === 'owner' || userRole === 'admin' || userRole === 'editor';
-  const canAccessBilling = () => userRole === 'owner' || userRole === 'admin';
-  const canAccessUsers = () => userRole === 'owner' || userRole === 'admin';
-  const canAccessSecurity = () => userRole === 'owner' || userRole === 'admin';
-  const canAccessSettings = () => userRole === 'owner' || userRole === 'admin';
-  const canAccessIntegrations = () => userRole === 'owner' || userRole === 'admin';
-  
+  // Permission checking functions based on current organization role
+  const canAccessAnalytics = () => {
+    const role = currentOrganization?.role;
+    return role === 'owner' || role === 'admin' || role === 'editor';
+  };
+  const canAccessBilling = () => {
+    const role = currentOrganization?.role;
+    return role === 'owner' || role === 'admin';
+  };
+  const canAccessUsers = () => {
+    const role = currentOrganization?.role;
+    return role === 'owner' || role === 'admin';
+  };
+  const canAccessSecurity = () => {
+    const role = currentOrganization?.role;
+    return role === 'owner' || role === 'admin';
+  };
+  const canAccessSettings = () => {
+    const role = currentOrganization?.role;
+    return role === 'owner' || role === 'admin';
+  };
+  const canAccessIntegrations = () => {
+    const role = currentOrganization?.role;
+    return role === 'owner' || role === 'admin';
+  };
+
   // System type checking
-  const isEventsMode = () => !organization?.system_type || organization?.system_type === 'EVENTS';
+  const isEventsMode = () => !currentOrganization?.system_type || currentOrganization?.system_type === 'EVENTS';
   
 
 
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState({
@@ -174,119 +197,35 @@ const OrgDashboard = () => {
   const [isCreatingEvent, setIsCreatingEvent] = useState(false);
   const [showSeatMapDesigner, setShowSeatMapDesigner] = useState(false);
 
-  // Load organization and events
+  // Load data when organization changes
   React.useEffect(() => {
-    const loadOrganization = async () => {
-      if (!user) {
-        console.log("No user found, cannot load organization");
-        return;
+    if (!currentOrganization) {
+      return;
+    }
+
+    console.log("=== ORGANIZATION SELECTED ===");
+    console.log("Organization:", currentOrganization.name);
+    console.log("Organization ID:", currentOrganization.id);
+    console.log("User role:", currentOrganization.role);
+
+    // Load data based on system type
+    if (isEventsMode()) {
+      loadEvents(currentOrganization.id);
+    } else {
+      loadAttractions(currentOrganization.id);
+    }
+
+    // Load analytics based on role
+    if (canAccessAnalytics()) {
+      if (isEventsMode()) {
+        loadAnalytics(currentOrganization.id);
+        loadAnalyticsData(currentOrganization.id);
+      } else {
+        loadAttractionAnalytics(currentOrganization.id);
+        loadAttractionAnalyticsData(currentOrganization.id);
       }
-      
-      // Prevent duplicate loads
-      if (organizationLoaded.current) {
-        console.log("Organization loading already initiated, skipping");
-        return;
-      }
-      
-      organizationLoaded.current = true;
-      console.log("Loading organization for user:", user.id);
-
-      // First, try to find an organization where the user is the owner
-      let { data: orgs, error } = await supabase
-        .from("organizations")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-
-      let userRole: 'owner' | 'admin' | 'editor' | 'viewer' = 'owner';
-      
-      // If user owns the organization, set the role in state
-      if (!error && orgs) {
-        setUserRole('owner');
-      }
-
-      // If no owned organization found, check if user is a member of any organization
-      if (error && error.code === 'PGRST116') {
-        console.log("No owned organization found, checking memberships...");
-        
-        const { data: membershipData, error: membershipError } = await supabase
-          .from("organization_users")
-          .select(`
-            organization_id,
-            role,
-            organizations (*)
-          `)
-          .eq("user_id", user.id)
-          .limit(1)
-          .maybeSingle();
-
-        if (membershipError) {
-          console.error("Error loading organization membership:", membershipError);
-          
-          // If no organization membership exists either, show onboarding
-          if (membershipError.code === 'PGRST116') {
-            setShowOnboarding(true);
-          }
-          return;
-        }
-
-        if (membershipData && (membershipData as any).organizations) {
-          console.log("Organization membership found:", membershipData);
-          orgs = (membershipData as any).organizations as any;
-          // Store the user's role
-          userRole = (membershipData as any).role;
-          setUserRole((membershipData as any).role);
-          console.log("User role set to:", (membershipData as any).role);
-          error = null;
-        }
-      }
-
-      if (error) {
-        console.error("Error loading organization:", error);
-        setShowOnboarding(true);
-        return;
-      }
-
-      if (orgs) {
-        console.log("=== ORGANIZATION LOADED DEBUG ===");
-        console.log("Organization data:", orgs);
-        console.log("Organization ID:", orgs.id);
-        console.log("Organization name:", orgs.name);
-        
-        // Get organization data
-        const org = orgs as Organization;
-        
-        setOrganizationId(org.id);
-        setOrganization(org);
-        
-        // Load data based on system type
-        if (isEventsMode()) {
-          loadEvents(org.id);
-        } else {
-          loadAttractions(org.id);
-        }
-        
-        // Load analytics based on role
-        console.log("🔐 User role:", userRole);
-        console.log("🔐 Can access analytics:", userRole === 'owner' || userRole === 'admin' || userRole === 'editor');
-        console.log("🔐 Can access billing:", userRole === 'owner' || userRole === 'admin');
-        console.log("🔐 Can access users:", userRole === 'owner' || userRole === 'admin');
-        console.log("🔐 Can edit events:", userRole === 'owner' || userRole === 'admin' || userRole === 'editor');
-        
-        if (userRole === 'owner' || userRole === 'admin' || userRole === 'editor') {
-          if (isEventsMode()) {
-            loadAnalytics(org.id);
-            loadAnalyticsData(org.id);
-          } else {
-            loadAttractionAnalytics(org.id);
-            loadAttractionAnalyticsData(org.id);
-          }
-        }
-      }
-    };
-
-    loadOrganization();
-  }, [user]);
+    }
+  }, [currentOrganization]);
 
   const loadAttractions = useCallback(async (orgId: string) => {
     console.log("Loading attractions for org:", orgId);
@@ -772,17 +711,13 @@ const OrgDashboard = () => {
   }, []);
 
   const handleOnboardingComplete = () => {
-    setShowOnboarding(false);
-    // Reload organization data by triggering the useEffect
-    if (user) {
-      // Force a reload by updating the user dependency
-      window.location.reload();
-    }
+    // Reload organizations to include the newly created one
+    reloadOrganizations();
   };
 
 
   const handleCreateEvent = async () => {
-    if (!organizationId || !eventForm.name || !eventForm.date || !eventForm.venue || !eventForm.capacity) {
+    if (!currentOrganization?.id || !eventForm.name || !eventForm.date || !eventForm.venue || !eventForm.capacity) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -801,7 +736,7 @@ const OrgDashboard = () => {
           venue: eventForm.venue,
           capacity: parseInt(eventForm.capacity),
           description: eventForm.description,
-          organization_id: organizationId,
+          organization_id: currentOrganization.id,
           status: 'draft'
         })
         .select()
@@ -824,7 +759,7 @@ const OrgDashboard = () => {
       });
 
       // Reload events
-      loadEvents(organizationId);
+      loadEvents(currentOrganization.id);
     } catch (error) {
       console.error("Error creating event:", error);
       toast({
@@ -838,8 +773,20 @@ const OrgDashboard = () => {
   };
 
   // Show onboarding if no organization exists
-  if (showOnboarding) {
+  if (showOrgOnboarding) {
     return <OrganizationOnboarding onComplete={handleOnboardingComplete} />;
+  }
+
+  // Show loading while organizations are being fetched
+  if (orgLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading organizations...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -865,7 +812,18 @@ const OrgDashboard = () => {
                   <MobileSidebarTrigger />
                 </div>
 
-                {/* Spacer for mobile, empty on desktop */}
+                {/* Organization Switcher - shows on desktop */}
+                <div className="hidden md:block flex-1 max-w-xs">
+                  {organizations.length > 0 && currentOrganization && (
+                    <OrganizationSwitcher
+                      organizations={organizations}
+                      currentOrganization={currentOrganization}
+                      onOrganizationChange={switchOrganization}
+                    />
+                  )}
+                </div>
+
+                {/* Spacer for mobile */}
                 <div className="flex-1 md:flex-none"></div>
 
                 <div className="flex items-center gap-2" style={{ marginLeft: 'auto', width: 'auto' }}>
@@ -1228,7 +1186,7 @@ const OrgDashboard = () => {
                 ) : (
                   <TabsContent value="events" className="space-y-6">
                     <AttractionManagement 
-                      organizationId={organizationId}
+                      organizationId={currentOrganization?.id || ''}
                       onAttractionSelect={(attraction) => {
                         setSelectedAttraction(attraction);
                         setActiveTab("event-details");
@@ -1276,7 +1234,7 @@ const OrgDashboard = () => {
                 )}
 
                 <TabsContent value="payments" className="space-y-6">
-                  <PaymentConfiguration organizationId={organizationId} />
+                  <PaymentConfiguration organizationId={currentOrganization?.id || ''} />
                 </TabsContent>
 
                 <TabsContent value="marketing" className="space-y-6">
@@ -1285,14 +1243,14 @@ const OrgDashboard = () => {
 
                 {canAccessBilling() && (
                   <TabsContent value="billing" className="space-y-6">
-                    <BillingDashboard organizationId={organizationId} isLoading={false} />
+                    <BillingDashboard organizationId={currentOrganization?.id || ''} isLoading={false} />
                   </TabsContent>
                 )}
 
                 {canAccessUsers() && (
                   <TabsContent value="users" className="space-y-6">
                     <OrganizationUserManagement 
-                      organizationId={organizationId} 
+                      organizationId={currentOrganization?.id || ''} 
                       organizationName={organization?.name || 'Organization'} 
                       currentUserRole={userRole || undefined}
                     />
@@ -1316,7 +1274,7 @@ const OrgDashboard = () => {
                             ← Back to Apps
                           </Button>
                         </div>
-                        <XeroIntegration organizationId={organizationId} />
+                        <XeroIntegration organizationId={currentOrganization?.id || ''} />
                       </div>
                     ) : (
                       <div className="space-y-6">
@@ -1535,7 +1493,7 @@ const OrgDashboard = () => {
               </Tabs>
               
               {/* AI Chatbot */}
-              <AIChatbot context={{ organizationId }} />
+              <AIChatbot context={{ organizationId: currentOrganization?.id }} />
 
               {/* Seat Map Designer Modal */}
               {showSeatMapDesigner && selectedEvent && (

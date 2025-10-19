@@ -86,6 +86,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, [initialized]);
 
   const signOut = async () => {
+    // Clear organization selection
+    localStorage.removeItem('ticketflo_selected_organization');
+
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error('Error signing out:', error);
