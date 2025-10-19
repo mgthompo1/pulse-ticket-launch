@@ -1,6 +1,5 @@
-// @ts-nocheck
 import React from 'react';
-import { hydrateRoot, createRoot } from 'react-dom/client';
+import { hydrateRoot, createRoot, Root } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import * as Sentry from "@sentry/react";
@@ -20,7 +19,7 @@ const container = document.getElementById('root')!;
 const isSSR = container.firstElementChild !== null;
 
 // Reuse a single root across HMR/re-executions to avoid React warnings
-const w = window as unknown as { __appRoot?: any };
+const w = window as unknown as { __appRoot?: Root };
 
 const appTree = (
   <Sentry.ErrorBoundary fallback={ErrorFallback}>

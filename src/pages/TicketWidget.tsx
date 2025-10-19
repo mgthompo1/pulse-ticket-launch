@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -1003,22 +1002,22 @@ const TicketWidget = () => {
                 }
                 
                 // Return Promise for non-done status as per sample
-                return new Promise(async (resolve) => {
+                return (async () => {
                   try {
                     console.log("Processing Apple Pay transaction...");
-                    
+
                     // Extract session ID from links for completion
                     const sessionId = links[0]?.href?.split('/').pop();
-                    
+
                     if (sessionId && eventData) {
                       toast({
                         title: "Apple Pay Successful!",
                         description: "Finalizing your order...",
                       });
-                      
+
                 // Call the Drop In success function to finalize the order
                 const { error } = await anonymousSupabase.functions.invoke('windcave-dropin-success', {
-                        body: { 
+                        body: {
                           sessionId: sessionId,
                           eventId: eventData.id
                         }
@@ -1026,30 +1025,28 @@ const TicketWidget = () => {
 
                       if (error) {
                         console.error("Apple Pay finalization error:", error);
-                        resolve(false);
-                        return;
+                        return false;
                       }
 
                       toast({
                         title: "Order Complete!",
                         description: "Your tickets have been confirmed via Apple Pay.",
                       });
-                      
-                      resolve(true);
-                      
+
                       // Delay redirect to allow Apple Pay to show success
                       setTimeout(() => {
                         window.location.href = '/payment-success';
                       }, 2000);
-                      
+
+                      return true;
                     } else {
-                      resolve(false);
+                      return false;
                     }
                   } catch (error) {
                     console.error("Apple Pay order finalization error:", error);
-                    resolve(false);
+                    return false;
                   }
-                });
+                })();
               },
               onError: function(stage: any, error: any) {
                 console.error("=== APPLE PAY ERROR CALLBACK ===");
