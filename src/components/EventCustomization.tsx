@@ -366,7 +366,8 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
   useEffect(() => {
     loadCustomizations();
-  }, [loadCustomizations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId]); // Only re-run when eventId changes, not when callback reference changes
 
   // Helper: render HTML from current block template for test emails
   const renderBlocksHtml = useCallback(() => {
