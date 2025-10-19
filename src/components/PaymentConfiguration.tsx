@@ -21,6 +21,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
   const [stripeAccountId, setStripeAccountId] = useState('');
   const [stripePublishableKey, setStripePublishableKey] = useState('');
   const [stripeSecretKey, setStripeSecretKey] = useState('');
+  const [stripeTerminalLocationId, setStripeTerminalLocationId] = useState('');
   const [enableApplePay, setEnableApplePay] = useState(false);
   const [enableGooglePay, setEnableGooglePay] = useState(false);
   const [windcaveUsername, setWindcaveUsername] = useState('');
@@ -47,7 +48,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
       // Get basic organization info (non-sensitive) including Stripe Connect status
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
-        .select('payment_provider, currency, credit_card_processing_fee_percentage, stripe_account_id, stripe_booking_fee_enabled')
+        .select('payment_provider, currency, credit_card_processing_fee_percentage, stripe_account_id, stripe_booking_fee_enabled, stripe_publishable_key, stripe_secret_key, stripe_terminal_location_id')
         .eq('id', organizationId)
         .single();
 
@@ -56,7 +57,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         return;
       }
 
-      // Get payment credentials securely
+      // Get payment credentials securely (if payment_credentials table exists)
       const { data: credData } = await supabase
         .from('payment_credentials')
         .select('*')
@@ -69,12 +70,19 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         setCreditCardProcessingFee(orgData.credit_card_processing_fee_percentage || 0);
         setStripeConnectedAccountId(orgData.stripe_account_id || '');
         setEnableBookingFees(orgData.stripe_booking_fee_enabled || false);
+
+        // Get Stripe credentials from organizations table
+        setStripePublishableKey(orgData.stripe_publishable_key || '');
+        setStripeSecretKey(orgData.stripe_secret_key || '');
+        setStripeTerminalLocationId(orgData.stripe_terminal_location_id || '');
       }
 
       if (credData) {
+        // Override with payment_credentials if they exist
         setStripeAccountId(credData.stripe_account_id || '');
-        setStripePublishableKey(credData.stripe_publishable_key || '');
-        setStripeSecretKey(credData.stripe_secret_key || '');
+        if (credData.stripe_publishable_key) setStripePublishableKey(credData.stripe_publishable_key);
+        if (credData.stripe_secret_key) setStripeSecretKey(credData.stripe_secret_key);
+        if (credData.stripe_terminal_location_id) setStripeTerminalLocationId(credData.stripe_terminal_location_id);
         setEnableApplePay(false); // Column doesn't exist yet
         setEnableGooglePay(false); // Column doesn't exist yet
         setWindcaveUsername(credData.windcave_username || '');
@@ -95,14 +103,17 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
     setLoading(true);
     
     try {
-      // Update organization with non-sensitive data
+      // Update organization with all data (including Stripe credentials)
       const { error: orgError } = await supabase
         .from('organizations')
         .update({
           payment_provider: paymentProvider,
           currency: currency,
           credit_card_processing_fee_percentage: creditCardProcessingFee,
-          stripe_booking_fee_enabled: enableBookingFees
+          stripe_booking_fee_enabled: enableBookingFees,
+          stripe_publishable_key: stripePublishableKey,
+          stripe_secret_key: stripeSecretKey,
+          stripe_terminal_location_id: stripeTerminalLocationId
         })
         .eq('id', organizationId);
 
@@ -110,30 +121,31 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         throw orgError;
       }
 
-      // Upsert payment credentials securely
-      const { error: credError } = await supabase
-        .from('payment_credentials')
-        .upsert({
-          organization_id: organizationId,
-          stripe_account_id: stripeAccountId,
-          stripe_publishable_key: stripePublishableKey,
-          stripe_secret_key: stripeSecretKey,
-          enable_apple_pay: enableApplePay,
-          enable_google_pay: enableGooglePay,
-          windcave_username: windcaveUsername,
-          windcave_api_key: windcaveApiKey,
-          windcave_endpoint: windcaveEndpoint,
-          windcave_enabled: windcaveEnabled,
-          windcave_hit_username: windcaveHitUsername,
-          windcave_hit_key: windcaveHitKey,
-          windcave_station_id: windcaveStationId,
-
-        }, {
-          onConflict: 'organization_id'
-        });
-
-      if (credError) {
-        throw credError;
+      // Also save to payment_credentials if table exists (for backwards compatibility)
+      try {
+        await supabase
+          .from('payment_credentials')
+          .upsert({
+            organization_id: organizationId,
+            stripe_account_id: stripeAccountId,
+            stripe_publishable_key: stripePublishableKey,
+            stripe_secret_key: stripeSecretKey,
+            stripe_terminal_location_id: stripeTerminalLocationId,
+            enable_apple_pay: enableApplePay,
+            enable_google_pay: enableGooglePay,
+            windcave_username: windcaveUsername,
+            windcave_api_key: windcaveApiKey,
+            windcave_endpoint: windcaveEndpoint,
+            windcave_enabled: windcaveEnabled,
+            windcave_hit_username: windcaveHitUsername,
+            windcave_hit_key: windcaveHitKey,
+            windcave_station_id: windcaveStationId,
+          }, {
+            onConflict: 'organization_id'
+          });
+      } catch (credError) {
+        // Ignore errors if payment_credentials table doesn't exist
+        console.log('payment_credentials table may not exist, continuing...');
       }
 
       toast({
@@ -174,10 +186,11 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
             />
 
             {paymentProvider === 'stripe' && (
-              <StripeConfiguration 
+              <StripeConfiguration
                 stripeAccountId={stripeAccountId}
                 stripePublishableKey={stripePublishableKey}
                 stripeSecretKey={stripeSecretKey}
+                stripeTerminalLocationId={stripeTerminalLocationId}
                 enableApplePay={enableApplePay}
                 enableGooglePay={enableGooglePay}
                 currency={currency}
@@ -186,6 +199,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
                 onStripeAccountIdChange={setStripeAccountId}
                 onStripePublishableKeyChange={setStripePublishableKey}
                 onStripeSecretKeyChange={setStripeSecretKey}
+                onStripeTerminalLocationIdChange={setStripeTerminalLocationId}
                 onEnableApplePayChange={setEnableApplePay}
                 onEnableGooglePayChange={setEnableGooglePay}
                 onCurrencyChange={setCurrency}

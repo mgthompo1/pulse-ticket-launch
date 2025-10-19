@@ -12,6 +12,7 @@ interface StripeConfigurationProps {
   stripeAccountId: string;
   stripePublishableKey: string;
   stripeSecretKey: string;
+  stripeTerminalLocationId?: string;
   enableApplePay?: boolean;
   enableGooglePay?: boolean;
   currency: string;
@@ -20,6 +21,7 @@ interface StripeConfigurationProps {
   onStripeAccountIdChange: (value: string) => void;
   onStripePublishableKeyChange: (value: string) => void;
   onStripeSecretKeyChange: (value: string) => void;
+  onStripeTerminalLocationIdChange?: (value: string) => void;
   onEnableApplePayChange?: (value: boolean) => void;
   onEnableGooglePayChange?: (value: boolean) => void;
   onCurrencyChange: (value: string) => void;
@@ -27,16 +29,18 @@ interface StripeConfigurationProps {
   onConnectionChange?: () => void;
 }
 
-export const StripeConfiguration = ({ 
-  stripeAccountId, 
+export const StripeConfiguration = ({
+  stripeAccountId,
   stripePublishableKey,
   stripeSecretKey,
+  stripeTerminalLocationId = '',
   currency,
   enableBookingFees = false,
   stripeConnectedAccountId,
-  onStripeAccountIdChange, 
+  onStripeAccountIdChange,
   onStripePublishableKeyChange,
   onStripeSecretKeyChange,
+  onStripeTerminalLocationIdChange,
   onCurrencyChange,
   onEnableBookingFeesChange,
   onConnectionChange
@@ -91,7 +95,28 @@ export const StripeConfiguration = ({
               placeholder="sk_test_... or sk_live_..."
             />
           </div>
-          
+
+          <div className="space-y-2">
+            <Label htmlFor="stripeTerminalLocationId">Stripe Terminal Location ID (Optional)</Label>
+            <Input
+              id="stripeTerminalLocationId"
+              value={stripeTerminalLocationId}
+              onChange={(e) => onStripeTerminalLocationIdChange?.(e.target.value)}
+              placeholder="tml_..."
+            />
+            <p className="text-sm text-muted-foreground">
+              Required for Tap to Pay on iPhone in the iOS app. Create a location in your{" "}
+              <a
+                href="https://dashboard.stripe.com/terminal/locations"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                Stripe Dashboard
+              </a>.
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="stripeCurrency">Transaction Currency</Label>
             <Select value={currency} onValueChange={onCurrencyChange}>
