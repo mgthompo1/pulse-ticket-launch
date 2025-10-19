@@ -55,7 +55,7 @@ const OrganizationSettings: React.FC = () => {
 
     try {
       // First, try to find organization where user is the owner
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from("organizations")
         .select("*")
         .eq("user_id", user.id)
@@ -64,7 +64,7 @@ const OrganizationSettings: React.FC = () => {
       // If no owned organization found, check if user is a member of any organization
       if (error && error.code === 'PGRST116') {
         console.log("No owned organization found, checking memberships...");
-        
+
         const { data: membershipData, error: membershipError } = await supabase
           .from("organization_users")
           .select(`
