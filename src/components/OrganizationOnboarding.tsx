@@ -97,7 +97,7 @@ const OrganizationOnboarding: React.FC<OrganizationOnboardingProps> = ({ onCompl
           <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
             <Building2 className="w-6 h-6 text-blue-600" />
           </div>
-          <CardTitle className="text-2xl">Welcome to Pulse Ticket</CardTitle>
+          <CardTitle className="text-2xl">Welcome to TicketFlo</CardTitle>
           <CardDescription>
             Let's set up your organization to get started with event management
           </CardDescription>
