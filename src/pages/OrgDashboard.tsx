@@ -1249,10 +1249,10 @@ const OrgDashboard = () => {
 
                 {canAccessUsers() && (
                   <TabsContent value="users" className="space-y-6">
-                    <OrganizationUserManagement 
-                      organizationId={currentOrganization?.id || ''} 
-                      organizationName={organization?.name || 'Organization'} 
-                      currentUserRole={userRole || undefined}
+                    <OrganizationUserManagement
+                      organizationId={currentOrganization?.id || ''}
+                      organizationName={currentOrganization?.name || 'Organization'}
+                      currentUserRole={currentOrganization?.role || undefined}
                     />
                   </TabsContent>
                 )}
