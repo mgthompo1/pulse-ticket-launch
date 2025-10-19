@@ -1,8 +1,37 @@
-// @ts-nocheck
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router-dom/server';
 import { HelmetProvider } from 'react-helmet-async';
+
+// Type definitions for SSR mocks
+type MockWindow = {
+  location: { href: string; origin: string; pathname: string };
+  history: { pushState: () => void; replaceState: () => void };
+  addEventListener: () => void;
+  removeEventListener: () => void;
+  dispatchEvent: () => void;
+  getComputedStyle: () => Record<string, unknown>;
+  matchMedia: () => { matches: boolean; addListener: () => void; removeListener: () => void };
+};
+
+type MockDocument = {
+  createElement: () => Record<string, unknown>;
+  getElementById: () => null;
+  querySelector: () => null;
+  querySelectorAll: () => never[];
+  addEventListener: () => void;
+  removeEventListener: () => void;
+  head: { appendChild: () => void };
+  body: { appendChild: () => void };
+  title: string;
+};
+
+type MockStorage = {
+  getItem: () => null;
+  setItem: () => void;
+  removeItem: () => void;
+  clear: () => void;
+};
 
 // Mock browser APIs for SSR
 if (typeof window === 'undefined') {
@@ -14,8 +43,8 @@ if (typeof window === 'undefined') {
     dispatchEvent: () => {},
     getComputedStyle: () => ({}),
     matchMedia: () => ({ matches: false, addListener: () => {}, removeListener: () => {} })
-  } as any;
-  
+  } as unknown as MockWindow & typeof globalThis;
+
   global.document = {
     createElement: () => ({}),
     getElementById: () => null,
@@ -26,14 +55,14 @@ if (typeof window === 'undefined') {
     head: { appendChild: () => {} },
     body: { appendChild: () => {} },
     title: ''
-  } as any;
-  
+  } as unknown as MockDocument & Document;
+
   global.localStorage = {
     getItem: () => null,
     setItem: () => {},
     removeItem: () => {},
     clear: () => {}
-  } as any;
+  } as unknown as MockStorage & Storage;
   
   global.sessionStorage = global.localStorage;
   

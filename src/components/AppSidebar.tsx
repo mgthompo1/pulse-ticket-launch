@@ -88,15 +88,15 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
   }, [user]);
 
   return (
-    <Sidebar 
+    <Sidebar
       collapsible="icon"
-      className="border-r border-gray-200/60 w-64 flex-shrink-0"
+      className="border-r border-gray-200/60 w-64 flex-shrink-0 h-screen bg-gray-100"
     >
-      <SidebarContent className="p-0">
-        {/* Organization Logo Section */}
+      <SidebarContent className="p-0 flex flex-col h-full bg-gray-100">
+        {/* Organization Logo Section - matches header height */}
         {organizationLogo && !isCollapsed && (
-          <div className="p-3 border-b border-gray-200/60">
-            <div className="flex items-center gap-2">
+          <div className="px-4 border-b border-gray-200/60 bg-gray-50 flex-shrink-0 h-[52px] flex items-center">
+            <div className="flex items-center gap-2 w-full">
               <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
                 <img
                   src={organizationLogo}
@@ -112,10 +112,10 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
             </div>
           </div>
         )}
-        
+
         {/* Mini logo for collapsed state */}
         {organizationLogo && isCollapsed && (
-          <div className="p-3 border-b border-gray-200/60 flex justify-center">
+          <div className="px-4 border-b border-gray-200/60 bg-gray-50 flex-shrink-0 h-[52px] flex items-center justify-center">
             <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
               <img
                 src={organizationLogo}
@@ -173,8 +173,8 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
 
         {/* Bottom Section - User Info */}
         {!isCollapsed && (
-          <div className="mt-auto p-3 border-t border-gray-200/60">
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 border border-gray-200/40">
+          <div className="mt-auto p-3 border-t border-gray-200/60 bg-gray-50">
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-white border border-gray-200/40">
               <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-manrope font-semibold">
                 {user?.email?.charAt(0).toUpperCase() || 'U'}
               </div>

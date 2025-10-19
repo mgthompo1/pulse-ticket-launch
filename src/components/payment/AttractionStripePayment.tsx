@@ -20,13 +20,13 @@ interface AttractionStripePaymentProps {
   };
 }
 
-const CheckoutForm = ({ 
-  amount, 
+const CheckoutForm = ({
+  amount,
   currency = "USD",
   description,
   customerEmail,
   customerName,
-  onSuccess, 
+  onSuccess,
   onError,
   metadata = {},
   theme = {}
@@ -34,6 +34,7 @@ const CheckoutForm = ({
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
+  const [idempotencyKey] = useState(() => `attraction_${Date.now()}_${Math.random().toString(36).substring(7)}`);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -75,9 +76,13 @@ const CheckoutForm = ({
       console.log("Payment data:", paymentData);
       console.log("Organization ID:", metadata?.organization_id);
 
-      // Create payment intent
+      // Create payment intent with idempotency key
+      console.log("=== IDEMPOTENCY KEY ===", idempotencyKey);
       const { data: paymentIntent, error: piError } = await supabase.functions.invoke('create-payment-intent', {
-        body: paymentData
+        body: paymentData,
+        headers: {
+          'idempotency-key': idempotencyKey
+        }
       });
 
       console.log("=== PAYMENT INTENT RESPONSE ===");

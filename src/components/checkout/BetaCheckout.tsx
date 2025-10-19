@@ -30,11 +30,40 @@ import { TicketType, CartItem, MerchandiseCartItem, CustomerInfo, EventData, Cus
 import { Theme } from '@/types/theme';
 import { StripePaymentModal } from './StripePaymentModal';
 
+interface PromoCodeHooks {
+  promoCode: string;
+  setPromoCode: (code: string) => void;
+  promoCodeId: string | null;
+  promoDiscount: number;
+  promoError: string | null;
+  isValidating: boolean;
+  groupDiscount: number;
+  groupDiscountTier: number | null;
+  applyPromoCode: () => void;
+  clearPromoCode: () => void;
+  getTotalDiscount: () => number;
+  calculateFinalTotal: (subtotal: number) => number;
+}
+
+interface ReservationHooks {
+  reservations: any[];
+  timeRemaining: number;
+  reserveTickets: (ticketTypeId: string, quantity: number) => Promise<void>;
+  reserveMultipleTickets: (tickets: Array<{ ticketTypeId: string; quantity: number }>) => Promise<void>;
+  completeAllReservations: (orderId: string) => Promise<void>;
+  cancelAllReservations: () => Promise<void>;
+  extendReservation: () => boolean;
+  formatTimeRemaining: () => string;
+  hasActiveReservations: () => boolean;
+}
+
 interface BetaCheckoutProps {
   eventData: EventData;
   ticketTypes: TicketType[];
   customQuestions: CustomQuestion[];
   onClose?: () => void;
+  promoCodeHooks?: PromoCodeHooks;
+  reservationHooks?: ReservationHooks;
 }
 
 // Improvement #1: Above-the-fold optimization - inspired by mockup header card
@@ -228,6 +257,8 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
   eventData,
   ticketTypes,
   customQuestions = [],
+  promoCodeHooks,
+  reservationHooks,
 }) => {
   const { toast } = useToast();
   

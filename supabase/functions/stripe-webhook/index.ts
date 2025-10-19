@@ -44,7 +44,37 @@ serve(async (req) => {
       });
     }
 
-    console.log("Webhook event received:", event.type);
+    console.log("Webhook event received:", event.type, "ID:", event.id);
+
+    // Check if this webhook event has already been processed (idempotency)
+    const { data: existingEvent, error: idempotencyError } = await supabaseClient
+      .from('webhook_events_log')
+      .select('id')
+      .eq('event_id', event.id)
+      .single();
+
+    if (existingEvent && !idempotencyError) {
+      console.log("✅ Webhook already processed:", event.id);
+      return new Response(JSON.stringify({ received: true, cached: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Mark event as being processed BEFORE actually processing it
+    const { error: logError } = await supabaseClient
+      .from('webhook_events_log')
+      .insert({
+        event_id: event.id,
+        event_type: event.type,
+        payload: event.data.object,
+        processing_status: 'processed'
+      });
+
+    if (logError) {
+      console.error("Error logging webhook event:", logError);
+      // Continue processing even if logging fails
+    }
 
     // Handle different event types
     switch (event.type) {

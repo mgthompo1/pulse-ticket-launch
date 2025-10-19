@@ -45,7 +45,7 @@ export const LanyardPreview = ({
 
     const getBlockContent = () => {
       switch (block.type) {
-        case 'attendee_name':
+        case 'attendee_name': {
           const nameBlock = block as any;
           if (nameBlock.customFormat) {
             return nameBlock.customFormat
@@ -54,11 +54,12 @@ export const LanyardPreview = ({
               .replace('@FullName', previewData.attendeeName);
           }
           return previewData.attendeeName;
+        }
 
         case 'event_title':
           return (block as any).customText || previewData.eventTitle;
 
-        case 'event_date':
+        case 'event_date': {
           const dateBlock = block as any;
           const eventDate = new Date(previewData.eventDate);
           if (dateBlock.dateFormat === 'short') {
@@ -67,36 +68,42 @@ export const LanyardPreview = ({
             return eventDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
           }
           return previewData.eventDate;
+        }
 
-        case 'event_time':
+        case 'event_time': {
           const timeBlock = block as any;
           const eventTime = new Date(`2024-01-01 ${previewData.eventTime}`);
           if (timeBlock.timeFormat === '24h') {
             return eventTime.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
           }
           return previewData.eventTime;
+        }
 
-        case 'ticket_type':
+        case 'ticket_type': {
           const ticketBlock = block as any;
           return `${ticketBlock.customPrefix || ''}${previewData.ticketType}`.trim();
+        }
 
         case 'qr_code':
           return null; // Handled separately
 
-        case 'organization_logo':
+        case 'organization_logo': {
           const orgBlock = block as any;
           return previewData.organizationLogo ? null : (orgBlock.fallbackText || 'ORG LOGO');
+        }
 
-        case 'event_logo':
+        case 'event_logo': {
           const eventBlock = block as any;
           return previewData.eventLogo ? null : (eventBlock.fallbackText || 'EVENT LOGO');
+        }
 
-        case 'special_access':
+        case 'special_access': {
           const accessBlock = block as any;
           if (accessBlock.showOnlyForVIP && !previewData.ticketType.toLowerCase().includes('vip')) {
             return '';
           }
           return accessBlock.accessText || previewData.specialAccess || 'SPECIAL ACCESS';
+        }
 
         case 'custom_text':
           return (block as any).text || 'Custom Text';

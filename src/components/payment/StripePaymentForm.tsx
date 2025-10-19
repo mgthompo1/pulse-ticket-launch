@@ -20,6 +20,7 @@ interface StripePaymentFormProps {
   bookingFee?: number;
   publishableKey: string;
   currency?: string;
+  promoCodeId?: string | null;
 }
 
 const CheckoutForm = ({ 
@@ -229,25 +230,27 @@ const CheckoutForm = ({
   );
 };
 
-export const StripePaymentForm = ({ 
-  publishableKey, 
-  eventId, 
-  cart, 
-  merchandiseCart, 
-  customerInfo, 
-  total, 
+export const StripePaymentForm = ({
+  publishableKey,
+  eventId,
+  cart,
+  merchandiseCart,
+  customerInfo,
+  total,
   theme,
   onCancel,
   onSuccess,
   bookingFeesEnabled = false,
   subtotal = 0,
   bookingFee = 0,
-  currency
+  currency,
+  promoCodeId = null
 }: StripePaymentFormProps) => {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [idempotencyKey] = useState(() => `payment_${Date.now()}_${Math.random().toString(36).substring(7)}`);
   const { toast } = useToast();
   
   // Use useMemo to prevent recreating the stripe promise on every render
@@ -267,12 +270,13 @@ export const StripePaymentForm = ({
         console.log("subtotal:", subtotal);
         console.log("bookingFee:", bookingFee);
 
-        const requestBody = { 
-          eventId, 
+        const requestBody = {
+          eventId,
           total,
           subtotal,
           bookingFee,
           bookingFeesEnabled,
+          promoCodeId,
           items: [
             ...cart.map(item => ({
               id: item.id,
@@ -281,7 +285,7 @@ export const StripePaymentForm = ({
               unit_price: item.price,
               type: 'ticket'
             })),
-            ...merchandiseCart.map(item => ({ 
+            ...merchandiseCart.map(item => ({
               id: item.merchandise.id,
               merchandise_id: item.merchandise.id,
               quantity: item.quantity,
@@ -298,9 +302,13 @@ export const StripePaymentForm = ({
         console.log("=== FULL REQUEST BODY ===");
         console.log(JSON.stringify(requestBody, null, 2));
 
-        // Create payment intent
+        // Create payment intent with idempotency key
+        console.log("=== IDEMPOTENCY KEY ===", idempotencyKey);
         const { data, error } = await supabase.functions.invoke("create-payment-intent", {
-          body: requestBody
+          body: requestBody,
+          headers: {
+            'idempotency-key': idempotencyKey
+          }
         });
 
         if (error) throw error;

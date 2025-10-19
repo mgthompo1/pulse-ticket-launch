@@ -55,7 +55,7 @@ const OrganizationSettings: React.FC = () => {
 
     try {
       // First, try to find organization where user is the owner
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from("organizations")
         .select("*")
         .eq("user_id", user.id)

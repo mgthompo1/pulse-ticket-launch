@@ -136,14 +136,18 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
           'w_member_social'
         ].join('%20');
         const clientAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(suggestedRedirect)}&scope=${scopes}&state=${user?.id || ''}`;
-        try { localStorage.setItem('linkedin_redirect_uri', suggestedRedirect); } catch {}
+        try { localStorage.setItem('linkedin_redirect_uri', suggestedRedirect); } catch {
+          // Ignore localStorage errors (e.g., in incognito mode)
+        }
         window.location.href = clientAuthUrl;
         return;
       }
 
       try {
         localStorage.setItem('linkedin_redirect_uri', data.redirect_uri || suggestedRedirect);
-      } catch {}
+      } catch {
+        // Ignore localStorage errors (e.g., in incognito mode)
+      }
       window.location.href = data.authUrl;
     } catch (err) {
       // Fallback on unexpected failure
@@ -156,7 +160,9 @@ export const SocialMediaIntegration = ({ selectedEvent }: SocialMediaIntegration
         'w_member_social'
       ].join('%20');
       const clientAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${LINKEDIN_CLIENT_ID}&redirect_uri=${encodeURIComponent(suggestedRedirect)}&scope=${scopes}&state=${user?.id || ''}`;
-      try { localStorage.setItem('linkedin_redirect_uri', suggestedRedirect); } catch {}
+      try { localStorage.setItem('linkedin_redirect_uri', suggestedRedirect); } catch {
+        // Ignore localStorage errors (e.g., in incognito mode)
+      }
       window.location.href = clientAuthUrl;
     }
   };

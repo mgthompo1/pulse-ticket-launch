@@ -9,6 +9,35 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
 import { Theme } from '@/types/theme';
+import { PromoCodeInput } from './PromoCodeInput';
+import { ReservationTimer } from '@/components/ReservationTimer';
+
+interface PromoCodeHooks {
+  promoCode: string;
+  setPromoCode: (code: string) => void;
+  promoCodeId: string | null;
+  promoDiscount: number;
+  promoError: string | null;
+  isValidating: boolean;
+  groupDiscount: number;
+  groupDiscountTier: number | null;
+  applyPromoCode: () => void;
+  clearPromoCode: () => void;
+  getTotalDiscount: () => number;
+  calculateFinalTotal: (subtotal: number) => number;
+}
+
+interface ReservationHooks {
+  reservations: any[];
+  timeRemaining: number;
+  reserveTickets: (ticketTypeId: string, quantity: number) => Promise<void>;
+  reserveMultipleTickets: (tickets: Array<{ ticketTypeId: string; quantity: number }>) => Promise<void>;
+  completeAllReservations: (orderId: string) => Promise<void>;
+  cancelAllReservations: () => Promise<void>;
+  extendReservation: () => boolean;
+  formatTimeRemaining: () => string;
+  hasActiveReservations: () => boolean;
+}
 
 interface OrderSummaryProps {
   eventData: EventData;
@@ -20,6 +49,8 @@ interface OrderSummaryProps {
   onUpdateMerchandiseQuantity?: (index: number, quantity: number) => void;
   onBack?: () => void;
   theme: Theme;
+  promoCodeHooks?: PromoCodeHooks;
+  reservationHooks?: ReservationHooks;
 }
 
 export const OrderSummary: React.FC<OrderSummaryProps> = ({
@@ -31,7 +62,9 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   onUpdateTicketQuantity,
   onUpdateMerchandiseQuantity,
   onBack,
-  theme
+  theme,
+  promoCodeHooks,
+  reservationHooks
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null);
@@ -55,25 +88,36 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   };
 
   const subtotal = calculateTicketSubtotal() + calculateMerchandiseSubtotal();
-  
+
+  // Calculate discount from promo code hooks
+  const discount = promoCodeHooks?.getTotalDiscount() || 0;
+
   // Calculate booking fee (1% + $0.50) when enabled for Stripe
-  const bookingFee = bookingFeesEnabled && eventData.organizations?.payment_provider === 'stripe' 
+  const bookingFee = bookingFeesEnabled && eventData.organizations?.payment_provider === 'stripe'
     ? (subtotal * 0.01) + 0.50
     : 0;
-  
+
   // Debug booking fee calculation
   console.log("=== BOOKING FEE CALCULATION ===");
   console.log("Subtotal:", subtotal);
+  console.log("Discount:", discount);
   console.log("Booking fees enabled:", bookingFeesEnabled);
   console.log("Payment provider check:", eventData.organizations?.payment_provider === 'stripe');
   console.log("Calculated booking fee:", bookingFee);
-  
+
+  // Debug promo code visibility
+  console.log("=== PROMO CODE DEBUG ===");
+  console.log("customerInfo exists:", !!customerInfo);
+  console.log("customerInfo:", customerInfo);
+  console.log("promoCodeHooks exists:", !!promoCodeHooks);
+  console.log("Should show promo code:", !!(customerInfo && promoCodeHooks));
+
   // Processing fee can be applied alongside booking fees
-  const processingFee = eventData.organizations?.credit_card_processing_fee_percentage 
+  const processingFee = eventData.organizations?.credit_card_processing_fee_percentage
     ? (subtotal * (eventData.organizations.credit_card_processing_fee_percentage / 100))
     : 0;
 
-  const total = subtotal + processingFee + bookingFee;
+  const total = Math.max(0, subtotal - discount + processingFee + bookingFee);
 
   // Load Stripe configuration when on payment step
   useEffect(() => {
@@ -187,6 +231,18 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
 
         <Separator />
+
+        {/* Reservation Timer */}
+        {reservationHooks && reservationHooks.hasActiveReservations() && (
+          <>
+            <ReservationTimer
+              timeRemaining={reservationHooks.timeRemaining}
+              onExtend={reservationHooks.extendReservation}
+              showExtendButton={true}
+            />
+            <Separator />
+          </>
+        )}
 
         {/* Ticket Items */}
         {cartItems.length > 0 && (
@@ -344,35 +400,93 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
 
         {(cartItems.length > 0 || merchandiseCart.length > 0) && (
           <>
+            {/* Promo Code Input - Show as soon as there are items in cart and we have promo hooks */}
+            {promoCodeHooks && (
+              <>
+                <Separator />
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-sm" style={{ color: theme.headerTextColor }}>Promo Code</h3>
+                  <PromoCodeInput
+                    promoCode={promoCodeHooks.promoCode}
+                    setPromoCode={promoCodeHooks.setPromoCode}
+                    promoDiscount={promoCodeHooks.promoDiscount}
+                    promoError={promoCodeHooks.promoError}
+                    isValidating={promoCodeHooks.isValidating}
+                    onApply={promoCodeHooks.applyPromoCode}
+                    onClear={promoCodeHooks.clearPromoCode}
+                  />
+                  {promoCodeHooks.groupDiscountTier && cartItems.reduce((sum, item) => sum + item.quantity, 0) >= promoCodeHooks.groupDiscountTier && (
+                    <p className="text-xs text-green-600 font-medium">
+                      ✨ Group discount active! Saving with {cartItems.reduce((sum, item) => sum + item.quantity, 0)}+ tickets
+                    </p>
+                  )}
+                  {reservationHooks?.hasActiveReservations() && (
+                    <div className="p-2 bg-orange-50 border border-orange-300 rounded text-xs text-orange-800">
+                      ⏱️ <strong>Tickets reserved!</strong> Complete within <strong>{reservationHooks.formatTimeRemaining()}</strong>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
             <Separator />
-            
+
             {/* Totals */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                  <span style={{ color: theme.bodyTextColor }}>Subtotal</span>
                  <span style={{ color: theme.bodyTextColor }}>${subtotal.toFixed(2)}</span>
               </div>
-              
+
+              {discount > 0 && (
+                <div className="bg-green-50 -mx-4 px-4 py-2 rounded">
+                  {promoCodeHooks?.promoDiscount > 0 && promoCodeHooks.promoDiscount >= promoCodeHooks.groupDiscount && (
+                    <div className="flex justify-between items-center text-green-700 text-sm">
+                      <span className="font-semibold">🎟️ Promo: {promoCodeHooks.promoCode}</span>
+                      <span className="font-semibold">-${promoCodeHooks.promoDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {promoCodeHooks?.groupDiscount > 0 && promoCodeHooks.groupDiscount > promoCodeHooks.promoDiscount && (
+                    <div className="flex justify-between items-center text-green-700 text-sm">
+                      <span className="font-semibold">👥 Group Discount ({promoCodeHooks.groupDiscountTier}+)</span>
+                      <span className="font-semibold">-${promoCodeHooks.groupDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-green-800 border-t border-green-200 mt-1 pt-1 text-xs">
+                    <span className="font-bold">Total Savings:</span>
+                    <span className="font-bold">-${discount.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+
               {processingFee > 0 && (
                 <div className="flex justify-between text-sm text-muted-foreground">
                    <span style={{ color: theme.bodyTextColor }}>Processing Fee ({eventData.organizations?.credit_card_processing_fee_percentage}%)</span>
                    <span style={{ color: theme.bodyTextColor }}>${processingFee.toFixed(2)}</span>
                 </div>
               )}
-              
+
               {bookingFee > 0 && (
                 <div className="flex justify-between text-sm text-muted-foreground">
                    <span style={{ color: theme.bodyTextColor }}>Booking Fee</span>
                    <span style={{ color: theme.bodyTextColor }}>${bookingFee.toFixed(2)}</span>
                 </div>
               )}
-              
+
               <Separator />
-              
+
               <div className="flex justify-between font-semibold">
                  <span style={{ color: theme.bodyTextColor }}>Total</span>
                  <span style={{ color: theme.bodyTextColor }}>${total.toFixed(2)}</span>
               </div>
+
+              {discount > 0 && (
+                <div className="text-center p-2 bg-green-100 border border-green-300 rounded -mx-4">
+                  <p className="text-xs text-green-800 font-semibold">
+                    🎉 You're saving ${discount.toFixed(2)}!
+                  </p>
+                </div>
+              )}
             </div>
           </>
         )}

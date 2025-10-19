@@ -11,13 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone } from "lucide-react";
+import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound } from "lucide-react";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import MerchandiseManager from "@/components/MerchandiseManager";
 import TicketTypesManager from "@/components/TicketTypesManager";
 import { EventLogoUploader } from "@/components/events/EventLogoUploader";
 import { EmailTemplatePreview } from "@/components/EmailTemplatePreview";
+import PromoCodesManager from "@/pages/PromoCodesManager";
+import GroupDiscountsManager from "@/pages/GroupDiscountsManager";
 
 // Type definitions for better type safety
 interface EmailBlock {
@@ -775,9 +777,13 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
             <Users className="h-4 w-4" />
             Attendees
           </TabsTrigger>
-          <TabsTrigger value="preview" className="flex items-center gap-2">
-            <Eye className="h-4 w-4" />
-            Preview
+          <TabsTrigger value="promo-codes" className="flex items-center gap-2">
+            <Tag className="h-4 w-4" />
+            Promo Codes
+          </TabsTrigger>
+          <TabsTrigger value="group-discounts" className="flex items-center gap-2">
+            <UsersRound className="h-4 w-4" />
+            Group Discounts
           </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Cog className="h-4 w-4" />
@@ -1326,6 +1332,82 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               </CardContent>
             </Card>
           )}
+
+          {/* Widget Preview */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5" />
+                Widget Preview
+              </CardTitle>
+              <CardDescription>
+                Preview how your ticket widget will look to customers. This shows all customizations including colors, fonts, and branding.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* View Toggle */}
+              <div className="flex items-center gap-2 p-1 bg-muted rounded-lg w-fit">
+                <Button
+                  variant={previewMode === 'desktop' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setPreviewMode('desktop')}
+                  className="flex items-center gap-2"
+                >
+                  <Monitor className="h-4 w-4" />
+                  Desktop View
+                </Button>
+                <Button
+                  variant={previewMode === 'mobile' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setPreviewMode('mobile')}
+                  className="flex items-center gap-2"
+                >
+                  <Smartphone className="h-4 w-4" />
+                  Mobile View
+                </Button>
+              </div>
+
+              {/* Desktop Preview */}
+              {previewMode === 'desktop' && (
+                <div className="border rounded-lg overflow-hidden bg-white" style={{ height: "800px" }}>
+                  <iframe
+                    src={`/widget/${eventId}`}
+                    className="w-full h-full"
+                    title="Desktop Widget Preview"
+                    style={{ border: "none" }}
+                  />
+                </div>
+              )}
+
+              {/* Mobile Preview */}
+              {previewMode === 'mobile' && (
+                <div className="flex justify-center py-4">
+                  <div
+                    className="relative bg-gray-900 rounded-[3rem] p-3 shadow-2xl"
+                    style={{ width: "375px", height: "812px" }}
+                  >
+                    {/* Phone notch */}
+                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-40 h-7 bg-gray-900 rounded-b-3xl z-10"></div>
+
+                    {/* Phone screen */}
+                    <div className="relative h-full w-full bg-white rounded-[2.5rem] overflow-hidden">
+                      <iframe
+                        src={`/widget/${eventId}`}
+                        className="w-full h-full"
+                        title="Mobile Widget Preview"
+                        style={{ border: "none" }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <HelpCircle className="h-4 w-4" />
+                <span>Changes to widget customization may take a moment to appear in the preview. Refresh the page if needed.</span>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="seats" className="space-y-6">
@@ -1996,83 +2078,6 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           <AttendeeManagement eventId={eventId} />
         </TabsContent>
 
-        <TabsContent value="preview" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Eye className="h-5 w-5" />
-                Widget Preview
-              </CardTitle>
-              <CardDescription>
-                Preview how your ticket widget will look to customers. This shows all customizations including colors, fonts, and branding.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* View Toggle */}
-              <div className="flex items-center gap-2 p-1 bg-muted rounded-lg w-fit">
-                <Button
-                  variant={previewMode === 'desktop' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setPreviewMode('desktop')}
-                  className="flex items-center gap-2"
-                >
-                  <Monitor className="h-4 w-4" />
-                  Desktop View
-                </Button>
-                <Button
-                  variant={previewMode === 'mobile' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setPreviewMode('mobile')}
-                  className="flex items-center gap-2"
-                >
-                  <Smartphone className="h-4 w-4" />
-                  Mobile View
-                </Button>
-              </div>
-
-              {/* Desktop Preview */}
-              {previewMode === 'desktop' && (
-                <div className="border rounded-lg overflow-hidden bg-white" style={{ height: "800px" }}>
-                  <iframe
-                    src={`/widget/${eventId}`}
-                    className="w-full h-full"
-                    title="Desktop Widget Preview"
-                    style={{ border: "none" }}
-                  />
-                </div>
-              )}
-
-              {/* Mobile Preview */}
-              {previewMode === 'mobile' && (
-                <div className="flex justify-center py-4">
-                  <div
-                    className="relative bg-gray-900 rounded-[3rem] p-3 shadow-2xl"
-                    style={{ width: "375px", height: "812px" }}
-                  >
-                    {/* Phone notch */}
-                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-40 h-7 bg-gray-900 rounded-b-3xl z-10"></div>
-
-                    {/* Phone screen */}
-                    <div className="relative h-full w-full bg-white rounded-[2.5rem] overflow-hidden">
-                      <iframe
-                        src={`/widget/${eventId}`}
-                        className="w-full h-full"
-                        title="Mobile Widget Preview"
-                        style={{ border: "none" }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <HelpCircle className="h-4 w-4" />
-                <span>Changes to widget customization may take a moment to appear in the preview. Refresh the page if needed.</span>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="settings" className="space-y-6">
           <Card>
             <CardHeader>
@@ -2741,6 +2746,14 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="promo-codes" className="space-y-6">
+          <PromoCodesManager eventId={eventId} />
+        </TabsContent>
+
+        <TabsContent value="group-discounts" className="space-y-6">
+          <GroupDiscountsManager eventId={eventId} />
         </TabsContent>
       </Tabs>
       

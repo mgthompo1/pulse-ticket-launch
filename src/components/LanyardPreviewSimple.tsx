@@ -70,9 +70,10 @@ export const LanyardPreviewSimple: React.FC<LanyardPreviewProps> = ({
         case 'event_time':
           return previewData?.eventTime || 'Event Time';
 
-        case 'ticket_type':
+        case 'ticket_type': {
           const prefix = (block as any).customPrefix || '';
           return `${prefix}${previewData?.ticketType || 'Ticket Type'}`.trim();
+        }
 
         case 'organization_logo':
           if (previewData?.organizationLogo) {
@@ -106,17 +107,18 @@ export const LanyardPreviewSimple: React.FC<LanyardPreviewProps> = ({
           }
           return (block as any).fallbackText || 'EVENT LOGO';
 
-        case 'special_access':
+        case 'special_access': {
           const accessBlock = block as any;
           if (accessBlock.showOnlyForVIP && !previewData?.ticketType?.toLowerCase().includes('vip')) {
             return '';
           }
           return accessBlock.accessText || previewData?.specialAccess || 'SPECIAL ACCESS';
+        }
 
         case 'custom_text':
           return (block as any).text || '';
 
-        case 'qr_code':
+        case 'qr_code': {
           const qrBlock = block as any;
           const qrData = qrBlock.includeTicketCode ?
             `${previewData?.ticketCode || 'TICKET-001'}|${previewData?.attendeeName || 'Attendee'}|${previewData?.eventTitle || 'Event'}` :
@@ -142,6 +144,7 @@ export const LanyardPreviewSimple: React.FC<LanyardPreviewProps> = ({
               }}
             />
           );
+        }
 
         default:
           return 'Block';

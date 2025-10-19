@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -19,6 +18,8 @@ interface StripePaymentModalProps {
   merchandiseCart: MerchandiseCartItem[];
   customerInfo: CustomerInfo;
   theme: Theme;
+  promoCodeId?: string | null;
+  promoDiscount?: number;
 }
 
 export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
@@ -28,7 +29,9 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   cartItems,
   merchandiseCart,
   customerInfo,
-  theme
+  theme,
+  promoCodeId = null,
+  promoDiscount = 0
 }) => {
   const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null);
   const [currency, setCurrency] = useState<string>('USD');
@@ -42,25 +45,27 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   };
 
   const subtotal = calculateTotal();
-  
+
   // Get booking fees setting from eventData
   const bookingFeesEnabled = eventData.organizations?.stripe_booking_fee_enabled || false;
-  
+
   // Calculate booking fee (1% + $0.50) when enabled for Stripe
-  const bookingFee = bookingFeesEnabled && eventData.organizations?.payment_provider === 'stripe' 
+  const bookingFee = bookingFeesEnabled && eventData.organizations?.payment_provider === 'stripe'
     ? (subtotal * 0.01) + 0.50
     : 0;
-  
+
   // Processing fee can be applied alongside booking fees
-  const processingFee = eventData.organizations?.credit_card_processing_fee_percentage 
+  const processingFee = eventData.organizations?.credit_card_processing_fee_percentage
     ? subtotal * (eventData.organizations.credit_card_processing_fee_percentage / 100)
     : 0;
-    
-  const total = subtotal + processingFee + bookingFee;
-  
+
+  // Apply discount to total
+  const total = Math.max(0, subtotal - promoDiscount + processingFee + bookingFee);
+
   // Debug logging
   console.log("=== STRIPE MODAL FEE CALCULATION ===");
   console.log("Subtotal:", subtotal);
+  console.log("Promo Discount:", promoDiscount);
   console.log("Booking fees enabled:", bookingFeesEnabled);
   console.log("Booking fee:", bookingFee);
   console.log("Processing fee:", processingFee);
@@ -212,6 +217,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                 ) : stripePublishableKey ? (
                   <>
                     {console.log('🚀 Modal passing currency to payment form:', currency)}
+                    {console.log('🎟️ Modal passing promoCodeId to payment form:', promoCodeId)}
                     <StripePaymentForm
                     publishableKey={stripePublishableKey}
                     eventId={eventData.id}
@@ -224,6 +230,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                     subtotal={subtotal}
                     bookingFee={bookingFee}
                     currency={currency}
+                    promoCodeId={promoCodeId}
                     onSuccess={(orderId: string) => {
                       console.log("Payment successful, order ID:", orderId);
                       handlePaymentSuccess(orderId);
@@ -331,6 +338,12 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                     <span style={{ color: theme.bodyTextColor }}>Subtotal</span>
                     <span style={{ color: theme.headerTextColor }}>${subtotal.toFixed(2)}</span>
                   </div>
+                  {promoDiscount > 0 && (
+                    <div className="flex justify-between text-green-700">
+                      <span className="font-medium">Promo Discount</span>
+                      <span className="font-medium">-${promoDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
                   {processingFee > 0 && (
                     <div className="flex justify-between">
                       <span style={{ color: theme.bodyTextColor }}>Processing Fee</span>

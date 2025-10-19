@@ -1,11 +1,16 @@
-// @ts-nocheck
 import React from 'react';
-import { hydrateRoot, createRoot } from 'react-dom/client';
+import { hydrateRoot, createRoot, Root } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
+import * as Sentry from "@sentry/react";
 import './index.css';
 import './App.css';
 import App from './App';
+import { initSentry } from './lib/sentry';
+import { ErrorFallback } from './components/ErrorFallback';
+
+// Initialize Sentry
+initSentry();
 
 const container = document.getElementById('root')!;
 
@@ -14,14 +19,16 @@ const container = document.getElementById('root')!;
 const isSSR = container.firstElementChild !== null;
 
 // Reuse a single root across HMR/re-executions to avoid React warnings
-const w = window as unknown as { __appRoot?: any };
+const w = window as unknown as { __appRoot?: Root };
 
 const appTree = (
-  <HelmetProvider>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </HelmetProvider>
+  <Sentry.ErrorBoundary fallback={ErrorFallback}>
+    <HelmetProvider>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </HelmetProvider>
+  </Sentry.ErrorBoundary>
 );
 
 if (w.__appRoot) {

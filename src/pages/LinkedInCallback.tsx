@@ -48,7 +48,9 @@ export default function LinkedInCallback() {
         let storedRedirect = null as string | null;
         try {
           storedRedirect = localStorage.getItem('linkedin_redirect_uri');
-        } catch {}
+        } catch {
+          // Ignore localStorage errors (e.g., in incognito mode)
+        }
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         const fallbackRedirect = isLocalhost
           ? 'http://localhost:8080/auth/linkedin/callback'
