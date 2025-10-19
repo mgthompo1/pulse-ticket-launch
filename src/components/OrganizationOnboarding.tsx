@@ -61,11 +61,6 @@ const OrganizationOnboarding: React.FC<OrganizationOnboardingProps> = ({ onCompl
           name: formData.name,
           email: formData.email,
           website: formData.website || null,
-          test_mode: true, // Start in test mode
-          billing_setup_required: true,
-          billing_setup_completed: false,
-          payment_provider: "stripe",
-          currency: "NZD"
         })
         .select();
 
