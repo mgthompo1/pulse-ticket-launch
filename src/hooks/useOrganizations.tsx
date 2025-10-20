@@ -147,7 +147,8 @@ export const useOrganizations = () => {
   // Load organizations when user changes
   useEffect(() => {
     loadOrganizations();
-  }, [loadOrganizations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]); // Only re-run when user actually changes, not when callback reference changes
 
   return {
     organizations,
