@@ -340,7 +340,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
               Create Promo Code
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingCode ? 'Edit Promo Code' : 'Create New Promo Code'}
@@ -350,7 +350,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="code">Promo Code *</Label>
                   <Input
@@ -390,7 +390,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="discount_type">Discount Type *</Label>
                   <Select
@@ -427,7 +427,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="valid_from">Valid From *</Label>
                   <Input
@@ -451,7 +451,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="max_uses">Max Total Uses (Optional)</Label>
                   <Input
@@ -478,7 +478,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="min_tickets">Minimum Tickets Required *</Label>
                   <Input
@@ -567,7 +567,8 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableCaption>A list of all promo codes for your organization</TableCaption>
               <TableHeader>
                 <TableRow>
@@ -591,9 +592,10 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="min-h-[44px] min-w-[44px]"
                           onClick={() => copyToClipboard(code.code)}
                         >
-                          <Copy className="h-3 w-3" />
+                          <Copy className="h-4 w-4" />
                         </Button>
                       </div>
                       {code.description && (
@@ -644,6 +646,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="min-h-[44px] min-w-[44px]"
                           onClick={() => toggleActive(code)}
                           title={code.active ? 'Deactivate' : 'Activate'}
                         >
@@ -652,6 +655,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="min-h-[44px] min-w-[44px]"
                           onClick={() => openEditDialog(code)}
                         >
                           <Edit className="h-4 w-4" />
@@ -659,6 +663,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="min-h-[44px] min-w-[44px]"
                           onClick={() => handleDelete(code.id)}
                         >
                           <Trash2 className="h-4 w-4 text-red-600" />
@@ -668,7 +673,8 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       )}

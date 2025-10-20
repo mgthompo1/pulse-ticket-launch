@@ -869,7 +869,7 @@ const OrgDashboard = () => {
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 w-full">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 w-full">
                             <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm">
                               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                                 <CardTitle className="font-manrope font-semibold text-base text-gray-900">Total Events</CardTitle>
@@ -936,7 +936,7 @@ const OrgDashboard = () => {
                   ) : (
                     // Attractions mode content
                     <div className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 w-full">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 w-full">
                     <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm">
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
                         <CardTitle className="font-manrope font-semibold text-base text-gray-900">Total Events</CardTitle>
@@ -1072,7 +1072,7 @@ const OrgDashboard = () => {
                                     {event.status}
                                   </Badge>
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                                   <Button
                                     variant="outline"
                                     size="default"
@@ -1080,7 +1080,7 @@ const OrgDashboard = () => {
                                       setSelectedEvent(event);
                                       setActiveTab("event-details");
                                     }}
-                                    className="font-manrope font-medium text-sm"
+                                    className="font-manrope font-medium text-sm w-full sm:w-auto"
                                   >
                                     <Users className="h-4 w-4 mr-2" />
                                     Manage
@@ -1089,7 +1089,7 @@ const OrgDashboard = () => {
                                     variant="outline"
                                     size="default"
                                     onClick={() => window.open(`/widget/${event.id}`, '_blank')}
-                                    className="font-manrope font-medium text-sm"
+                                    className="font-manrope font-medium text-sm w-full sm:w-auto"
                                   >
                                     <Monitor className="h-4 w-4 mr-2" />
                                     Widget
@@ -1099,7 +1099,7 @@ const OrgDashboard = () => {
                                       variant="outline"
                                       size="default"
                                       onClick={() => window.open(`/ticketflolive/${event.id}`, '_blank')}
-                                      className="font-manrope font-medium text-sm"
+                                      className="font-manrope font-medium text-sm w-full sm:w-auto"
                                     >
                                       <Monitor className="h-4 w-4 mr-2" />
                                       TicketFloLIVE
@@ -1119,7 +1119,7 @@ const OrgDashboard = () => {
                         <CardDescription className="font-manrope text-sm text-gray-600">Start selling tickets for your next event</CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 w-full">
                           <div className="space-y-2">
                             <Label htmlFor="event-name" className="font-manrope font-medium text-sm text-gray-700">Event Name *</Label>
                             <Input

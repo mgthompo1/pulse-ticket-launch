@@ -818,7 +818,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 
                 {widgetCustomization.theme.enabled && (
                   <>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="headerTextColor">Header Font Color</Label>
                     <Input
@@ -842,7 +842,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     <p className="text-xs text-muted-foreground">Color for body text and descriptions</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="buttonColor">Button Color</Label>
                     <Input
@@ -970,7 +970,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="borderEnabled">Show Borders</Label>
                     <div className="flex items-center h-10">
@@ -1815,7 +1815,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   {/* Color Controls - Only show if custom colors enabled */}
                   {emailCustomization.useCustomColors && (
                   <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="headerColor">Header Color</Label>
                       <Input
