@@ -83,7 +83,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [initialized]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount, not when initialized changes
 
   const signOut = async () => {
     // Clear organization selection
