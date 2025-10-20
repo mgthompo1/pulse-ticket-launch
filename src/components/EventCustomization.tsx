@@ -706,11 +706,6 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     }));
   };
 
-  // Debug email customization changes
-  useEffect(() => {
-    console.log("Email customization changed:", emailCustomization);
-  }, [emailCustomization]);
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
