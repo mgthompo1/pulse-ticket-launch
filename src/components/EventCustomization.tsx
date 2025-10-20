@@ -748,7 +748,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       )}
 
       <Tabs defaultValue="widget" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap md:flex-nowrap overflow-x-auto">
           <TabsTrigger value="widget" className="flex items-center gap-2">
             <Monitor className="h-4 w-4" />
             Widget
@@ -826,7 +826,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       type="color"
                       value={widgetCustomization.theme.headerTextColor}
                       onChange={(e) => updateWidgetCustomization(['theme', 'headerTextColor'], e.target.value)}
-                      className="w-full h-10"
+                      className="w-full h-12"
                     />
                     <p className="text-xs text-muted-foreground">Color for headers and titles</p>
                   </div>
@@ -837,7 +837,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       type="color"
                       value={widgetCustomization.theme.bodyTextColor}
                       onChange={(e) => updateWidgetCustomization(['theme', 'bodyTextColor'], e.target.value)}
-                      className="w-full h-10"
+                      className="w-full h-12"
                     />
                     <p className="text-xs text-muted-foreground">Color for body text and descriptions</p>
                   </div>
@@ -850,7 +850,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       type="color"
                       value={widgetCustomization.theme.primaryColor}
                       onChange={(e) => updateWidgetCustomization(['theme', 'primaryColor'], e.target.value)}
-                      className="w-full h-10"
+                      className="w-full h-12"
                     />
                     <p className="text-xs text-muted-foreground">Color for buttons and primary elements</p>
                   </div>
@@ -861,7 +861,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       type="color"
                       value={widgetCustomization.theme.buttonTextColor}
                       onChange={(e) => updateWidgetCustomization(['theme', 'buttonTextColor'], e.target.value)}
-                      className="w-full h-10"
+                      className="w-full h-12"
                     />
                     <p className="text-xs text-muted-foreground">Color for text inside buttons</p>
                   </div>
@@ -873,7 +873,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     type="color"
                     value={widgetCustomization.theme.secondaryColor}
                     onChange={(e) => updateWidgetCustomization(['theme', 'secondaryColor'], e.target.value)}
-                    className="w-full h-10"
+                    className="w-full h-12"
                   />
                   <p className="text-xs text-muted-foreground">Color for status bars, borders, and secondary elements</p>
                 </div>
@@ -884,7 +884,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     type="color"
                     value={widgetCustomization.theme.backgroundColor}
                     onChange={(e) => updateWidgetCustomization(['theme', 'backgroundColor'], e.target.value)}
-                    className="w-full h-10"
+                    className="w-full h-12"
                   />
                   <p className="text-xs text-muted-foreground">Color for the overall background</p>
                 </div>
@@ -895,7 +895,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     type="color"
                     value={widgetCustomization.theme.cardBackgroundColor}
                     onChange={(e) => updateWidgetCustomization(['theme', 'cardBackgroundColor'], e.target.value)}
-                    className="w-full h-10"
+                    className="w-full h-12"
                   />
                   <p className="text-xs text-muted-foreground">Background for individual cards/sections</p>
                 </div>
@@ -906,7 +906,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     type="color"
                     value={widgetCustomization.theme.inputBackgroundColor}
                     onChange={(e) => updateWidgetCustomization(['theme', 'inputBackgroundColor'], e.target.value)}
-                    className="w-full h-10"
+                    className="w-full h-12"
                   />
                   <p className="text-xs text-muted-foreground">Background for input fields</p>
                 </div>
@@ -991,7 +991,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       type="color"
                       value={widgetCustomization.theme.borderColor}
                       onChange={(e) => updateWidgetCustomization(['theme', 'borderColor'], e.target.value)}
-                      className="w-full h-10"
+                      className="w-full h-12"
                     />
                   </div>
                 </div>
@@ -1146,6 +1146,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                             <Button
                               variant="outline"
                               size="sm"
+                              className="min-h-[44px] min-w-[44px]"
                               onClick={() => {
                                 const currentQuestions = widgetCustomization.customQuestions?.questions || [];
                                 const updatedQuestions = currentQuestions.filter((q: any) => q.id !== question.id);
@@ -1308,7 +1309,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       value={`<iframe src="${window.location.origin}/widget/${eventId}" width="100%" height="600" frameborder="0"></iframe>`}
                       readOnly
                       rows={3}
-                      className="text-xs font-mono"
+                      className="text-xs md:text-sm font-mono"
                     />
                     <Button
                       variant="outline"
@@ -1528,7 +1529,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         type="color"
                         value={ticketCustomization.design.backgroundColor}
                         onChange={(e) => updateTicketCustomization(['design', 'backgroundColor'], e.target.value)}
-                        className="w-full h-10"
+                        className="w-full h-12"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1538,7 +1539,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         type="color"
                         value={ticketCustomization.design.textColor}
                         onChange={(e) => updateTicketCustomization(['design', 'textColor'], e.target.value)}
-                        className="w-full h-10"
+                        className="w-full h-12"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1823,7 +1824,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         type="color"
                         value={emailCustomization.template.headerColor}
                         onChange={(e) => updateEmailCustomization(['template', 'headerColor'], e.target.value)}
-                        className="w-full h-10"
+                        className="w-full h-12"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1833,7 +1834,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         type="color"
                         value={emailCustomization.template.backgroundColor}
                         onChange={(e) => updateEmailCustomization(['template', 'backgroundColor'], e.target.value)}
-                        className="w-full h-10"
+                        className="w-full h-12"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1843,7 +1844,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         type="color"
                         value={emailCustomization.template.textColor}
                         onChange={(e) => updateEmailCustomization(['template', 'textColor'], e.target.value)}
-                        className="w-full h-10"
+                        className="w-full h-12"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1853,7 +1854,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         type="color"
                         value={emailCustomization.template.buttonColor}
                         onChange={(e) => updateEmailCustomization(['template', 'buttonColor'], e.target.value)}
-                        className="w-full h-10"
+                        className="w-full h-12"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1863,7 +1864,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         type="color"
                         value={emailCustomization.template.accentColor}
                         onChange={(e) => updateEmailCustomization(['template', 'accentColor'], e.target.value)}
-                        className="w-full h-10"
+                        className="w-full h-12"
                       />
                     </div>
                     <div className="space-y-2">
@@ -1873,7 +1874,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         type="color"
                         value={emailCustomization.template.borderColor}
                         onChange={(e) => updateEmailCustomization(['template', 'borderColor'], e.target.value)}
-                        className="w-full h-10"
+                        className="w-full h-12"
                       />
                     </div>
                   </div>
@@ -2027,7 +2028,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
             </div>
 
             {/* Email Preview */}
-            <div className="lg:sticky lg:top-6">
+            <div className="hidden lg:block lg:sticky lg:top-6 max-h-screen overflow-y-auto">
               <EmailTemplatePreview
                 emailCustomization={emailCustomization}
                 blocksTemplate={emailBlocksTemplate}

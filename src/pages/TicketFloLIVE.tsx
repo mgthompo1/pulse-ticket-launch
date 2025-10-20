@@ -990,7 +990,7 @@ const handleCreateConcessionItem = async () => {
                   placeholder="Search guests, tickets..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-80"
+                  className="pl-10 w-full md:w-80 max-w-sm"
                 />
               </div>
             </div>
@@ -1000,7 +1000,7 @@ const handleCreateConcessionItem = async () => {
         {/* Content Area */}
         <main className="flex-1 overflow-auto p-6">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-8">
             <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Guests</CardTitle>
@@ -1182,7 +1182,7 @@ const handleCreateConcessionItem = async () => {
 
           {/* Point of Sale Tab */}
           {activeTab === "pos" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Products Section */}
             <div className="lg:col-span-2 space-y-6">
               {/* Ticket Sales */}
@@ -1830,7 +1830,7 @@ const handleCreateConcessionItem = async () => {
           {activeTab === "analytics" && (
           <div className="space-y-6">
             {/* Revenue Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
