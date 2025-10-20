@@ -230,7 +230,34 @@ serve(async (req) => {
           console.log("Organizer notification failed:", notificationError);
           // Don't fail the whole process for notification issues
         }
-        
+
+        // Send promo code notification if promo code was used
+        console.log("Checking for promo code usage notification...");
+        try {
+          const { data: orderWithPromo } = await supabaseClient
+            .from("orders")
+            .select("promo_code_id")
+            .eq("id", order.id)
+            .single();
+
+          if (orderWithPromo?.promo_code_id) {
+            console.log("Promo code used, sending notification...", orderWithPromo.promo_code_id);
+
+            await supabaseClient.functions.invoke('send-promo-code-notification', {
+              body: {
+                promoCodeId: orderWithPromo.promo_code_id,
+                orderId: order.id
+              }
+            });
+            console.log("Promo code notification sent successfully");
+          } else {
+            console.log("No promo code used for this order");
+          }
+        } catch (promoNotificationError) {
+          console.log("Promo code notification failed:", promoNotificationError);
+          // Don't fail the whole process for notification issues
+        }
+
         // Try to create Xero invoice if auto-sync is enabled
         console.log("Checking for Xero auto-invoice creation...");
         const { data: xeroConnection } = await supabaseClient

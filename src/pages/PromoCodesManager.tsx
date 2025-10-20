@@ -43,6 +43,7 @@ interface PromoCode {
   min_purchase_amount: number | null;
   active: boolean;
   event_id: string | null;
+  notification_email: string | null;
   created_at: string;
 }
 
@@ -57,6 +58,7 @@ interface PromoCodeFormData {
   valid_until: string;
   min_tickets: string;
   min_purchase_amount: string;
+  notification_email: string;
   applies_to_all_events: boolean;
 }
 
@@ -85,6 +87,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
     valid_until: '',
     min_tickets: '1',
     min_purchase_amount: '',
+    notification_email: '',
     applies_to_all_events: false,
   });
 
@@ -165,6 +168,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
         min_purchase_amount: formData.min_purchase_amount
           ? parseFloat(formData.min_purchase_amount)
           : null,
+        notification_email: formData.notification_email.trim() || null,
         active: true,
       };
 
@@ -275,6 +279,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
       valid_until: '',
       min_tickets: '1',
       min_purchase_amount: '',
+      notification_email: '',
       applies_to_all_events: false,
     });
     setEditingCode(null);
@@ -293,6 +298,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
       valid_until: code.valid_until?.split('T')[0] || '',
       min_tickets: code.min_tickets.toString(),
       min_purchase_amount: code.min_purchase_amount?.toString() || '',
+      notification_email: code.notification_email || '',
       applies_to_all_events: code.event_id === null,
     });
     setDialogOpen(true);
@@ -368,6 +374,20 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                     placeholder="Early bird discount"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notification_email">Notification Email (Optional)</Label>
+                <Input
+                  id="notification_email"
+                  type="email"
+                  value={formData.notification_email}
+                  onChange={(e) => setFormData({ ...formData, notification_email: e.target.value })}
+                  placeholder="pastor@church.org"
+                />
+                <p className="text-xs text-gray-500">
+                  When this promo code is used, send a notification to this email address (e.g., church pastor, partner contact)
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
