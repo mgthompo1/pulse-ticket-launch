@@ -18,6 +18,7 @@ interface StripeConfigurationProps {
   currency: string;
   enableBookingFees?: boolean;
   stripeConnectedAccountId?: string;
+  organizationId?: string;
   onStripeAccountIdChange: (value: string) => void;
   onStripePublishableKeyChange: (value: string) => void;
   onStripeSecretKeyChange: (value: string) => void;
@@ -37,6 +38,7 @@ export const StripeConfiguration = ({
   currency,
   enableBookingFees = false,
   stripeConnectedAccountId,
+  organizationId,
   onStripeAccountIdChange,
   onStripePublishableKeyChange,
   onStripeSecretKeyChange,
@@ -220,6 +222,7 @@ export const StripeConfiguration = ({
         stripeAccountId={stripeConnectedAccountId}
         onConnectionChange={onConnectionChange}
         showBookingFeesRequirement={!enableBookingFees}
+        organizationId={organizationId}
       />
     </div>
   );

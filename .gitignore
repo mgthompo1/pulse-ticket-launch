@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 apple_wallet_private.key
+
+# Stripe Connect configuration (contains sensitive IDs)
+.stripe-connect-config.md

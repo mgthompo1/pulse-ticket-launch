@@ -195,6 +195,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
                 currency={currency}
                 enableBookingFees={enableBookingFees}
                 stripeConnectedAccountId={stripeConnectedAccountId}
+                organizationId={organizationId}
                 onStripeAccountIdChange={setStripeAccountId}
                 onStripePublishableKeyChange={setStripePublishableKey}
                 onStripeSecretKeyChange={setStripeSecretKey}
