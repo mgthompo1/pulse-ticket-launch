@@ -8,7 +8,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Calendar, Users, Settings, BarChart3, Mail, CreditCard, TrendingUp, Link, Shield, MapPin } from "lucide-react";
+import { Calendar, Users, Settings, BarChart3, Mail, CreditCard, TrendingUp, Link, Shield, MapPin, UsersRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,29 +26,42 @@ interface AppSidebarProps {
   selectedEvent: Event | null;
 }
 
-const getSidebarItems = (systemType: string) => [
-  { id: "overview", title: "Overview", icon: BarChart3 },
-  { 
-    id: "events", 
-    title: systemType === "ATTRACTIONS" ? "Attractions" : "Events", 
-    icon: systemType === "ATTRACTIONS" ? MapPin : Calendar 
-  },
-  { 
-    id: "event-details", 
-    title: systemType === "ATTRACTIONS" ? "Attraction Details" : "Event Details", 
-    icon: Users, 
-    requiresEvent: true 
-  },
-  { id: "analytics", title: "Analytics", icon: TrendingUp },
-  { id: "payments", title: "Payments", icon: CreditCard },
-  { id: "marketing", title: "Marketing", icon: Mail },
-  { id: "billing", title: "Billing", icon: CreditCard },
-  { id: "integrations", title: "Apps", icon: Link },
-  { id: "users", title: "Team", icon: Users },
-  { id: "support", title: "Support", icon: Mail },
-  { id: "security", title: "Security", icon: Shield },
-  { id: "settings", title: "Settings", icon: Settings },
-];
+const getSidebarItems = (systemType: string, groupsEnabled: boolean) => {
+  const items = [
+    { id: "overview", title: "Overview", icon: BarChart3 },
+    {
+      id: "events",
+      title: systemType === "ATTRACTIONS" ? "Attractions" : "Events",
+      icon: systemType === "ATTRACTIONS" ? MapPin : Calendar
+    },
+    {
+      id: "event-details",
+      title: systemType === "ATTRACTIONS" ? "Attraction Details" : "Event Details",
+      icon: Users,
+      requiresEvent: true
+    },
+    { id: "analytics", title: "Analytics", icon: TrendingUp },
+    { id: "payments", title: "Payments", icon: CreditCard },
+    { id: "marketing", title: "Marketing", icon: Mail },
+    { id: "billing", title: "Billing", icon: CreditCard },
+    { id: "integrations", title: "Apps", icon: Link },
+    { id: "users", title: "Team", icon: Users },
+  ];
+
+  // Conditionally add Groups menu item if enabled
+  if (groupsEnabled) {
+    items.push({ id: "groups", title: "Groups", icon: UsersRound });
+  }
+
+  // Add remaining items
+  items.push(
+    { id: "support", title: "Support", icon: Mail },
+    { id: "security", title: "Security", icon: Shield },
+    { id: "settings", title: "Settings", icon: Settings }
+  );
+
+  return items;
+};
 
 export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSidebarProps) {
   const { state } = useSidebar();
@@ -57,6 +70,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
   const [organizationLogo, setOrganizationLogo] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState<string>("");
   const [systemType, setSystemType] = useState<string>("EVENTS");
+  const [groupsEnabled, setGroupsEnabled] = useState<boolean>(false);
 
   useEffect(() => {
     const loadOrganization = async () => {
@@ -65,7 +79,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
       try {
         const { data, error } = await supabase
           .from("organizations")
-          .select("logo_url, name, system_type")
+          .select("logo_url, name, system_type, groups_enabled")
           .eq("user_id", user.id)
           .single();
 
@@ -78,6 +92,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
           setOrganizationLogo(data.logo_url);
           setOrganizationName(data.name || "");
           setSystemType(data.system_type || "EVENTS");
+          setGroupsEnabled(data.groups_enabled || false);
         }
       } catch (error) {
         console.error("Error loading organization:", error);
@@ -130,7 +145,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
         <SidebarGroup className="px-3 py-4">
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {getSidebarItems(systemType).map((item) => {
+              {getSidebarItems(systemType, groupsEnabled).map((item) => {
                 const isDisabled = item.requiresEvent && !selectedEvent;
                 const isActive = activeTab === item.id;
                 

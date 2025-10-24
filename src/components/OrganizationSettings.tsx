@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Building2, Mail, Globe, Phone, MapPin, Upload, Save, Settings, Calendar, MapPin as Attraction } from "lucide-react";
+import { Building2, Mail, Globe, Phone, MapPin, Upload, Save, Settings, Calendar, MapPin as Attraction, Users } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 interface OrganizationData {
   id: string;
@@ -24,6 +25,7 @@ interface OrganizationData {
   country: string | null;
   phone: string | null;
   system_type: string | null;
+  groups_enabled: boolean;
 }
 
 const OrganizationSettings: React.FC = () => {
@@ -44,10 +46,12 @@ const OrganizationSettings: React.FC = () => {
     country: "New Zealand",
     phone: "",
     system_type: "EVENTS",
+    groups_enabled: false,
   });
 
   useEffect(() => {
     loadOrganization();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loadOrganization = async () => {
@@ -55,11 +59,13 @@ const OrganizationSettings: React.FC = () => {
 
     try {
       // First, try to find organization where user is the owner
-      let { data, error } = await supabase
+      const { data: orgData, error } = await supabase
         .from("organizations")
         .select("*")
         .eq("user_id", user.id)
         .single();
+
+      let organizationData = orgData;
 
       // If no owned organization found, check if user is a member of any organization
       if (error && error.code === 'PGRST116') {
@@ -82,27 +88,28 @@ const OrganizationSettings: React.FC = () => {
         }
 
         if (membershipData?.organizations) {
-          data = membershipData.organizations as any;
-          console.log("Found organization via membership:", data);
+          organizationData = membershipData.organizations as typeof orgData;
+          console.log("Found organization via membership:", organizationData);
         }
       } else if (error) {
         console.error("Error loading organization:", error);
         return;
       }
 
-      if (data) {
+      if (organizationData) {
         setOrganizationData({
-          id: data.id,
-          name: data.name || "",
-          email: data.email || "",
-          website: data.website || "",
-          logo_url: data.logo_url || "",
-          address: data.address || "",
-          city: data.city || "",
-          postal_code: data.postal_code || "",
-          country: data.country || "New Zealand",
-          phone: data.phone || "",
-          system_type: data.system_type || "EVENTS",
+          id: organizationData.id,
+          name: organizationData.name || "",
+          email: organizationData.email || "",
+          website: organizationData.website || "",
+          logo_url: organizationData.logo_url || "",
+          address: organizationData.address || "",
+          city: organizationData.city || "",
+          postal_code: organizationData.postal_code || "",
+          country: organizationData.country || "New Zealand",
+          phone: organizationData.phone || "",
+          system_type: organizationData.system_type || "EVENTS",
+          groups_enabled: organizationData.groups_enabled || false,
         });
       }
     } catch (error) {
@@ -225,6 +232,7 @@ const OrganizationSettings: React.FC = () => {
           country: organizationData.country,
           phone: organizationData.phone,
           system_type: organizationData.system_type,
+          groups_enabled: organizationData.groups_enabled,
         })
         .eq("id", organizationData.id);
 
@@ -503,6 +511,53 @@ const OrganizationSettings: React.FC = () => {
                   <p><strong>Attractions Mode:</strong> Ideal for golf simulators, karaoke rooms, tours, and bookable experiences.</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Group Ticketing
+              </CardTitle>
+              <CardDescription>
+                Enable multi-tenant group ticketing for organizations with multiple sub-groups
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between space-x-4">
+                <div className="flex-1 space-y-1">
+                  <Label htmlFor="groups-enabled" className="text-base font-medium cursor-pointer">
+                    Enable Group Sales
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Allow groups (youth groups, churches, teams) to sell allocated ticket inventory with custom pricing and discounts
+                  </p>
+                </div>
+                <Switch
+                  id="groups-enabled"
+                  checked={organizationData.groups_enabled}
+                  onCheckedChange={(checked) =>
+                    setOrganizationData(prev => ({ ...prev, groups_enabled: checked }))
+                  }
+                />
+              </div>
+
+              {organizationData.groups_enabled && (
+                <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                  <p className="text-sm font-medium">What Groups Enable:</p>
+                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                    <li>Allocate ticket inventory to specific groups</li>
+                    <li>Each group gets their own portal and widget</li>
+                    <li>Groups can discount tickets for their members</li>
+                    <li>Automatic invoicing for discount differences</li>
+                    <li>Group coordinators receive sales notifications</li>
+                  </ul>
+                  <p className="text-sm text-blue-600 mt-3">
+                    When enabled, a "Groups" section will appear in your navigation menu.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
