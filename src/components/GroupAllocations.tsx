@@ -30,7 +30,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AllocateTicketsDialog from "./AllocateTicketsDialog";
+import GroupDiscountCodes from "./GroupDiscountCodes";
 
 interface GroupAllocationsProps {
   groupId: string;
@@ -169,9 +171,9 @@ export const GroupAllocations: React.FC<GroupAllocationsProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-bold">Ticket Allocations</h3>
+          <h3 className="text-xl font-bold">{groupName}</h3>
           <p className="text-muted-foreground">
-            Manage ticket inventory allocated to {groupName}
+            Manage allocations and discount codes
           </p>
         </div>
         <Button onClick={() => setShowAllocateDialog(true)}>
@@ -179,6 +181,14 @@ export const GroupAllocations: React.FC<GroupAllocationsProps> = ({
           Allocate Tickets
         </Button>
       </div>
+
+      <Tabs defaultValue="allocations" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="allocations">Allocations</TabsTrigger>
+          <TabsTrigger value="discounts">Discount Codes</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="allocations" className="space-y-6">
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -371,6 +381,12 @@ export const GroupAllocations: React.FC<GroupAllocationsProps> = ({
           </CardContent>
         </Card>
       )}
+        </TabsContent>
+
+        <TabsContent value="discounts" className="space-y-6">
+          <GroupDiscountCodes groupId={groupId} groupName={groupName} />
+        </TabsContent>
+      </Tabs>
 
       {/* Allocate Dialog */}
       <AllocateTicketsDialog
