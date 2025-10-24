@@ -51,8 +51,10 @@ const App = () => (
             <Route path="/auth/confirm" element={<AuthConfirm />} />
             <Route path="/widget/:eventId" element={<TicketWidget />} />
             <Route path="/attraction/:attractionId" element={<AttractionWidget />} />
-            <Route path="/admin-auth" element={<AdminAuth />} />
+            {/* DEPRECATED: /admin-auth has been removed due to hardcoded credentials security vulnerability */}
+            {/* Use /secure-admin instead which has database-backed authentication with TOTP support */}
             <Route path="/secure-admin" element={<SecureAdminAuth />} />
+            <Route path="/secure-admin-auth" element={<SecureAdminAuth />} />
             <Route path="/ticketflolive/:eventId" element={<TicketFloLIVE />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/payment-failed" element={<PaymentFailed />} />

@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, UserCheck, Building, Shield, ArrowLeft } from 'lucide-react';
+import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
+import { validatePassword, validatePasswordMatch } from '@/lib/validation';
 
 interface InvitationDetails {
   id: string;
@@ -84,22 +86,20 @@ export const InvitationPasswordSetup = () => {
 
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!invitation) return;
-    
-    if (password !== confirmPassword) {
-      setError("Passwords don't match");
+
+    // Password match validation
+    const matchError = validatePasswordMatch(password, confirmPassword);
+    if (matchError) {
+      setError(matchError);
       return;
     }
 
     // Password strength validation
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters long");
-      return;
-    }
-    
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-      setError("Password must contain at least one uppercase letter, one lowercase letter, and one number");
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      setError(passwordValidation.errors[0] || "Password does not meet requirements");
       return;
     }
 
@@ -445,9 +445,10 @@ export const InvitationPasswordSetup = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
-                <p className="text-xs text-muted-foreground">
-                  Must be at least 8 characters with uppercase, lowercase, and number
-                </p>
+                {/* Password Strength Indicator */}
+                {password && (
+                  <PasswordStrengthIndicator password={password} showRequirements />
+                )}
               </div>
               
               <div className="space-y-2">

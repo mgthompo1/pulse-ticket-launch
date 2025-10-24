@@ -14,6 +14,9 @@ import { InvitationAcceptance } from "@/components/InvitationAcceptance";
 import { PasskeyButton } from "@/components/PasskeyButton";
 import { PasskeySetup } from "@/components/PasskeySetup";
 import { usePasskeys } from "@/hooks/usePasskeys";
+import { OAuthButtons } from "@/components/auth/OAuthButtons";
+import { PasswordStrengthIndicator } from "@/components/auth/PasswordStrengthIndicator";
+import { validateEmail, validatePassword, validatePasswordMatch } from "@/lib/validation";
 
 
 const Auth = () => {
@@ -40,10 +43,7 @@ const Auth = () => {
     checkSupport();
   }, [checkSupport]);
 
-  // Email validation function
-  const isValidEmail = useCallback((email: string): boolean => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  }, []);
+  // Removed - now using shared validation utilities from @/lib/validation
 
   // Tab change handler with state cleanup
   const handleTabChange = useCallback((value: string) => {
@@ -112,26 +112,24 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Email validation
-    if (!isValidEmail(email)) {
+    if (!validateEmail(email)) {
       setError("Please enter a valid email address");
       return;
     }
-    
-    if (password !== confirmPassword) {
-      setError("Passwords don't match");
+
+    // Password match validation
+    const matchError = validatePasswordMatch(password, confirmPassword);
+    if (matchError) {
+      setError(matchError);
       return;
     }
 
     // Password strength validation
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters long");
-      return;
-    }
-    
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-      setError("Password must contain at least one uppercase letter, one lowercase letter, and one number");
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      setError(passwordValidation.errors[0] || "Password does not meet requirements");
       return;
     }
 
@@ -201,9 +199,9 @@ const Auth = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Email validation
-    if (!isValidEmail(email)) {
+    if (!validateEmail(email)) {
       setError("Please enter a valid email address");
       return;
     }
@@ -261,9 +259,9 @@ const Auth = () => {
       });
       return;
     }
-    
+
     // Email validation
-    if (!isValidEmail(email)) {
+    if (!validateEmail(email)) {
       toast({
         title: "Error",
         description: "Please enter a valid email address",
@@ -301,9 +299,9 @@ const Auth = () => {
       setError("Please enter your email address");
       return;
     }
-    
+
     // Email validation
-    if (!isValidEmail(email)) {
+    if (!validateEmail(email)) {
       setError("Please enter a valid email address");
       return;
     }
@@ -419,20 +417,33 @@ const Auth = () => {
                       Sign In
                     </Button>
                     
-                    {/* Passkey Sign In Option */}
+                    {/* OAuth & Passkey Sign In Options */}
+                    <div className="relative my-6">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">
+                          Or continue with
+                        </span>
+                      </div>
+                    </div>
+
+                    <OAuthButtons onError={handlePasskeyAuthError} />
+
                     {isPasskeySupported && (
                       <>
-                        <div className="relative my-6">
+                        <div className="relative my-4">
                           <div className="absolute inset-0 flex items-center">
                             <span className="w-full border-t" />
                           </div>
                           <div className="relative flex justify-center text-xs uppercase">
                             <span className="bg-background px-2 text-muted-foreground">
-                              Or continue with
+                              Or use passkey
                             </span>
                           </div>
                         </div>
-                        
+
                         <PasskeyButton
                           email={email}
                           onSuccess={handlePasskeyAuthSuccess}
@@ -512,6 +523,25 @@ const Auth = () => {
               </TabsContent>
 
               <TabsContent value="signup" className="space-y-4">
+                {/* OAuth Sign Up Options */}
+                <div className="space-y-4">
+                  <OAuthButtons
+                    onError={setError}
+                    redirectTo={`${window.location.origin}/dashboard`}
+                  />
+
+                  <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        Or sign up with email
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">Email</Label>
@@ -534,6 +564,10 @@ const Auth = () => {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                     />
+                    {/* Password Strength Indicator */}
+                    {password && (
+                      <PasswordStrengthIndicator password={password} showRequirements />
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="confirm-password">Confirm Password</Label>
