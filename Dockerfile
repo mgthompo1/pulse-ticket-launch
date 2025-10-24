@@ -1,5 +1,5 @@
-# Use Node.js 18 LTS Alpine for smaller image size
-FROM node:18-alpine
+# Use Node.js 20 LTS Alpine for smaller image size
+FROM node:20-alpine
 
 # Install OpenSSL for Apple Wallet signing
 RUN apk add --no-cache openssl openssl-dev
@@ -10,8 +10,8 @@ WORKDIR /app
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies (including dev dependencies for build)
-RUN npm install
+# Clean npm cache and install dependencies (including dev dependencies for build)
+RUN npm cache clean --force && npm install
 
 # Copy source code
 COPY . .
