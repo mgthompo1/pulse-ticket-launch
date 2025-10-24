@@ -1121,9 +1121,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                             });
                             return;
                           }
+                          const currentCount = currentQuestions.length;
                           const newQuestion = {
                             id: `question_${Date.now()}`,
-                            label: "",
+                            label: `Question ${currentCount + 1}`,
                             type: "text",
                             required: false,
                             options: ""

@@ -54,7 +54,18 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
     onNext(values as CustomerInfo);
   };
 
-  const renderCustomQuestion = (question: CustomQuestion) => {
+  const renderCustomQuestion = (question: CustomQuestion, index: number) => {
+    // Generate a user-friendly label fallback
+    const getQuestionLabel = () => {
+      if (question.label && !question.label.startsWith('question_')) {
+        return question.label;
+      }
+      // Fallback to "Question 1", "Question 2", etc. if label is empty or is an ID
+      return `Question ${index + 1}`;
+    };
+
+    const questionLabel = getQuestionLabel();
+
     // Safety check for options - handle both array and string formats
     let safeOptions: string[] = [];
     if (Array.isArray(question.options)) {
@@ -76,14 +87,14 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel style={{ color: theme.bodyTextColor }}>
-                  {question.label}
+                  {questionLabel}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
                 <FormControl>
-                  <Input 
+                  <Input
                     type={question.type === 'email' ? 'email' : question.type === 'phone' ? 'tel' : 'text'}
-                    placeholder={question.label}
-                    {...field} 
+                    placeholder={questionLabel}
+                    {...field}
                     style={{ backgroundColor: theme.inputBackgroundColor }}
                   />
                 </FormControl>
@@ -103,13 +114,13 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel style={{ color: theme.bodyTextColor }}>
-                  {question.label}
+                  {questionLabel}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
                 <FormControl>
-                  <Textarea 
-                    placeholder={question.label}
-                    {...field} 
+                  <Textarea
+                    placeholder={questionLabel}
+                    {...field}
                     style={{ backgroundColor: theme.inputBackgroundColor }}
                   />
                 </FormControl>
@@ -129,13 +140,13 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel style={{ color: theme.bodyTextColor }}>
-                  {question.label}
+                  {questionLabel}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger style={{ backgroundColor: theme.inputBackgroundColor }}>
-                      <SelectValue placeholder={question.label} />
+                      <SelectValue placeholder={questionLabel} />
                     </SelectTrigger>
                   </FormControl>
                    <SelectContent>
@@ -162,7 +173,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel style={{ color: theme.bodyTextColor }}>
-                  {question.label}
+                  {questionLabel}
                   {question.required && <span className="text-destructive ml-1">*</span>}
                 </FormLabel>
                 <FormControl>
@@ -204,7 +215,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 </FormControl>
                 <div className="space-y-1 leading-none">
                   <FormLabel style={{ color: theme.bodyTextColor }}>
-                    {question.label}
+                    {questionLabel}
                     {question.required && <span className="text-destructive ml-1">*</span>}
                   </FormLabel>
                 </div>
@@ -284,7 +295,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 <CardTitle style={{ color: theme.headerTextColor }}>Additional Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {safeCustomQuestions.map(renderCustomQuestion)}
+                {safeCustomQuestions.map((question, index) => renderCustomQuestion(question, index))}
               </CardContent>
             </Card>
            )}
