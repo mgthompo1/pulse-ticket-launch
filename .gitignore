@@ -26,3 +26,35 @@ apple_wallet_private.key
 
 # Stripe Connect configuration (contains sensitive IDs)
 .stripe-connect-config.md
+
+# OAuth and Authentication Credentials
+APPLE_CREDENTIALS.txt
+APPLE_JWT_SECRET.txt
+GOOGLE_CREDENTIALS.txt
+apple-jwt-clean.txt
+apple-oauth-jwt.txt
+
+# Apple Wallet & Certificates
+*.p12
+*.pem
+*.cer
+apple_wallet_base64.txt
+*.pkpass
+
+# Debug SQL files (may contain sensitive data)
+debug-*.sql
+fix-*.sql
+apply_*.sql
+
+# iOS Build Artifacts
+.build/
+.swiftpm/
+*.xcarchive/
+*.app/
+*.playground/
+export/
+*.xcuserstate
+xcshareddata/
+
+# Supabase CLI temp files
+supabase/.temp/
