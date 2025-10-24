@@ -195,11 +195,11 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
         // Send ticket confirmation email
         try {
           console.log("Triggering ticket email for order:", orderId);
-          
+
           const emailResponse = await supabaseClient.functions.invoke('send-ticket-email-v2', {
             body: { orderId: orderId }
           });
-          
+
           if (emailResponse.error) {
             console.error("Error sending ticket email:", emailResponse.error);
           } else {
@@ -207,6 +207,35 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
           }
         } catch (emailError) {
           console.error("Failed to send ticket email:", emailError);
+        }
+
+        // Send promo code notification email if a promo code was used
+        try {
+          // Check if order has a promo code
+          const { data: order } = await supabaseClient
+            .from("orders")
+            .select("promo_code_id")
+            .eq("id", orderId)
+            .single();
+
+          if (order?.promo_code_id) {
+            console.log("Sending promo code notification for order:", orderId);
+
+            const promoNotificationResponse = await supabaseClient.functions.invoke('send-promo-code-notification', {
+              body: {
+                promoCodeId: order.promo_code_id,
+                orderId: orderId
+              }
+            });
+
+            if (promoNotificationResponse.error) {
+              console.error("Error sending promo code notification:", promoNotificationResponse.error);
+            } else {
+              console.log("Promo code notification sent successfully");
+            }
+          }
+        } catch (promoError) {
+          console.error("Failed to send promo code notification:", promoError);
         }
       }
     }
