@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import { AuthConfirm } from "./pages/AuthConfirm";
 import OrgDashboard from "./pages/OrgDashboard";
 import TicketWidget from "./pages/TicketWidget";
 import AttractionWidget from "./pages/AttractionWidget";
@@ -47,6 +48,7 @@ const App = () => (
             {/* Public routes - NO theme context, consistent appearance */}
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/auth/confirm" element={<AuthConfirm />} />
             <Route path="/widget/:eventId" element={<TicketWidget />} />
             <Route path="/attraction/:attractionId" element={<AttractionWidget />} />
             <Route path="/admin-auth" element={<AdminAuth />} />

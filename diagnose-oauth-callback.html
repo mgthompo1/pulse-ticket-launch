@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stripe OAuth Callback Diagnostic</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        .info { color: blue; }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Stripe OAuth Callback Diagnostic Tool</h1>
+    <p class="info">This page helps diagnose issues with Stripe Connect OAuth callbacks.</p>
+
+    <div class="section">
+        <h2>📍 Current URL</h2>
+        <pre id="current-url"></pre>
+    </div>
+
+    <div class="section">
+        <h2>🔗 URL Parameters</h2>
+        <div id="url-params"></div>
+    </div>
+
+    <div class="section">
+        <h2>✅ Diagnostic Results</h2>
+        <div id="diagnostics"></div>
+    </div>
+
+    <div class="section">
+        <h2>📋 Instructions</h2>
+        <ol>
+            <li>Ask Phil to copy the URL he was redirected to after connecting Stripe</li>
+            <li>Have him open this diagnostic page</li>
+            <li>Paste the URL in the box below and click "Analyze"</li>
+        </ol>
+        <input type="text" id="url-input" placeholder="Paste the callback URL here..." style="width: 100%; padding: 8px; margin: 10px 0;">
+        <button onclick="analyzeUrl()" style="padding: 8px 16px; cursor: pointer;">Analyze URL</button>
+    </div>
+
+    <script>
+        function analyzeCurrentUrl() {
+            const currentUrl = window.location.href;
+            document.getElementById('current-url').textContent = currentUrl;
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const paramsDiv = document.getElementById('url-params');
+            const diagnosticsDiv = document.getElementById('diagnostics');
+
+            if (urlParams.toString() === '') {
+                paramsDiv.innerHTML = '<p class="warning">⚠️ No URL parameters found</p>';
+            } else {
+                let paramsHtml = '<ul>';
+                for (const [key, value] of urlParams.entries()) {
+                    paramsHtml += `<li><strong>${key}:</strong> ${value}</li>`;
+                }
+                paramsHtml += '</ul>';
+                paramsDiv.innerHTML = paramsHtml;
+            }
+
+            // Run diagnostics
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const error = urlParams.get('error');
+            const errorDescription = urlParams.get('error_description');
+            const tab = urlParams.get('tab');
+
+            let diagnostics = [];
+
+            if (error) {
+                diagnostics.push(`<p class="error">❌ OAuth Error: ${error}</p>`);
+                if (errorDescription) {
+                    diagnostics.push(`<p class="error">Description: ${errorDescription}</p>`);
+                }
+            }
+
+            if (code) {
+                diagnostics.push(`<p class="success">✅ Authorization code found: ${code.substring(0, 20)}...</p>`);
+            } else if (!error) {
+                diagnostics.push(`<p class="error">❌ No authorization code found</p>`);
+                diagnostics.push(`<p class="warning">⚠️ This means Stripe did not redirect back with a valid code</p>`);
+            }
+
+            if (state) {
+                diagnostics.push(`<p class="success">✅ State parameter found: ${state}</p>`);
+                // Try to parse state
+                if (state.includes('|')) {
+                    const [orgId, userId] = state.split('|');
+                    diagnostics.push(`<p class="info">📝 Organization ID: ${orgId}</p>`);
+                    diagnostics.push(`<p class="info">📝 User ID: ${userId}</p>`);
+                }
+            } else if (!error) {
+                diagnostics.push(`<p class="error">❌ No state parameter found</p>`);
+                diagnostics.push(`<p class="warning">⚠️ State is required to identify the organization</p>`);
+            }
+
+            if (tab === 'payments') {
+                diagnostics.push(`<p class="success">✅ Redirected to payments tab</p>`);
+            }
+
+            // Check if this looks like a proper callback
+            if (code && state) {
+                diagnostics.push(`<p class="success"><strong>✅ This looks like a valid OAuth callback!</strong></p>`);
+                diagnostics.push(`<p class="info">The React app should have automatically called the edge function to complete the connection.</p>`);
+                diagnostics.push(`<p class="warning">⚠️ If the connection failed, check the browser console for errors.</p>`);
+            } else if (!error) {
+                diagnostics.push(`<p class="error"><strong>❌ This does NOT look like a valid OAuth callback</strong></p>`);
+                diagnostics.push(`<p class="warning">Possible causes:</p>`);
+                diagnostics.push(`<ul>
+                    <li>Redirect URI mismatch in Stripe Connect settings</li>
+                    <li>OAuth was canceled or failed</li>
+                    <li>Stripe Connect Client ID not configured correctly</li>
+                </ul>`);
+            }
+
+            diagnosticsDiv.innerHTML = diagnostics.join('');
+        }
+
+        function analyzeUrl() {
+            const urlInput = document.getElementById('url-input').value.trim();
+            if (!urlInput) {
+                alert('Please paste a URL to analyze');
+                return;
+            }
+
+            try {
+                const url = new URL(urlInput);
+                const params = new URLSearchParams(url.search);
+
+                const paramsDiv = document.getElementById('url-params');
+                const diagnosticsDiv = document.getElementById('diagnostics');
+
+                if (params.toString() === '') {
+                    paramsDiv.innerHTML = '<p class="warning">⚠️ No URL parameters found</p>';
+                } else {
+                    let paramsHtml = '<ul>';
+                    for (const [key, value] of params.entries()) {
+                        paramsHtml += `<li><strong>${key}:</strong> ${value}</li>`;
+                    }
+                    paramsHtml += '</ul>';
+                    paramsDiv.innerHTML = paramsHtml;
+                }
+
+                const code = params.get('code');
+                const state = params.get('state');
+                const error = params.get('error');
+                const errorDescription = params.get('error_description');
+
+                let diagnostics = [];
+
+                if (error) {
+                    diagnostics.push(`<p class="error">❌ OAuth Error: ${error}</p>`);
+                    if (errorDescription) {
+                        diagnostics.push(`<p class="error">Description: ${errorDescription}</p>`);
+                    }
+                }
+
+                if (code) {
+                    diagnostics.push(`<p class="success">✅ Authorization code found: ${code.substring(0, 20)}...</p>`);
+                } else if (!error) {
+                    diagnostics.push(`<p class="error">❌ No authorization code found</p>`);
+                }
+
+                if (state) {
+                    diagnostics.push(`<p class="success">✅ State parameter found: ${state}</p>`);
+                    if (state.includes('|')) {
+                        const [orgId, userId] = state.split('|');
+                        diagnostics.push(`<p class="info">📝 Organization ID: ${orgId}</p>`);
+                        diagnostics.push(`<p class="info">📝 User ID: ${userId}</p>`);
+                    }
+                } else if (!error) {
+                    diagnostics.push(`<p class="error">❌ No state parameter found</p>`);
+                }
+
+                if (code && state) {
+                    diagnostics.push(`<p class="success"><strong>✅ This looks like a valid OAuth callback!</strong></p>`);
+                } else if (!error) {
+                    diagnostics.push(`<p class="error"><strong>❌ This does NOT look like a valid OAuth callback</strong></p>`);
+                }
+
+                diagnosticsDiv.innerHTML = diagnostics.join('');
+            } catch (err) {
+                alert('Invalid URL: ' + err.message);
+            }
+        }
+
+        // Run diagnostics on page load
+        analyzeCurrentUrl();
+    </script>
+</body>
+</html>

@@ -81,15 +81,19 @@ serve(async (req) => {
       case "checkout.session.completed":
         await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session, supabaseClient);
         break;
-      
+
       case "payment_intent.succeeded":
         await handlePaymentIntentSucceeded(event.data.object as Stripe.PaymentIntent, supabaseClient);
         break;
-      
+
       case "invoice.payment_succeeded":
         await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice, supabaseClient);
         break;
-      
+
+      case "account.updated":
+        await handleAccountUpdated(event.data.object as any, supabaseClient);
+        break;
+
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
@@ -306,4 +310,66 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice, supabaseCl
   } catch (error) {
     console.error("Error handling invoice payment succeeded:", error);
   }
-} 
+}
+
+async function handleAccountUpdated(account: any, supabaseClient: any) {
+  console.log("Processing account.updated:", account.id);
+
+  try {
+    const organizationId = account.metadata?.organization_id;
+
+    console.log("Account updated webhook:", {
+      accountId: account.id,
+      organizationId,
+      charges_enabled: account.charges_enabled,
+      payouts_enabled: account.payouts_enabled,
+      metadata: account.metadata
+    });
+
+    if (organizationId) {
+      const isOnboarded = account.charges_enabled && account.payouts_enabled;
+
+      const { error } = await supabaseClient
+        .from("organizations")
+        .update({
+          stripe_onboarding_complete: isOnboarded,
+          stripe_account_id: account.id
+        })
+        .eq("id", organizationId);
+
+      if (error) {
+        console.error("Failed to update organization:", error);
+      } else {
+        console.log(`✅ Updated organization ${organizationId} - onboarded: ${isOnboarded}`);
+      }
+    } else {
+      console.log("⚠️  No organization_id in account metadata, trying to find by stripe_account_id");
+
+      // Try to find organization by stripe_account_id
+      const { data: org, error: findError } = await supabaseClient
+        .from("organizations")
+        .select("id")
+        .eq("stripe_account_id", account.id)
+        .single();
+
+      if (findError || !org) {
+        console.error("Could not find organization for account:", account.id);
+      } else {
+        const isOnboarded = account.charges_enabled && account.payouts_enabled;
+
+        const { error: updateError } = await supabaseClient
+          .from("organizations")
+          .update({ stripe_onboarding_complete: isOnboarded })
+          .eq("id", org.id);
+
+        if (updateError) {
+          console.error("Failed to update organization:", updateError);
+        } else {
+          console.log(`✅ Updated organization ${org.id} - onboarded: ${isOnboarded}`);
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error handling account updated:", error);
+  }
+}

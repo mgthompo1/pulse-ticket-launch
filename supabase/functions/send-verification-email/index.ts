@@ -22,7 +22,26 @@ Deno.serve(async (req) => {
       console.log('Webhook signature present, validated')
     }
 
-    const { email, token_hash, type, redirect_to } = await req.json()
+    const payload = await req.json()
+
+    // Support both direct payload and Supabase Auth hook format
+    let email, token_hash, type, redirect_to
+
+    if (payload.user && payload.email_data) {
+      // Supabase Auth hook format
+      email = payload.user.email
+      token_hash = payload.email_data.token_hash
+      type = payload.email_data.token_type || payload.email_data.type || 'signup'
+      redirect_to = payload.email_data.redirect_to
+      console.log('Received Supabase Auth hook format for:', email)
+    } else {
+      // Direct invocation format
+      email = payload.email
+      token_hash = payload.token_hash
+      type = payload.type
+      redirect_to = payload.redirect_to
+      console.log('Received direct invocation format for:', email)
+    }
 
     console.log('Verification email requested for:', email, 'Type:', type)
 
