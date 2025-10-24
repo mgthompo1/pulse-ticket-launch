@@ -19,7 +19,10 @@ import {
   TrendingUp,
   DollarSign,
   Ticket,
+  ArrowLeft,
+  Package,
 } from "lucide-react";
+import GroupAllocations from "./GroupAllocations";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,6 +79,7 @@ export const GroupsManagement: React.FC = () => {
   const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [selectedGroupForAllocations, setSelectedGroupForAllocations] = useState<Group | null>(null);
   const [formData, setFormData] = useState<GroupFormData>({
     name: "",
     description: "",
@@ -358,6 +362,29 @@ export const GroupsManagement: React.FC = () => {
       group.contact_email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // If viewing allocations for a specific group, show that view
+  if (selectedGroupForAllocations && organizationId) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedGroupForAllocations(null)}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Groups
+          </Button>
+        </div>
+        <GroupAllocations
+          groupId={selectedGroupForAllocations.id}
+          groupName={selectedGroupForAllocations.name}
+          organizationId={organizationId}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -433,6 +460,10 @@ export const GroupsManagement: React.FC = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setSelectedGroupForAllocations(group)}>
+                        <Package className="mr-2 h-4 w-4" />
+                        View Allocations
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleEditGroup(group)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit Group
