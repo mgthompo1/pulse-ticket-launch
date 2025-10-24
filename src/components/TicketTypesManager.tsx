@@ -246,8 +246,9 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
                         type="number"
                         step="0.01"
                         min="0"
-                        value={formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
+                        value={formData.price === 0 ? '' : formData.price}
+                        onChange={(e) => setFormData({ ...formData, price: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                        placeholder="0.00"
                         className="pl-10"
                         required
                       />
