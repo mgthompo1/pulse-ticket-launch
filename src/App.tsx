@@ -13,6 +13,7 @@ import Auth from "./pages/Auth";
 import { AuthConfirm } from "./pages/AuthConfirm";
 import OrgDashboard from "./pages/OrgDashboard";
 import TicketWidget from "./pages/TicketWidget";
+import GroupTicketWidget from "./pages/GroupTicketWidget";
 import AttractionWidget from "./pages/AttractionWidget";
 import MasterAdmin from "./pages/MasterAdmin";
 import AdminAuth from "./pages/AdminAuth";
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/auth/confirm" element={<AuthConfirm />} />
             <Route path="/widget/:eventId" element={<TicketWidget />} />
+            <Route path="/group/:slug" element={<GroupTicketWidget />} />
             <Route path="/attraction/:attractionId" element={<AttractionWidget />} />
             {/* DEPRECATED: /admin-auth has been removed due to hardcoded credentials security vulnerability */}
             {/* Use /secure-admin instead which has database-backed authentication with TOTP support */}
