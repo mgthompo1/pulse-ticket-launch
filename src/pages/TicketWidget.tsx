@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { createClient } from '@supabase/supabase-js';
 import { StripePaymentForm } from "@/components/payment/StripePaymentForm";
@@ -108,8 +108,15 @@ const createAnonymousSupabaseClient = () => createClient(
 
 const TicketWidget = () => {
   const { eventId } = useParams();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  
+
+  // Group purchase context from URL params
+  const groupId = searchParams.get('groupId');
+  const allocationId = searchParams.get('allocationId');
+  const source = searchParams.get('source');
+  const isGroupPurchase = source === 'group' && groupId && allocationId;
+
   // Use useMemo to ensure the client is only created once
   const anonymousSupabase = useMemo(() => createAnonymousSupabaseClient(), []);
   
@@ -118,7 +125,13 @@ const TicketWidget = () => {
     console.log("=== URL DEBUG ===");
     console.log("Current URL:", window.location.href);
     console.log("Event ID from params:", eventId);
-  }, [eventId]);
+    console.log("🎯 Group Purchase Context:", {
+      isGroupPurchase,
+      groupId,
+      allocationId,
+      source
+    });
+  }, [eventId, isGroupPurchase, groupId, allocationId, source]);
   
   const [eventData, setEventData] = useState<EventData | null>(null);
   
@@ -340,6 +353,8 @@ const TicketWidget = () => {
     customerEmail: customerInfo.email,
     ticketCount,
     subtotal: subtotalBeforeDiscounts,
+    groupId: groupId,
+    allocationId: allocationId,
   });
 
   // Ticket reservation hook for race condition prevention
@@ -457,7 +472,43 @@ const TicketWidget = () => {
         throw typesError;
       }
 
-      setTicketTypes(types || []);
+      // Filter ticket types for group purchases
+      let filteredTypes = types || [];
+      if (isGroupPurchase && allocationId) {
+        console.log("🎯 Loading allocation data for filtering...");
+
+        // Load the allocation to get the allocated ticket_type_id
+        const { data: allocation, error: allocationError } = await supabase
+          .from("group_ticket_allocations")
+          .select("ticket_type_id, allocated_quantity, used_quantity, reserved_quantity, full_price, minimum_price")
+          .eq("id", allocationId)
+          .single();
+
+        if (allocationError) {
+          console.error("Error loading allocation:", allocationError);
+        } else if (allocation) {
+          console.log("🎯 Allocation data:", allocation);
+          console.log("🎯 Allocated ticket_type_id:", allocation.ticket_type_id);
+
+          // Filter to only show the allocated ticket type
+          filteredTypes = types?.filter(t => t.id === allocation.ticket_type_id) || [];
+          console.log("🎯 Filtered ticket types:", filteredTypes);
+
+          // Check if there are remaining tickets
+          const remaining = allocation.allocated_quantity - allocation.used_quantity - allocation.reserved_quantity;
+          console.log("🎯 Remaining tickets in allocation:", remaining);
+
+          if (remaining <= 0) {
+            toast({
+              title: "Sold Out",
+              description: "This group's ticket allocation is fully sold out.",
+              variant: "destructive"
+            });
+          }
+        }
+      }
+
+      setTicketTypes(filteredTypes);
       
       // Load appropriate Windcave scripts if Windcave is the payment provider
       if ((event.organizations as any)?.payment_provider === "windcave") {
@@ -474,7 +525,7 @@ const TicketWidget = () => {
     } finally {
       setLoading(false);
     }
-  }, [eventId, toast]);
+  }, [eventId, toast, isGroupPurchase, allocationId]);
 
   useEffect(() => {
     if (eventId) {
@@ -2340,7 +2391,50 @@ const TicketWidget = () => {
                           : 0}
                         currency={eventData?.organizations?.currency || 'USD'}
                         promoCodeId={promoCodeId}
-                        onSuccess={(orderId: string) => {
+                        onSuccess={async (orderId: string) => {
+                          // Track group sale if this is a group purchase
+                          if (isGroupPurchase && groupId && allocationId) {
+                            console.log('🎯 Tracking group sale...', { orderId, groupId, allocationId });
+
+                            try {
+                              // Fetch the tickets that were just created for this order
+                              const { data: tickets, error: ticketsError } = await supabase
+                                .from('tickets')
+                                .select('id, ticket_type_id, price')
+                                .eq('order_id', orderId);
+
+                              if (ticketsError) {
+                                console.error('❌ Error fetching tickets:', ticketsError);
+                              } else if (tickets && tickets.length > 0) {
+                                console.log('🎯 Found tickets for order:', tickets);
+
+                                // Call edge function to track group sale
+                                const { data, error } = await supabase.functions.invoke('track-group-sale', {
+                                  body: {
+                                    orderId,
+                                    groupId,
+                                    allocationId,
+                                    tickets: tickets.map(ticket => ({
+                                      ticketId: ticket.id,
+                                      ticketTypeId: ticket.ticket_type_id,
+                                      paidPrice: ticket.price,
+                                    }))
+                                  }
+                                });
+
+                                if (error) {
+                                  console.error('❌ Error tracking group sale:', error);
+                                  // Don't fail the purchase, just log the error
+                                } else {
+                                  console.log('✅ Group sale tracked successfully:', data);
+                                }
+                              }
+                            } catch (error) {
+                              console.error('❌ Exception tracking group sale:', error);
+                              // Don't fail the purchase, just log the error
+                            }
+                          }
+
                           setCart([]);
                           setMerchandiseCart([]);
                           setShowPayment(false);

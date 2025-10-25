@@ -33,6 +33,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AllocateTicketsDialog from "./AllocateTicketsDialog";
 import GroupDiscountCodes from "./GroupDiscountCodes";
+import GroupInvoices from "./GroupInvoices";
 
 interface GroupAllocationsProps {
   groupId: string;
@@ -186,6 +187,7 @@ export const GroupAllocations: React.FC<GroupAllocationsProps> = ({
         <TabsList>
           <TabsTrigger value="allocations">Allocations</TabsTrigger>
           <TabsTrigger value="discounts">Discount Codes</TabsTrigger>
+          <TabsTrigger value="invoices">Invoices</TabsTrigger>
         </TabsList>
 
         <TabsContent value="allocations" className="space-y-6">
@@ -385,6 +387,10 @@ export const GroupAllocations: React.FC<GroupAllocationsProps> = ({
 
         <TabsContent value="discounts" className="space-y-6">
           <GroupDiscountCodes groupId={groupId} groupName={groupName} />
+        </TabsContent>
+
+        <TabsContent value="invoices" className="space-y-6">
+          <GroupInvoices groupId={groupId} groupName={groupName} organizationId={organizationId} />
         </TabsContent>
       </Tabs>
 

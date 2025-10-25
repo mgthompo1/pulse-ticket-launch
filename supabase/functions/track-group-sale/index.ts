@@ -117,6 +117,91 @@ serve(async (req) => {
       // Don't fail the request if logging fails
     }
 
+    // 5. Send notification to group coordinator (async, don't await)
+    try {
+      // Get event details for notification
+      const { data: eventData } = await supabaseClient
+        .from("events")
+        .select("name")
+        .eq("id", allocation.event_id)
+        .single();
+
+      // Get customer details from order
+      const { data: orderData } = await supabaseClient
+        .from("orders")
+        .select("customer_name, customer_email")
+        .eq("id", orderId)
+        .single();
+
+      // Send notification (fire and forget)
+      supabaseClient.functions.invoke('send-group-notification', {
+        body: {
+          type: "ticket_purchased",
+          groupId,
+          data: {
+            eventName: eventData?.name || "Unknown Event",
+            ticketCount: tickets.length,
+            paidPrice: tickets.reduce((sum, t) => sum + t.paidPrice, 0),
+            fullPrice: allocation.full_price * tickets.length,
+            discountAmount: tickets.reduce(
+              (sum, t) => sum + (allocation.full_price - t.paidPrice),
+              0
+            ),
+            customerName: orderData?.customer_name || "Unknown",
+            customerEmail: orderData?.customer_email || "Unknown",
+          },
+        },
+      }).then(() => {
+        console.log("✅ Notification sent successfully");
+      }).catch((err) => {
+        console.error("❌ Error sending notification:", err);
+        // Don't fail the sale if notification fails
+      });
+    } catch (notifError) {
+      console.error("Error preparing notification:", notifError);
+      // Don't fail the sale if notification preparation fails
+    }
+
+    // 6. Check for low inventory and send alert if needed
+    const remaining = updatedAllocation.allocated_quantity - updatedAllocation.used_quantity - updatedAllocation.reserved_quantity;
+    const lowInventoryThreshold = Math.ceil(updatedAllocation.allocated_quantity * 0.1); // 10% remaining
+
+    if (remaining <= lowInventoryThreshold && remaining > 0) {
+      try {
+        const { data: eventData } = await supabaseClient
+          .from("events")
+          .select("name")
+          .eq("id", allocation.event_id)
+          .single();
+
+        const { data: ticketTypeData } = await supabaseClient
+          .from("ticket_types")
+          .select("name")
+          .eq("id", allocation.ticket_type_id)
+          .single();
+
+        supabaseClient.functions.invoke('send-group-notification', {
+          body: {
+            type: "low_inventory",
+            groupId,
+            data: {
+              eventName: eventData?.name || "Unknown Event",
+              ticketTypeName: ticketTypeData?.name || "Unknown Type",
+              remaining,
+              allocated: updatedAllocation.allocated_quantity,
+              used: updatedAllocation.used_quantity,
+            },
+          },
+        }).then(() => {
+          console.log("✅ Low inventory alert sent");
+        }).catch((err) => {
+          console.error("❌ Error sending low inventory alert:", err);
+        });
+      } catch (err) {
+        console.error("Error preparing low inventory notification:", err);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

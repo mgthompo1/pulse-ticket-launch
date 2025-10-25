@@ -27,6 +27,7 @@ interface AppSidebarProps {
 }
 
 const getSidebarItems = (systemType: string, groupsEnabled: boolean) => {
+  console.log("🎯 getSidebarItems called with groupsEnabled:", groupsEnabled);
   const items = [
     { id: "overview", title: "Overview", icon: BarChart3 },
     {
@@ -77,22 +78,57 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
       if (!user) return;
 
       try {
-        const { data, error } = await supabase
+        // First, try to find organization where user is the owner
+        const { data: orgData, error } = await supabase
           .from("organizations")
           .select("logo_url, name, system_type, groups_enabled")
           .eq("user_id", user.id)
           .single();
 
-        if (error) {
+        let organizationData = orgData;
+
+        // If no owned organization found, check if user is a member of any organization
+        if (error && error.code === 'PGRST116') {
+          console.log("No owned organization found, checking memberships...");
+
+          const { data: membershipData, error: membershipError } = await supabase
+            .from("organization_users")
+            .select(`
+              organization_id,
+              role,
+              organizations (
+                logo_url,
+                name,
+                system_type,
+                groups_enabled
+              )
+            `)
+            .eq("user_id", user.id)
+            .limit(1)
+            .single();
+
+          if (membershipError) {
+            console.error("Error loading organization membership:", membershipError);
+            return;
+          }
+
+          if (membershipData?.organizations) {
+            organizationData = membershipData.organizations as typeof orgData;
+            console.log("Found organization via membership:", organizationData);
+          }
+        } else if (error) {
           console.error("Error loading organization:", error);
           return;
         }
 
-        if (data) {
-          setOrganizationLogo(data.logo_url);
-          setOrganizationName(data.name || "");
-          setSystemType(data.system_type || "EVENTS");
-          setGroupsEnabled(data.groups_enabled || false);
+        if (organizationData) {
+          console.log("🔍 AppSidebar loaded organization:", organizationData.name);
+          console.log("🔍 groups_enabled from DB:", organizationData.groups_enabled);
+          setOrganizationLogo(organizationData.logo_url);
+          setOrganizationName(organizationData.name || "");
+          setSystemType(organizationData.system_type || "EVENTS");
+          setGroupsEnabled(organizationData.groups_enabled || false);
+          console.log("🔍 Setting groupsEnabled state to:", organizationData.groups_enabled || false);
         }
       } catch (error) {
         console.error("Error loading organization:", error);

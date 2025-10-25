@@ -13,6 +13,8 @@ interface UsePromoCodeAndDiscountsProps {
   customerEmail: string;
   ticketCount: number;
   subtotal: number;
+  groupId?: string | null;
+  allocationId?: string | null;
 }
 
 export const usePromoCodeAndDiscounts = ({
@@ -20,6 +22,8 @@ export const usePromoCodeAndDiscounts = ({
   customerEmail,
   ticketCount,
   subtotal,
+  groupId,
+  allocationId,
 }: UsePromoCodeAndDiscountsProps) => {
   const [promoCode, setPromoCode] = useState('');
   const [promoCodeId, setPromoCodeId] = useState<string | null>(null);
@@ -92,8 +96,78 @@ export const usePromoCodeAndDiscounts = ({
     setPromoError(null);
 
     try {
+      const upperCode = code.toUpperCase().trim();
+
+      // If this is a group purchase, check for group-specific promo codes first
+      if (groupId && allocationId) {
+        console.log('🎯 Checking for group-specific promo code:', { groupId, code: upperCode });
+
+        const { data: groupPromo, error: groupPromoError } = await supabase
+          .from('promo_codes')
+          .select('*')
+          .eq('code', upperCode)
+          .eq('organization_id', groupId)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (!groupPromoError && groupPromo) {
+          console.log('🎯 Found group promo code:', groupPromo);
+
+          // Check max uses
+          if (groupPromo.max_uses && groupPromo.uses_count >= groupPromo.max_uses) {
+            setPromoError('This promo code has reached its maximum uses');
+            setPromoDiscount(0);
+            setPromoCodeId(null);
+            setIsValidating(false);
+            return;
+          }
+
+          // Load allocation to check minimum_price
+          const { data: allocation } = await supabase
+            .from('group_ticket_allocations')
+            .select('minimum_price, full_price')
+            .eq('id', allocationId)
+            .single();
+
+          let discountAmount = 0;
+          let finalPrice = subtotal / ticketCount; // Price per ticket
+
+          // Calculate discount based on discount type
+          if (groupPromo.discount_type === 'group_price' && groupPromo.custom_price) {
+            // Custom price: e.g., $50 per ticket
+            finalPrice = groupPromo.custom_price;
+            discountAmount = (subtotal / ticketCount - groupPromo.custom_price) * ticketCount;
+          } else if (groupPromo.discount_type === 'percentage' && groupPromo.discount_value) {
+            // Percentage off: e.g., 25% off
+            discountAmount = (subtotal * groupPromo.discount_value) / 100;
+            finalPrice = subtotal / ticketCount - (discountAmount / ticketCount);
+          } else if (groupPromo.discount_type === 'fixed' && groupPromo.discount_value) {
+            // Fixed amount off: e.g., $25 off per ticket
+            discountAmount = groupPromo.discount_value * ticketCount;
+            finalPrice = subtotal / ticketCount - groupPromo.discount_value;
+          }
+
+          // Validate against minimum_price if set
+          if (allocation?.minimum_price && finalPrice < allocation.minimum_price) {
+            setPromoError(`Price cannot be below $${allocation.minimum_price.toFixed(2)} per ticket`);
+            setPromoDiscount(0);
+            setPromoCodeId(null);
+            setIsValidating(false);
+            return;
+          }
+
+          console.log('✅ Group promo code valid, discount:', discountAmount);
+          setPromoError(null);
+          setPromoDiscount(discountAmount);
+          setPromoCodeId(groupPromo.id);
+          setIsValidating(false);
+          return;
+        }
+      }
+
+      // Fall back to regular event promo code validation
       const params = {
-        p_code: code.toUpperCase().trim(),
+        p_code: upperCode,
         p_event_id: eventId,
         p_customer_email: customerEmail || '',
         p_ticket_count: ticketCount,
@@ -132,7 +206,7 @@ export const usePromoCodeAndDiscounts = ({
     } finally {
       setIsValidating(false);
     }
-  }, [eventId, customerEmail, ticketCount, subtotal]);
+  }, [eventId, customerEmail, ticketCount, subtotal, groupId, allocationId]);
 
   // Clear promo code
   const clearPromoCode = () => {
