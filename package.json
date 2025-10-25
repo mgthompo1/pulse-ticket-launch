@@ -22,7 +22,8 @@
     "test:e2e": "deno run --allow-net --allow-env --allow-read tests/run-tests.ts",
     "test:e2e:unit": "deno run --allow-net --allow-env --allow-read tests/run-tests.ts unit",
     "test:e2e:integration": "deno run --allow-net --allow-env --allow-read tests/run-tests.ts integration",
-    "test:e2e:watch": "deno run --allow-net --allow-env --allow-read --watch tests/run-tests.ts"
+    "test:e2e:watch": "deno run --allow-net --allow-env --allow-read --watch tests/run-tests.ts",
+    "prepare": "husky"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -114,7 +115,9 @@
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",
     "globals": "^15.9.0",
+    "husky": "^9.1.7",
     "jsdom": "^27.0.0",
+    "lint-staged": "^16.2.6",
     "lovable-tagger": "^1.1.9",
     "postcss": "^8.4.47",
     "react-snap": "^1.23.0",
@@ -123,6 +126,12 @@
     "typescript-eslint": "^8.0.1",
     "vite": "^5.4.1",
     "vitest": "^3.2.4"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "vitest related --run"
+    ]
   },
   "reactSnap": {
     "source": "dist",
