@@ -390,7 +390,8 @@ const TicketWidget = () => {
             currency,
             logo_url,
             credit_card_processing_fee_percentage,
-            stripe_booking_fee_enabled
+            stripe_booking_fee_enabled,
+            crm_enabled
           )
         `)
         .eq("id", eventId as string)

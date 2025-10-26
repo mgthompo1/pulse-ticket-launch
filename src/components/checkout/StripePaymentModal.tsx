@@ -59,8 +59,11 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
     ? subtotal * (eventData.organizations.credit_card_processing_fee_percentage / 100)
     : 0;
 
-  // Apply discount to total
-  const total = Math.max(0, subtotal - promoDiscount + processingFee + bookingFee);
+  // Add donation amount if present
+  const donationAmount = customerInfo?.donationAmount || 0;
+
+  // Apply discount to total and add donation
+  const total = Math.max(0, subtotal - promoDiscount + processingFee + bookingFee + donationAmount);
 
   // Debug logging
   console.log("=== STRIPE MODAL FEE CALCULATION ===");
@@ -69,6 +72,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   console.log("Booking fees enabled:", bookingFeesEnabled);
   console.log("Booking fee:", bookingFee);
   console.log("Processing fee:", processingFee);
+  console.log("Donation amount:", donationAmount);
   console.log("Total:", total);
 
   // Load Stripe configuration when modal opens
@@ -354,6 +358,12 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                     <div className="flex justify-between">
                       <span style={{ color: theme.bodyTextColor }}>Booking Fee</span>
                       <span style={{ color: theme.headerTextColor }}>${bookingFee.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {donationAmount > 0 && (
+                    <div className="flex justify-between">
+                      <span style={{ color: theme.bodyTextColor }}>Donation</span>
+                      <span style={{ color: theme.headerTextColor }}>${donationAmount.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-semibold text-lg">

@@ -8,7 +8,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Calendar, Users, Settings, BarChart3, Mail, CreditCard, TrendingUp, Link, Shield, MapPin, UsersRound, ChevronDown } from "lucide-react";
+import { Calendar, Users, Settings, BarChart3, Mail, CreditCard, TrendingUp, Link, Shield, MapPin, UsersRound, ChevronDown, UserCog } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,8 +28,7 @@ interface AppSidebarProps {
   selectedEvent: Event | null;
 }
 
-const getSidebarItems = (systemType: string, groupsEnabled: boolean) => {
-  console.log("🎯 getSidebarItems called with groupsEnabled:", groupsEnabled);
+const getSidebarItems = (systemType: string, groupsEnabled: boolean, crmEnabled: boolean) => {
   const items = [
     { id: "overview", title: "Overview", icon: BarChart3 },
     {
@@ -50,6 +49,11 @@ const getSidebarItems = (systemType: string, groupsEnabled: boolean) => {
     { id: "integrations", title: "Apps", icon: Link },
     { id: "users", title: "Team", icon: Users },
   ];
+
+  // Conditionally add CRM menu item if enabled
+  if (crmEnabled) {
+    items.push({ id: "customers", title: "Customers", icon: UserCog });
+  }
 
   // Conditionally add Groups menu item if enabled
   if (groupsEnabled) {
@@ -75,6 +79,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
   const [organizationName, setOrganizationName] = useState<string>("");
   const [systemType, setSystemType] = useState<string>("EVENTS");
   const [groupsEnabled, setGroupsEnabled] = useState<boolean>(false);
+  const [crmEnabled, setCrmEnabled] = useState<boolean>(false);
 
   useEffect(() => {
     const loadOrganization = async () => {
@@ -84,7 +89,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
         // First, try to find organization where user is the owner
         const { data: orgData, error } = await supabase
           .from("organizations")
-          .select("logo_url, name, system_type, groups_enabled")
+          .select("logo_url, name, system_type, groups_enabled, crm_enabled")
           .eq("user_id", user.id)
           .single();
 
@@ -103,7 +108,8 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
                 logo_url,
                 name,
                 system_type,
-                groups_enabled
+                groups_enabled,
+                crm_enabled
               )
             `)
             .eq("user_id", user.id)
@@ -125,13 +131,11 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
         }
 
         if (organizationData) {
-          console.log("🔍 AppSidebar loaded organization:", organizationData.name);
-          console.log("🔍 groups_enabled from DB:", organizationData.groups_enabled);
           setOrganizationLogo(organizationData.logo_url);
           setOrganizationName(organizationData.name || "");
           setSystemType(organizationData.system_type || "EVENTS");
           setGroupsEnabled(organizationData.groups_enabled || false);
-          console.log("🔍 Setting groupsEnabled state to:", organizationData.groups_enabled || false);
+          setCrmEnabled(organizationData.crm_enabled || false);
         }
       } catch (error) {
         console.error("Error loading organization:", error);
@@ -151,7 +155,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
         <SidebarGroup className="px-3 !pt-3 pb-4">
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {getSidebarItems(systemType, groupsEnabled).map((item) => {
+              {getSidebarItems(systemType, groupsEnabled, crmEnabled).map((item) => {
                 const isDisabled = item.requiresEvent && !selectedEvent;
                 const isActive = activeTab === item.id;
                 

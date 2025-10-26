@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound } from "lucide-react";
+import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound, Heart } from "lucide-react";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import MerchandiseManager from "@/components/MerchandiseManager";
@@ -59,6 +60,8 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
   const [loading, setLoading] = useState(false);
   const [showSeatMapDesigner, setShowSeatMapDesigner] = useState(false);
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
   const [organizationId, setOrganizationId] = useState<string>("");
   const [organizationData, setOrganizationData] = useState<{
     name: string;
@@ -248,7 +251,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       
       const { data, error } = await supabase
         .from("events")
-        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, organization_id, description, event_date, capacity, requires_approval, ticket_delivery_method")
+        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, organization_id, description, event_date, capacity, requires_approval, ticket_delivery_method, donations_enabled, donation_description, donation_suggested_amounts")
         .eq("id", eventId)
         .single();
 
@@ -267,7 +270,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       console.log("✅ Widget customization data:", data.widget_customization);
       
       setOrganizationId(data.organization_id);
-      setEventData({ 
+      setEventData({
         id: eventId,
         name: data.name,
         status: data.status,
@@ -278,11 +281,14 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         capacity: data.capacity,
         requires_approval: data.requires_approval,
         ticket_delivery_method: data.ticket_delivery_method || undefined,
+        donations_enabled: data.donations_enabled || false,
+        donation_description: data.donation_description,
+        donation_suggested_amounts: data.donation_suggested_amounts,
         widget_customization: {
           ...(data.widget_customization as Record<string, unknown> || {}),
           // Ensure checkoutMode is preserved if it exists
-          ...((data.widget_customization as Record<string, unknown>)?.checkoutMode ? { 
-            checkoutMode: (data.widget_customization as Record<string, unknown>).checkoutMode 
+          ...((data.widget_customization as Record<string, unknown>)?.checkoutMode ? {
+            checkoutMode: (data.widget_customization as Record<string, unknown>).checkoutMode
           } : {})
         },
         ticket_customization: data.ticket_customization as Record<string, unknown>,
@@ -309,13 +315,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       setEventVenue(data?.venue || "");
 
       if (data?.widget_customization) {
-        // Preserve checkoutMode if it's already set in local state
-        const currentCheckoutMode = (widgetCustomization as Record<string, unknown>).checkoutMode;
+        // Use widget_customization from database as source of truth
         const newWidgetCustomization = {
           ...widgetCustomization,
-          ...(data.widget_customization as Record<string, unknown> || {}),
-          // Keep the current checkoutMode if it exists
-          ...(currentCheckoutMode ? { checkoutMode: currentCheckoutMode } : {})
+          ...(data.widget_customization as Record<string, unknown> || {})
         };
         setWidgetCustomization(newWidgetCustomization as any);
       }
@@ -419,6 +422,11 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       console.log("🔍 Widget customization to save:", widgetCustomization);
       console.log("🔍 Ticket customization to save:", ticketCustomization);
       console.log("🔍 Email customization to save:", emailCustomization);
+      console.log("🎁 Donations data to save:", {
+        donations_enabled: eventData?.donations_enabled,
+        donation_description: eventData?.donation_description,
+        donation_suggested_amounts: eventData?.donation_suggested_amounts
+      });
       
       // First, let's check if we can read the current event data
       const { data: currentEvent, error: readError } = await supabase
@@ -487,10 +495,13 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         .update({
           widget_customization: widgetCustomization,
           ticket_customization: ticketCustomization,
-          email_customization: combinedEmailCustomization
+          email_customization: combinedEmailCustomization,
+          donations_enabled: eventData?.donations_enabled || false,
+          donation_description: eventData?.donation_description,
+          donation_suggested_amounts: eventData?.donation_suggested_amounts
         })
         .eq("id", eventId)
-        .select("id, widget_customization, ticket_customization, email_customization");
+        .select("id, widget_customization, ticket_customization, email_customization, donations_enabled, donation_description, donation_suggested_amounts");
 
       if (updateError) {
         console.error("❌ Error updating event:", updateError);
@@ -704,6 +715,67 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       },
       useCustomColors: false
     }));
+  };
+
+  // Handle event deletion with password verification
+  const handleDeleteEvent = async () => {
+    if (!deletePassword || !user?.email) {
+      toast({
+        title: "Error",
+        description: "Please enter your password",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Verify password by attempting to sign in
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: deletePassword,
+      });
+
+      if (authError) {
+        toast({
+          title: "Incorrect Password",
+          description: "The password you entered is incorrect",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Password verified, proceed with deletion
+      const { error } = await supabase
+        .from("events")
+        .delete()
+        .eq("id", eventId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Event Deleted",
+        description: "The event and all related data have been permanently deleted."
+      });
+
+      // Reset dialog state
+      setShowDeleteDialog(false);
+      setDeletePassword("");
+
+      // Redirect to dashboard or events list
+      if (onSave) onSave();
+
+    } catch (error) {
+      console.error("❌ Error deleting event:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete event. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -1261,6 +1333,88 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   <p className="text-sm text-muted-foreground">
                     Enable custom questions above to collect additional information from customers during ticket purchase
                   </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Donation Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Heart className="h-5 w-5" />
+                Donation Settings
+              </CardTitle>
+              <CardDescription>
+                Enable and configure donation options for ticket purchasers
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between space-x-4">
+                <div className="flex-1 space-y-1">
+                  <Label htmlFor="donations-enabled" className="text-base font-medium cursor-pointer">
+                    Enable Donations
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Allow patrons to make optional donations during checkout
+                  </p>
+                </div>
+                <Switch
+                  id="donations-enabled"
+                  checked={eventData?.donations_enabled || false}
+                  onCheckedChange={(checked) =>
+                    setEventData(prev => ({ ...prev, donations_enabled: checked }))
+                  }
+                />
+              </div>
+
+              {eventData?.donations_enabled && (
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="space-y-2">
+                    <Label htmlFor="donation-description">
+                      Donation Message
+                    </Label>
+                    <Textarea
+                      id="donation-description"
+                      placeholder="Help support the arts! Your donation makes a difference..."
+                      value={eventData?.donation_description || ''}
+                      onChange={(e) =>
+                        setEventData(prev => ({ ...prev, donation_description: e.target.value }))
+                      }
+                      rows={3}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      This message will appear at the donation step during checkout
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Suggested Donation Amounts</Label>
+                    <div className="grid grid-cols-5 gap-2">
+                      {[5, 10, 25, 50, 100].map((amount, idx) => (
+                        <Input
+                          key={idx}
+                          type="number"
+                          placeholder={`$${amount}`}
+                          defaultValue={amount}
+                          className="text-center"
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Patrons can also enter a custom amount
+                    </p>
+                  </div>
+
+                  <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                    <p className="text-sm font-medium">Donation Features:</p>
+                    <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                      <li>Optional donation during ticket checkout</li>
+                      <li>Tracked in customer CRM profiles</li>
+                      <li>Included in transaction receipts</li>
+                      <li>Automatic donation tracking and reporting</li>
+                    </ul>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -2636,52 +2790,6 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   </p>
                 </div>
               </div>
-
-              {/* Danger Zone - Delete Event */}
-              <div className="space-y-3 p-4 border-2 border-red-200 rounded-lg bg-red-50/50">
-                <div className="space-y-2">
-                  <Label className="text-base font-medium text-red-700">Danger Zone</Label>
-                  <p className="text-sm text-red-600">
-                    Permanently delete this event and all associated data. This action cannot be undone.
-                  </p>
-                  <Button
-                    variant="destructive"
-                    onClick={async () => {
-                      if (!confirm('Are you sure you want to delete this event? This action cannot be undone and will permanently delete all tickets, orders, and event data.')) {
-                        return;
-                      }
-
-                      try {
-                        const { error } = await supabase
-                          .from("events")
-                          .delete()
-                          .eq("id", eventId);
-
-                        if (error) throw error;
-
-                        toast({
-                          title: "Event Deleted",
-                          description: "The event has been permanently deleted"
-                        });
-
-                        // Navigate back to dashboard
-                        window.location.href = '/dashboard';
-                      } catch (error) {
-                        console.error("Error deleting event:", error);
-                        toast({
-                          title: "Error",
-                          description: "Failed to delete event. Please try again.",
-                          variant: "destructive"
-                        });
-                      }
-                    }}
-                    className="w-full"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Event Permanently
-                  </Button>
-                </div>
-              </div>
             </CardContent>
           </Card>
 
@@ -2699,43 +2807,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
             <CardContent>
               <Button
                 variant="destructive"
-                onClick={async () => {
-                  const confirmed = window.confirm(
-                    "Are you sure you want to delete this event? This action cannot be undone and will delete all tickets, orders, and related data."
-                  );
-
-                  if (!confirmed) return;
-
-                  try {
-                    setLoading(true);
-
-                    // Delete the event (cascade deletes will handle related data)
-                    const { error } = await supabase
-                      .from("events")
-                      .delete()
-                      .eq("id", eventId);
-
-                    if (error) throw error;
-
-                    toast({
-                      title: "Event Deleted",
-                      description: "The event and all related data have been permanently deleted."
-                    });
-
-                    // Redirect to dashboard or events list
-                    if (onSave) onSave();
-
-                  } catch (error) {
-                    console.error("❌ Error deleting event:", error);
-                    toast({
-                      title: "Error",
-                      description: "Failed to delete event. Please try again.",
-                      variant: "destructive"
-                    });
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
+                onClick={() => setShowDeleteDialog(true)}
                 className="w-full md:w-auto"
                 disabled={loading}
               >
@@ -2795,6 +2867,53 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog with Password */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Delete Event</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the event and all associated data including tickets, orders, and attendees.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="delete-password">Enter your password to confirm</Label>
+              <Input
+                id="delete-password"
+                type="password"
+                placeholder="Your account password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && deletePassword) {
+                    handleDeleteEvent();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteDialog(false);
+                setDeletePassword("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteEvent}
+              disabled={!deletePassword || loading}
+            >
+              {loading ? "Deleting..." : "Delete Event"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

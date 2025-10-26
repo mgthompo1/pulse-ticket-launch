@@ -451,6 +451,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                 onBack={prevStep}
                 theme={theme}
                 isStripePayment={isStripePayment}
+                eventData={eventData}
               />
             )}
 

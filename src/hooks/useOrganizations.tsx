@@ -8,6 +8,7 @@ interface Organization {
   user_id: string;
   system_type?: string;
   groups_enabled?: boolean;
+  crm_enabled?: boolean;
   logo_url?: string | null;
 }
 
@@ -18,6 +19,7 @@ interface OrganizationWithRole {
   isOwner: boolean;
   system_type?: string;
   groups_enabled?: boolean;
+  crm_enabled?: boolean;
   logo_url?: string | null;
 }
 
@@ -60,6 +62,7 @@ export const useOrganizations = () => {
             isOwner: true,
             system_type: org.system_type,
             groups_enabled: org.groups_enabled || false,
+            crm_enabled: org.crm_enabled || false,
             logo_url: org.logo_url,
           });
         });
@@ -77,6 +80,7 @@ export const useOrganizations = () => {
             user_id,
             system_type,
             groups_enabled,
+            crm_enabled,
             logo_url
           )
         `)
@@ -99,6 +103,7 @@ export const useOrganizations = () => {
                 isOwner: org.user_id === user.id,
                 system_type: org.system_type,
                 groups_enabled: org.groups_enabled || false,
+                crm_enabled: org.crm_enabled || false,
                 logo_url: org.logo_url,
               });
             }

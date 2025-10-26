@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -10,8 +10,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { CustomerInfo, CustomQuestion } from '@/types/widget';
+import { CustomerInfo, CustomQuestion, EventData } from '@/types/widget';
 import { Theme } from '@/types/theme';
+import { Heart } from 'lucide-react';
 
 interface CustomerDetailsProps {
   customQuestions: CustomQuestion[];
@@ -19,6 +20,7 @@ interface CustomerDetailsProps {
   onBack: () => void;
   theme: Theme;
   isStripePayment?: boolean;
+  eventData?: EventData;
 }
 
 const customerFormSchema = z.object({
@@ -26,6 +28,7 @@ const customerFormSchema = z.object({
   email: z.string().email('Invalid email address'),
   phone: z.string().optional(),
   customAnswers: z.record(z.string()).optional(),
+  donationAmount: z.number().optional(),
 });
 
 export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
@@ -33,11 +36,30 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   onNext,
   onBack,
   theme,
-  isStripePayment = false
+  isStripePayment = false,
+  eventData
 }) => {
   // Safety check - ensure customQuestions is always an array
   const safeCustomQuestions = Array.isArray(customQuestions) ? customQuestions : [];
-  
+
+  // Check if donations are enabled
+  const isDonationsEnabled = eventData?.donations_enabled && (eventData.organizations as any)?.crm_enabled;
+  const donationSuggestedAmounts = (eventData?.donation_suggested_amounts || [5, 10, 25, 50, 100]).map(amount =>
+    typeof amount === 'string' ? parseFloat(amount) : amount
+  );
+  const donationDescription = eventData?.donation_description;
+
+  console.log("🎁 DONATIONS CHECK:", {
+    donations_enabled: eventData?.donations_enabled,
+    crm_enabled: (eventData.organizations as any)?.crm_enabled,
+    isDonationsEnabled,
+    donationDescription,
+    donationSuggestedAmounts
+  });
+
+  const [selectedDonationAmount, setSelectedDonationAmount] = useState<number | null>(null);
+  const [customDonationAmount, setCustomDonationAmount] = useState<string>('');
+
   const form = useForm<z.infer<typeof customerFormSchema>>({
     resolver: zodResolver(customerFormSchema),
     defaultValues: {
@@ -45,13 +67,40 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
       email: '',
       phone: '',
       customAnswers: {},
+      donationAmount: undefined,
     },
   });
 
   const onSubmit = (values: z.infer<typeof customerFormSchema>) => {
     console.log("🔍 Form submitted with values:", values);
     console.log("📝 Custom answers:", values.customAnswers);
-    onNext(values as CustomerInfo);
+
+    // Include donation amount if selected
+    const customerInfoWithDonation: CustomerInfo = {
+      ...values,
+      donationAmount: selectedDonationAmount && selectedDonationAmount > 0 ? selectedDonationAmount : undefined
+    };
+
+    console.log("💰 Donation amount:", customerInfoWithDonation.donationAmount);
+    onNext(customerInfoWithDonation);
+  };
+
+  const handleDonationAmountSelect = (amount: number) => {
+    setSelectedDonationAmount(amount);
+    setCustomDonationAmount('');
+    form.setValue('donationAmount', amount);
+  };
+
+  const handleCustomDonationChange = (value: string) => {
+    setCustomDonationAmount(value);
+    const amount = parseFloat(value);
+    if (!isNaN(amount) && amount > 0) {
+      setSelectedDonationAmount(amount);
+      form.setValue('donationAmount', amount);
+    } else {
+      setSelectedDonationAmount(null);
+      form.setValue('donationAmount', undefined);
+    }
   };
 
   const renderCustomQuestion = (question: CustomQuestion, index: number) => {
@@ -299,6 +348,77 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
               </CardContent>
             </Card>
            )}
+
+          {/* Donation Card */}
+          {isDonationsEnabled && (
+            <Card style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2" style={{ color: theme.headerTextColor }}>
+                  <Heart className="h-5 w-5" style={{ color: theme.primaryColor }} />
+                  Support Our Cause
+                </CardTitle>
+                {donationDescription && (
+                  <p className="text-sm mt-2" style={{ color: theme.bodyTextColor }}>
+                    {donationDescription}
+                  </p>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Suggested Amounts */}
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  {donationSuggestedAmounts.map((amount) => (
+                    <Button
+                      key={amount}
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleDonationAmountSelect(amount)}
+                      className={`font-semibold ${selectedDonationAmount === amount && !customDonationAmount ? 'ring-2' : ''}`}
+                      style={{
+                        borderColor: selectedDonationAmount === amount && !customDonationAmount ? theme.primaryColor : theme.borderColor,
+                        color: selectedDonationAmount === amount && !customDonationAmount ? theme.primaryColor : theme.bodyTextColor,
+                        backgroundColor: selectedDonationAmount === amount && !customDonationAmount ? `${theme.primaryColor}10` : theme.cardBackgroundColor
+                      }}
+                    >
+                      ${amount}
+                    </Button>
+                  ))}
+                </div>
+
+                {/* Custom Amount */}
+                <div className="space-y-2">
+                  <FormLabel style={{ color: theme.bodyTextColor }}>Or enter a custom amount</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <span style={{ color: theme.bodyTextColor }}>$</span>
+                    <Input
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={customDonationAmount}
+                      onChange={(e) => handleCustomDonationChange(e.target.value)}
+                      style={{ backgroundColor: theme.inputBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}
+                    />
+                  </div>
+                </div>
+
+                {/* No donation option */}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedDonationAmount(null);
+                    setCustomDonationAmount('');
+                    form.setValue('donationAmount', undefined);
+                  }}
+                  className="text-sm"
+                  style={{ color: theme.bodyTextColor }}
+                >
+                  Continue without donating
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Navigation Buttons Below Content */}
           <div className="flex justify-between pt-6">

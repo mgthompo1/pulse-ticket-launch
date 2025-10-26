@@ -117,7 +117,10 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     ? (subtotal * (eventData.organizations.credit_card_processing_fee_percentage / 100))
     : 0;
 
-  const total = Math.max(0, subtotal - discount + processingFee + bookingFee);
+  // Add donation amount if present
+  const donationAmount = customerInfo?.donationAmount || 0;
+
+  const total = Math.max(0, subtotal - discount + processingFee + bookingFee + donationAmount);
 
   // Load Stripe configuration when on payment step
   useEffect(() => {
@@ -470,6 +473,15 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                 <div className="flex justify-between text-sm text-muted-foreground">
                    <span style={{ color: theme.bodyTextColor }}>Booking Fee</span>
                    <span style={{ color: theme.bodyTextColor }}>${bookingFee.toFixed(2)}</span>
+                </div>
+              )}
+
+              {donationAmount > 0 && (
+                <div className="flex justify-between text-sm font-medium text-pink-700 bg-pink-50 -mx-4 px-4 py-2 rounded">
+                   <span className="flex items-center gap-1">
+                     💝 Donation
+                   </span>
+                   <span>${donationAmount.toFixed(2)}</span>
                 </div>
               )}
 

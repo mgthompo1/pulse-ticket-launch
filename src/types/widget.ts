@@ -129,6 +129,7 @@ export interface CustomerInfo {
   email: string;
   phone?: string;
   customAnswers?: Record<string, string>;
+  donationAmount?: number;
 }
 
 export interface WindcaveLink {

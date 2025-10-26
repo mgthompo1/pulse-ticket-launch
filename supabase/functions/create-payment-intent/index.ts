@@ -254,6 +254,7 @@ serve(async (req) => {
         total_amount: finalTotal,
         status: "pending",
         custom_answers: customerInfo?.customAnswers || {},
+        donation_amount: customerInfo?.donationAmount || 0,
         stripe_session_id: null // Will be updated after payment intent creation
       };
 

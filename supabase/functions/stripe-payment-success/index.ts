@@ -151,6 +151,153 @@ serve(async (req) => {
 
     console.log("Order status updated successfully");
 
+    // Create or update contact record and donations (if CRM is enabled)
+    try {
+      console.log("Checking if CRM is enabled for this organization...");
+
+      // Get order details with organization and event info
+      const { data: fullOrderData, error: fullOrderError } = await supabaseClient
+        .from("orders")
+        .select(`
+          *,
+          events!inner (
+            id,
+            organization_id,
+            donations_enabled,
+            organizations!inner (
+              crm_enabled
+            )
+          )
+        `)
+        .eq("id", orderId)
+        .single();
+
+      if (fullOrderError) {
+        console.error("Failed to get full order data:", fullOrderError);
+      } else if ((fullOrderData.events as any).organizations.crm_enabled) {
+        console.log("CRM is enabled, creating/updating contact...");
+
+        const organizationId = (fullOrderData.events as any).organization_id;
+        const customerEmail = fullOrderData.customer_email;
+        const customerName = fullOrderData.customer_name || '';
+        const customerPhone = fullOrderData.customer_phone;
+
+        // Parse name into first_name and last_name
+        const nameParts = customerName.trim().split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        // Check if contact already exists
+        const { data: existingContact } = await supabaseClient
+          .from("contacts")
+          .select("id")
+          .eq("organization_id", organizationId)
+          .eq("email", customerEmail)
+          .single();
+
+        let contactId: string;
+
+        if (existingContact) {
+          console.log("Contact exists, using existing contact ID:", existingContact.id);
+          contactId = existingContact.id;
+
+          // Update existing contact with latest info
+          await supabaseClient
+            .from("contacts")
+            .update({
+              first_name: firstName,
+              last_name: lastName,
+              full_name: customerName,
+              phone: customerPhone,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", contactId);
+
+          console.log("Updated existing contact:", contactId);
+        } else {
+          // Create new contact
+          console.log("Creating new contact for:", customerEmail);
+          const { data: newContact, error: contactError } = await supabaseClient
+            .from("contacts")
+            .insert({
+              organization_id: organizationId,
+              email: customerEmail,
+              first_name: firstName,
+              last_name: lastName,
+              full_name: customerName,
+              phone: customerPhone
+            })
+            .select("id")
+            .single();
+
+          if (contactError) {
+            console.error("Failed to create contact:", contactError);
+          } else {
+            contactId = newContact.id;
+            console.log("Created new contact:", contactId);
+          }
+        }
+
+        // Create contact_events entry for attendance tracking
+        if (contactId) {
+          try {
+            await supabaseClient
+              .from("contact_events")
+              .insert({
+                contact_id: contactId,
+                event_id: (fullOrderData.events as any).id,
+                order_id: orderId,
+                ticket_type: 'purchased' // We could enhance this to track specific ticket types
+              });
+            console.log("Created contact_events entry for attendance tracking");
+          } catch (contactEventError) {
+            console.error("Failed to create contact_events entry:", contactEventError);
+            // Don't fail the whole process for this
+          }
+        }
+
+        // Handle donations if present and donations are enabled
+        const donationAmount = fullOrderData.donation_amount;
+        if (contactId && donationAmount && donationAmount > 0 && (fullOrderData.events as any).donations_enabled) {
+          console.log("Creating donation record for amount:", donationAmount);
+
+          try {
+            const { data: donation, error: donationError } = await supabaseClient
+              .from("donations")
+              .insert({
+                organization_id: organizationId,
+                contact_id: contactId,
+                order_id: orderId,
+                amount: donationAmount,
+                currency: 'NZD',
+                stripe_payment_id: paymentIntentId,
+                payment_status: 'completed',
+                donation_date: new Date().toISOString()
+              })
+              .select("id")
+              .single();
+
+            if (donationError) {
+              console.error("Failed to create donation record:", donationError);
+            } else {
+              console.log("Created donation record:", donation.id);
+            }
+          } catch (donationInsertError) {
+            console.error("Donation creation error:", donationInsertError);
+            // Don't fail the whole process for donation tracking issues
+          }
+        } else if (donationAmount && donationAmount > 0) {
+          console.log("Donation amount present but donations not enabled for event");
+        }
+
+      } else {
+        console.log("CRM not enabled for this organization, skipping contact creation");
+      }
+    } catch (crmError) {
+      console.error("CRM processing error:", crmError);
+      // Don't fail the whole process for CRM issues
+    }
+
     // Get event information to check ticket delivery method
     console.log("Checking event ticket delivery method...");
     const { data: orderWithEvent, error: orderEventError } = await supabaseClient

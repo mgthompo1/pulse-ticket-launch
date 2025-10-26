@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Building2, Mail, Globe, Phone, MapPin, Upload, Save, Settings, Calendar, MapPin as Attraction, Users } from "lucide-react";
+import { Building2, Mail, Globe, Phone, MapPin, Upload, Save, Settings, Calendar, MapPin as Attraction, Users, UserCog } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 
 interface OrganizationData {
@@ -26,6 +26,7 @@ interface OrganizationData {
   phone: string | null;
   system_type: string | null;
   groups_enabled: boolean;
+  crm_enabled: boolean;
 }
 
 const OrganizationSettings: React.FC = () => {
@@ -47,6 +48,7 @@ const OrganizationSettings: React.FC = () => {
     phone: "",
     system_type: "EVENTS",
     groups_enabled: false,
+    crm_enabled: false,
   });
 
   useEffect(() => {
@@ -110,6 +112,7 @@ const OrganizationSettings: React.FC = () => {
           phone: organizationData.phone || "",
           system_type: organizationData.system_type || "EVENTS",
           groups_enabled: organizationData.groups_enabled || false,
+          crm_enabled: organizationData.crm_enabled || false,
         });
       }
     } catch (error) {
@@ -233,6 +236,7 @@ const OrganizationSettings: React.FC = () => {
           phone: organizationData.phone,
           system_type: organizationData.system_type,
           groups_enabled: organizationData.groups_enabled,
+          crm_enabled: organizationData.crm_enabled,
         })
         .eq("id", organizationData.id);
 
@@ -555,6 +559,57 @@ const OrganizationSettings: React.FC = () => {
                   </ul>
                   <p className="text-sm text-blue-600 mt-3">
                     When enabled, a "Groups" section will appear in your navigation menu.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserCog className="h-5 w-5" />
+                Customer Relationship Management (CRM)
+              </CardTitle>
+              <CardDescription>
+                Track customers, donations, and event attendance for donor management and patron engagement
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between space-x-4">
+                <div className="flex-1 space-y-1">
+                  <Label htmlFor="crm-enabled" className="text-base font-medium cursor-pointer">
+                    Enable CRM & Donations
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Unified customer tracking, donation management, and patron engagement tools
+                  </p>
+                </div>
+                <Switch
+                  id="crm-enabled"
+                  checked={organizationData.crm_enabled}
+                  onCheckedChange={(checked) =>
+                    setOrganizationData(prev => ({ ...prev, crm_enabled: checked }))
+                  }
+                />
+              </div>
+
+              {organizationData.crm_enabled && (
+                <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                  <p className="text-sm font-medium">What CRM Enables:</p>
+                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                    <li>Unified customer records across all events</li>
+                    <li>Donation tracking during ticket checkout</li>
+                    <li>Patron attendance and order history</li>
+                    <li>Lifetime value and engagement metrics</li>
+                    <li>Transaction receipts and tax documentation</li>
+                    <li>Export data for reporting and compliance</li>
+                  </ul>
+                  <p className="text-sm text-blue-600 mt-3">
+                    When enabled, a "Customers" section will appear in your navigation menu.
+                  </p>
+                  <p className="text-sm text-amber-600 mt-2">
+                    <strong>Privacy:</strong> Customer data is encrypted and only accessible to authorized team members with CRM permissions.
                   </p>
                 </div>
               )}
