@@ -93,6 +93,16 @@ All colors MUST be HSL.
     --primary-foreground: 0 0% 100%;
     --primary-glow: 217 91% 70%;
 
+    /* TicketFlo Brand Colors - CSS Custom Properties */
+    --brand-primary: #3b82f6;
+    --brand-primary-hover: #2563eb;
+    --brand-accent: #ff6a00;
+    --brand-success: #10b981;
+    --brand-error: #ef4444;
+    --brand-tag-bg: #f4f3ff;
+    --brand-tag-text: #6d28d9;
+    --brand-tag-border: #e9d5ff;
+
     --secondary: 220 16% 96%;
     --secondary-foreground: 222 47% 11%;
 

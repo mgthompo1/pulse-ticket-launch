@@ -19,6 +19,7 @@ import MasterAdmin from "./pages/MasterAdmin";
 import AdminAuth from "./pages/AdminAuth";
 import SecureAdminAuth from "./pages/SecureAdminAuth";
 import TicketFloLIVE from "./pages/TicketFloLIVE";
+import DashboardMockup from "./pages/DashboardMockup";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
 import PaymentCancelled from "./pages/PaymentCancelled";
@@ -71,6 +72,7 @@ const App = () => (
             <Route path="/help" element={<KnowledgeBase />} />
             <Route path="/help/:categorySlug" element={<KnowledgeBase />} />
             <Route path="/help/:categorySlug/:articleSlug" element={<KnowledgeBase />} />
+            <Route path="/dashboard-mockup" element={<DashboardMockup />} />
             <Route path="/invite" element={<InvitationAcceptance />} />
             <Route path="/invitation-setup" element={<InvitationPasswordSetup />} />
             <Route path="/sentry-test" element={<SentryTest />} />

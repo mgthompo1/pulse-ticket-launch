@@ -748,7 +748,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       )}
 
       <Tabs defaultValue="widget" className="space-y-4">
-        <TabsList className="flex-wrap md:flex-nowrap overflow-x-auto">
+        <TabsList className="flex-wrap md:flex-nowrap overflow-x-auto bg-white">
           <TabsTrigger value="widget" className="flex items-center gap-2">
             <Monitor className="h-4 w-4" />
             Widget

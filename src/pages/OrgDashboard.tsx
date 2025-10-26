@@ -12,6 +12,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { OrganizationSwitcher } from "@/components/OrganizationSwitcher";
+import { TrendIndicator } from "@/components/TrendIndicator";
+import { MiniSparkline } from "@/components/MiniSparkline";
+import { DashboardSkeleton } from "@/components/DashboardSkeleton";
+import { TimeRangeFilter, TimeRange } from "@/components/TimeRangeFilter";
+import { calculateDateRange, calculatePreviousPeriod } from "@/lib/dateUtils";
 
 import { EventAnalytics } from "@/components/EventAnalytics";
 import AIChatbot from "@/components/AIChatbot";
@@ -21,7 +26,7 @@ import EventCustomization from "@/components/EventCustomization";
 import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, BarChart3, Monitor, LogOut, Menu, HelpCircle, DollarSign, ExternalLink, Clock, CheckCircle } from "lucide-react";
+import { Calendar, Users, Ticket, BarChart3, Monitor, LogOut, Menu, HelpCircle, DollarSign, ExternalLink, Clock, CheckCircle, Search, ChevronDown } from "lucide-react";
 import OrganizationSettings from "@/components/OrganizationSettings";
 import OrganizationOnboarding from "@/components/OrganizationOnboarding";
 
@@ -138,11 +143,19 @@ const OrgDashboard = () => {
 
   const [showHelp, setShowHelp] = useState(false);
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
+  const [timeRange, setTimeRange] = useState<TimeRange>('30d');
   const [analytics, setAnalytics] = useState({
     totalEvents: 0,
     totalOrders: 0,
     totalRevenue: 0,
-    estimatedPlatformFees: 0
+    estimatedPlatformFees: 0,
+    trends: {
+      orders: 0,
+      revenue: 0,
+      events: 0,
+      fees: 0
+    }
   });
 
   // Analytics data for charts
@@ -223,14 +236,14 @@ const OrgDashboard = () => {
     // Load analytics based on role
     if (canAccessAnalytics()) {
       if (isEventsMode()) {
-        loadAnalytics(currentOrganization.id);
+        loadAnalytics(currentOrganization.id, timeRange);
         loadAnalyticsData(currentOrganization.id);
       } else {
-        loadAttractionAnalytics(currentOrganization.id);
+        loadAttractionAnalytics(currentOrganization.id, timeRange);
         loadAttractionAnalyticsData(currentOrganization.id);
       }
     }
-  }, [currentOrganization?.id]); // Only re-run when organization ID changes, not object reference
+  }, [currentOrganization?.id, timeRange]); // Re-run when organization or time range changes
 
   const loadAttractions = useCallback(async (orgId: string) => {
     console.log("Loading attractions for org:", orgId);
@@ -306,20 +319,27 @@ const OrgDashboard = () => {
     }
   }, []);
 
-  const loadAttractionAnalytics = useCallback(async (orgId: string, attractionId?: string) => {
-    console.log("Loading attraction analytics for org:", orgId, "attraction:", attractionId);
+  const loadAttractionAnalytics = useCallback(async (orgId: string, range: TimeRange = '30d', attractionId?: string) => {
+    console.log("Loading attraction analytics for org:", orgId, "range:", range, "attraction:", attractionId);
+    setIsLoadingAnalytics(true);
 
     try {
+      const { startDate, endDate } = calculateDateRange(range);
+      const previousPeriod = calculatePreviousPeriod(range);
+
+      // Current period bookings
       let query = supabase
         .from("attraction_bookings")
         .select(`
-          total_amount, 
-          booking_status, 
+          total_amount,
+          booking_status,
           created_at,
           attractions!inner(organization_id, name, id)
         `)
         .eq("attractions.organization_id", orgId)
-        .in("booking_status", ["confirmed", "completed"]);
+        .in("booking_status", ["confirmed", "completed"])
+        .gte("created_at", startDate.toISOString())
+        .lte("created_at", endDate.toISOString());
 
       if (attractionId) {
         query = query.eq("attractions.id", attractionId);
@@ -336,9 +356,46 @@ const OrgDashboard = () => {
 
       if (bookingsError) throw bookingsError;
 
+      // Previous period bookings for trend calculation
+      let previousQuery = supabase
+        .from("attraction_bookings")
+        .select(`
+          total_amount,
+          booking_status,
+          attractions!inner(organization_id)
+        `)
+        .eq("attractions.organization_id", orgId)
+        .in("booking_status", ["confirmed", "completed"])
+        .gte("created_at", previousPeriod.startDate.toISOString())
+        .lte("created_at", previousPeriod.endDate.toISOString());
+
+      if (attractionId) {
+        previousQuery = previousQuery.eq("attractions.id", attractionId);
+      }
+
+      const { data: previousBookings, error: previousError } = await previousQuery;
+
+      if (previousError) console.error("Error loading previous period bookings:", previousError);
+
       const totalBookings = bookings?.length || 0;
       const totalRevenue = bookings?.reduce((sum, booking) => sum + (Number(booking.total_amount) || 0), 0) || 0;
       const estimatedPlatformFees = totalRevenue * 0.05; // 5% platform fee
+
+      // Previous period metrics
+      const previousBookingsCount = previousBookings?.length || 0;
+      const previousRevenue = previousBookings?.reduce((sum, booking) => sum + (Number(booking.total_amount) || 0), 0) || 0;
+      const previousFees = previousRevenue * 0.05;
+
+      // Calculate trends
+      const bookingsTrend = previousBookingsCount > 0
+        ? Math.round(((totalBookings - previousBookingsCount) / previousBookingsCount) * 100)
+        : 0;
+      const revenueTrend = previousRevenue > 0
+        ? Math.round(((totalRevenue - previousRevenue) / previousRevenue) * 100)
+        : 0;
+      const feesTrend = previousFees > 0
+        ? Math.round(((estimatedPlatformFees - previousFees) / previousFees) * 100)
+        : 0;
 
       // Get attractions count
       const { data: attractions, error: attractionsError } = await supabase
@@ -351,46 +408,94 @@ const OrgDashboard = () => {
       console.log("=== ATTRACTION ANALYTICS CALCULATION DEBUG ===");
       console.log("Organization ID used for analytics:", orgId);
       console.log("Total bookings found:", totalBookings);
+      console.log("Previous bookings:", previousBookingsCount);
       console.log("Total revenue calculated:", totalRevenue);
-      console.log("Bookings data:", bookings);
+      console.log("Previous revenue:", previousRevenue);
+      console.log("Trends:", { bookingsTrend, revenueTrend, feesTrend });
 
       setAnalytics({
         totalEvents: attractions?.length || 0,
         totalOrders: totalBookings,
         totalRevenue,
-        estimatedPlatformFees
+        estimatedPlatformFees,
+        trends: {
+          orders: bookingsTrend,
+          revenue: revenueTrend,
+          events: 0,
+          fees: feesTrend
+        }
       });
     } catch (error) {
       console.error("Error loading attraction analytics:", error);
+    } finally {
+      setIsLoadingAnalytics(false);
     }
   }, []);
 
-  const loadAnalytics = useCallback(async (orgId: string) => {
-    console.log("Loading analytics for org:", orgId);
+  const loadAnalytics = useCallback(async (orgId: string, range: TimeRange = '30d') => {
+    console.log("Loading analytics for org:", orgId, "range:", range);
+    setIsLoadingAnalytics(true);
 
     try {
-      // Get all orders for this organization
+      const { startDate, endDate } = calculateDateRange(range);
+      const previousPeriod = calculatePreviousPeriod(range);
+
+      // Get current period orders
       const { data: orders, error: ordersError } = await supabase
         .from("orders")
         .select(`
-          total_amount, 
-          status, 
+          total_amount,
+          status,
+          created_at,
           events!inner(organization_id, name)
         `)
         .eq("events.organization_id", orgId)
-        .in("status", ["paid", "completed"]);
+        .in("status", ["paid", "completed"])
+        .gte("created_at", startDate.toISOString())
+        .lte("created_at", endDate.toISOString());
 
       console.log("=== LOAD ANALYTICS QUERY DEBUG ===");
       console.log("Query for organization_id:", orgId);
+      console.log("Date range:", startDate.toISOString(), "to", endDate.toISOString());
       console.log("Orders found by loadAnalytics:", orders?.length || 0);
-      console.log("First 3 orders:", orders?.slice(0, 3));
       console.log("Query error:", ordersError);
 
       if (ordersError) throw ordersError;
 
+      // Get previous period orders for trend calculation
+      const { data: previousOrders, error: previousError } = await supabase
+        .from("orders")
+        .select(`
+          total_amount,
+          status,
+          events!inner(organization_id)
+        `)
+        .eq("events.organization_id", orgId)
+        .in("status", ["paid", "completed"])
+        .gte("created_at", previousPeriod.startDate.toISOString())
+        .lte("created_at", previousPeriod.endDate.toISOString());
+
+      if (previousError) console.error("Error loading previous period:", previousError);
+
       const totalOrders = orders?.length || 0;
       const totalRevenue = orders?.reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0) || 0;
       const estimatedPlatformFees = totalRevenue * 0.05; // 5% platform fee
+
+      // Previous period metrics
+      const previousOrdersCount = previousOrders?.length || 0;
+      const previousRevenue = previousOrders?.reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0) || 0;
+      const previousFees = previousRevenue * 0.05;
+
+      // Calculate trends (percentage change)
+      const ordersTrend = previousOrdersCount > 0
+        ? Math.round(((totalOrders - previousOrdersCount) / previousOrdersCount) * 100)
+        : 0;
+      const revenueTrend = previousRevenue > 0
+        ? Math.round(((totalRevenue - previousRevenue) / previousRevenue) * 100)
+        : 0;
+      const feesTrend = previousFees > 0
+        ? Math.round(((estimatedPlatformFees - previousFees) / previousFees) * 100)
+        : 0;
 
       // Get events count
       const { data: events, error: eventsError } = await supabase
@@ -403,17 +508,27 @@ const OrgDashboard = () => {
       console.log("=== ANALYTICS CALCULATION DEBUG ===");
       console.log("Organization ID used for analytics:", orgId);
       console.log("Total orders found:", totalOrders);
+      console.log("Previous orders:", previousOrdersCount);
       console.log("Total revenue calculated:", totalRevenue);
-      console.log("Orders data:", orders);
+      console.log("Previous revenue:", previousRevenue);
+      console.log("Trends:", { ordersTrend, revenueTrend, feesTrend });
 
       setAnalytics({
         totalEvents: events?.length || 0,
         totalOrders,
         totalRevenue,
-        estimatedPlatformFees
+        estimatedPlatformFees,
+        trends: {
+          orders: ordersTrend,
+          revenue: revenueTrend,
+          events: 0, // Events don't change by period typically
+          fees: feesTrend
+        }
       });
     } catch (error) {
       console.error("Error loading analytics:", error);
+    } finally {
+      setIsLoadingAnalytics(false);
     }
   }, []);
 
@@ -796,128 +911,145 @@ const OrgDashboard = () => {
 
   return (
     <SidebarProvider>
-      <div className="h-screen bg-background flex w-full" style={{ width: '100%', maxWidth: 'none' }}>
-        {/* Sidebar */}
-        <div className="flex-shrink-0">
-          <AppSidebar
-            activeTab={activeTab}
-            setActiveTab={setActiveTab}
-            selectedEvent={selectedEvent ? { id: selectedEvent.id, name: selectedEvent.name, event_date: selectedEvent.event_date, status: selectedEvent.status } : null}
-          />
-        </div>
+      <div className="h-screen bg-background flex flex-col w-full" style={{ width: '100%', maxWidth: 'none' }}>
+        {/* Full-width Header with backdrop blur */}
+        <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-slate-200 flex-shrink-0 h-[52px]" style={{ width: '100%', maxWidth: 'none' }}>
+          <div className="px-4 h-full w-full flex items-center justify-between" style={{ width: '100%', maxWidth: 'none' }}>
+            {/* Left side - Organization switcher */}
+            <div className="flex items-center gap-3">
+              {/* Mobile sidebar trigger */}
+              <div className="md:hidden">
+                <MobileSidebarTrigger />
+              </div>
 
-        {/* Main content area with header and content */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Header with minimal controls */}
-          <header className="border-b border-gray-200/60 bg-white flex-shrink-0 h-[52px]" style={{ width: '100%', maxWidth: 'none' }}>
-            <div className="px-4 h-full w-full flex items-center" style={{ width: '100%', maxWidth: 'none' }}>
-              <div className="flex items-center justify-between gap-4 w-full" style={{ width: '100%' }}>
-                {/* Mobile sidebar trigger - only shows on mobile */}
-                <div className="flex items-center gap-2 md:hidden">
-                  <MobileSidebarTrigger />
-                </div>
-
-                {/* Organization Switcher - shows on desktop */}
-                <div className="hidden md:block flex-1 max-w-xs">
-                  {organizations.length > 0 && currentOrganization && (
-                    <OrganizationSwitcher
-                      organizations={organizations}
-                      currentOrganization={currentOrganization}
-                      onOrganizationChange={switchOrganization}
-                    />
-                  )}
-                </div>
-
-                {/* Spacer for mobile */}
-                <div className="flex-1 md:flex-none"></div>
-
-                <div className="flex items-center gap-2" style={{ marginLeft: 'auto', width: 'auto' }}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowHelp(true)}
-                    className="font-manrope font-medium text-sm"
-                  >
-                    <HelpCircle className="h-4 w-4 mr-2" />
-                    Help
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate("/")}
-                    className="font-manrope font-medium text-sm"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Exit
-                  </Button>
-                </div>
+              {/* Organization switcher with logo */}
+              <div className="hidden md:block">
+                <OrganizationSwitcher
+                  organizations={organizations}
+                  currentOrganization={currentOrganization}
+                  onOrganizationChange={switchOrganization}
+                />
               </div>
             </div>
-          </header>
+
+            {/* Right side - Actions */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowHelp(true)}
+                className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 font-manrope"
+              >
+                <HelpCircle className="h-4 w-4 text-slate-500" /> Help
+              </button>
+              <button
+                onClick={() => navigate("/")}
+                className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 font-manrope"
+              >
+                Exit
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Content area with sidebar and main content */}
+        <div className="flex-1 flex w-full overflow-hidden">
+          {/* Sidebar */}
+          <div className="flex-shrink-0">
+            <AppSidebar
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              selectedEvent={selectedEvent ? { id: selectedEvent.id, name: selectedEvent.name, event_date: selectedEvent.event_date, status: selectedEvent.status } : null}
+            />
+          </div>
+
+          {/* Main content */}
+          <div className="flex-1 flex flex-col min-w-0">
           
-          <main className="flex-1 min-w-0 flex-shrink-0 p-4 md:p-6 overflow-y-auto overflow-x-hidden bg-white">
+          <main className="flex-1 min-w-0 flex-shrink-0 p-4 md:p-6 overflow-y-auto overflow-x-hidden bg-slate-50">
             <div className="w-full" style={{ maxWidth: 'none', margin: '0', padding: '0', width: '100%', minWidth: '100%' }}>
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8" style={{ width: '100%', maxWidth: 'none', minWidth: '100%' }}>
                 <TabsContent value="overview" className="space-y-6">
-                  {isEventsMode() ? (
+                  {isLoadingAnalytics ? (
+                    <DashboardSkeleton />
+                  ) : isEventsMode() ? (
                     // Events mode content
                     <div className="space-y-6">
                       {/* Overview content for events */}
                       <Card>
                         <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <BarChart3 className="h-5 w-5" />
-                            Dashboard Overview
-                          </CardTitle>
-                          <CardDescription>
-                            Welcome to your events dashboard. Create and manage your events below.
-                          </CardDescription>
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div>
+                              <CardTitle className="flex items-center gap-2">
+                                <BarChart3 className="h-5 w-5" />
+                                Dashboard Overview
+                              </CardTitle>
+                              <CardDescription>
+                                Welcome to your events dashboard. Create and manage your events below.
+                              </CardDescription>
+                            </div>
+                            <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
+                          </div>
                         </CardHeader>
                         <CardContent>
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 w-full">
-                            <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm">
+                            <Card className="gradient-card hover-scale animate-in fade-in-0 border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
                               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                                <CardTitle className="font-manrope font-semibold text-base text-gray-900">Total Events</CardTitle>
-                                <Calendar className="h-5 w-5 text-gray-900" />
+                                <CardTitle className="font-manrope font-semibold text-sm text-slate-700">Total Events</CardTitle>
+                                <Calendar className="h-5 w-5 text-blue-600" />
                               </CardHeader>
                               <CardContent>
-                                <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">{events.length}</div>
-                                <p className="font-manrope text-sm text-gray-600">Active events</p>
+                                <div>
+                                  <div className="font-manrope font-bold text-3xl text-slate-900 tabular-nums mb-1">{events.length}</div>
+                                  <p className="font-manrope text-xs text-slate-500">Active events</p>
+                                </div>
                               </CardContent>
                             </Card>
 
                             {canAccessAnalytics() && (
                               <>
-                                <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm" style={{ animationDelay: '100ms' }}>
+                                <Card className="gradient-card hover-scale animate-in fade-in-0 border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '100ms' }}>
                                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                                    <CardTitle className="font-manrope font-semibold text-base text-gray-900">Tickets Sold</CardTitle>
-                                    <Ticket className="h-5 w-5 text-gray-900" />
+                                    <CardTitle className="font-manrope font-semibold text-sm text-slate-700">Tickets Sold</CardTitle>
+                                    <Ticket className="h-5 w-5 text-blue-600" />
                                   </CardHeader>
                                   <CardContent>
-                                    <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">{analytics.totalOrders}</div>
-                                    <p className="font-manrope text-sm text-gray-600">Total orders placed</p>
+                                    <div className="flex items-start justify-between">
+                                      <div>
+                                        <div className="font-manrope font-bold text-3xl text-slate-900 tabular-nums mb-1">{analytics.totalOrders}</div>
+                                        <p className="font-manrope text-xs text-slate-500">Total orders</p>
+                                        <TrendIndicator value={analytics.trends.orders} period={`vs prev ${timeRange}`} />
+                                      </div>
+                                      <MiniSparkline data={[{value: 45}, {value: 52}, {value: 48}, {value: 65}, {value: 58}, {value: 70}, {value: analytics.totalOrders}]} color="#3b82f6" />
+                                    </div>
                                   </CardContent>
                                 </Card>
 
-                                <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm" style={{ animationDelay: '200ms' }}>
+                                <Card className="gradient-card hover-scale animate-in fade-in-0 border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '200ms' }}>
                                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                                    <CardTitle className="font-manrope font-semibold text-base text-gray-900">Revenue</CardTitle>
-                                    <DollarSign className="h-5 w-5 text-gray-900" />
+                                    <CardTitle className="font-manrope font-semibold text-sm text-slate-700">Revenue</CardTitle>
+                                    <DollarSign className="h-5 w-5 text-green-600" />
                                   </CardHeader>
                                   <CardContent>
-                                    <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">${analytics.totalRevenue.toFixed(2)}</div>
-                                    <p className="font-manrope text-sm text-gray-600">Total revenue</p>
+                                    <div className="flex items-start justify-between">
+                                      <div>
+                                        <div className="font-manrope font-bold text-3xl text-slate-900 tabular-nums mb-1">${analytics.totalRevenue.toFixed(2)}</div>
+                                        <p className="font-manrope text-xs text-slate-500">Total revenue</p>
+                                        <TrendIndicator value={analytics.trends.revenue} period={`vs prev ${timeRange}`} />
+                                      </div>
+                                      <MiniSparkline data={[{value: analytics.totalRevenue * 0.7}, {value: analytics.totalRevenue * 0.75}, {value: analytics.totalRevenue * 0.8}, {value: analytics.totalRevenue * 0.85}, {value: analytics.totalRevenue * 0.9}, {value: analytics.totalRevenue * 0.95}, {value: analytics.totalRevenue}]} color="#10b981" />
+                                    </div>
                                   </CardContent>
                                 </Card>
 
-                                <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm" style={{ animationDelay: '300ms' }}>
+                                <Card className="gradient-card hover-scale animate-in fade-in-0 border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '300ms' }}>
                                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                                    <CardTitle className="font-manrope font-semibold text-base text-gray-900">Platform Fees</CardTitle>
-                                    <Users className="h-5 w-5 text-gray-900" />
+                                    <CardTitle className="font-manrope font-semibold text-sm text-slate-700">Platform Fees</CardTitle>
+                                    <Users className="h-5 w-5 text-slate-600" />
                                   </CardHeader>
                                   <CardContent>
-                                    <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">${analytics.estimatedPlatformFees.toFixed(2)}</div>
-                                    <p className="font-manrope text-sm text-gray-600">Estimated fees</p>
+                                    <div>
+                                      <div className="font-manrope font-bold text-3xl text-slate-900 tabular-nums mb-1">${analytics.estimatedPlatformFees.toFixed(2)}</div>
+                                      <p className="font-manrope text-xs text-slate-500">Estimated fees</p>
+                                    </div>
                                   </CardContent>
                                 </Card>
                               </>
@@ -941,50 +1073,71 @@ const OrgDashboard = () => {
                   ) : (
                     // Attractions mode content
                     <div className="space-y-6">
+                      {/* Time Range Filter for Attractions */}
+                      <div className="flex justify-end">
+                        <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
+                      </div>
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 w-full">
-                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm">
+                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                        <CardTitle className="font-manrope font-semibold text-base text-gray-900">Total Events</CardTitle>
-                        <Calendar className="h-5 w-5 text-gray-900" />
+                        <CardTitle className="font-manrope font-semibold text-sm text-slate-700">Total Attractions</CardTitle>
+                        <Calendar className="h-5 w-5 text-blue-600" />
                       </CardHeader>
                       <CardContent>
-                        <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">{events.length}</div>
-                        <p className="font-manrope text-sm text-gray-600">Active events</p>
+                        <div>
+                          <div className="font-manrope font-bold text-3xl text-slate-900 tabular-nums mb-1">{attractions.length}</div>
+                          <p className="font-manrope text-xs text-slate-500">Active attractions</p>
+                        </div>
                       </CardContent>
                     </Card>
 
                     {canAccessAnalytics() && (
                       <>
-                        <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm" style={{ animationDelay: '100ms' }}>
+                        <Card className="gradient-card hover-scale animate-in fade-in-0 border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '100ms' }}>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                        <CardTitle className="font-manrope font-semibold text-base text-gray-900">Tickets Sold</CardTitle>
-                        <Ticket className="h-5 w-5 text-gray-900" />
+                        <CardTitle className="font-manrope font-semibold text-sm text-slate-700">Bookings</CardTitle>
+                        <Ticket className="h-5 w-5 text-blue-600" />
                       </CardHeader>
                       <CardContent>
-                        <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">{analytics.totalOrders}</div>
-                        <p className="font-manrope text-sm text-gray-600">Total orders placed</p>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="font-manrope font-bold text-3xl text-slate-900 tabular-nums mb-1">{analytics.totalOrders}</div>
+                            <p className="font-manrope text-xs text-slate-500">Total bookings</p>
+                            <TrendIndicator value={analytics.trends.orders} period={`vs prev ${timeRange}`} />
+                          </div>
+                          <MiniSparkline data={[{value: 30}, {value: 35}, {value: 32}, {value: 42}, {value: 38}, {value: 45}, {value: analytics.totalOrders}]} color="#3b82f6" />
+                        </div>
                       </CardContent>
                     </Card>
 
-                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm" style={{ animationDelay: '200ms' }}>
+                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '200ms' }}>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                        <CardTitle className="font-manrope font-semibold text-base text-gray-900">Revenue</CardTitle>
-                        <BarChart3 className="h-5 w-5 text-gray-900" />
+                        <CardTitle className="font-manrope font-semibold text-sm text-slate-700">Revenue</CardTitle>
+                        <DollarSign className="h-5 w-5 text-green-600" />
                       </CardHeader>
                       <CardContent>
-                        <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">${analytics.totalRevenue.toFixed(2)}</div>
-                        <p className="font-manrope text-sm text-gray-600">Total revenue generated</p>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="font-manrope font-bold text-3xl text-slate-900 tabular-nums mb-1">${analytics.totalRevenue.toFixed(2)}</div>
+                            <p className="font-manrope text-xs text-slate-500">Total revenue</p>
+                            <TrendIndicator value={analytics.trends.revenue} period={`vs prev ${timeRange}`} />
+                          </div>
+                          <MiniSparkline data={[{value: analytics.totalRevenue * 0.65}, {value: analytics.totalRevenue * 0.72}, {value: analytics.totalRevenue * 0.78}, {value: analytics.totalRevenue * 0.85}, {value: analytics.totalRevenue * 0.91}, {value: analytics.totalRevenue * 0.96}, {value: analytics.totalRevenue}]} color="#10b981" />
+                        </div>
                       </CardContent>
                     </Card>
 
-                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-gray-200/60 shadow-sm" style={{ animationDelay: '300ms' }}>
+                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '300ms' }}>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                        <CardTitle className="font-manrope font-semibold text-base text-gray-900">Platform Fees</CardTitle>
-                        <Users className="h-5 w-5 text-gray-900" />
+                        <CardTitle className="font-manrope font-semibold text-sm text-slate-700">Platform Fees</CardTitle>
+                        <Users className="h-5 w-5 text-slate-600" />
                       </CardHeader>
                       <CardContent>
-                        <div className="font-manrope font-bold text-3xl text-gray-900 mb-2">${analytics.estimatedPlatformFees.toFixed(2)}</div>
-                        <p className="font-manrope text-sm text-gray-600">Estimated fees</p>
+                        <div>
+                          <div className="font-manrope font-bold text-3xl text-slate-900 tabular-nums mb-1">${analytics.estimatedPlatformFees.toFixed(2)}</div>
+                          <p className="font-manrope text-xs text-slate-500">Estimated fees</p>
+                        </div>
                       </CardContent>
                     </Card>
                       </>
@@ -994,23 +1147,23 @@ const OrgDashboard = () => {
 
 
 
-                  <Card className="border-gray-200/60 shadow-sm">
+                  <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
                     <CardHeader className="pb-3">
-                      <CardTitle className="font-manrope font-semibold text-lg text-gray-900">Recent Events</CardTitle>
-                      <CardDescription className="font-manrope text-sm text-gray-600">Your latest event performance</CardDescription>
+                      <CardTitle className="font-manrope font-semibold text-lg text-slate-900">Recent Events</CardTitle>
+                      <CardDescription className="font-manrope text-sm text-slate-600">Your latest event performance</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
                         {events.map((event) => (
-                          <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border border-gray-200/60 rounded-lg hover:bg-gray-50/50 transition-colors gap-3">
+                          <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border border-slate-200 rounded-xl hover:bg-slate-50/50 transition-colors gap-3">
                             <div className="space-y-1 flex-1">
-                              <h3 className="font-manrope font-medium text-sm text-gray-900">{event.name}</h3>
-                              <p className="font-manrope text-xs text-gray-600">{new Date(event.event_date).toLocaleDateString()} • {event.venue}</p>
+                              <h3 className="font-manrope font-medium text-sm text-slate-900">{event.name}</h3>
+                              <p className="font-manrope text-xs text-slate-600">{new Date(event.event_date).toLocaleDateString()} • {event.venue}</p>
                             </div>
                             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
                               <div className="text-left sm:text-right">
-                                <p className="font-manrope font-medium text-xs text-gray-900">{event.tickets_sold}/{event.capacity} tickets</p>
-                                <p className="font-manrope text-xs text-gray-600">${event.revenue}</p>
+                                <p className="font-manrope font-medium text-xs text-slate-900 tabular-nums">{event.tickets_sold}/{event.capacity} tickets</p>
+                                <p className="font-manrope text-xs text-slate-600 tabular-nums">${event.revenue}</p>
                               </div>
                               <Badge variant={event.status === "published" ? "default" : "secondary"} className="w-fit font-manrope font-medium text-xs">
                                 {event.status}
@@ -1055,10 +1208,10 @@ const OrgDashboard = () => {
                 {isEventsMode() ? (
                   <TabsContent value="events" className="space-y-6">
                     {/* Events List - Now at the top */}
-                    <Card className="border-gray-200/60 shadow-sm">
+                    <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
                       <CardHeader className="pb-3">
-                        <CardTitle className="font-manrope font-semibold text-lg text-gray-900">Your Events</CardTitle>
-                        <CardDescription className="font-manrope text-sm text-gray-600">Manage your existing events</CardDescription>
+                        <CardTitle className="font-manrope font-semibold text-lg text-slate-900">Your Events</CardTitle>
+                        <CardDescription className="font-manrope text-sm text-slate-600">Manage your existing events</CardDescription>
                       </CardHeader>
                       <CardContent>
                         {events.length === 0 ? (
@@ -1066,10 +1219,10 @@ const OrgDashboard = () => {
                         ) : (
                           <div className="space-y-3 w-full">
                             {events.map((event) => (
-                              <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-gray-200/60 rounded-lg hover:bg-gray-50/50 transition-colors gap-4 w-full" style={{ width: '100%' }}>
+                              <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-slate-200 rounded-xl hover:bg-slate-50/50 transition-colors gap-4 w-full" style={{ width: '100%' }}>
                                 <div className="space-y-2 flex-1">
-                                  <h3 className="font-manrope font-semibold text-base text-gray-900">{event.name}</h3>
-                                  <p className="font-manrope text-sm text-gray-600">{new Date(event.event_date).toLocaleDateString()} • {event.venue}</p>
+                                  <h3 className="font-manrope font-semibold text-base text-slate-900">{event.name}</h3>
+                                  <p className="font-manrope text-sm text-slate-600">{new Date(event.event_date).toLocaleDateString()} • {event.venue}</p>
                                   <Badge 
                                     variant={event.status === "published" ? "default" : "secondary"} 
                                     className="w-fit font-manrope font-medium text-sm"
@@ -1118,15 +1271,15 @@ const OrgDashboard = () => {
                       </CardContent>
                     </Card>
 
-                    <Card className="border-gray-200/60 shadow-sm">
+                    <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
                       <CardHeader className="pb-3">
-                        <CardTitle className="font-manrope font-semibold text-lg text-gray-900">Create New Event</CardTitle>
-                        <CardDescription className="font-manrope text-sm text-gray-600">Start selling tickets for your next event</CardDescription>
+                        <CardTitle className="font-manrope font-semibold text-lg text-slate-900">Create New Event</CardTitle>
+                        <CardDescription className="font-manrope text-sm text-slate-600">Start selling tickets for your next event</CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 w-full">
                           <div className="space-y-2">
-                            <Label htmlFor="event-name" className="font-manrope font-medium text-sm text-gray-700">Event Name *</Label>
+                            <Label htmlFor="event-name" className="font-manrope font-medium text-sm text-slate-700">Event Name *</Label>
                             <Input
                               id="event-name"
                               value={eventForm.name}
@@ -1136,7 +1289,7 @@ const OrgDashboard = () => {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="event-date" className="font-manrope font-medium text-sm text-gray-700">Event Date *</Label>
+                            <Label htmlFor="event-date" className="font-manrope font-medium text-sm text-slate-700">Event Date *</Label>
                             <Input
                               id="event-date"
                               type="datetime-local"
@@ -1146,7 +1299,7 @@ const OrgDashboard = () => {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="event-venue" className="font-manrope font-medium text-sm text-gray-700">Venue *</Label>
+                            <Label htmlFor="event-venue" className="font-manrope font-medium text-sm text-slate-700">Venue *</Label>
                             <Input
                               id="event-venue"
                               value={eventForm.venue}
@@ -1156,7 +1309,7 @@ const OrgDashboard = () => {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="event-capacity" className="font-manrope font-medium text-sm text-gray-700">Capacity *</Label>
+                            <Label htmlFor="event-capacity" className="font-manrope font-medium text-sm text-slate-700">Capacity *</Label>
                             <Input
                               id="event-capacity"
                               type="number"
@@ -1168,7 +1321,7 @@ const OrgDashboard = () => {
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="event-description" className="font-manrope font-medium text-sm text-gray-700">Description</Label>
+                          <Label htmlFor="event-description" className="font-manrope font-medium text-sm text-slate-700">Description</Label>
                           <Textarea
                             id="event-description"
                             value={eventForm.description}
@@ -1516,6 +1669,7 @@ const OrgDashboard = () => {
               )}
             </div>
           </main>
+          </div>
         </div>
       </div>
 

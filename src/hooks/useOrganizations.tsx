@@ -8,6 +8,7 @@ interface Organization {
   user_id: string;
   system_type?: string;
   groups_enabled?: boolean;
+  logo_url?: string | null;
 }
 
 interface OrganizationWithRole {
@@ -17,6 +18,7 @@ interface OrganizationWithRole {
   isOwner: boolean;
   system_type?: string;
   groups_enabled?: boolean;
+  logo_url?: string | null;
 }
 
 const SELECTED_ORG_KEY = 'ticketflo_selected_organization';
@@ -58,6 +60,7 @@ export const useOrganizations = () => {
             isOwner: true,
             system_type: org.system_type,
             groups_enabled: org.groups_enabled || false,
+            logo_url: org.logo_url,
           });
         });
       }
@@ -73,7 +76,8 @@ export const useOrganizations = () => {
             name,
             user_id,
             system_type,
-            groups_enabled
+            groups_enabled,
+            logo_url
           )
         `)
         .eq('user_id', user.id);
@@ -95,6 +99,7 @@ export const useOrganizations = () => {
                 isOwner: org.user_id === user.id,
                 system_type: org.system_type,
                 groups_enabled: org.groups_enabled || false,
+                logo_url: org.logo_url,
               });
             }
           }

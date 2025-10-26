@@ -8,10 +8,12 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Calendar, Users, Settings, BarChart3, Mail, CreditCard, TrendingUp, Link, Shield, MapPin, UsersRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Calendar, Users, Settings, BarChart3, Mail, CreditCard, TrendingUp, Link, Shield, MapPin, UsersRound, ChevronDown } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrganizations } from "@/hooks/useOrganizations";
+import { OrganizationSwitcher } from "@/components/OrganizationSwitcher";
 
 interface Event {
   id: string;
@@ -68,6 +70,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const { user } = useAuth();
+  const { organizations, currentOrganization, switchOrganization } = useOrganizations();
   const [organizationLogo, setOrganizationLogo] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState<string>("");
   const [systemType, setSystemType] = useState<string>("EVENTS");
@@ -141,44 +144,11 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
   return (
     <Sidebar
       collapsible="icon"
-      className="border-r border-gray-200/60 w-64 flex-shrink-0 h-screen bg-gray-100"
+      className="border border-slate-200 w-64 flex-shrink-0 bg-white !top-[80px] !h-[calc(100vh-92px)] !rounded-2xl !left-3 !overflow-hidden"
     >
-      <SidebarContent className="p-0 flex flex-col h-full bg-gray-100">
-        {/* Organization Logo Section - matches header height */}
-        {organizationLogo && !isCollapsed && (
-          <div className="px-4 border-b border-gray-200/60 bg-gray-50 flex-shrink-0 h-[52px] flex items-center">
-            <div className="flex items-center gap-2 w-full">
-              <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
-                <img
-                  src={organizationLogo}
-                  alt="Organization logo"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-manrope font-medium text-sm text-gray-900 truncate">
-                  {organizationName}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Mini logo for collapsed state */}
-        {organizationLogo && isCollapsed && (
-          <div className="px-4 border-b border-gray-200/60 bg-gray-50 flex-shrink-0 h-[52px] flex items-center justify-center">
-            <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
-              <img
-                src={organizationLogo}
-                alt="Organization logo"
-                className="w-full h-full object-contain"
-              />
-            </div>
-          </div>
-        )}
-
+      <SidebarContent className="flex flex-col bg-white h-full overflow-y-auto gap-0 rounded-2xl">
         {/* Navigation Menu */}
-        <SidebarGroup className="px-3 py-4">
+        <SidebarGroup className="px-3 !pt-3 pb-4">
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
               {getSidebarItems(systemType, groupsEnabled).map((item) => {
@@ -195,20 +165,14 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
                       }}
                       data-active={isActive}
                       className={`
-                        w-full justify-start rounded-lg transition-all duration-200 ease-in-out
-                        font-manrope font-medium text-sm
-                        ${isActive 
-                          ? 'bg-blue-50 text-blue-700 border border-blue-200/60' 
-                          : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                        }
+                        w-full text-left px-3 py-2 rounded-xl text-sm flex items-center gap-3 hover:bg-slate-50
+                        font-manrope font-medium transition-colors
+                        ${isActive ? 'border border-slate-200' : ''}
                         ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                        px-3 py-2.5
                       `}
                       disabled={isDisabled}
                     >
-                      <item.icon className={`mr-3 h-4 w-4 flex-shrink-0 ${
-                        isActive ? 'text-blue-600' : 'text-gray-500'
-                      }`} />
+                      <item.icon className="h-4 w-4" />
                       {!isCollapsed && (
                         <span className="font-manrope font-medium text-sm">
                           {item.title}
@@ -224,13 +188,13 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
 
         {/* Bottom Section - User Info */}
         {!isCollapsed && (
-          <div className="mt-auto p-3 border-t border-gray-200/60 bg-gray-50">
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-white border border-gray-200/40">
+          <div className="mt-auto p-3 border-t border-slate-200 bg-slate-50 rounded-b-2xl">
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200">
               <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-manrope font-semibold">
                 {user?.email?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-manrope font-medium text-xs text-gray-900 truncate">
+                <p className="font-manrope font-medium text-xs text-slate-900 truncate">
                   {user?.email || 'User'}
                 </p>
               </div>

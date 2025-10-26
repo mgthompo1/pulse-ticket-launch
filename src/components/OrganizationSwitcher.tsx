@@ -22,6 +22,7 @@ interface Organization {
   name: string;
   role: 'owner' | 'admin' | 'editor' | 'viewer';
   isOwner: boolean;
+  logo_url?: string | null;
 }
 
 interface OrganizationSwitcherProps {
@@ -64,17 +65,17 @@ export const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({
   if (organizations.length === 1) {
     const org = organizations[0];
     return (
-      <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg border">
-        <Building2 className="h-4 w-4 text-muted-foreground" />
-        <div className="flex flex-col">
-          <span className="text-sm font-medium">{org.name}</span>
-          <Badge
-            variant="outline"
-            className={cn("text-xs w-fit", getRoleBadgeColor(org.role))}
-          >
-            {getRoleLabel(org.role)}
-          </Badge>
-        </div>
+      <div className="flex items-center gap-3">
+        {org.logo_url && (
+          <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
+            <img
+              src={org.logo_url}
+              alt={`${org.name} logo`}
+              className="w-full h-full object-contain"
+            />
+          </div>
+        )}
+        <span className="text-sm font-semibold text-slate-900">{org.name}</span>
       </div>
     );
   }
@@ -82,33 +83,25 @@ export const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
+        <button
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className="flex items-center gap-3 hover:bg-slate-50 p-2 rounded-lg transition-colors"
         >
-          <div className="flex items-center gap-2 min-w-0">
-            <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-            <div className="flex flex-col items-start min-w-0">
-              <span className="text-sm font-medium truncate">
-                {currentOrganization?.name || "Select organization..."}
-              </span>
-              {currentOrganization && (
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-xs",
-                    getRoleBadgeColor(currentOrganization.role)
-                  )}
-                >
-                  {getRoleLabel(currentOrganization.role)}
-                </Badge>
-              )}
+          {currentOrganization?.logo_url && (
+            <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
+              <img
+                src={currentOrganization.logo_url}
+                alt={`${currentOrganization.name} logo`}
+                className="w-full h-full object-contain"
+              />
             </div>
-          </div>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
+          )}
+          <span className="text-sm font-semibold text-slate-900">
+            {currentOrganization?.name || "Select organization..."}
+          </span>
+          <ChevronsUpDown className="h-4 w-4 shrink-0 text-slate-400" />
+        </button>
       </PopoverTrigger>
       <PopoverContent className="w-[300px] p-0">
         <Command>
