@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Building2, Mail, Globe, Phone, MapPin, Upload, Save, Settings, Calendar, MapPin as Attraction, Users, UserCog } from "lucide-react";
+import { Building2, Mail, Globe, Phone, MapPin, Upload, Save, Settings, Calendar, MapPin as Attraction, Users, UserCog, Calculator } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { TaxSettings } from "@/components/TaxSettings";
 
 interface OrganizationData {
   id: string;
@@ -283,7 +284,7 @@ const OrganizationSettings: React.FC = () => {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="general" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             General Settings
@@ -291,6 +292,10 @@ const OrganizationSettings: React.FC = () => {
           <TabsTrigger value="system" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             System Configuration
+          </TabsTrigger>
+          <TabsTrigger value="tax" className="flex items-center gap-2">
+            <Calculator className="h-4 w-4" />
+            Tax Settings
           </TabsTrigger>
         </TabsList>
 
@@ -615,6 +620,10 @@ const OrganizationSettings: React.FC = () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="tax">
+          <TaxSettings organizationId={organizationData.id} />
         </TabsContent>
       </Tabs>
     </div>
