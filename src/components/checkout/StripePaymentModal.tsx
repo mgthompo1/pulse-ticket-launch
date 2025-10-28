@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
 import { Theme } from '@/types/theme';
+import { AttendeeInfo } from './AttendeeDetailsForm';
 
 interface StripePaymentModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface StripePaymentModalProps {
   cartItems: CartItem[];
   merchandiseCart: MerchandiseCartItem[];
   customerInfo: CustomerInfo;
+  attendees?: AttendeeInfo[];
   theme: Theme;
   promoCodeId?: string | null;
   promoDiscount?: number;
@@ -29,6 +31,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   cartItems,
   merchandiseCart,
   customerInfo,
+  attendees = [],
   theme,
   promoCodeId = null,
   promoDiscount = 0
@@ -228,6 +231,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                     cart={cartItems}
                     merchandiseCart={merchandiseCart}
                     customerInfo={customerInfo}
+                    attendees={attendees}
                     total={total}
                     theme={theme}
                     bookingFeesEnabled={bookingFeesEnabled}

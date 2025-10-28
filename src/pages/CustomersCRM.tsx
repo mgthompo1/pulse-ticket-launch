@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrganizations } from "@/hooks/useOrganizations";
 import { Search, UserCog, DollarSign, TrendingUp, Calendar, Mail, Phone, MapPin, Tag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerDetailModal } from "@/components/CustomerDetailModal";
@@ -30,11 +31,11 @@ interface Contact {
 
 const CustomersCRM: React.FC = () => {
   const { user } = useAuth();
+  const { currentOrganization, loading: orgLoading } = useOrganizations();
   const { toast } = useToast();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -47,55 +48,40 @@ const CustomersCRM: React.FC = () => {
   });
 
   useEffect(() => {
-    loadOrganization();
-  }, [user]);
-
-  useEffect(() => {
-    if (organizationId) {
-      loadContacts();
-    }
-  }, [organizationId]);
-
-  const loadOrganization = async () => {
-    if (!user) return;
-
-    try {
-      const { data: orgData, error: orgError } = await supabase
-        .from("organizations")
-        .select("id, crm_enabled")
-        .eq("user_id", user.id)
-        .single();
-
-      if (orgData && orgData.crm_enabled) {
-        setOrganizationId(orgData.id);
-      } else if (!orgData?.crm_enabled) {
+    if (currentOrganization) {
+      // Check if CRM is enabled for this organization
+      if (!currentOrganization.crm_enabled) {
         toast({
           title: "CRM Not Enabled",
           description: "Please enable CRM in organization settings",
           variant: "destructive"
         });
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error("Error loading organization:", error);
-    } finally {
+      loadContacts();
+    } else if (!orgLoading) {
       setLoading(false);
     }
-  };
+  }, [currentOrganization, orgLoading]);
 
   const loadContacts = async () => {
-    if (!organizationId) return;
+    if (!currentOrganization) return;
 
     setLoading(true);
     try {
+      console.log('📊 Loading contacts for organization:', currentOrganization.name, currentOrganization.id);
+
       const { data, error } = await supabase
         .from("contacts")
         .select("*")
-        .eq("organization_id", organizationId)
+        .eq("organization_id", currentOrganization.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
       if (data) {
+        console.log('✅ Loaded contacts:', data.length);
         setContacts(data);
 
         // Calculate stats
@@ -154,7 +140,7 @@ const CustomersCRM: React.FC = () => {
     setModalOpen(true);
   };
 
-  if (loading) {
+  if (loading || orgLoading) {
     return (
       <div className="p-8">
         <div className="animate-pulse">
@@ -165,6 +151,40 @@ const CustomersCRM: React.FC = () => {
             ))}
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Show message if no organization is selected
+  if (!currentOrganization) {
+    return (
+      <div className="p-8">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <UserCog className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-lg font-medium">No Organization Selected</p>
+            <p className="text-muted-foreground">
+              Please select an organization from the sidebar to view customers
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show message if CRM is not enabled
+  if (!currentOrganization.crm_enabled) {
+    return (
+      <div className="p-8">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <UserCog className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-lg font-medium">CRM Not Enabled</p>
+            <p className="text-muted-foreground">
+              Please enable CRM in organization settings to view and manage customers
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }

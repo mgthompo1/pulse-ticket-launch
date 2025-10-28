@@ -329,24 +329,47 @@ serve(async (req) => {
       throw new Error("No order items found");
     }
 
+    // Get attendee information from order
+    const { data: orderWithAttendees, error: attendeesError } = await supabaseClient
+      .from("orders")
+      .select("attendees")
+      .eq("id", orderId)
+      .single();
+
+    const attendees = orderWithAttendees?.attendees || [];
+    console.log("Attendees from order:", attendees);
+
     // Only create tickets if the delivery method is 'qr_ticket'
     let ticketsToCreate = [];
     if (ticketDeliveryMethod === 'qr_ticket') {
       console.log("Creating QR tickets for", orderItems.length, "order items");
-      
+
+      // Track which attendee index to use for the next ticket
+      let attendeeIndex = 0;
+
       // Create tickets for each order item (only for ticket items, not merchandise)
       for (const item of orderItems) {
         if (item.item_type === 'ticket') {
           for (let i = 0; i < item.quantity; i++) {
             // Generate simple ticket code
             const ticketCode = `TKT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-            
+
+            // Assign attendee info if available
+            const attendeeInfo = attendees && attendees[attendeeIndex] ? {
+              attendee_name: attendees[attendeeIndex].attendee_name,
+              attendee_email: attendees[attendeeIndex].attendee_email
+            } : {};
+
             ticketsToCreate.push({
               order_item_id: item.id,
               ticket_code: ticketCode,
               status: 'valid',
-              checked_in: false
+              checked_in: false,
+              ...attendeeInfo
             });
+
+            // Move to next attendee for next ticket
+            attendeeIndex++;
           }
         }
       }

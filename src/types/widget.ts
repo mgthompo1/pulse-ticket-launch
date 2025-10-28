@@ -1,6 +1,6 @@
 export interface WidgetCustomization {
   enabled?: boolean;
-  seatMaps?: any;
+  seatMaps?: Record<string, unknown>;
   checkoutMode?: string;
   customQuestions?: CustomQuestion[];
   theme?: {
@@ -78,7 +78,10 @@ export interface EventData {
   widget_customization?: WidgetCustomization;
   ticket_customization?: Record<string, unknown>;
   email_customization?: Record<string, unknown>;
-  
+  donations_enabled?: boolean | null;
+  donation_suggested_amounts?: number[];
+  donation_description?: string | null;
+
   organizations?: {
     name: string;
     payment_provider?: string | null;
@@ -88,6 +91,7 @@ export interface EventData {
     apple_pay_merchant_id?: string | null;
     windcave_endpoint?: string | null;
     stripe_booking_fee_enabled?: boolean | null;
+    crm_enabled?: boolean | null;
   };
 }
 

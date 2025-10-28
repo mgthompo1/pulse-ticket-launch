@@ -6,11 +6,17 @@ import { Elements, useStripe, useElements, PaymentElement } from '@stripe/react-
 import { supabase } from '@/integrations/supabase/client';
 import { Theme } from '@/types/theme';
 
+interface AttendeeInfo {
+  attendee_name: string;
+  attendee_email: string;
+}
+
 interface StripePaymentFormProps {
   eventId: string;
   cart: any[];
   merchandiseCart: any[];
   customerInfo: any;
+  attendees?: AttendeeInfo[];
   total: number;
   theme: Theme;
   onSuccess: (orderId: string) => void;
@@ -236,6 +242,7 @@ export const StripePaymentForm = ({
   cart,
   merchandiseCart,
   customerInfo,
+  attendees = [],
   total,
   theme,
   onCancel,
@@ -296,6 +303,7 @@ export const StripePaymentForm = ({
             }))
           ],
           customerInfo,
+          attendees,
           paymentMethod: 'card'
         };
 

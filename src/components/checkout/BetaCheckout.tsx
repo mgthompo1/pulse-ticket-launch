@@ -29,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { TicketType, CartItem, MerchandiseCartItem, CustomerInfo, EventData, CustomQuestion } from '@/types/widget';
 import { Theme } from '@/types/theme';
 import { StripePaymentModal } from './StripePaymentModal';
+import { AttendeeDetailsForm, AttendeeInfo } from './AttendeeDetailsForm';
 
 interface PromoCodeHooks {
   promoCode: string;
@@ -281,6 +282,9 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
     customAnswers: {} as Record<string, string>
   });
   const [errors, setErrors] = useState({} as Record<string, string>);
+
+  // Attendee details state (for multiple tickets)
+  const [attendees, setAttendees] = useState<AttendeeInfo[]>([]);
   
   // Payment state
   const [showStripeModal, setShowStripeModal] = useState(false);
@@ -448,18 +452,33 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!customerInfo.name.trim()) newErrors.name = 'Name is required';
     if (!customerInfo.email.trim()) newErrors.email = 'Email is required';
     else if (!/\S+@\S+\.\S+/.test(customerInfo.email)) newErrors.email = 'Please enter a valid email';
-    
+
     // Validate custom questions
     safeCustomQuestions.forEach(question => {
       if (question.required && !customerInfo.customAnswers[question.id]?.trim()) {
         newErrors[question.id] = `${question.label} is required`;
       }
     });
-    
+
+    // Validate attendee details (if multiple tickets)
+    const ticketCount = cartTotals.ticketCount;
+    if (ticketCount > 1) {
+      attendees.forEach((attendee, index) => {
+        if (!attendee.attendee_name?.trim()) {
+          newErrors[`attendee_name_${index}`] = `Attendee ${index + 1} name is required`;
+        }
+        if (!attendee.attendee_email?.trim()) {
+          newErrors[`attendee_email_${index}`] = `Attendee ${index + 1} email is required`;
+        } else if (!/\S+@\S+\.\S+/.test(attendee.attendee_email)) {
+          newErrors[`attendee_email_${index}`] = `Please enter a valid email for attendee ${index + 1}`;
+        }
+      });
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -695,6 +714,17 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                       })}
                     </CardContent>
                   </Card>
+                )}
+
+                {/* Attendee Details Section - only shown when purchasing multiple tickets */}
+                {hasTicketsInCart && cartTotals.ticketCount > 1 && (
+                  <AttendeeDetailsForm
+                    ticketCount={cartTotals.ticketCount}
+                    buyerName={customerInfo.name}
+                    buyerEmail={customerInfo.email}
+                    attendees={attendees}
+                    onChange={setAttendees}
+                  />
                 )}
 
                 {/* Ticket Selection Section */}
@@ -1132,6 +1162,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
           cartItems={cartItems}
           merchandiseCart={merchandiseCart}
           customerInfo={customerInfo as CustomerInfo}
+          attendees={attendees}
           theme={theme}
         />
       )}

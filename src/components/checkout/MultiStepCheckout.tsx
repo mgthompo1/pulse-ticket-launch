@@ -10,6 +10,7 @@ import { CustomerDetails } from './CustomerDetails';
 import { Payment } from './Payment';
 import { OrderSummary } from './OrderSummary';
 import { StripePaymentModal } from './StripePaymentModal';
+import { AttendeeInfo } from './AttendeeDetailsForm';
 import { TicketType, CartItem, MerchandiseCartItem, CustomerInfo, EventData, CustomQuestion } from '@/types/widget';
 import { Theme } from '@/types/theme';
 import { usePromoCodeAndDiscounts } from '@/hooks/usePromoCodeAndDiscounts';
@@ -67,6 +68,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [merchandiseCart, setMerchandiseCart] = useState<MerchandiseCartItem[]>([]);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
+  const [attendees, setAttendees] = useState<AttendeeInfo[]>([]);
   const [showStripeModal, setShowStripeModal] = useState(false);
 
   // Extract theme colors from event data
@@ -110,6 +112,12 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   const ticketTotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const merchandiseTotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
   const subtotal = ticketTotal + merchandiseTotal;
+
+  console.log("🎫 MULTISTEP CHECKOUT - Ticket Count:", {
+    cartItems: cartItems.length,
+    ticketCount,
+    currentStep
+  });
 
   // Initialize promo code hooks with MultiStepCheckout's own data
   const localPromoCodeHooks = usePromoCodeAndDiscounts({
@@ -194,9 +202,12 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
     }
   };
 
-  const handleCustomerDetails = (info: CustomerInfo) => {
+  const handleCustomerDetails = (info: CustomerInfo, attendeeData?: AttendeeInfo[]) => {
     setCustomerInfo(info);
-    
+    if (attendeeData) {
+      setAttendees(attendeeData);
+    }
+
     // Check if this is a Stripe payment provider
     if (eventData.organizations?.payment_provider === 'stripe') {
       // Show Stripe payment modal instead of going to payment step
@@ -452,6 +463,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                 theme={theme}
                 isStripePayment={isStripePayment}
                 eventData={eventData}
+                ticketCount={ticketCount}
               />
             )}
 
@@ -494,6 +506,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
           cartItems={cartItems}
           merchandiseCart={merchandiseCart}
           customerInfo={customerInfo}
+          attendees={attendees}
           theme={theme}
           promoCodeId={localPromoCodeHooks.promoCodeId}
           promoDiscount={localPromoCodeHooks.getTotalDiscount()}

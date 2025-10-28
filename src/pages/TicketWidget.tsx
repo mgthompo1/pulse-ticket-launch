@@ -246,17 +246,19 @@ const TicketWidget = () => {
         `)
         .eq("id", eventId as string)
         .eq("status", "published")
-        .single();
+        .maybeSingle();
 
       if (!eventError && eventUpdate) {
         console.log("🔄 Fresh event data loaded:", eventUpdate);
         console.log("🔄 Fresh widget customization:", eventUpdate.widget_customization);
         console.log("🔄 Fresh checkout mode:", (eventUpdate.widget_customization as any)?.checkoutMode);
-        
+
         setEventData(eventUpdate as any);
         console.log("✅ Widget data refreshed successfully");
-      } else {
+      } else if (eventError) {
         console.error("❌ Error refreshing widget data:", eventError);
+      } else {
+        console.log("⚠️ Event not found or not published - skipping refresh");
       }
     } catch (error) {
       console.error("Error refreshing widget data:", error);

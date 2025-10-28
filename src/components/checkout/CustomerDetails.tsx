@@ -13,14 +13,16 @@ import * as z from 'zod';
 import { CustomerInfo, CustomQuestion, EventData } from '@/types/widget';
 import { Theme } from '@/types/theme';
 import { Heart } from 'lucide-react';
+import { AttendeeDetailsForm, AttendeeInfo } from './AttendeeDetailsForm';
 
 interface CustomerDetailsProps {
   customQuestions: CustomQuestion[];
-  onNext: (customerInfo: CustomerInfo) => void;
+  onNext: (customerInfo: CustomerInfo, attendees?: AttendeeInfo[]) => void;
   onBack: () => void;
   theme: Theme;
   isStripePayment?: boolean;
   eventData?: EventData;
+  ticketCount?: number;
 }
 
 const customerFormSchema = z.object({
@@ -37,28 +39,36 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   onBack,
   theme,
   isStripePayment = false,
-  eventData
+  eventData,
+  ticketCount = 0
 }) => {
   // Safety check - ensure customQuestions is always an array
   const safeCustomQuestions = Array.isArray(customQuestions) ? customQuestions : [];
 
   // Check if donations are enabled
-  const isDonationsEnabled = eventData?.donations_enabled && (eventData.organizations as any)?.crm_enabled;
+  const isDonationsEnabled = eventData?.donations_enabled && eventData.organizations?.crm_enabled;
   const donationSuggestedAmounts = (eventData?.donation_suggested_amounts || [5, 10, 25, 50, 100]).map(amount =>
     typeof amount === 'string' ? parseFloat(amount) : amount
   );
   const donationDescription = eventData?.donation_description;
 
+  const [selectedDonationAmount, setSelectedDonationAmount] = useState<number | null>(null);
+  const [customDonationAmount, setCustomDonationAmount] = useState<string>('');
+  const [attendees, setAttendees] = useState<AttendeeInfo[]>([]);
+
   console.log("🎁 DONATIONS CHECK:", {
     donations_enabled: eventData?.donations_enabled,
-    crm_enabled: (eventData.organizations as any)?.crm_enabled,
+    crm_enabled: eventData?.organizations?.crm_enabled,
     isDonationsEnabled,
     donationDescription,
     donationSuggestedAmounts
   });
 
-  const [selectedDonationAmount, setSelectedDonationAmount] = useState<number | null>(null);
-  const [customDonationAmount, setCustomDonationAmount] = useState<string>('');
+  console.log("👥 ATTENDEE FORM CHECK:", {
+    ticketCount,
+    shouldShowAttendeeForm: ticketCount > 1,
+    attendees: attendees.length
+  });
 
   const form = useForm<z.infer<typeof customerFormSchema>>({
     resolver: zodResolver(customerFormSchema),
@@ -75,6 +85,20 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
     console.log("🔍 Form submitted with values:", values);
     console.log("📝 Custom answers:", values.customAnswers);
 
+    // Validate attendee information if multiple tickets
+    if (ticketCount > 1) {
+      const hasAllAttendeeInfo = attendees.length === ticketCount &&
+        attendees.every(a => a.attendee_name?.trim() && a.attendee_email?.trim());
+
+      if (!hasAllAttendeeInfo) {
+        form.setError('name', {
+          type: 'manual',
+          message: 'Please provide details for all ticket holders'
+        });
+        return;
+      }
+    }
+
     // Include donation amount if selected
     const customerInfoWithDonation: CustomerInfo = {
       ...values,
@@ -82,7 +106,8 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
     };
 
     console.log("💰 Donation amount:", customerInfoWithDonation.donationAmount);
-    onNext(customerInfoWithDonation);
+    console.log("👥 Attendees:", attendees);
+    onNext(customerInfoWithDonation, ticketCount > 1 ? attendees : undefined);
   };
 
   const handleDonationAmountSelect = (amount: number) => {
@@ -418,6 +443,17 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 </Button>
               </CardContent>
             </Card>
+          )}
+
+          {/* Attendee Details Form - only shown when purchasing multiple tickets */}
+          {ticketCount > 1 && (
+            <AttendeeDetailsForm
+              ticketCount={ticketCount}
+              buyerName={form.watch('name')}
+              buyerEmail={form.watch('email')}
+              attendees={attendees}
+              onChange={setAttendees}
+            />
           )}
 
           {/* Navigation Buttons Below Content */}

@@ -157,7 +157,7 @@ serve(async (req) => {
       // Handle event payment (existing complex format)
       console.log("=== PROCESSING EVENT PAYMENT ===");
       
-      const { eventId, items, customerInfo, total, bookingFeesEnabled: requestBookingFeesEnabled, subtotal: requestSubtotal, bookingFee: requestBookingFee } = requestBody;
+      const { eventId, items, customerInfo, attendees, total, bookingFeesEnabled: requestBookingFeesEnabled, subtotal: requestSubtotal, bookingFee: requestBookingFee } = requestBody;
       
       // Assign to outer scope variables
       bookingFeesEnabled = requestBookingFeesEnabled || false;
@@ -255,6 +255,7 @@ serve(async (req) => {
         status: "pending",
         custom_answers: customerInfo?.customAnswers || {},
         donation_amount: customerInfo?.donationAmount || 0,
+        attendees: attendees || null, // Store attendee details for ticket assignment
         stripe_session_id: null // Will be updated after payment intent creation
       };
 
