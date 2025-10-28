@@ -119,6 +119,4 @@ GRANT ALL ON public.tax_presets TO service_role;
 
 -- Create indexes on orders for tax reporting
 CREATE INDEX IF NOT EXISTS idx_orders_tax_amount ON public.orders(tax_amount) WHERE tax_amount > 0;
-CREATE INDEX IF NOT EXISTS idx_orders_tax_country ON public.orders((
-  SELECT tax_country FROM organizations WHERE id = orders.event_id::text::uuid
-));
+-- Note: For tax country reporting, join through events table to organizations
