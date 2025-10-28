@@ -40,11 +40,13 @@ const Support = () => {
   }, [user]);
 
   const loadOrganization = async () => {
+    if (!user?.id) return;
+
     try {
       const { data, error } = await supabase
         .from('organizations')
         .select('*')
-        .eq('user_id', user?.id!)
+        .eq('user_id', user.id)
         .single();
 
       if (error) throw error;

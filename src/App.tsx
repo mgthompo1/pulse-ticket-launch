@@ -35,6 +35,7 @@ import KnowledgeBase from "./pages/KnowledgeBase";
 import NotFound from "./pages/NotFound";
 import SentryTest from "./pages/SentryTest";
 import ErrorMonitoring from "./pages/ErrorMonitoring";
+import DemoLanding from "./pages/DemoLanding";
 import { InvitationPasswordSetup } from "./components/InvitationPasswordSetup";
 import { InvitationAcceptance } from "./components/InvitationAcceptance";
 
@@ -78,6 +79,7 @@ const App = () => (
             <Route path="/invite" element={<InvitationAcceptance />} />
             <Route path="/invitation-setup" element={<InvitationPasswordSetup />} />
             <Route path="/sentry-test" element={<SentryTest />} />
+            <Route path="/demo-landing" element={<DemoLanding />} />
             <Route path="/error-monitoring" element={
               <ThemeProvider>
                 <ProtectedRoute>

@@ -170,11 +170,12 @@ export class EmailRenderer {
       case 'custom':
         return branding.customLogoUrl || null;
       case 'event':
-      default:
+      default: {
         // Always prioritize event logo first, then fall back to organization logo
         const eventLogo = orderData.events.logo_url?.trim();
         const orgLogo = orderData.events.organizations.logo_url?.trim();
         return eventLogo || orgLogo || null;
+      }
     }
   }
 
@@ -241,19 +242,21 @@ export class EmailRenderer {
     paymentData?: PaymentData
   ): string {
     switch (block.type) {
-      case 'header':
+      case 'header': {
         const headerBlock = block as any;
         return `<div style="background:${theme.headerColor};color:#fff;padding:20px;" class="email-content mobile-padding">
           <h1 style="margin:0;text-align:center;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:24px;" class="mobile-font-size">
             ${this.sanitizeHtml(headerBlock.title || 'Thank you')}
           </h1>
         </div>`;
+      }
 
-      case 'text':
+      case 'text': {
         const textBlock = block as any;
         return `<div style="padding:16px 20px;color:${theme.textColor};line-height:1.6;" class="email-content mobile-padding mobile-font-size">
           ${this.sanitizeHtml(textBlock.html || '')}
         </div>`;
+      }
 
       case 'event_details':
         return this.renderEventDetails(orderData, theme);
@@ -272,19 +275,21 @@ export class EmailRenderer {
       case 'divider':
         return `<hr style="border:0;border-top:1px solid ${theme.borderColor};margin:16px 20px;" />`;
 
-      case 'image':
+      case 'image': {
         const imageBlock = block as any;
         if (!imageBlock.src) return '';
         const alignment = imageBlock.align || 'center';
         return `<div style="padding:16px 20px;text-align:${alignment};">
           <img src="${imageBlock.src}" alt="${this.sanitizeHtml(imageBlock.alt || '')}" style="max-width:100%;height:auto;" />
         </div>`;
+      }
 
-      case 'footer':
+      case 'footer': {
         const footerBlock = block as any;
         return `<div style="background:${theme.accentColor};padding:16px;text-align:center;border-top:1px solid ${theme.borderColor};">
           <small style="color:#999;">${this.sanitizeHtml(footerBlock.text || '')}</small>
         </div>`;
+      }
 
       case 'calendar_button':
         return this.renderCalendarButton(block as any, orderData, theme);
