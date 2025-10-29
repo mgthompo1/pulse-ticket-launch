@@ -11,6 +11,7 @@ import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
 import { Theme } from '@/types/theme';
 import { PromoCodeInput } from './PromoCodeInput';
 import { ReservationTimer } from '@/components/ReservationTimer';
+import { useTaxCalculation } from '@/hooks/useTaxCalculation';
 
 interface PromoCodeHooks {
   promoCode: string;
@@ -72,13 +73,6 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   
   // Get booking fees setting from eventData instead of separate API call
   const bookingFeesEnabled = eventData.organizations?.stripe_booking_fee_enabled || false;
-  
-  // Debug logging for booking fees
-  console.log("=== BOOKING FEE DEBUG ===");
-  console.log("Event data organizations:", eventData.organizations);
-  console.log("Stripe booking fee enabled:", eventData.organizations?.stripe_booking_fee_enabled);
-  console.log("Booking fees enabled (computed):", bookingFeesEnabled);
-  console.log("Payment provider:", eventData.organizations?.payment_provider);
   const calculateTicketSubtotal = () => {
     return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   };
@@ -97,21 +91,6 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     ? (subtotal * 0.01) + 0.50
     : 0;
 
-  // Debug booking fee calculation
-  console.log("=== BOOKING FEE CALCULATION ===");
-  console.log("Subtotal:", subtotal);
-  console.log("Discount:", discount);
-  console.log("Booking fees enabled:", bookingFeesEnabled);
-  console.log("Payment provider check:", eventData.organizations?.payment_provider === 'stripe');
-  console.log("Calculated booking fee:", bookingFee);
-
-  // Debug promo code visibility
-  console.log("=== PROMO CODE DEBUG ===");
-  console.log("customerInfo exists:", !!customerInfo);
-  console.log("customerInfo:", customerInfo);
-  console.log("promoCodeHooks exists:", !!promoCodeHooks);
-  console.log("Should show promo code:", !!(customerInfo && promoCodeHooks));
-
   // Processing fee can be applied alongside booking fees
   const processingFee = eventData.organizations?.credit_card_processing_fee_percentage
     ? (subtotal * (eventData.organizations.credit_card_processing_fee_percentage / 100))
@@ -120,7 +99,25 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   // Add donation amount if present
   const donationAmount = customerInfo?.donationAmount || 0;
 
-  const total = Math.max(0, subtotal - discount + processingFee + bookingFee + donationAmount);
+  // Calculate tax using the hook
+  const { taxBreakdown, taxEnabled, taxName, taxInclusive, taxRate } = useTaxCalculation({
+    eventId: eventData.id,
+    ticketAmount: calculateTicketSubtotal(),
+    addonAmount: calculateMerchandiseSubtotal(),
+    donationAmount: donationAmount,
+    bookingFeePercent: bookingFeesEnabled && eventData.organizations?.payment_provider === 'stripe' ? 1.0 : 0,
+    enabled: true,
+  });
+
+  // Apply tax to processing fee if tax is enabled
+  const processingFeeWithTax = taxEnabled
+    ? processingFee * (1 + taxRate / 100)
+    : processingFee;
+
+  // Use tax-aware total if tax is enabled, otherwise fall back to old calculation
+  const total = taxBreakdown
+    ? taxBreakdown.grandTotal - discount + processingFeeWithTax
+    : Math.max(0, subtotal - discount + processingFee + bookingFee + donationAmount);
 
   // Load Stripe configuration when on payment step
   useEffect(() => {
@@ -462,18 +459,47 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                 </div>
               )}
 
+              {/* Tax Breakdown */}
+              {taxEnabled && taxBreakdown && (
+                <>
+                  {taxInclusive && (
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span style={{ color: theme.bodyTextColor }}>Subtotal (excl. {taxName}):</span>
+                      <span style={{ color: theme.bodyTextColor }}>${taxBreakdown.subtotal.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span style={{ color: theme.bodyTextColor }}>{taxName} ({taxRate.toFixed(2)}%):</span>
+                    <span style={{ color: theme.bodyTextColor }}>${taxBreakdown.totalTax.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
+
               {processingFee > 0 && (
                 <div className="flex justify-between text-sm text-muted-foreground">
-                   <span style={{ color: theme.bodyTextColor }}>Processing Fee ({eventData.organizations?.credit_card_processing_fee_percentage}%)</span>
-                   <span style={{ color: theme.bodyTextColor }}>${processingFee.toFixed(2)}</span>
+                   <span style={{ color: theme.bodyTextColor }}>
+                     Processing Fee ({eventData.organizations?.credit_card_processing_fee_percentage}%)
+                     {taxEnabled && ` (inc. ${taxName})`}
+                   </span>
+                   <span style={{ color: theme.bodyTextColor }}>${processingFeeWithTax.toFixed(2)}</span>
                 </div>
               )}
 
               {bookingFee > 0 && (
-                <div className="flex justify-between text-sm text-muted-foreground">
-                   <span style={{ color: theme.bodyTextColor }}>Booking Fee</span>
-                   <span style={{ color: theme.bodyTextColor }}>${bookingFee.toFixed(2)}</span>
-                </div>
+                <>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span style={{ color: theme.bodyTextColor }}>Booking Fee</span>
+                    <span style={{ color: theme.bodyTextColor }}>
+                      ${(taxBreakdown?.bookingFee ?? bookingFee).toFixed(2)}
+                    </span>
+                  </div>
+                  {taxBreakdown && taxBreakdown.bookingFeeTax > 0 && (
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span style={{ color: theme.bodyTextColor }}>{taxName} on fee:</span>
+                      <span style={{ color: theme.bodyTextColor }}>${taxBreakdown.bookingFeeTax.toFixed(2)}</span>
+                    </div>
+                  )}
+                </>
               )}
 
               {donationAmount > 0 && (

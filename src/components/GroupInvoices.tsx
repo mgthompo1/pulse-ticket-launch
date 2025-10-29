@@ -79,7 +79,7 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
   const [generating, setGenerating] = useState(false);
 
   const [generateForm, setGenerateForm] = useState({
-    eventId: "",
+    eventId: "all",
     periodStart: "",
     periodEnd: "",
     dueDate: "",
@@ -171,7 +171,7 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
       const { data, error } = await supabase.functions.invoke('generate-group-invoice', {
         body: {
           groupId,
-          eventId: generateForm.eventId,
+          eventId: generateForm.eventId === 'all' ? null : generateForm.eventId,
           periodStart: generateForm.periodStart,
           periodEnd: generateForm.periodEnd,
           dueDate: generateForm.dueDate || null,
@@ -449,7 +449,7 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
                   <SelectValue placeholder="All events" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All events</SelectItem>
+                  <SelectItem value="all">All events</SelectItem>
                   {availableEvents.map((event) => (
                     <SelectItem key={event.id} value={event.id}>
                       {event.name}

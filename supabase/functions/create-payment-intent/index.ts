@@ -156,8 +156,19 @@ serve(async (req) => {
     } else {
       // Handle event payment (existing complex format)
       console.log("=== PROCESSING EVENT PAYMENT ===");
-      
-      const { eventId, items, customerInfo, attendees, total, bookingFeesEnabled: requestBookingFeesEnabled, subtotal: requestSubtotal, bookingFee: requestBookingFee } = requestBody;
+
+      const {
+        eventId,
+        items,
+        customerInfo,
+        attendees,
+        total,
+        bookingFeesEnabled: requestBookingFeesEnabled,
+        subtotal: requestSubtotal,
+        bookingFee: requestBookingFee,
+        // Tax fields from frontend
+        taxData
+      } = requestBody;
       
       // Assign to outer scope variables
       bookingFeesEnabled = requestBookingFeesEnabled || false;
@@ -246,6 +257,8 @@ serve(async (req) => {
 
       // Create order in database first
       console.log("=== CREATING ORDER IN DATABASE ===");
+      console.log("=== TAX DATA ===", taxData);
+
       const orderData = {
         event_id: eventId,
         customer_name: customerInfo?.name || "Unknown",
@@ -256,7 +269,20 @@ serve(async (req) => {
         custom_answers: customerInfo?.customAnswers || {},
         donation_amount: customerInfo?.donationAmount || 0,
         attendees: attendees || null, // Store attendee details for ticket assignment
-        stripe_session_id: null // Will be updated after payment intent creation
+        stripe_session_id: null, // Will be updated after payment intent creation
+
+        // Tax fields
+        subtotal: taxData?.subtotal ?? subtotal,
+        tax_rate: taxData?.tax_rate ?? 0,
+        tax_amount: taxData?.tax_amount ?? 0,
+        tax_name: taxData?.tax_name ?? null,
+        tax_inclusive: taxData?.tax_inclusive ?? false,
+        tax_on_tickets: taxData?.tax_on_tickets ?? 0,
+        tax_on_addons: taxData?.tax_on_addons ?? 0,
+        tax_on_donations: taxData?.tax_on_donations ?? 0,
+        tax_on_fees: taxData?.tax_on_fees ?? 0,
+        booking_fee: taxData?.booking_fee ?? bookingFee,
+        booking_fee_tax: taxData?.booking_fee_tax ?? 0,
       };
 
       const { data: order, error: orderError } = await supabaseClient

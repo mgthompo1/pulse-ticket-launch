@@ -249,9 +249,9 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     try {
       console.log("🔍 Loading customizations for event:", eventId);
       
-      const { data, error } = await supabase
+      const { data, error} = await supabase
         .from("events")
-        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, organization_id, description, event_date, capacity, requires_approval, ticket_delivery_method, donations_enabled, donation_description, donation_suggested_amounts")
+        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, organization_id, description, event_date, capacity, requires_approval, ticket_delivery_method, donations_enabled, donation_title, donation_description, donation_suggested_amounts")
         .eq("id", eventId)
         .single();
 
@@ -282,6 +282,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         requires_approval: data.requires_approval,
         ticket_delivery_method: data.ticket_delivery_method || undefined,
         donations_enabled: data.donations_enabled || false,
+        donation_title: data.donation_title,
         donation_description: data.donation_description,
         donation_suggested_amounts: data.donation_suggested_amounts,
         widget_customization: {
@@ -424,6 +425,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       console.log("🔍 Email customization to save:", emailCustomization);
       console.log("🎁 Donations data to save:", {
         donations_enabled: eventData?.donations_enabled,
+        donation_title: eventData?.donation_title,
         donation_description: eventData?.donation_description,
         donation_suggested_amounts: eventData?.donation_suggested_amounts
       });
@@ -497,11 +499,12 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           ticket_customization: ticketCustomization,
           email_customization: combinedEmailCustomization,
           donations_enabled: eventData?.donations_enabled || false,
+          donation_title: eventData?.donation_title,
           donation_description: eventData?.donation_description,
           donation_suggested_amounts: eventData?.donation_suggested_amounts
         })
         .eq("id", eventId)
-        .select("id, widget_customization, ticket_customization, email_customization, donations_enabled, donation_description, donation_suggested_amounts");
+        .select("id, widget_customization, ticket_customization, email_customization, donations_enabled, donation_title, donation_description, donation_suggested_amounts");
 
       if (updateError) {
         console.error("❌ Error updating event:", updateError);
@@ -1370,6 +1373,23 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
               {eventData?.donations_enabled && (
                 <div className="space-y-4 pt-4 border-t">
+                  <div className="space-y-2">
+                    <Label htmlFor="donation-title">
+                      Donation Title
+                    </Label>
+                    <Input
+                      id="donation-title"
+                      placeholder="Support Our Cause"
+                      value={eventData?.donation_title || ''}
+                      onChange={(e) =>
+                        setEventData(prev => ({ ...prev, donation_title: e.target.value }))
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      This title will appear at the top of the donation section
+                    </p>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="donation-description">
                       Donation Message

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,12 +40,7 @@ export const TaxSettings = ({ organizationId }: TaxSettingsProps) => {
   const [taxCountry, setTaxCountry] = useState('NZ');
   const [taxRegion, setTaxRegion] = useState('');
 
-  useEffect(() => {
-    loadTaxSettings();
-    loadTaxPresets();
-  }, [organizationId]);
-
-  const loadTaxSettings = async () => {
+  const loadTaxSettings = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('organizations')
@@ -74,9 +69,9 @@ export const TaxSettings = ({ organizationId }: TaxSettingsProps) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [organizationId, toast]);
 
-  const loadTaxPresets = async () => {
+  const loadTaxPresets = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('tax_presets')
@@ -88,7 +83,12 @@ export const TaxSettings = ({ organizationId }: TaxSettingsProps) => {
     } catch (error) {
       console.error('Error loading tax presets:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadTaxSettings();
+    loadTaxPresets();
+  }, [loadTaxSettings, loadTaxPresets]);
 
   const handlePresetSelect = (presetId: string) => {
     const preset = presets.find(p => p.id === presetId);
@@ -104,18 +104,21 @@ export const TaxSettings = ({ organizationId }: TaxSettingsProps) => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
+      const updateData = {
+        tax_enabled: taxEnabled,
+        tax_name: taxName,
+        tax_rate: parseFloat(taxRate),
+        tax_inclusive: taxInclusive,
+        tax_number: taxNumber || null,
+        tax_country: taxCountry,
+        tax_region: taxRegion || null,
+      };
+
+      const { data, error } = await supabase
         .from('organizations')
-        .update({
-          tax_enabled: taxEnabled,
-          tax_name: taxName,
-          tax_rate: parseFloat(taxRate),
-          tax_inclusive: taxInclusive,
-          tax_number: taxNumber || null,
-          tax_country: taxCountry,
-          tax_region: taxRegion || null,
-        })
-        .eq('id', organizationId);
+        .update(updateData)
+        .eq('id', organizationId)
+        .select();
 
       if (error) throw error;
 

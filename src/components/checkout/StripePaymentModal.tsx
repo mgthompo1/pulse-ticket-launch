@@ -10,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
 import { Theme } from '@/types/theme';
 import { AttendeeInfo } from './AttendeeDetailsForm';
+import { useTaxCalculation, formatTaxForOrder } from '@/hooks/useTaxCalculation';
 
 interface StripePaymentModalProps {
   isOpen: boolean;
@@ -65,25 +66,36 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   // Add donation amount if present
   const donationAmount = customerInfo?.donationAmount || 0;
 
-  // Apply discount to total and add donation
-  const total = Math.max(0, subtotal - promoDiscount + processingFee + bookingFee + donationAmount);
+  // Calculate tax
+  const ticketSubtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const merchandiseSubtotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
 
-  // Debug logging
-  console.log("=== STRIPE MODAL FEE CALCULATION ===");
-  console.log("Subtotal:", subtotal);
-  console.log("Promo Discount:", promoDiscount);
-  console.log("Booking fees enabled:", bookingFeesEnabled);
-  console.log("Booking fee:", bookingFee);
-  console.log("Processing fee:", processingFee);
-  console.log("Donation amount:", donationAmount);
-  console.log("Total:", total);
+  const { taxBreakdown, taxCalculator } = useTaxCalculation({
+    eventId: eventData.id,
+    ticketAmount: ticketSubtotal,
+    addonAmount: merchandiseSubtotal,
+    donationAmount: donationAmount,
+    bookingFeePercent: bookingFeesEnabled ? 1.0 : 0,
+    enabled: true,
+  });
+
+  // Apply tax to processing fee if tax is enabled
+  const processingFeeWithTax = taxCalculator?.config?.enabled
+    ? processingFee * (1 + (taxCalculator.config.rate / 100))
+    : processingFee;
+
+  // Use tax-aware total if tax is enabled, otherwise fall back to old calculation
+  const total = taxBreakdown
+    ? taxBreakdown.grandTotal - promoDiscount + processingFeeWithTax
+    : Math.max(0, subtotal - promoDiscount + processingFee + bookingFee + donationAmount);
+
+  // Format tax data for edge function
+  const taxData = taxBreakdown && taxCalculator ? formatTaxForOrder(taxBreakdown, taxCalculator) : null;
 
   // Load Stripe configuration when modal opens
   useEffect(() => {
     const loadStripeConfig = async () => {
       if (isOpen && !stripePublishableKey) {
-        console.log('=== LOADING STRIPE CONFIG FOR MODAL ===');
-        console.log('📅 Event ID for config:', eventData.id);
         setIsLoading(true);
         
         try {
@@ -133,9 +145,6 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
             data = rpcData;
             error = rpcError;
           }
-          
-          console.log('📊 Final Response - Error:', error);
-          console.log('📊 Final Response - Data:', data);
 
           if (error) {
             console.error('Error loading payment config:', error);
@@ -154,11 +163,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
             if (publishableKey) {
               setStripePublishableKey(publishableKey);
               setCurrency(configCurrency);
-              console.log('✅ Stripe publishable key loaded for modal');
-              console.log('✅ Currency loaded:', configCurrency);
-              console.log('🔍 Full payment config data:', data[0]);
             } else {
-              console.error('❌ No Stripe publishable key found');
               toast({
                 title: "Payment Error",
                 description: "Payment configuration not found",
@@ -167,7 +172,6 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
             }
           }
         } catch (error) {
-          console.error('❌ Exception loading Stripe config:', error);
           toast({
             title: "Payment Error",
             description: "Failed to initialize payment system",
@@ -222,10 +226,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                     <span className="ml-2" style={{ color: theme.bodyTextColor }}>Loading payment form...</span>
                   </div>
                 ) : stripePublishableKey ? (
-                  <>
-                    {console.log('🚀 Modal passing currency to payment form:', currency)}
-                    {console.log('🎟️ Modal passing promoCodeId to payment form:', promoCodeId)}
-                    <StripePaymentForm
+                  <StripePaymentForm
                     publishableKey={stripePublishableKey}
                     eventId={eventData.id}
                     cart={cartItems}
@@ -239,13 +240,10 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                     bookingFee={bookingFee}
                     currency={currency}
                     promoCodeId={promoCodeId}
-                    onSuccess={(orderId: string) => {
-                      console.log("Payment successful, order ID:", orderId);
-                      handlePaymentSuccess(orderId);
-                    }}
+                    taxData={taxData}
+                    onSuccess={handlePaymentSuccess}
                     onCancel={onClose}
                   />
-                  </>
                 ) : (
                   <div className="text-center py-8" style={{ color: theme.bodyTextColor }}>
                     <p>Payment system is not available at the moment.</p>
@@ -354,8 +352,11 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                   )}
                   {processingFee > 0 && (
                     <div className="flex justify-between">
-                      <span style={{ color: theme.bodyTextColor }}>Processing Fee</span>
-                      <span style={{ color: theme.headerTextColor }}>${processingFee.toFixed(2)}</span>
+                      <span style={{ color: theme.bodyTextColor }}>
+                        Processing Fee
+                        {taxCalculator?.config?.enabled && ` (inc. ${taxCalculator.config.name})`}
+                      </span>
+                      <span style={{ color: theme.headerTextColor }}>${processingFeeWithTax.toFixed(2)}</span>
                     </div>
                   )}
                   {bookingFee > 0 && (

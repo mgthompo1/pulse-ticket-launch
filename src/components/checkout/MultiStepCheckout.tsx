@@ -15,6 +15,7 @@ import { TicketType, CartItem, MerchandiseCartItem, CustomerInfo, EventData, Cus
 import { Theme } from '@/types/theme';
 import { usePromoCodeAndDiscounts } from '@/hooks/usePromoCodeAndDiscounts';
 import { useTicketReservation } from '@/hooks/useTicketReservation';
+import { useTaxCalculation, formatTaxForOrder } from '@/hooks/useTaxCalculation';
 
 interface PromoCodeHooks {
   promoCode: string;
@@ -113,10 +114,17 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   const merchandiseTotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
   const subtotal = ticketTotal + merchandiseTotal;
 
-  console.log("🎫 MULTISTEP CHECKOUT - Ticket Count:", {
-    cartItems: cartItems.length,
-    ticketCount,
-    currentStep
+  // Get booking fees setting
+  const bookingFeesEnabled = eventData.organizations?.stripe_booking_fee_enabled || false;
+
+  // Calculate tax
+  const { taxBreakdown, taxCalculator } = useTaxCalculation({
+    eventId: eventData.id,
+    ticketAmount: ticketTotal,
+    addonAmount: merchandiseTotal,
+    donationAmount: customerInfo?.donationAmount || 0,
+    bookingFeePercent: bookingFeesEnabled ? 1.0 : 0,
+    enabled: true,
   });
 
   // Initialize promo code hooks with MultiStepCheckout's own data

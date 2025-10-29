@@ -11,6 +11,20 @@ interface AttendeeInfo {
   attendee_email: string;
 }
 
+interface TaxData {
+  subtotal: number;
+  tax_rate: number;
+  tax_amount: number;
+  tax_name: string | null;
+  tax_inclusive: boolean;
+  tax_on_tickets: number;
+  tax_on_addons: number;
+  tax_on_donations: number;
+  tax_on_fees: number;
+  booking_fee: number;
+  booking_fee_tax: number;
+}
+
 interface StripePaymentFormProps {
   eventId: string;
   cart: any[];
@@ -27,6 +41,7 @@ interface StripePaymentFormProps {
   publishableKey: string;
   currency?: string;
   promoCodeId?: string | null;
+  taxData?: TaxData | null;
 }
 
 const CheckoutForm = ({ 
@@ -80,12 +95,8 @@ const CheckoutForm = ({
     return currency.toUpperCase() === 'USD';
   };
 
-  console.log('🌍 Currency in CheckoutForm:', currency);
-  
   const country = getCountryFromCurrency(currency);
   const needsPostalCode = requiresPostalCode(currency);
-  
-  console.log('🌍 Country determined:', country, 'Postal code required:', needsPostalCode);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,12 +106,10 @@ const CheckoutForm = ({
     try {
       // Confirm the payment with Payment Element  
       const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const returnUrl = isDev 
+      const returnUrl = isDev
         ? `http://localhost:${window.location.port}/payment-success?orderId=${orderId}`
         : `${window.location.origin}/payment-success?orderId=${orderId}`;
-        
-      console.log("Return URL:", returnUrl);
-      
+
       const { error: confirmError } = await stripe.confirmPayment({
         elements,
         confirmParams: {
@@ -134,14 +143,9 @@ const CheckoutForm = ({
         });
       } else {
         // Payment successful - capture payment details
-        console.log("=== CAPTURING PAYMENT DETAILS ===");
-        console.log("Payment Intent ID:", paymentIntentId);
-        console.log("Order ID:", orderId);
-        
         if (paymentIntentId && orderId) {
           try {
             // Capture payment details using the payment intent ID
-            console.log("Calling capture-payment-details function...");
             const { data, error } = await supabase.functions.invoke('capture-payment-details', {
               body: { 
                 paymentIntentId: paymentIntentId,
@@ -152,15 +156,11 @@ const CheckoutForm = ({
             if (error) {
               console.error("Failed to capture payment details:", error);
               // Don't fail the whole process, just log the error
-            } else {
-              console.log("✅ Payment details captured:", data);
             }
           } catch (captureError) {
             console.error("Payment details capture error:", captureError);
             // Don't fail the whole process
           }
-        } else {
-          console.error("Missing payment intent ID or order ID for capture");
         }
 
         toast({
@@ -251,7 +251,8 @@ export const StripePaymentForm = ({
   subtotal = 0,
   bookingFee = 0,
   currency,
-  promoCodeId = null
+  promoCodeId = null,
+  taxData = null
 }: StripePaymentFormProps) => {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -259,6 +260,7 @@ export const StripePaymentForm = ({
   const [loading, setLoading] = useState(true);
   const [idempotencyKey] = useState(() => `payment_${Date.now()}_${Math.random().toString(36).substring(7)}`);
   const { toast } = useToast();
+  const paymentIntentCreated = React.useRef(false);
   
   // Use useMemo to prevent recreating the stripe promise on every render
   const stripePromise = React.useMemo(() => {
@@ -268,14 +270,14 @@ export const StripePaymentForm = ({
 
   // Create payment intent on component mount
   useEffect(() => {
+    // Prevent duplicate calls
+    if (paymentIntentCreated.current) {
+      return;
+    }
+
     const createPaymentIntent = async () => {
       try {
-        console.log("=== CREATING PAYMENT INTENT ===");
-        console.log("eventId:", eventId);
-        console.log("total:", total);
-        console.log("bookingFeesEnabled:", bookingFeesEnabled);
-        console.log("subtotal:", subtotal);
-        console.log("bookingFee:", bookingFee);
+        paymentIntentCreated.current = true;
 
         const requestBody = {
           eventId,
@@ -284,6 +286,7 @@ export const StripePaymentForm = ({
           bookingFee,
           bookingFeesEnabled,
           promoCodeId,
+          taxData,
           items: [
             ...cart.map(item => ({
               id: item.id,
@@ -307,11 +310,7 @@ export const StripePaymentForm = ({
           paymentMethod: 'card'
         };
 
-        console.log("=== FULL REQUEST BODY ===");
-        console.log(JSON.stringify(requestBody, null, 2));
-
         // Create payment intent with idempotency key
-        console.log("=== IDEMPOTENCY KEY ===", idempotencyKey);
         const { data, error } = await supabase.functions.invoke("create-payment-intent", {
           body: requestBody,
           headers: {
@@ -319,14 +318,18 @@ export const StripePaymentForm = ({
           }
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Edge function error:", error);
+          throw error;
+        }
 
-        console.log("=== PAYMENT INTENT RESPONSE ===");
-        console.log("Full response data:", data);
-        console.log("client_secret:", data.client_secret);
-        console.log("orderId:", data.orderId);
+        if (data?.error) {
+          console.error("Edge function returned error:", data.error);
+          throw new Error(data.error);
+        }
 
         if (!data.client_secret) {
+          console.error("No client_secret in response");
           throw new Error("No client_secret returned from payment intent creation");
         }
 
@@ -337,6 +340,10 @@ export const StripePaymentForm = ({
         setPaymentIntentId(piId);
       } catch (error: any) {
         console.error("Payment intent creation error:", error);
+
+        // Reset the ref so user can retry
+        paymentIntentCreated.current = false;
+
         toast({
           title: "Error",
           description: error.message || "Failed to initialize payment",
@@ -348,7 +355,8 @@ export const StripePaymentForm = ({
     };
 
     createPaymentIntent();
-  }, [eventId, total, bookingFeesEnabled, subtotal, bookingFee, cart, merchandiseCart, customerInfo, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   if (loading) {
     return (

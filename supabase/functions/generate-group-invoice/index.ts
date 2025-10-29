@@ -53,11 +53,7 @@ serve(async (req) => {
       .from("group_ticket_sales")
       .select(`
         *,
-        tickets (
-          event_id,
-          ticket_type_id
-        ),
-        allocations:group_ticket_allocations (
+        group_ticket_allocations!inner (
           event_id,
           events (
             id,
@@ -72,7 +68,7 @@ serve(async (req) => {
 
     if (eventId) {
       // Filter by event if specified
-      salesQuery = salesQuery.eq("allocations.event_id", eventId);
+      salesQuery = salesQuery.eq("group_ticket_allocations.event_id", eventId);
     }
 
     const { data: sales, error: salesError } = await salesQuery;
@@ -103,7 +99,7 @@ serve(async (req) => {
 
     // Get unique event ID (assuming all sales are for same event for now)
     const firstSale = sales[0];
-    const invoiceEventId = eventId || (firstSale as any).allocations?.event_id;
+    const invoiceEventId = eventId || (firstSale as any).group_ticket_allocations?.event_id;
 
     if (!invoiceEventId) {
       throw new Error("Could not determine event ID for invoice");

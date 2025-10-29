@@ -30,6 +30,7 @@ import { TicketType, CartItem, MerchandiseCartItem, CustomerInfo, EventData, Cus
 import { Theme } from '@/types/theme';
 import { StripePaymentModal } from './StripePaymentModal';
 import { AttendeeDetailsForm, AttendeeInfo } from './AttendeeDetailsForm';
+import { useTaxCalculation, formatTaxForOrder } from '@/hooks/useTaxCalculation';
 
 interface PromoCodeHooks {
   promoCode: string;
@@ -412,11 +413,11 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
     const merchandiseSubtotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
     const subtotal = ticketSubtotal + merchandiseSubtotal;
     const discountedSubtotal = Math.max(0, subtotal - promoDiscount);
-    
+
     const feePercentage = eventData.organizations?.credit_card_processing_fee_percentage || 3;
     const fees = discountedSubtotal * (feePercentage / 100);
     const total = discountedSubtotal + fees;
-    
+
     return {
       subtotal,
       discountedSubtotal,
@@ -424,9 +425,23 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
       total,
       discount: promoDiscount,
       feePercentage,
-      currency: eventData.organizations?.currency || 'USD'
+      currency: eventData.organizations?.currency || 'USD',
+      ticketCount: cartItems.reduce((sum, item) => sum + item.quantity, 0)
     };
   }, [cartItems, merchandiseCart, promoDiscount, eventData.organizations?.credit_card_processing_fee_percentage, eventData.organizations?.currency]);
+
+  // Get booking fees setting
+  const bookingFeesEnabled = eventData.organizations?.stripe_booking_fee_enabled || false;
+
+  // Calculate tax
+  const { taxBreakdown, taxCalculator } = useTaxCalculation({
+    eventId: eventData.id,
+    ticketAmount: cartTotals.subtotal - (merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0)),
+    addonAmount: merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0),
+    donationAmount: 0, // BetaCheckout doesn't seem to have donations yet
+    bookingFeePercent: bookingFeesEnabled ? 1.0 : 0,
+    enabled: true,
+  });
 
   const handleCustomerInfoChange = (field: string, value: string) => {
     setCustomerInfo(prev => ({

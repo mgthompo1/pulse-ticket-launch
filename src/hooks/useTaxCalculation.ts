@@ -76,7 +76,9 @@ export function useTaxCalculation({
 
   // Calculate tax breakdown
   const taxBreakdown = useMemo<TaxBreakdown | null>(() => {
-    if (!taxCalculator || loading) return null;
+    if (!taxCalculator || loading) {
+      return null;
+    }
 
     const subtotal = ticketAmount + addonAmount + donationAmount;
     const bookingFee = subtotal * (bookingFeePercent / 100);

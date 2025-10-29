@@ -45,30 +45,19 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   // Safety check - ensure customQuestions is always an array
   const safeCustomQuestions = Array.isArray(customQuestions) ? customQuestions : [];
 
-  // Check if donations are enabled
-  const isDonationsEnabled = eventData?.donations_enabled && eventData.organizations?.crm_enabled;
+  // Check if donations are enabled - if organizations is missing, check if we have crm_enabled at the event level
+  const crmEnabled = eventData?.organizations?.crm_enabled ?? (eventData as any)?.crm_enabled;
+  const isDonationsEnabled = eventData?.donations_enabled && crmEnabled;
+
   const donationSuggestedAmounts = (eventData?.donation_suggested_amounts || [5, 10, 25, 50, 100]).map(amount =>
     typeof amount === 'string' ? parseFloat(amount) : amount
   );
+  const donationTitle = eventData?.donation_title || 'Support Our Cause';
   const donationDescription = eventData?.donation_description;
 
   const [selectedDonationAmount, setSelectedDonationAmount] = useState<number | null>(null);
   const [customDonationAmount, setCustomDonationAmount] = useState<string>('');
   const [attendees, setAttendees] = useState<AttendeeInfo[]>([]);
-
-  console.log("🎁 DONATIONS CHECK:", {
-    donations_enabled: eventData?.donations_enabled,
-    crm_enabled: eventData?.organizations?.crm_enabled,
-    isDonationsEnabled,
-    donationDescription,
-    donationSuggestedAmounts
-  });
-
-  console.log("👥 ATTENDEE FORM CHECK:", {
-    ticketCount,
-    shouldShowAttendeeForm: ticketCount > 1,
-    attendees: attendees.length
-  });
 
   const form = useForm<z.infer<typeof customerFormSchema>>({
     resolver: zodResolver(customerFormSchema),
@@ -82,9 +71,6 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   });
 
   const onSubmit = (values: z.infer<typeof customerFormSchema>) => {
-    console.log("🔍 Form submitted with values:", values);
-    console.log("📝 Custom answers:", values.customAnswers);
-
     // Validate attendee information if multiple tickets
     if (ticketCount > 1) {
       const hasAllAttendeeInfo = attendees.length === ticketCount &&
@@ -105,8 +91,6 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
       donationAmount: selectedDonationAmount && selectedDonationAmount > 0 ? selectedDonationAmount : undefined
     };
 
-    console.log("💰 Donation amount:", customerInfoWithDonation.donationAmount);
-    console.log("👥 Attendees:", attendees);
     onNext(customerInfoWithDonation, ticketCount > 1 ? attendees : undefined);
   };
 
@@ -363,7 +347,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             </CardContent>
           </Card>
 
-          {safeCustomQuestions.length > 0 && (
+          {safeCustomQuestions.length > 0 && ticketCount <= 1 && (
             <Card style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
               <CardHeader>
                 <CardTitle style={{ color: theme.headerTextColor }}>Additional Information</CardTitle>
@@ -374,13 +358,25 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             </Card>
            )}
 
+          {/* Attendee Details Form - only shown when purchasing multiple tickets */}
+          {ticketCount > 1 && (
+            <AttendeeDetailsForm
+              ticketCount={ticketCount}
+              buyerName={form.watch('name')}
+              buyerEmail={form.watch('email')}
+              attendees={attendees}
+              onChange={setAttendees}
+              customQuestions={safeCustomQuestions}
+            />
+          )}
+
           {/* Donation Card */}
           {isDonationsEnabled && (
             <Card style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2" style={{ color: theme.headerTextColor }}>
                   <Heart className="h-5 w-5" style={{ color: theme.primaryColor }} />
-                  Support Our Cause
+                  {donationTitle}
                 </CardTitle>
                 {donationDescription && (
                   <p className="text-sm mt-2" style={{ color: theme.bodyTextColor }}>
@@ -443,17 +439,6 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 </Button>
               </CardContent>
             </Card>
-          )}
-
-          {/* Attendee Details Form - only shown when purchasing multiple tickets */}
-          {ticketCount > 1 && (
-            <AttendeeDetailsForm
-              ticketCount={ticketCount}
-              buyerName={form.watch('name')}
-              buyerEmail={form.watch('email')}
-              attendees={attendees}
-              onChange={setAttendees}
-            />
           )}
 
           {/* Navigation Buttons Below Content */}

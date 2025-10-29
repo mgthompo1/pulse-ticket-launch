@@ -48,10 +48,6 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
   const hasSelectedTickets = cartItems.some(item => item.quantity > 0);
 
   const addToCartWithSeatCheck = async (ticketType: TicketType) => {
-    console.log("=== SEAT MAP CHECK DEBUG ===");
-    console.log("Ticket Type:", ticketType);
-    console.log("Event ID:", ticketType.event_id);
-    
     // First check if seat maps are enabled in event customization
     // We need to get the event data to check this
     const { data: eventData, error: eventError } = await anonymousSupabase
@@ -61,38 +57,28 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
       .single();
 
     if (eventError) {
-      console.error("Error fetching event data:", eventError);
       // Fallback: add directly to cart
       onAddToCart(ticketType);
       return;
     }
 
     const seatMapsEnabled = eventData?.widget_customization?.seatMaps?.enabled;
-    console.log("Seat maps enabled in customization:", seatMapsEnabled);
-    
+
     // Only check for seat maps if they're enabled in customization
     if (seatMapsEnabled) {
-      console.log("Checking for seat maps in database...");
-      
-      const { data: seatMaps, error: seatMapError } = await anonymousSupabase
+      const { data: seatMaps } = await anonymousSupabase
         .from('seat_maps')
         .select('id, name, total_seats')
         .eq('event_id', ticketType.event_id);
 
-      console.log("Seat maps query result:", seatMaps);
-      console.log("Seat maps query error:", seatMapError);
-      console.log("Number of seat maps found:", seatMaps?.length || 0);
-
       if (seatMaps && seatMaps.length > 0) {
         // Event has seating - show seat selector
-        console.log("🎫 Found seat maps, showing seat selection");
         setPendingSeatSelection(ticketType);
         setShowSeatSelection(true);
         return;
       }
     }
 
-    console.log("❌ Seat maps disabled or not found, adding directly to cart");
     // No seating or seat maps disabled - add directly to cart
     onAddToCart(ticketType);
   };

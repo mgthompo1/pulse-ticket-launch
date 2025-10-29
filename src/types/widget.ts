@@ -79,6 +79,7 @@ export interface EventData {
   ticket_customization?: Record<string, unknown>;
   email_customization?: Record<string, unknown>;
   donations_enabled?: boolean | null;
+  donation_title?: string | null;
   donation_suggested_amounts?: number[];
   donation_description?: string | null;
 
