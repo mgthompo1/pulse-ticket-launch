@@ -195,7 +195,7 @@ serve(async (req) => {
           .eq("email", customerEmail)
           .single();
 
-        let contactId: string;
+        let contactId: string | undefined;
 
         if (existingContact) {
           console.log("Contact exists, using existing contact ID:", existingContact.id);
@@ -232,7 +232,7 @@ serve(async (req) => {
 
           if (contactError) {
             console.error("Failed to create contact:", contactError);
-          } else {
+          } else if (newContact) {
             contactId = newContact.id;
             console.log("Created new contact:", contactId);
           }
