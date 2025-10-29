@@ -365,18 +365,19 @@ ALTER TABLE IF EXISTS public.payment_intents_log ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "payment_intents_log_public_read" ON public.payment_intents_log;
 DROP POLICY IF EXISTS "payment_intents_log_anon_read" ON public.payment_intents_log;
 
--- Only event organizers can view payment intents for their events
+-- Only event organizers can view payment intents for their orders
 CREATE POLICY "payment_intents_log_select_event_organizers_only"
 ON public.payment_intents_log
 FOR SELECT
 TO authenticated
 USING (
   auth.uid() IS NOT NULL
-  AND event_id IN (
-    SELECT e.id
-    FROM public.events e
-    JOIN public.organizations o ON e.organization_id = o.id
-    JOIN public.organization_users ou ON o.id = ou.organization_id
+  AND order_id IN (
+    SELECT o.id
+    FROM public.orders o
+    JOIN public.events e ON o.event_id = e.id
+    JOIN public.organizations org ON e.organization_id = org.id
+    JOIN public.organization_users ou ON org.id = ou.organization_id
     WHERE ou.user_id = auth.uid()
   )
 );
@@ -407,4 +408,4 @@ COMMENT ON POLICY "billing_customers_select_org_owners_only" ON public.billing_c
 'Restricts billing information access to organization owners only';
 
 COMMENT ON POLICY "payment_intents_log_select_event_organizers_only" ON public.payment_intents_log IS
-'Restricts payment transaction details to event organizers only';
+'Restricts payment transaction details to event organizers only via order_id -> event_id relationship';
