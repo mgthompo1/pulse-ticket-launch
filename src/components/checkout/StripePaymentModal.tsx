@@ -70,7 +70,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   const ticketSubtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const merchandiseSubtotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
 
-  const { taxBreakdown, taxCalculator } = useTaxCalculation({
+  const { taxBreakdown, taxCalculator, taxEnabled, taxName, taxRate, taxInclusive } = useTaxCalculation({
     eventId: eventData.id,
     ticketAmount: ticketSubtotal,
     addonAmount: merchandiseSubtotal,
@@ -350,6 +350,23 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                       <span className="font-medium">-${promoDiscount.toFixed(2)}</span>
                     </div>
                   )}
+
+                  {/* Tax Breakdown */}
+                  {taxEnabled && taxBreakdown && (
+                    <>
+                      {taxInclusive && (
+                        <div className="flex justify-between text-sm">
+                          <span style={{ color: theme.bodyTextColor }}>Subtotal (excl. {taxName}):</span>
+                          <span style={{ color: theme.bodyTextColor }}>${taxBreakdown.subtotal.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm">
+                        <span style={{ color: theme.bodyTextColor }}>{taxName} ({taxRate.toFixed(2)}%):</span>
+                        <span style={{ color: theme.bodyTextColor }}>${taxBreakdown.totalTax.toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
+
                   {processingFee > 0 && (
                     <div className="flex justify-between">
                       <span style={{ color: theme.bodyTextColor }}>
