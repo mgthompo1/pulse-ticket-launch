@@ -24,6 +24,7 @@ import BillingDashboard from "@/components/BillingDashboard";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import EventCustomization from "@/components/EventCustomization";
 import { PaymentConfiguration } from "@/components/PaymentConfiguration";
+import { PayoutsAndFees } from "@/components/PayoutsAndFees";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { Calendar, Users, Ticket, BarChart3, Monitor, LogOut, Menu, HelpCircle, DollarSign, ExternalLink, Clock, CheckCircle, Search, ChevronDown } from "lucide-react";

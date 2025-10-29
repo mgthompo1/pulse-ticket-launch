@@ -8,7 +8,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Calendar, Users, Settings, BarChart3, Mail, CreditCard, TrendingUp, Link, Shield, MapPin, UsersRound, ChevronDown, UserCog } from "lucide-react";
+import { Calendar, Users, Settings, BarChart3, Mail, CreditCard, TrendingUp, Link, Shield, MapPin, UsersRound, ChevronDown, UserCog, DollarSign } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";

@@ -9,6 +9,7 @@ import { PaymentProviderSelector } from './payment/PaymentProviderSelector';
 import { StripeConfiguration } from './payment/StripeConfiguration';
 import { WindcaveConfiguration } from './payment/WindcaveConfiguration';
 import { PaymentLog } from './PaymentLog';
+import { PayoutsAndFees } from './PayoutsAndFees';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface PaymentConfigurationProps {
@@ -168,6 +169,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
       <TabsList>
         <TabsTrigger value="configuration">Configuration</TabsTrigger>
         <TabsTrigger value="payment-log">Payment Log</TabsTrigger>
+        <TabsTrigger value="payouts-fees">Payouts/Fees</TabsTrigger>
       </TabsList>
 
       <TabsContent value="configuration">
@@ -261,6 +263,10 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
 
       <TabsContent value="payment-log">
         <PaymentLog organizationId={organizationId} />
+      </TabsContent>
+
+      <TabsContent value="payouts-fees">
+        <PayoutsAndFees organizationId={organizationId} />
       </TabsContent>
     </Tabs>
   );
