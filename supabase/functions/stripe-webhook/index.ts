@@ -94,6 +94,13 @@ serve(async (req) => {
         await handleAccountUpdated(event.data.object as any, supabaseClient);
         break;
 
+      case "payout.created":
+      case "payout.updated":
+      case "payout.paid":
+      case "payout.failed":
+        await handlePayoutEvent(event.data.object as Stripe.Payout, event.account, supabaseClient);
+        break;
+
       default:
         console.log(`Unhandled event type: ${event.type}`);
     }
@@ -415,5 +422,112 @@ async function handleAccountUpdated(account: any, supabaseClient: any) {
     }
   } catch (error) {
     console.error("Error handling account updated:", error);
+  }
+}
+
+async function handlePayoutEvent(payout: Stripe.Payout, stripeAccountId: string | null, supabaseClient: any) {
+  console.log("Processing payout event:", payout.id, "Status:", payout.status);
+
+  try {
+    if (!stripeAccountId) {
+      console.error("No Stripe account ID provided for payout event");
+      return;
+    }
+
+    // Find organization by Stripe account ID
+    const { data: org, error: orgError } = await supabaseClient
+      .from("organizations")
+      .select("id, currency")
+      .eq("stripe_account_id", stripeAccountId)
+      .single();
+
+    if (orgError || !org) {
+      console.error("Could not find organization for Stripe account:", stripeAccountId);
+      return;
+    }
+
+    console.log("Found organization:", org.id);
+
+    // Check if payout already exists
+    const { data: existingPayout, error: findError } = await supabaseClient
+      .from("payouts")
+      .select("id")
+      .eq("processor_payout_id", payout.id)
+      .single();
+
+    const payoutData = {
+      organization_id: org.id,
+      payment_processor: "stripe",
+      processor_payout_id: payout.id,
+      processor_account_id: stripeAccountId,
+      payout_date: new Date(payout.created * 1000).toISOString(),
+      arrival_date: new Date(payout.arrival_date * 1000).toISOString(),
+      status: mapPayoutStatus(payout.status),
+      gross_amount: payout.amount / 100,
+      processor_fees: 0, // Will be updated when balance transactions are synced
+      platform_fees: 0,
+      refunds_amount: 0,
+      adjustments_amount: 0,
+      net_amount: payout.amount / 100,
+      currency: payout.currency.toUpperCase(),
+      bank_account_last4: payout.destination ? String(payout.destination).slice(-4) : null,
+      bank_name: null,
+      description: payout.description || null,
+      statement_descriptor: payout.statement_descriptor || null,
+      metadata: {
+        stripe_payout: payout,
+        automatic: payout.automatic,
+        method: payout.method,
+        type: payout.type,
+      },
+    };
+
+    if (existingPayout) {
+      // Update existing payout
+      const { error: updateError } = await supabaseClient
+        .from("payouts")
+        .update({
+          status: payoutData.status,
+          arrival_date: payoutData.arrival_date,
+          metadata: payoutData.metadata,
+        })
+        .eq("id", existingPayout.id);
+
+      if (updateError) {
+        console.error("Error updating payout:", updateError);
+      } else {
+        console.log("✅ Updated payout:", payout.id);
+      }
+    } else {
+      // Insert new payout
+      const { error: insertError } = await supabaseClient
+        .from("payouts")
+        .insert(payoutData);
+
+      if (insertError) {
+        console.error("Error inserting payout:", insertError);
+      } else {
+        console.log("✅ Inserted new payout:", payout.id);
+      }
+    }
+  } catch (error) {
+    console.error("Error handling payout event:", error);
+  }
+}
+
+function mapPayoutStatus(stripeStatus: string): string {
+  switch (stripeStatus) {
+    case "pending":
+      return "pending";
+    case "in_transit":
+      return "in_transit";
+    case "paid":
+      return "paid";
+    case "failed":
+      return "failed";
+    case "canceled":
+      return "canceled";
+    default:
+      return "pending";
   }
 }
