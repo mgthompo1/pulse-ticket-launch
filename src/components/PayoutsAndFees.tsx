@@ -31,7 +31,7 @@ interface Payout {
   processor_payout_id: string;
   payout_date: string;
   arrival_date: string | null;
-  status: string;
+  payout_status: string;
   gross_amount: number;
   processor_fees: number;
   platform_fees: number;
@@ -86,7 +86,7 @@ export const PayoutsAndFees = ({ organizationId }: PayoutsAndFeesProps) => {
         .order('payout_date', { ascending: false });
 
       if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+        query = query.eq('payout_status', statusFilter);
       }
 
       const { data: payoutsData, error: payoutsError } = await query;
@@ -311,8 +311,8 @@ export const PayoutsAndFees = ({ organizationId }: PayoutsAndFeesProps) => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getStatusBadgeVariant(payout.status)}>
-                          {payout.status}
+                        <Badge variant={getStatusBadgeVariant(payout.payout_status)}>
+                          {payout.payout_status}
                         </Badge>
                       </TableCell>
                       <TableCell className="capitalize">{payout.payment_processor}</TableCell>

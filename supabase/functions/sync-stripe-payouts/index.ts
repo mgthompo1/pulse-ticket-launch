@@ -86,7 +86,7 @@ serve(async (req) => {
         // Check if payout already exists
         const { data: existingPayout } = await supabaseClient
           .from("payouts")
-          .select("id, status")
+          .select("id, payout_status")
           .eq("processor_payout_id", payout.id)
           .single();
 
@@ -97,7 +97,7 @@ serve(async (req) => {
           processor_account_id: org.stripe_account_id,
           payout_date: new Date(payout.created * 1000).toISOString(),
           arrival_date: new Date(payout.arrival_date * 1000).toISOString(),
-          status: mapStripeStatus(payout.status),
+          payout_status: mapStripeStatus(payout.status),
           gross_amount: payout.amount / 100, // Convert cents to dollars
           processor_fees: 0, // Stripe fees are in balance transactions
           platform_fees: 0, // Will be calculated from balance transactions
@@ -119,11 +119,11 @@ serve(async (req) => {
 
         if (existingPayout) {
           // Update existing payout if status changed
-          if (existingPayout.status !== payoutData.status) {
+          if (existingPayout.payout_status !== payoutData.payout_status) {
             const { error: updateError } = await supabaseClient
               .from("payouts")
               .update({
-                status: payoutData.status,
+                payout_status: payoutData.payout_status,
                 arrival_date: payoutData.arrival_date,
                 metadata: payoutData.metadata,
               })

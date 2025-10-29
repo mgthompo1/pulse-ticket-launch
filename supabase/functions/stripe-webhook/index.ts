@@ -462,7 +462,7 @@ async function handlePayoutEvent(payout: Stripe.Payout, stripeAccountId: string 
       processor_account_id: stripeAccountId,
       payout_date: new Date(payout.created * 1000).toISOString(),
       arrival_date: new Date(payout.arrival_date * 1000).toISOString(),
-      status: mapPayoutStatus(payout.status),
+      payout_status: mapPayoutStatus(payout.status),
       gross_amount: payout.amount / 100,
       processor_fees: 0, // Will be updated when balance transactions are synced
       platform_fees: 0,
@@ -487,7 +487,7 @@ async function handlePayoutEvent(payout: Stripe.Payout, stripeAccountId: string 
       const { error: updateError } = await supabaseClient
         .from("payouts")
         .update({
-          status: payoutData.status,
+          payout_status: payoutData.payout_status,
           arrival_date: payoutData.arrival_date,
           metadata: payoutData.metadata,
         })

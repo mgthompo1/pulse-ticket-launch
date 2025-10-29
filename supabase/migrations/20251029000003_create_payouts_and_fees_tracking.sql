@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS public.payouts (
   -- Payout details
   payout_date TIMESTAMP WITH TIME ZONE NOT NULL,
   arrival_date TIMESTAMP WITH TIME ZONE, -- Expected/actual arrival date in bank account
-  status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_transit', 'paid', 'failed', 'canceled')),
+  payout_status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (payout_status IN ('pending', 'in_transit', 'paid', 'failed', 'canceled')),
 
   -- Financial breakdown (all amounts in the payout currency)
   gross_amount DECIMAL(12,2) NOT NULL, -- Total before fees
@@ -173,7 +173,7 @@ WITH CHECK (true);
 -- Create indexes for performance
 CREATE INDEX idx_payouts_org_id ON public.payouts(organization_id);
 CREATE INDEX idx_payouts_processor ON public.payouts(payment_processor);
-CREATE INDEX idx_payouts_status ON public.payouts(status);
+CREATE INDEX idx_payouts_status ON public.payouts(payout_status);
 CREATE INDEX idx_payouts_payout_date ON public.payouts(payout_date DESC);
 CREATE INDEX idx_payouts_processor_payout_id ON public.payouts(processor_payout_id);
 CREATE INDEX idx_payout_line_items_payout_id ON public.payout_line_items(payout_id);
@@ -212,8 +212,8 @@ BEGIN
     COALESCE(SUM(p.gross_amount), 0) as total_gross,
     COALESCE(SUM(p.processor_fees + p.platform_fees), 0) as total_fees,
     COALESCE(SUM(p.net_amount), 0) as total_net,
-    COALESCE(SUM(CASE WHEN p.status IN ('pending', 'in_transit') THEN p.net_amount ELSE 0 END), 0) as pending_amount,
-    COALESCE(SUM(CASE WHEN p.status = 'paid' THEN p.net_amount ELSE 0 END), 0) as paid_amount
+    COALESCE(SUM(CASE WHEN p.payout_status IN ('pending', 'in_transit') THEN p.net_amount ELSE 0 END), 0) as pending_amount,
+    COALESCE(SUM(CASE WHEN p.payout_status = 'paid' THEN p.net_amount ELSE 0 END), 0) as paid_amount
   FROM public.payouts p
   WHERE p.organization_id = p_organization_id
     AND (p_start_date IS NULL OR p.payout_date >= p_start_date)
