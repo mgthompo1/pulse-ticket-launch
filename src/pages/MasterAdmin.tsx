@@ -37,6 +37,7 @@ import {
   RefreshCw
 } from "lucide-react";
 import { format } from "date-fns";
+import { OrganizationDetailModal } from "@/components/OrganizationDetailModal";
 
 const MasterAdmin = () => {
   // All hooks must be at the top, before any return
@@ -94,6 +95,9 @@ const MasterAdmin = () => {
     newPassword: "",
     isResetting: false
   });
+
+  // Organization detail modal state
+  const [selectedOrganization, setSelectedOrganization] = useState<{id: string, name: string} | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -943,17 +947,35 @@ const MasterAdmin = () => {
                           <tr className="bg-muted">
                             <th className="px-4 py-2 text-left">Name</th>
                             <th className="px-4 py-2 text-left">Email</th>
-                            <th className="px-4 py-2 text-left">Status</th>
+                            <th className="px-4 py-2 text-left">Billing Status</th>
                             <th className="px-4 py-2 text-left">Created At</th>
+                            <th className="px-4 py-2 text-left">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
                           {organizations.map(org => (
-                            <tr key={org.id} className="border-b">
-                              <td className="px-4 py-2">{org.name}</td>
+                            <tr key={org.id} className="border-b hover:bg-muted/50 transition-colors">
+                              <td className="px-4 py-2 font-medium">{org.name}</td>
                               <td className="px-4 py-2">{org.email || "N/A"}</td>
-                              <td className="px-4 py-2">{org.status || "N/A"}</td>
+                              <td className="px-4 py-2">
+                                {org.billing_suspended ? (
+                                  <Badge variant="destructive">Suspended</Badge>
+                                ) : org.trial_ends_at && new Date(org.trial_ends_at) > new Date() ? (
+                                  <Badge variant="secondary">Trial</Badge>
+                                ) : (
+                                  <Badge variant="default">Active</Badge>
+                                )}
+                              </td>
                               <td className="px-4 py-2">{org.created_at ? new Date(org.created_at).toLocaleDateString() : "N/A"}</td>
+                              <td className="px-4 py-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSelectedOrganization({ id: org.id, name: org.name })}
+                                >
+                                  View Details
+                                </Button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -1584,6 +1606,36 @@ const MasterAdmin = () => {
           )}
         </div>
       </div>
+
+      {/* Organization Detail Modal */}
+      {selectedOrganization && (
+        <OrganizationDetailModal
+          isOpen={!!selectedOrganization}
+          onClose={() => setSelectedOrganization(null)}
+          organizationId={selectedOrganization.id}
+          organizationName={selectedOrganization.name}
+          onUpdate={async () => {
+            // Reload organizations after update
+            const adminToken = localStorage.getItem('adminToken');
+            if (!adminToken) return;
+
+            try {
+              const { data } = await supabase.functions.invoke('admin-data', {
+                body: {
+                  token: adminToken,
+                  dataType: 'organizations'
+                }
+              });
+
+              if (data.success) {
+                setOrganizations(data.data || []);
+              }
+            } catch (error) {
+              console.error('Error reloading organizations:', error);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
