@@ -247,8 +247,23 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
 
 async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent, supabaseClient: any) {
   console.log("Processing payment_intent.succeeded:", paymentIntent.id);
-  
+
   try {
+    // Update payment_intents_log with succeeded status
+    const { error: logUpdateError } = await supabaseClient
+      .from("payment_intents_log")
+      .update({
+        status: paymentIntent.status,
+        processed_at: new Date().toISOString()
+      })
+      .eq("payment_intent_id", paymentIntent.id);
+
+    if (logUpdateError) {
+      console.error("Error updating payment_intents_log:", logUpdateError);
+    } else {
+      console.log("Payment intent log updated to succeeded:", paymentIntent.id);
+    }
+
     // Find order by payment intent ID
     const { data: orders, error: orderError } = await supabaseClient
       .from("orders")
@@ -263,7 +278,7 @@ async function handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent,
 
     if (Array.isArray(orders) && orders.length > 0) {
       const order = orders[0];
-      
+
       // Update order status
       const { error: updateError } = await supabaseClient
         .from("orders")
