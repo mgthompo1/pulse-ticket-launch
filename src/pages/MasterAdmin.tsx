@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { OrganizationDetailModal } from "@/components/OrganizationDetailModal";
+import { EnquiryDetailModal } from "@/components/EnquiryDetailModal";
 
 const MasterAdmin = () => {
   // All hooks must be at the top, before any return
@@ -99,6 +100,9 @@ const MasterAdmin = () => {
 
   // Organization detail modal state
   const [selectedOrganization, setSelectedOrganization] = useState<{id: string, name: string} | null>(null);
+
+  // Enquiry detail modal state
+  const [selectedEnquiry, setSelectedEnquiry] = useState<any | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -1116,6 +1120,15 @@ const MasterAdmin = () => {
                               <span>Updated: {new Date(enquiry.updated_at).toLocaleString()}</span>
                             )}
                           </div>
+
+                          <Button
+                            onClick={() => setSelectedEnquiry(enquiry)}
+                            variant="outline"
+                            size="sm"
+                            className="w-full mt-2"
+                          >
+                            View Details & Respond
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -1633,6 +1646,35 @@ const MasterAdmin = () => {
               }
             } catch (error) {
               console.error('Error reloading organizations:', error);
+            }
+          }}
+        />
+      )}
+
+      {/* Enquiry Detail Modal */}
+      {selectedEnquiry && (
+        <EnquiryDetailModal
+          isOpen={!!selectedEnquiry}
+          onClose={() => setSelectedEnquiry(null)}
+          enquiry={selectedEnquiry}
+          onUpdate={async () => {
+            // Reload enquiries after update
+            const adminToken = localStorage.getItem('adminToken');
+            if (!adminToken) return;
+
+            try {
+              const { data } = await supabase.functions.invoke('admin-data', {
+                body: {
+                  token: adminToken,
+                  dataType: 'enquiries'
+                }
+              });
+
+              if (data.success) {
+                setContactEnquiries(data.data || []);
+              }
+            } catch (error) {
+              console.error('Error reloading enquiries:', error);
             }
           }}
         />
