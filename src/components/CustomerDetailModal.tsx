@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Mail, Phone, MapPin, Calendar, DollarSign, Ticket, Heart, Tag, Send, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { ComposeEmailModal } from "@/components/ComposeEmailModal";
 
 interface Contact {
   id: string;
@@ -47,6 +48,18 @@ interface Order {
   };
 }
 
+interface CRMEmail {
+  id: string;
+  subject: string;
+  body_html: string;
+  status: string;
+  sent_at: string | null;
+  opened_at: string | null;
+  clicked_at: string | null;
+  sender_name: string | null;
+  created_at: string;
+}
+
 interface CustomerDetailModalProps {
   contact: Contact | null;
   open: boolean;
@@ -59,13 +72,17 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
   onOpenChange,
 }) => {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [emails, setEmails] = useState<CRMEmail[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingEmails, setLoadingEmails] = useState(false);
   const [resendingReceipt, setResendingReceipt] = useState<string | null>(null);
+  const [composeEmailOpen, setComposeEmailOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     if (contact && open) {
       loadOrderHistory();
+      loadEmailHistory();
     }
   }, [contact, open]);
 
@@ -107,6 +124,33 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
       console.error("Error loading order history:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadEmailHistory = async () => {
+    if (!contact) return;
+
+    console.log("📧 Loading email history for contact:", contact.email);
+    setLoadingEmails(true);
+    try {
+      const { data, error } = await supabase
+        .from("crm_emails")
+        .select("id, subject, body_html, status, sent_at, opened_at, clicked_at, sender_name, created_at")
+        .eq("contact_id", contact.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      console.log("📧 Email history result:", { data, error, count: data?.length });
+
+      if (error) throw error;
+
+      if (data) {
+        setEmails(data);
+      }
+    } catch (error) {
+      console.error("Error loading email history:", error);
+    } finally {
+      setLoadingEmails(false);
     }
   };
 
@@ -169,11 +213,23 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">{displayName}</DialogTitle>
-          <DialogDescription className="flex items-center gap-2">
-            <Mail className="h-4 w-4" />
-            {contact.email}
-          </DialogDescription>
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <DialogTitle className="text-2xl">{displayName}</DialogTitle>
+              <DialogDescription className="flex items-center gap-2">
+                <Mail className="h-4 w-4" />
+                {contact.email}
+              </DialogDescription>
+            </div>
+            <Button
+              onClick={() => setComposeEmailOpen(true)}
+              size="sm"
+              className="shrink-0"
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Email Customer
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -332,6 +388,84 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             </CardContent>
           </Card>
 
+          {/* Email History */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Email History</CardTitle>
+              <CardDescription>
+                {emails.length} {emails.length === 1 ? 'email' : 'emails'} sent from CRM
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingEmails ? (
+                <div className="text-center py-8 text-muted-foreground">Loading emails...</div>
+              ) : emails.length === 0 ? (
+                <div className="text-center py-8">
+                  <Mail className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-muted-foreground">No emails sent yet</p>
+                  <Button
+                    onClick={() => setComposeEmailOpen(true)}
+                    size="sm"
+                    className="mt-3"
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Send First Email
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {emails.map((email) => (
+                    <div key={email.id} className="border rounded-md p-3 hover:bg-slate-50 transition-colors">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm truncate">
+                            {email.subject}
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {email.sent_at ? formatDate(email.sent_at) : formatDate(email.created_at)}
+                            </div>
+                            {email.sender_name && (
+                              <div className="flex items-center gap-1">
+                                <Mail className="h-3 w-3" />
+                                {email.sender_name}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <Badge
+                            variant={
+                              email.status === 'sent' || email.status === 'delivered'
+                                ? 'default'
+                                : email.status === 'failed' || email.status === 'bounced'
+                                ? 'destructive'
+                                : 'secondary'
+                            }
+                            className="text-xs"
+                          >
+                            {email.status}
+                          </Badge>
+                          {email.opened_at && (
+                            <Badge variant="outline" className="text-xs">
+                              Opened
+                            </Badge>
+                          )}
+                          {email.clicked_at && (
+                            <Badge variant="outline" className="text-xs">
+                              Clicked
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Customer Since */}
           <div className="text-sm text-muted-foreground text-center pb-2">
             Customer since {new Date(contact.created_at).toLocaleDateString('en-NZ', {
@@ -342,6 +476,21 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
           </div>
         </div>
       </DialogContent>
+
+      {/* Compose Email Modal */}
+      <ComposeEmailModal
+        contact={contact}
+        open={composeEmailOpen}
+        onOpenChange={setComposeEmailOpen}
+        onSuccess={() => {
+          // Reload email history to show the newly sent email
+          loadEmailHistory();
+          toast({
+            title: "Email Sent",
+            description: `Email sent to ${contact.email}`,
+          });
+        }}
+      />
     </Dialog>
   );
 };

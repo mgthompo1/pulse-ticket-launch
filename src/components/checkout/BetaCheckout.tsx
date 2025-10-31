@@ -433,11 +433,25 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
   // Get booking fees setting
   const bookingFeesEnabled = eventData.organizations?.stripe_booking_fee_enabled || false;
 
-  // Calculate tax
+  // Apply discount to amounts BEFORE tax calculation
+  const ticketSubtotal = cartTotals.subtotal - (merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0));
+  const merchandiseSubtotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
+
+  // Calculate discounted amounts (apply discount proportionally)
+  let discountedTicketAmount = ticketSubtotal;
+  let discountedMerchandiseAmount = merchandiseSubtotal;
+
+  if (cartTotals.discount > 0 && cartTotals.subtotal > 0) {
+    const discountRatio = 1 - (cartTotals.discount / cartTotals.subtotal);
+    discountedTicketAmount = ticketSubtotal * discountRatio;
+    discountedMerchandiseAmount = merchandiseSubtotal * discountRatio;
+  }
+
+  // Calculate tax using DISCOUNTED amounts
   const { taxBreakdown, taxCalculator } = useTaxCalculation({
     eventId: eventData.id,
-    ticketAmount: cartTotals.subtotal - (merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0)),
-    addonAmount: merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0),
+    ticketAmount: discountedTicketAmount,
+    addonAmount: discountedMerchandiseAmount,
     donationAmount: 0, // BetaCheckout doesn't seem to have donations yet
     bookingFeePercent: bookingFeesEnabled ? 1.0 : 0,
     enabled: true,

@@ -3,12 +3,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { Search, UserCog, DollarSign, TrendingUp, Calendar, Mail, Phone, MapPin, Tag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerDetailModal } from "@/components/CustomerDetailModal";
+import { BulkEmailModal } from "@/components/BulkEmailModal";
 
 interface Contact {
   id: string;
@@ -38,6 +40,8 @@ const CustomersCRM: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
+  const [bulkEmailOpen, setBulkEmailOpen] = useState(false);
 
   // Stats
   const [stats, setStats] = useState({
@@ -140,6 +144,28 @@ const CustomersCRM: React.FC = () => {
     setModalOpen(true);
   };
 
+  const toggleContactSelection = (contactId: string) => {
+    const newSelection = new Set(selectedContacts);
+    if (newSelection.has(contactId)) {
+      newSelection.delete(contactId);
+    } else {
+      newSelection.add(contactId);
+    }
+    setSelectedContacts(newSelection);
+  };
+
+  const toggleAllContacts = () => {
+    if (selectedContacts.size === filteredContacts.length) {
+      setSelectedContacts(new Set());
+    } else {
+      setSelectedContacts(new Set(filteredContacts.map(c => c.id)));
+    }
+  };
+
+  const getSelectedContactObjects = () => {
+    return contacts.filter(c => selectedContacts.has(c.id));
+  };
+
   if (loading || orgLoading) {
     return (
       <div className="p-8">
@@ -202,6 +228,27 @@ const CustomersCRM: React.FC = () => {
             Manage customer relationships, donations, and patron engagement
           </p>
         </div>
+        {selectedContacts.size > 0 && (
+          <div className="flex items-center gap-3">
+            <Badge variant="secondary" className="text-sm px-3 py-1">
+              {selectedContacts.size} selected
+            </Badge>
+            <Button
+              onClick={() => setBulkEmailOpen(true)}
+              size="sm"
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Send Email to Selected
+            </Button>
+            <Button
+              onClick={() => setSelectedContacts(new Set())}
+              variant="outline"
+              size="sm"
+            >
+              Clear Selection
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -274,6 +321,12 @@ const CustomersCRM: React.FC = () => {
               <table className="w-full">
                 <thead className="bg-slate-50 border-b">
                   <tr>
+                    <th className="text-left p-4 font-medium text-sm w-12">
+                      <Checkbox
+                        checked={selectedContacts.size === filteredContacts.length && filteredContacts.length > 0}
+                        onCheckedChange={toggleAllContacts}
+                      />
+                    </th>
                     <th className="text-left p-4 font-medium text-sm">Customer</th>
                     <th className="text-left p-4 font-medium text-sm">Email</th>
                     <th className="text-right p-4 font-medium text-sm">Lifetime Value</th>
@@ -287,10 +340,15 @@ const CustomersCRM: React.FC = () => {
                   {filteredContacts.map(contact => (
                     <tr
                       key={contact.id}
-                      className="border-b hover:bg-slate-50 cursor-pointer transition-colors"
-                      onClick={() => handleContactClick(contact)}
+                      className="border-b hover:bg-slate-50 transition-colors"
                     >
-                      <td className="p-4">
+                      <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedContacts.has(contact.id)}
+                          onCheckedChange={() => toggleContactSelection(contact.id)}
+                        />
+                      </td>
+                      <td className="p-4 cursor-pointer" onClick={() => handleContactClick(contact)}>
                         <div className="font-medium text-blue-600 hover:text-blue-800">
                           {contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || contact.email}
                         </div>
@@ -315,13 +373,13 @@ const CustomersCRM: React.FC = () => {
                           </div>
                         )}
                       </td>
-                      <td className="p-4 text-sm text-muted-foreground">
+                      <td className="p-4 text-sm text-muted-foreground cursor-pointer" onClick={() => handleContactClick(contact)}>
                         {contact.email}
                       </td>
-                      <td className="p-4 text-right font-semibold">
+                      <td className="p-4 text-right font-semibold cursor-pointer" onClick={() => handleContactClick(contact)}>
                         {formatCurrency(contact.lifetime_value)}
                       </td>
-                      <td className="p-4 text-right">
+                      <td className="p-4 text-right cursor-pointer" onClick={() => handleContactClick(contact)}>
                         {contact.total_donations > 0 ? (
                           <span className="text-pink-600 font-medium">
                             {formatCurrency(contact.total_donations)}
@@ -330,9 +388,9 @@ const CustomersCRM: React.FC = () => {
                           <span className="text-muted-foreground">-</span>
                         )}
                       </td>
-                      <td className="p-4 text-right">{contact.total_orders}</td>
-                      <td className="p-4 text-right">{contact.events_attended}</td>
-                      <td className="p-4 text-sm text-muted-foreground">
+                      <td className="p-4 text-right cursor-pointer" onClick={() => handleContactClick(contact)}>{contact.total_orders}</td>
+                      <td className="p-4 text-right cursor-pointer" onClick={() => handleContactClick(contact)}>{contact.events_attended}</td>
+                      <td className="p-4 text-sm text-muted-foreground cursor-pointer" onClick={() => handleContactClick(contact)}>
                         {formatDate(contact.last_order_date)}
                       </td>
                     </tr>
@@ -349,6 +407,20 @@ const CustomersCRM: React.FC = () => {
         contact={selectedContact}
         open={modalOpen}
         onOpenChange={setModalOpen}
+      />
+
+      {/* Bulk Email Modal */}
+      <BulkEmailModal
+        contacts={getSelectedContactObjects()}
+        open={bulkEmailOpen}
+        onOpenChange={setBulkEmailOpen}
+        onSuccess={() => {
+          setSelectedContacts(new Set());
+          toast({
+            title: "Emails Sent",
+            description: "Bulk emails sent successfully",
+          });
+        }}
       />
     </div>
   );

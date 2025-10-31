@@ -66,14 +66,25 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   // Add donation amount if present
   const donationAmount = customerInfo?.donationAmount || 0;
 
-  // Calculate tax
+  // Calculate subtotals
   const ticketSubtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const merchandiseSubtotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
 
+  // Apply discount proportionally to tickets and merchandise BEFORE tax calculation
+  let discountedTicketAmount = ticketSubtotal;
+  let discountedMerchandiseAmount = merchandiseSubtotal;
+
+  if (promoDiscount > 0 && subtotal > 0) {
+    const discountRatio = 1 - (promoDiscount / subtotal);
+    discountedTicketAmount = ticketSubtotal * discountRatio;
+    discountedMerchandiseAmount = merchandiseSubtotal * discountRatio;
+  }
+
+  // Calculate tax using DISCOUNTED amounts
   const { taxBreakdown, taxCalculator, taxEnabled, taxName, taxRate, taxInclusive } = useTaxCalculation({
     eventId: eventData.id,
-    ticketAmount: ticketSubtotal,
-    addonAmount: merchandiseSubtotal,
+    ticketAmount: discountedTicketAmount,
+    addonAmount: discountedMerchandiseAmount,
     donationAmount: donationAmount,
     bookingFeePercent: bookingFeesEnabled ? 1.0 : 0,
     enabled: true,
@@ -86,7 +97,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
 
   // Use tax-aware total if tax is enabled, otherwise fall back to old calculation
   const total = taxBreakdown
-    ? taxBreakdown.grandTotal - promoDiscount + processingFeeWithTax
+    ? taxBreakdown.grandTotal + processingFeeWithTax
     : Math.max(0, subtotal - promoDiscount + processingFee + bookingFee + donationAmount);
 
   // Format tax data for edge function

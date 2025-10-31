@@ -86,28 +86,43 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   // Calculate discount from promo code hooks
   const discount = promoCodeHooks?.getTotalDiscount() || 0;
 
-  // Calculate booking fee (1% + $0.50) when enabled for Stripe
-  const bookingFee = bookingFeesEnabled && eventData.organizations?.payment_provider === 'stripe'
-    ? (subtotal * 0.01) + 0.50
-    : 0;
+  // Apply discount proportionally to tickets and merchandise BEFORE tax calculation
+  const ticketSubtotal = calculateTicketSubtotal();
+  const merchandiseSubtotal = calculateMerchandiseSubtotal();
 
-  // Processing fee can be applied alongside booking fees
-  const processingFee = eventData.organizations?.credit_card_processing_fee_percentage
-    ? (subtotal * (eventData.organizations.credit_card_processing_fee_percentage / 100))
-    : 0;
+  // Calculate discounted amounts (apply discount proportionally)
+  let discountedTicketAmount = ticketSubtotal;
+  let discountedMerchandiseAmount = merchandiseSubtotal;
+
+  if (discount > 0 && subtotal > 0) {
+    const discountRatio = 1 - (discount / subtotal);
+    discountedTicketAmount = ticketSubtotal * discountRatio;
+    discountedMerchandiseAmount = merchandiseSubtotal * discountRatio;
+  }
 
   // Add donation amount if present
   const donationAmount = customerInfo?.donationAmount || 0;
 
-  // Calculate tax using the hook
+  // Calculate tax using the DISCOUNTED amounts
   const { taxBreakdown, taxEnabled, taxName, taxInclusive, taxRate } = useTaxCalculation({
     eventId: eventData.id,
-    ticketAmount: calculateTicketSubtotal(),
-    addonAmount: calculateMerchandiseSubtotal(),
+    ticketAmount: discountedTicketAmount,
+    addonAmount: discountedMerchandiseAmount,
     donationAmount: donationAmount,
     bookingFeePercent: bookingFeesEnabled && eventData.organizations?.payment_provider === 'stripe' ? 1.0 : 0,
     enabled: true,
   });
+
+  // Calculate booking fee (1% + $0.50) when enabled for Stripe - apply to discounted subtotal
+  const discountedSubtotal = discountedTicketAmount + discountedMerchandiseAmount;
+  const bookingFee = bookingFeesEnabled && eventData.organizations?.payment_provider === 'stripe'
+    ? (discountedSubtotal * 0.01) + 0.50
+    : 0;
+
+  // Processing fee can be applied alongside booking fees - apply to discounted subtotal
+  const processingFee = eventData.organizations?.credit_card_processing_fee_percentage
+    ? (discountedSubtotal * (eventData.organizations.credit_card_processing_fee_percentage / 100))
+    : 0;
 
   // Apply tax to processing fee if tax is enabled
   const processingFeeWithTax = taxEnabled
@@ -116,7 +131,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
 
   // Use tax-aware total if tax is enabled, otherwise fall back to old calculation
   const total = taxBreakdown
-    ? taxBreakdown.grandTotal - discount + processingFeeWithTax
+    ? taxBreakdown.grandTotal + processingFeeWithTax
     : Math.max(0, subtotal - discount + processingFee + bookingFee + donationAmount);
 
   // Load Stripe configuration when on payment step

@@ -79,7 +79,13 @@ export const PasskeySetup = ({ isOpen, onClose, onSuccess }: PasskeySetupProps) 
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-md">
-          <div className="flex items-center justify-center p-8">
+          <DialogHeader>
+            <DialogTitle>Checking Compatibility</DialogTitle>
+            <DialogDescription>
+              Verifying if your device supports passkey authentication
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-center p-4">
             <Loader2 className="w-6 h-6 animate-spin mr-2" />
             <span>Checking device compatibility...</span>
           </div>

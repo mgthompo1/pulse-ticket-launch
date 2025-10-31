@@ -117,22 +117,35 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   // Get booking fees setting
   const bookingFeesEnabled = eventData.organizations?.stripe_booking_fee_enabled || false;
 
-  // Calculate tax
-  const { taxBreakdown, taxCalculator } = useTaxCalculation({
-    eventId: eventData.id,
-    ticketAmount: ticketTotal,
-    addonAmount: merchandiseTotal,
-    donationAmount: customerInfo?.donationAmount || 0,
-    bookingFeePercent: bookingFeesEnabled ? 1.0 : 0,
-    enabled: true,
-  });
-
   // Initialize promo code hooks with MultiStepCheckout's own data
   const localPromoCodeHooks = usePromoCodeAndDiscounts({
     eventId: eventData.id,
     customerEmail: customerInfo?.email || '',
     ticketCount,
     subtotal,
+  });
+
+  // Get discount and apply it BEFORE tax calculation
+  const discount = localPromoCodeHooks.getTotalDiscount();
+
+  // Calculate discounted amounts (apply discount proportionally)
+  let discountedTicketAmount = ticketTotal;
+  let discountedMerchandiseAmount = merchandiseTotal;
+
+  if (discount > 0 && subtotal > 0) {
+    const discountRatio = 1 - (discount / subtotal);
+    discountedTicketAmount = ticketTotal * discountRatio;
+    discountedMerchandiseAmount = merchandiseTotal * discountRatio;
+  }
+
+  // Calculate tax using DISCOUNTED amounts
+  const { taxBreakdown, taxCalculator } = useTaxCalculation({
+    eventId: eventData.id,
+    ticketAmount: discountedTicketAmount,
+    addonAmount: discountedMerchandiseAmount,
+    donationAmount: customerInfo?.donationAmount || 0,
+    bookingFeePercent: bookingFeesEnabled ? 1.0 : 0,
+    enabled: true,
   });
 
   // Initialize reservation hooks with MultiStepCheckout's own data
