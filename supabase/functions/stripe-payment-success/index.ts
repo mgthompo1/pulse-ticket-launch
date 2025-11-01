@@ -426,6 +426,63 @@ serve(async (req) => {
       console.log("No tickets to create (merchandise only order)");
     }
 
+    // Track group sale if this is a group purchase
+    console.log("🎯 Checking for group sale tracking...");
+    try {
+      const { data: orderForGroupTracking, error: groupOrderError } = await supabaseClient
+        .from("orders")
+        .select("id, custom_answers, promo_code_id")
+        .eq("id", orderId)
+        .single();
+
+      if (!groupOrderError && orderForGroupTracking) {
+        console.log("🎯 Order custom_answers:", orderForGroupTracking.custom_answers);
+
+        const groupPurchaseInfo = (orderForGroupTracking.custom_answers as any)?.__group_purchase__;
+
+        if (groupPurchaseInfo?.group_id && groupPurchaseInfo?.allocation_id) {
+          console.log("🎯 Group purchase detected! Tracking sale...", groupPurchaseInfo);
+
+          // Fetch the created tickets for this order
+          const { data: createdTickets } = await supabaseClient
+            .from('tickets')
+            .select('id, ticket_type_id, order_items!inner(unit_price)')
+            .eq('order_items.order_id', orderId);
+
+          if (createdTickets && createdTickets.length > 0) {
+            console.log("🎯 Found", createdTickets.length, "tickets to track");
+
+            // Call track-group-sale edge function
+            const { data: trackingData, error: trackingError } = await supabaseClient.functions.invoke('track-group-sale', {
+              body: {
+                orderId: orderId,
+                groupId: groupPurchaseInfo.group_id,
+                allocationId: groupPurchaseInfo.allocation_id,
+                tickets: createdTickets.map((ticket: any) => ({
+                  ticketId: ticket.id,
+                  ticketTypeId: ticket.ticket_type_id,
+                  paidPrice: ticket.order_items?.unit_price || 0,
+                }))
+              }
+            });
+
+            if (trackingError) {
+              console.error("❌ Error tracking group sale:", trackingError);
+            } else {
+              console.log("✅ Group sale tracked successfully:", trackingData);
+            }
+          } else {
+            console.log("⚠️ No tickets found to track for group sale");
+          }
+        } else {
+          console.log("ℹ️ Not a group purchase (no __group_purchase__ in custom_answers)");
+        }
+      }
+    } catch (groupTrackingError) {
+      console.error("❌ Group sale tracking error:", groupTrackingError);
+      // Don't fail the whole process for group tracking issues
+    }
+
     // Send ticket email
     console.log("Sending ticket email...");
     try {

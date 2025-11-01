@@ -933,15 +933,25 @@ const TicketWidget = () => {
           bookingFeesEnabled
         });
 
+        console.log('🎯 About to create payment intent with group tracking:', {
+          groupId,
+          allocationId,
+          isGroupPurchase,
+          promoCodeId
+        });
+
         const { data, error } = await supabase.functions.invoke("create-payment-intent", {
-          body: { 
-            eventId, 
+          body: {
+            eventId,
             items: allItems,
             customerInfo: fullCustomerInfo,
             total,
             bookingFeesEnabled,
             subtotal,
-            bookingFee
+            bookingFee,
+            promoCodeId: promoCodeId, // Add promo code ID for tracking
+            groupId: groupId, // Add group ID for group purchase tracking
+            allocationId: allocationId // Add allocation ID for group purchase tracking
           }
         });
 
@@ -1452,6 +1462,8 @@ const TicketWidget = () => {
             formatTimeRemaining,
             hasActiveReservations,
           }}
+          groupId={groupId}
+          allocationId={allocationId}
         />
       </>
     );
@@ -1524,6 +1536,8 @@ const TicketWidget = () => {
             formatTimeRemaining,
             hasActiveReservations,
           }}
+          groupId={groupId}
+          allocationId={allocationId}
         />
       </>
     );
@@ -2395,9 +2409,59 @@ const TicketWidget = () => {
                         currency={eventData?.organizations?.currency || 'USD'}
                         promoCodeId={promoCodeId}
                         onSuccess={async (orderId: string) => {
-                          // Track group sale if this is a group purchase
-                          if (isGroupPurchase && groupId && allocationId) {
-                            console.log('🎯 Tracking group sale...', { orderId, groupId, allocationId });
+                          // Determine if this is a group sale (either from group URL or group discount code)
+                          let finalGroupId = groupId;
+                          let finalAllocationId = allocationId;
+
+                          // If not from group URL but a promo code was used, check if it's a group code
+                          if (!isGroupPurchase && promoCodeId) {
+                            try {
+                              const { data: promoCode, error: promoError } = await supabase
+                                .from('promo_codes')
+                                .select('description, event_id')
+                                .eq('id', promoCodeId)
+                                .single();
+
+                              if (!promoError && promoCode?.description?.startsWith('GROUP:')) {
+                                // Extract group ID from description (format: "GROUP:uuid - optional reason")
+                                const groupIdMatch = promoCode.description.match(/^GROUP:([a-f0-9-]+)/);
+                                if (groupIdMatch) {
+                                  finalGroupId = groupIdMatch[1];
+                                  console.log('🎯 Detected group discount code for group:', finalGroupId);
+
+                                  // Fetch tickets to get ticket type IDs
+                                  const { data: orderTickets } = await supabase
+                                    .from('tickets')
+                                    .select('ticket_type_id')
+                                    .eq('order_id', orderId)
+                                    .limit(1)
+                                    .single();
+
+                                  if (orderTickets) {
+                                    // Find the allocation for this group, event, and ticket type
+                                    const { data: allocation } = await supabase
+                                      .from('group_ticket_allocations')
+                                      .select('id')
+                                      .eq('group_id', finalGroupId)
+                                      .eq('event_id', eventId)
+                                      .eq('ticket_type_id', orderTickets.ticket_type_id)
+                                      .single();
+
+                                    if (allocation) {
+                                      finalAllocationId = allocation.id;
+                                      console.log('🎯 Found allocation:', finalAllocationId);
+                                    }
+                                  }
+                                }
+                              }
+                            } catch (error) {
+                              console.error('❌ Error checking for group discount code:', error);
+                            }
+                          }
+
+                          // Track group sale if we have group and allocation IDs
+                          if (finalGroupId && finalAllocationId) {
+                            console.log('🎯 Tracking group sale...', { orderId, groupId: finalGroupId, allocationId: finalAllocationId });
 
                             try {
                               // Fetch the tickets that were just created for this order
@@ -2415,8 +2479,8 @@ const TicketWidget = () => {
                                 const { data, error } = await supabase.functions.invoke('track-group-sale', {
                                   body: {
                                     orderId,
-                                    groupId,
-                                    allocationId,
+                                    groupId: finalGroupId,
+                                    allocationId: finalAllocationId,
                                     tickets: tickets.map(ticket => ({
                                       ticketId: ticket.id,
                                       ticketTypeId: ticket.ticket_type_id,

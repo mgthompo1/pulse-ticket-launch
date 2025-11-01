@@ -181,6 +181,58 @@ serve(async (req) => {
 
     console.log('✅ Order updated successfully with payment details');
 
+    // Increment promo code usage if a promo code was used
+    try {
+      const { data: orderWithPromo, error: promoCheckError } = await supabaseClient
+        .from("orders")
+        .select("promo_code_id, customer_email, total_amount, subtotal")
+        .eq("id", orderId)
+        .single();
+
+      if (!promoCheckError && orderWithPromo?.promo_code_id) {
+        console.log('Incrementing promo code usage for:', orderWithPromo.promo_code_id);
+
+        // Calculate discount applied (difference between subtotal and total, accounting for fees)
+        const discountApplied = Math.max(0, (orderWithPromo.subtotal || orderWithPromo.total_amount) - orderWithPromo.total_amount);
+
+        // Increment the current_uses count
+        const { error: incrementError } = await supabaseClient.rpc('increment_promo_code_usage', {
+          p_promo_code_id: orderWithPromo.promo_code_id,
+          p_order_id: orderId,
+          p_customer_email: orderWithPromo.customer_email || '',
+          p_discount_applied: discountApplied
+        });
+
+        if (incrementError) {
+          console.error('Failed to increment promo code usage:', incrementError);
+          // Try direct update as fallback - first get current value
+          const { data: promoCode } = await supabaseClient
+            .from('promo_codes')
+            .select('current_uses')
+            .eq('id', orderWithPromo.promo_code_id)
+            .single();
+
+          if (promoCode) {
+            const { error: updateError } = await supabaseClient
+              .from('promo_codes')
+              .update({ current_uses: (promoCode.current_uses || 0) + 1 })
+              .eq('id', orderWithPromo.promo_code_id);
+
+            if (updateError) {
+              console.error('Direct update also failed:', updateError);
+            } else {
+              console.log('Promo code usage incremented via direct update');
+            }
+          }
+        } else {
+          console.log('Promo code usage incremented successfully');
+        }
+      }
+    } catch (promoError) {
+      console.error('❌ Error incrementing promo code usage:', promoError);
+      // Don't fail the whole process for promo code tracking issues
+    }
+
     // Send ticket email (includes receipt and tickets)
     console.log('=== SENDING TICKET EMAIL ===');
     try {
@@ -195,6 +247,86 @@ serve(async (req) => {
       }
     } catch (emailError) {
       console.error('❌ Ticket email function error:', emailError);
+    }
+
+    // Track group sale if this is a group purchase
+    try {
+      const { data: orderForGroupTracking, error: groupOrderError } = await supabaseClient
+        .from("orders")
+        .select("id, custom_answers, promo_code_id")
+        .eq("id", orderId)
+        .single();
+
+      if (!groupOrderError && orderForGroupTracking) {
+        const groupPurchaseInfo = (orderForGroupTracking.custom_answers as any)?.__group_purchase__;
+
+        if (groupPurchaseInfo?.group_id && groupPurchaseInfo?.allocation_id) {
+          console.log('Group purchase detected - tracking sale');
+
+          // Get promo discount from Payment Intent metadata
+          const promoDiscount = parseFloat(paymentIntent.metadata?.promoDiscount || '0');
+          const originalSubtotal = parseFloat(paymentIntent.metadata?.subtotal || '0');
+
+          // Calculate discount ratio (how much of the original price was actually paid)
+          // If there was a promo discount, calculate what percentage was paid
+          const discountRatio = originalSubtotal > 0 ? (originalSubtotal - promoDiscount) / originalSubtotal : 1;
+
+          console.log(`Discount calculation: originalSubtotal=${originalSubtotal}, promoDiscount=${promoDiscount}, ratio=${discountRatio}`);
+
+          // Get order items for this order
+          const { data: orderItems } = await supabaseClient
+            .from('order_items')
+            .select('id, ticket_type_id, unit_price')
+            .eq('order_id', orderId)
+            .eq('item_type', 'ticket');
+
+          if (orderItems && orderItems.length > 0) {
+            const orderItemIds = orderItems.map((item: any) => item.id);
+
+            // Now get tickets for these order items
+            const { data: createdTickets } = await supabaseClient
+              .from('tickets')
+              .select('id, order_item_id')
+              .in('order_item_id', orderItemIds);
+
+            if (createdTickets && createdTickets.length > 0) {
+              // Map tickets to their order items to get ticket_type_id and price
+              // Apply the discount ratio to get the actual paid price
+              const ticketsWithDetails = createdTickets.map((ticket: any) => {
+                const orderItem = orderItems.find((item: any) => item.id === ticket.order_item_id);
+                const actualPaidPrice = (orderItem?.unit_price || 0) * discountRatio;
+
+                console.log(`Ticket pricing: unit_price=${orderItem?.unit_price}, discount_ratio=${discountRatio}, actual_paid=${actualPaidPrice}`);
+
+                return {
+                  ticketId: ticket.id,
+                  ticketTypeId: orderItem?.ticket_type_id || null,
+                  paidPrice: actualPaidPrice,
+                };
+              });
+
+              // Call track-group-sale edge function
+              const { data: trackingData, error: trackingError } = await supabaseClient.functions.invoke('track-group-sale', {
+                body: {
+                  orderId: orderId,
+                  groupId: groupPurchaseInfo.group_id,
+                  allocationId: groupPurchaseInfo.allocation_id,
+                  tickets: ticketsWithDetails
+                }
+              });
+
+              if (trackingError) {
+                console.error('Error tracking group sale:', trackingError);
+              } else {
+                console.log('Group sale tracked successfully');
+              }
+            }
+          }
+        }
+      }
+    } catch (groupTrackingError) {
+      console.error('❌ Group sale tracking error:', groupTrackingError);
+      // Don't fail the whole process for group tracking issues
     }
 
     return new Response(JSON.stringify({

@@ -49,6 +49,12 @@ serve(async (req) => {
     }
 
     // 2. Query all sales for this group in the period
+    // Add time to dates to ensure full day coverage
+    const startDateTime = `${periodStart}T00:00:00`;
+    const endDateTime = `${periodEnd}T23:59:59`;
+
+    console.log("Querying sales with date range:", { startDateTime, endDateTime });
+
     let salesQuery = supabaseClient
       .from("group_ticket_sales")
       .select(`
@@ -63,8 +69,8 @@ serve(async (req) => {
       `)
       .eq("group_id", groupId)
       .eq("payment_status", "completed")
-      .gte("created_at", periodStart)
-      .lte("created_at", periodEnd);
+      .gte("created_at", startDateTime)
+      .lte("created_at", endDateTime);
 
     if (eventId) {
       // Filter by event if specified
@@ -78,7 +84,18 @@ serve(async (req) => {
       throw new Error("Failed to fetch sales data");
     }
 
+    console.log(`Found ${sales?.length || 0} sales for group ${groupId}`);
+
     if (!sales || sales.length === 0) {
+      // Check if there are ANY sales for this group (to help debug)
+      const { data: allSales } = await supabaseClient
+        .from("group_ticket_sales")
+        .select("id, created_at, payment_status")
+        .eq("group_id", groupId)
+        .limit(5);
+
+      console.log("All sales for this group (up to 5):", allSales);
+
       return new Response(
         JSON.stringify({
           success: false,
@@ -92,10 +109,28 @@ serve(async (req) => {
     }
 
     // 3. Calculate totals
+    console.log("Sample sale record:", sales[0]);
+
     const totalTicketsSold = sales.length;
-    const totalRevenue = sales.reduce((sum, sale) => sum + Number(sale.paid_price), 0);
-    const totalDiscounts = sales.reduce((sum, sale) => sum + Number(sale.discount_amount), 0);
+    const totalRevenue = sales.reduce((sum, sale) => sum + Number(sale.paid_price || 0), 0);
+
+    // Calculate discount amount: full_price - paid_price for each sale
+    const totalDiscounts = sales.reduce((sum, sale) => {
+      const fullPrice = Number(sale.full_price || 0);
+      const paidPrice = Number(sale.paid_price || 0);
+      const discount = fullPrice - paidPrice;
+      console.log(`Sale discount: full=${fullPrice}, paid=${paidPrice}, discount=${discount}`);
+      return sum + discount;
+    }, 0);
+
     const amountOwed = totalDiscounts;
+
+    console.log("Invoice totals:", {
+      totalTicketsSold,
+      totalRevenue,
+      totalDiscounts,
+      amountOwed
+    });
 
     // Get unique event ID (assuming all sales are for same event for now)
     const firstSale = sales[0];

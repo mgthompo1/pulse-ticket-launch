@@ -21,6 +21,8 @@ import {
   Ticket,
   ArrowLeft,
   Package,
+  Copy,
+  Check,
 } from "lucide-react";
 import GroupAllocations from "./GroupAllocations";
 import {
@@ -80,6 +82,7 @@ export const GroupsManagement: React.FC = () => {
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [selectedGroupForAllocations, setSelectedGroupForAllocations] = useState<Group | null>(null);
+  const [copiedGroupId, setCopiedGroupId] = useState<string | null>(null);
   const [formData, setFormData] = useState<GroupFormData>({
     name: "",
     description: "",
@@ -356,6 +359,18 @@ export const GroupsManagement: React.FC = () => {
     }
   };
 
+  const copyGroupUrl = (slug: string, groupId: string) => {
+    const url = `${window.location.origin}/group/${slug}`;
+    navigator.clipboard.writeText(url);
+    setCopiedGroupId(groupId);
+    toast({
+      title: "URL Copied!",
+      description: "Group URL has been copied to clipboard",
+    });
+    // Reset copied state after 2 seconds
+    setTimeout(() => setCopiedGroupId(null), 2000);
+  };
+
   const filteredGroups = groups.filter(
     (group) =>
       group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -495,13 +510,40 @@ export const GroupsManagement: React.FC = () => {
                       <span>{group.contact_phone}</span>
                     </div>
                   )}
-                  {group.url_slug && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <ExternalLink className="h-4 w-4" />
-                      <span className="text-xs font-mono">/{group.url_slug}</span>
-                    </div>
-                  )}
                 </div>
+
+                {/* Group URL with Copy Button */}
+                {group.url_slug && (
+                  <div className="p-3 bg-muted rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <ExternalLink className="h-4 w-4 text-primary" />
+                        <span>Group URL</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyGroupUrl(group.url_slug!, group.id)}
+                        className="h-7 px-2"
+                      >
+                        {copiedGroupId === group.id ? (
+                          <>
+                            <Check className="h-3 w-3 mr-1 text-green-600" />
+                            <span className="text-xs text-green-600">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3 w-3 mr-1" />
+                            <span className="text-xs">Copy</span>
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <code className="text-xs font-mono block truncate text-muted-foreground bg-background px-2 py-1 rounded">
+                      {window.location.origin}/group/{group.url_slug}
+                    </code>
+                  </div>
+                )}
 
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-3 pt-3 border-t">

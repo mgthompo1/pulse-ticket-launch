@@ -36,18 +36,18 @@ interface GroupDiscountCodesProps {
   groupId: string;
   groupName: string;
   allocationId?: string;
+  organizationId: string;
 }
 
 interface DiscountCode {
   id: string;
   code: string;
   discount_type: "percentage" | "fixed" | "group_price";
-  discount_value: number | null;
-  custom_price: number | null;
-  reason: string | null;
+  discount_value: number;
+  description: string | null;
   max_uses: number | null;
-  uses_count: number;
-  is_active: boolean;
+  current_uses: number;
+  active: boolean;
   created_at: string;
 }
 
@@ -55,6 +55,7 @@ export const GroupDiscountCodes: React.FC<GroupDiscountCodesProps> = ({
   groupId,
   groupName,
   allocationId,
+  organizationId,
 }) => {
   const { toast } = useToast();
   const [codes, setCodes] = useState<DiscountCode[]>([]);
@@ -78,10 +79,12 @@ export const GroupDiscountCodes: React.FC<GroupDiscountCodesProps> = ({
     setLoading(true);
     try {
       // Query promo_codes table for codes specific to this group
+      // Group codes have the group_id in their description field prefixed with "GROUP:"
       const { data, error } = await supabase
         .from("promo_codes")
         .select("*")
-        .eq("organization_id", groupId) // We'll use organization_id to store group_id
+        .eq("organization_id", organizationId)
+        .ilike("description", `GROUP:${groupId}%`)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -118,34 +121,49 @@ export const GroupDiscountCodes: React.FC<GroupDiscountCodesProps> = ({
       return;
     }
 
+    // Validate required fields based on discount type
+    if (formData.discountType === "group_price" && !formData.customPrice) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a custom price",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if ((formData.discountType === "percentage" || formData.discountType === "fixed") && !formData.discountValue) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a discount value",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const codeData: {
-        code: string;
-        discount_type: string;
-        discount_value: number | null;
-        custom_price: number | null;
-        organization_id: string;
-        reason: string | null;
-        max_uses: number | null;
-        uses_count: number;
-        is_active: boolean;
-      } = {
+      // Calculate discount_value based on type
+      let discountValue = 0;
+      if (formData.discountType === "percentage" || formData.discountType === "fixed") {
+        discountValue = parseFloat(formData.discountValue);
+      } else if (formData.discountType === "group_price") {
+        // For group_price, store the custom price as the discount_value
+        discountValue = parseFloat(formData.customPrice);
+      }
+
+      // Store group_id in description with "GROUP:" prefix for filtering
+      const description = `GROUP:${groupId}${formData.reason ? ` - ${formData.reason}` : ''}`;
+
+      const codeData = {
         code: formData.code.toUpperCase(),
         discount_type: formData.discountType,
-        discount_value: null,
-        custom_price: null,
-        organization_id: groupId, // Store group_id in organization_id field
-        reason: formData.reason || null,
+        discount_value: discountValue,
+        organization_id: organizationId,
+        event_id: null,
+        description: description,
         max_uses: formData.maxUses ? parseInt(formData.maxUses) : null,
-        uses_count: 0,
-        is_active: true,
+        current_uses: 0,
+        active: true,
       };
-
-      if (formData.discountType === "percentage" || formData.discountType === "fixed") {
-        codeData.discount_value = parseFloat(formData.discountValue);
-      } else if (formData.discountType === "group_price") {
-        codeData.custom_price = parseFloat(formData.customPrice);
-      }
 
       const { error } = await supabase.from("promo_codes").insert(codeData);
 
@@ -328,7 +346,7 @@ export const GroupDiscountCodes: React.FC<GroupDiscountCodesProps> = ({
                     <>
                       <DollarSign className="h-4 w-4 text-green-600" />
                       <span className="font-semibold text-green-600">
-                        ${code.discount_value?.toFixed(2)} Off
+                        ${code.discount_value.toFixed(2)} Off
                       </span>
                     </>
                   )}
@@ -336,7 +354,7 @@ export const GroupDiscountCodes: React.FC<GroupDiscountCodesProps> = ({
                     <>
                       <DollarSign className="h-4 w-4 text-blue-600" />
                       <span className="font-semibold text-blue-600">
-                        Custom Price: ${code.custom_price?.toFixed(2)}
+                        Custom Price: ${code.discount_value.toFixed(2)}
                       </span>
                     </>
                   )}
@@ -346,14 +364,14 @@ export const GroupDiscountCodes: React.FC<GroupDiscountCodesProps> = ({
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Usage:</span>
                   <span className="font-semibold">
-                    {code.uses_count}
+                    {code.current_uses}
                     {code.max_uses ? ` / ${code.max_uses}` : " uses"}
                   </span>
                 </div>
 
                 {/* Status Badge */}
-                <Badge variant={code.is_active ? "default" : "secondary"}>
-                  {code.is_active ? "Active" : "Inactive"}
+                <Badge variant={code.active ? "default" : "secondary"}>
+                  {code.active ? "Active" : "Inactive"}
                 </Badge>
               </CardContent>
             </Card>

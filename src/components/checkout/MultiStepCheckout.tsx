@@ -51,6 +51,8 @@ interface MultiStepCheckoutProps {
   onClose?: () => void;
   promoCodeHooks?: PromoCodeHooks;
   reservationHooks?: ReservationHooks;
+  groupId?: string | null;
+  allocationId?: string | null;
 }
 
 
@@ -63,6 +65,8 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   customQuestions,
   promoCodeHooks,
   reservationHooks,
+  groupId,
+  allocationId,
 }) => {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('event');
@@ -531,6 +535,8 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
           theme={theme}
           promoCodeId={localPromoCodeHooks.promoCodeId}
           promoDiscount={localPromoCodeHooks.getTotalDiscount()}
+          groupId={groupId}
+          allocationId={allocationId}
         />
       )}
     </div>

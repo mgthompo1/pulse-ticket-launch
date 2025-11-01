@@ -41,7 +41,10 @@ interface StripePaymentFormProps {
   publishableKey: string;
   currency?: string;
   promoCodeId?: string | null;
+  promoDiscount?: number;
   taxData?: TaxData | null;
+  groupId?: string | null;
+  allocationId?: string | null;
 }
 
 const CheckoutForm = ({ 
@@ -252,7 +255,10 @@ export const StripePaymentForm = ({
   bookingFee = 0,
   currency,
   promoCodeId = null,
-  taxData = null
+  promoDiscount = 0,
+  taxData = null,
+  groupId = null,
+  allocationId = null
 }: StripePaymentFormProps) => {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -279,6 +285,15 @@ export const StripePaymentForm = ({
       try {
         paymentIntentCreated.current = true;
 
+        console.log('🎯 StripePaymentForm creating payment intent with group tracking:', {
+          groupId,
+          allocationId,
+          promoCodeId,
+          promoDiscount,
+          subtotal,
+          total
+        });
+
         const requestBody = {
           eventId,
           total,
@@ -286,6 +301,9 @@ export const StripePaymentForm = ({
           bookingFee,
           bookingFeesEnabled,
           promoCodeId,
+          promoDiscount,
+          groupId,
+          allocationId,
           taxData,
           items: [
             ...cart.map(item => ({

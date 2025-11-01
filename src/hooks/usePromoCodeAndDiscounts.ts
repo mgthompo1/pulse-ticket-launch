@@ -102,19 +102,21 @@ export const usePromoCodeAndDiscounts = ({
       if (groupId && allocationId) {
         console.log('🎯 Checking for group-specific promo code:', { groupId, code: upperCode });
 
-        const { data: groupPromo, error: groupPromoError } = await supabase
+        // Group discount codes have "GROUP:{groupId}" in their description
+        const { data: groupPromos, error: groupPromoError } = await supabase
           .from('promo_codes')
           .select('*')
           .eq('code', upperCode)
-          .eq('organization_id', groupId)
-          .eq('is_active', true)
-          .maybeSingle();
+          .eq('active', true)
+          .ilike('description', `GROUP:${groupId}%`);
+
+        const groupPromo = groupPromos && groupPromos.length > 0 ? groupPromos[0] : null;
 
         if (!groupPromoError && groupPromo) {
           console.log('🎯 Found group promo code:', groupPromo);
 
           // Check max uses
-          if (groupPromo.max_uses && groupPromo.uses_count >= groupPromo.max_uses) {
+          if (groupPromo.max_uses && groupPromo.current_uses >= groupPromo.max_uses) {
             setPromoError('This promo code has reached its maximum uses');
             setPromoDiscount(0);
             setPromoCodeId(null);
@@ -133,15 +135,15 @@ export const usePromoCodeAndDiscounts = ({
           let finalPrice = subtotal / ticketCount; // Price per ticket
 
           // Calculate discount based on discount type
-          if (groupPromo.discount_type === 'group_price' && groupPromo.custom_price) {
-            // Custom price: e.g., $50 per ticket
-            finalPrice = groupPromo.custom_price;
-            discountAmount = (subtotal / ticketCount - groupPromo.custom_price) * ticketCount;
-          } else if (groupPromo.discount_type === 'percentage' && groupPromo.discount_value) {
+          if (groupPromo.discount_type === 'group_price') {
+            // Custom price: stored in discount_value for group_price type
+            finalPrice = groupPromo.discount_value;
+            discountAmount = (subtotal / ticketCount - groupPromo.discount_value) * ticketCount;
+          } else if (groupPromo.discount_type === 'percentage') {
             // Percentage off: e.g., 25% off
             discountAmount = (subtotal * groupPromo.discount_value) / 100;
             finalPrice = subtotal / ticketCount - (discountAmount / ticketCount);
-          } else if (groupPromo.discount_type === 'fixed' && groupPromo.discount_value) {
+          } else if (groupPromo.discount_type === 'fixed') {
             // Fixed amount off: e.g., $25 off per ticket
             discountAmount = groupPromo.discount_value * ticketCount;
             finalPrice = subtotal / ticketCount - groupPromo.discount_value;

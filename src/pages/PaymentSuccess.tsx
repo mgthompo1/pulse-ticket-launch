@@ -352,7 +352,7 @@ const PaymentSuccess = () => {
             console.log('Attempting to fetch order by ID:', orderId);
             const { data: orderById, error: orderError } = await supabase
               .from('orders')
-              .select('id, created_at, customer_email, customer_name, customer_phone, event_id, status, total_amount, updated_at')
+              .select('id, created_at, customer_email, customer_name, customer_phone, event_id, status, total_amount, updated_at, promo_code_id, custom_answers')
               .eq('id', orderId)
               .single();
 
@@ -394,7 +394,7 @@ const PaymentSuccess = () => {
           if (sessionId) {
             const { data: orderBySession, error: sessionError } = await supabase
               .from('orders')
-              .select('id, created_at, customer_email, customer_name, customer_phone, event_id, status, total_amount, updated_at')
+              .select('id, created_at, customer_email, customer_name, customer_phone, event_id, status, total_amount, updated_at, promo_code_id, custom_answers')
               .eq('windcave_session_id', sessionId)
               .single();
 
@@ -440,18 +440,25 @@ const PaymentSuccess = () => {
             console.log('Order details set:', order);
             console.log('Widget customization data:', order.events?.widget_customization);
             console.log('Success URL:', (order.events?.widget_customization as any)?.payment?.successUrl);
-            
+
+            // Group sale tracking is now handled server-side in the stripe-payment-success edge function
+            // This ensures tracking happens after tickets are created
+            const groupPurchaseInfo = (order.custom_answers as any)?.__group_purchase__;
+            if (groupPurchaseInfo?.group_id && groupPurchaseInfo?.allocation_id) {
+              console.log('✅ Group purchase detected - tracking will be handled server-side', groupPurchaseInfo);
+            }
+
             // If order status is pending, call the payment success function to complete the process
             if (order.status === 'pending') {
               console.log('Order status is pending, calling payment success function...');
               try {
                 const { error: successError } = await supabase.functions.invoke('stripe-payment-success', {
-                  body: { 
+                  body: {
                     orderId: order.id,
                     paymentIntentId: order.stripe_session_id || null
                   }
                 });
-                
+
                 if (successError) {
                   console.error('Payment success function error:', successError);
                 } else {

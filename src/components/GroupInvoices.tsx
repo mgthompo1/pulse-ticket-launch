@@ -60,6 +60,7 @@ interface Invoice {
   due_date: string | null;
   paid_date: string | null;
   created_at: string;
+  payment_link: string | null;
   events: {
     name: string;
   };
@@ -167,6 +168,14 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
 
     setGenerating(true);
     try {
+      console.log('Generating invoice with params:', {
+        groupId,
+        eventId: generateForm.eventId === 'all' ? null : generateForm.eventId,
+        periodStart: generateForm.periodStart,
+        periodEnd: generateForm.periodEnd,
+        dueDate: generateForm.dueDate || null,
+      });
+
       // Call edge function to generate invoice
       const { data, error } = await supabase.functions.invoke('generate-group-invoice', {
         body: {
@@ -178,7 +187,32 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
         }
       });
 
-      if (error) throw error;
+      console.log('Invoice generation response:', { data, error });
+
+      if (error) {
+        // Try to extract the actual error message from the response body
+        let errorMessage = "Failed to generate invoice";
+
+        if ((error as any).context) {
+          try {
+            const responseBody = await (error as any).context.json();
+            console.log('Error response body:', responseBody);
+            errorMessage = responseBody.error || responseBody.message || errorMessage;
+          } catch (e) {
+            console.error('Failed to parse error response:', e);
+          }
+        }
+
+        if (!errorMessage || errorMessage === "Failed to generate invoice") {
+          errorMessage = data?.error || error.message || errorMessage;
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to generate invoice");
+      }
 
       toast({
         title: "Success",
@@ -257,34 +291,133 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
 
   const handleSendInvoice = async (invoice: Invoice) => {
     try {
-      const { error } = await supabase.functions.invoke('send-invoice-email', {
+      const { data, error } = await supabase.functions.invoke('send-group-invoice-email', {
         body: {
           invoiceId: invoice.id,
-          groupId,
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Edge function error:", error);
+        throw new Error(error.message || "Failed to send invoice");
+      }
 
-      // Update invoice status
-      await supabase
-        .from("group_invoices")
-        .update({ status: 'sent' })
-        .eq("id", invoice.id);
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to send invoice");
+      }
 
       toast({
         title: "Success",
-        description: "Invoice sent successfully",
+        description: `Invoice sent to ${data.recipient}`,
       });
 
       loadInvoices();
     } catch (error) {
       console.error("Error sending invoice:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to send invoice";
       toast({
-        title: "Info",
-        description: "Email functionality not yet configured",
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
       });
     }
+  };
+
+  const handleViewPDF = (invoice: Invoice) => {
+    // Create a printable invoice view
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast({
+        title: "Error",
+        description: "Please allow popups to view the invoice PDF",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const invoiceHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Invoice ${invoice.invoice_number}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    h1 { color: #000; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    th, td { padding: 12px; border: 1px solid #dee2e6; text-align: left; }
+    th { background-color: #f8f9fa; }
+    .header { background-color: #f8f9fa; padding: 20px; margin-bottom: 20px; }
+    .total-row { background-color: #fff3cd; font-weight: bold; }
+    @media print {
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Group Ticket Invoice</h1>
+    <p>Invoice #${invoice.invoice_number}</p>
+    <p>Date: ${new Date(invoice.created_at).toLocaleDateString()}</p>
+  </div>
+
+  <h2>Bill To:</h2>
+  <p><strong>${groupName}</strong></p>
+
+  <table>
+    <tr>
+      <th>Event</th>
+      <td>${invoice.events.name}</td>
+    </tr>
+    <tr>
+      <th>Billing Period</th>
+      <td>${new Date(invoice.billing_period_start).toLocaleDateString()} - ${new Date(invoice.billing_period_end).toLocaleDateString()}</td>
+    </tr>
+    <tr>
+      <th>Tickets Sold</th>
+      <td>${invoice.total_tickets_sold}</td>
+    </tr>
+    <tr>
+      <th>Total Revenue</th>
+      <td>$${invoice.total_revenue.toFixed(2)}</td>
+    </tr>
+    <tr>
+      <th>Discounts Given</th>
+      <td>$${invoice.total_discounts_given.toFixed(2)}</td>
+    </tr>
+    <tr class="total-row">
+      <th>Amount Owed</th>
+      <td>$${invoice.amount_owed.toFixed(2)}</td>
+    </tr>
+    ${invoice.due_date ? `
+    <tr>
+      <th>Due Date</th>
+      <td style="color: #dc3545;">${new Date(invoice.due_date).toLocaleDateString()}</td>
+    </tr>
+    ` : ''}
+  </table>
+
+  ${invoice.payment_link ? `
+  <div style="background-color: #d1ecf1; padding: 15px; margin: 20px 0;">
+    <p><strong>Pay Online:</strong></p>
+    <p>Visit this link to pay: ${invoice.payment_link}</p>
+  </div>
+  ` : ''}
+
+  <div class="no-print" style="margin-top: 30px;">
+    <button onclick="window.print()" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+      Print Invoice
+    </button>
+    <button onclick="window.close()" style="padding: 10px 20px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px;">
+      Close
+    </button>
+  </div>
+</body>
+</html>
+    `;
+
+    printWindow.document.write(invoiceHTML);
+    printWindow.document.close();
   };
 
   const getStatusBadge = (status: string) => {
@@ -392,29 +525,50 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
                     </TableCell>
                     <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
-                        {invoice.status === 'draft' && (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleSendInvoice(invoice)}
+                            onClick={() => handleViewPDF(invoice)}
                           >
-                            <Send className="h-3 w-3 mr-1" />
-                            Send
+                            <FileText className="h-3 w-3 mr-1" />
+                            View PDF
                           </Button>
-                        )}
-                        {invoice.status !== 'paid' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedInvoice(invoice);
-                              setShowPaymentDialog(true);
-                            }}
+                          {invoice.status === 'draft' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleSendInvoice(invoice)}
+                            >
+                              <Send className="h-3 w-3 mr-1" />
+                              Send
+                            </Button>
+                          )}
+                          {invoice.status !== 'paid' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedInvoice(invoice);
+                                setShowPaymentDialog(true);
+                              }}
+                            >
+                              <DollarSign className="h-3 w-3 mr-1" />
+                              Record Payment
+                            </Button>
+                          )}
+                        </div>
+                        {invoice.payment_link && (
+                          <a
+                            href={invoice.payment_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:underline flex items-center gap-1"
                           >
-                            <DollarSign className="h-3 w-3 mr-1" />
-                            Record Payment
-                          </Button>
+                            <Download className="h-3 w-3" />
+                            Payment Link
+                          </a>
                         )}
                       </div>
                     </TableCell>

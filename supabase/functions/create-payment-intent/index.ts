@@ -167,7 +167,13 @@ serve(async (req) => {
         subtotal: requestSubtotal,
         bookingFee: requestBookingFee,
         // Tax fields from frontend
-        taxData
+        taxData,
+        // Promo code tracking
+        promoCodeId,
+        promoDiscount,
+        // Group purchase tracking
+        groupId,
+        allocationId
       } = requestBody;
       
       // Assign to outer scope variables
@@ -257,7 +263,20 @@ serve(async (req) => {
 
       // Create order in database first
       console.log("=== CREATING ORDER IN DATABASE ===");
-      console.log("=== TAX DATA ===", taxData);
+
+      if (groupId && allocationId) {
+        console.log("Group purchase detected:", { groupId, allocationId });
+      }
+
+      // Construct custom_answers with group purchase info
+      const customAnswers = {
+        ...(customerInfo?.customAnswers || {}),
+        // Store group purchase info for tracking
+        __group_purchase__: groupId && allocationId ? {
+          group_id: groupId,
+          allocation_id: allocationId
+        } : null
+      };
 
       const orderData = {
         event_id: eventId,
@@ -266,10 +285,11 @@ serve(async (req) => {
         customer_phone: customerInfo?.phone || null,
         total_amount: finalTotal,
         status: "pending",
-        custom_answers: customerInfo?.customAnswers || {},
+        custom_answers: customAnswers,
         donation_amount: customerInfo?.donationAmount || 0,
         attendees: attendees || null, // Store attendee details for ticket assignment
         stripe_session_id: null, // Will be updated after payment intent creation
+        promo_code_id: promoCodeId || null, // Track which promo code was used
 
         // Tax fields
         subtotal: taxData?.subtotal ?? subtotal,
@@ -356,7 +376,8 @@ serve(async (req) => {
         paymentType: 'event',
         bookingFeesEnabled: bookingFeesEnabled || false,
         subtotal: subtotal || 0,
-        bookingFee: bookingFee || 0
+        bookingFee: bookingFee || 0,
+        promoDiscount: promoDiscount || 0
       };
     }
 

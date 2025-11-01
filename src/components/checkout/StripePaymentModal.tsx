@@ -23,6 +23,8 @@ interface StripePaymentModalProps {
   theme: Theme;
   promoCodeId?: string | null;
   promoDiscount?: number;
+  groupId?: string | null;
+  allocationId?: string | null;
 }
 
 export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
@@ -35,7 +37,9 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   attendees = [],
   theme,
   promoCodeId = null,
-  promoDiscount = 0
+  promoDiscount = 0,
+  groupId = null,
+  allocationId = null
 }) => {
   const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null);
   const [currency, setCurrency] = useState<string>('USD');
@@ -197,12 +201,14 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
     loadStripeConfig();
   }, [isOpen, eventData.id, stripePublishableKey, currency]);
 
+  console.log('🎯 StripePaymentModal props:', { groupId, allocationId, promoCodeId });
+
   const handlePaymentSuccess = (orderId: string) => {
     toast({
       title: "Payment Successful!",
       description: "Your tickets have been confirmed. Check your email for details.",
     });
-    
+
     // Close modal and redirect to success page with orderId
     onClose();
     setTimeout(() => {
@@ -251,7 +257,10 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                     bookingFee={bookingFee}
                     currency={currency}
                     promoCodeId={promoCodeId}
+                    promoDiscount={promoDiscount}
                     taxData={taxData}
+                    groupId={groupId}
+                    allocationId={allocationId}
                     onSuccess={handlePaymentSuccess}
                     onCancel={onClose}
                   />

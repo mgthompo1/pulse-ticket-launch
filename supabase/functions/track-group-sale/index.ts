@@ -39,10 +39,19 @@ serve(async (req) => {
 
     console.log("Processing group sale:", { orderId, groupId, allocationId, ticketCount: tickets.length });
 
-    // 1. Get allocation details (to get full_price)
+    // 1. Get allocation details and the original ticket price
     const { data: allocation, error: allocationError } = await supabaseClient
       .from("group_ticket_allocations")
-      .select("full_price, minimum_price, group_id, event_id, ticket_type_id")
+      .select(`
+        full_price,
+        minimum_price,
+        group_id,
+        event_id,
+        ticket_type_id,
+        ticket_types (
+          price
+        )
+      `)
       .eq("id", allocationId)
       .single();
 
@@ -53,20 +62,28 @@ serve(async (req) => {
 
     console.log("Allocation details:", allocation);
 
+    // Use the ticket type's original price as the "full price" for discount calculation
+    // This is what the customer would have paid without any group discount
+    const originalTicketPrice = (allocation as any).ticket_types?.price || allocation.full_price;
+
     // 2. Create group_ticket_sales records for each ticket
     const groupSales = tickets.map((ticket) => {
-      const discountAmount = allocation.full_price - ticket.paidPrice;
+      const discountAmount = originalTicketPrice - ticket.paidPrice;
+
+      console.log(`Creating sale record: original_price=${originalTicketPrice}, paid_price=${ticket.paidPrice}, discount=${discountAmount}`);
 
       return {
         group_id: groupId,
         allocation_id: allocationId,
         ticket_id: ticket.ticketId,
-        full_price: allocation.full_price,
+        full_price: originalTicketPrice, // Use original ticket price, not allocation's full_price
         paid_price: ticket.paidPrice,
         // discount_amount is auto-calculated by database as GENERATED column
         payment_status: "completed",
       };
     });
+
+    console.log("Group sales to insert:", JSON.stringify(groupSales, null, 2));
 
     const { error: salesError } = await supabaseClient
       .from("group_ticket_sales")
@@ -142,9 +159,9 @@ serve(async (req) => {
             eventName: eventData?.name || "Unknown Event",
             ticketCount: tickets.length,
             paidPrice: tickets.reduce((sum, t) => sum + t.paidPrice, 0),
-            fullPrice: allocation.full_price * tickets.length,
+            fullPrice: originalTicketPrice * tickets.length,
             discountAmount: tickets.reduce(
-              (sum, t) => sum + (allocation.full_price - t.paidPrice),
+              (sum, t) => sum + (originalTicketPrice - t.paidPrice),
               0
             ),
             customerName: orderData?.customer_name || "Unknown",

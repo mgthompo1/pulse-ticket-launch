@@ -386,7 +386,7 @@ export const GroupAllocations: React.FC<GroupAllocationsProps> = ({
         </TabsContent>
 
         <TabsContent value="discounts" className="space-y-6">
-          <GroupDiscountCodes groupId={groupId} groupName={groupName} />
+          <GroupDiscountCodes groupId={groupId} groupName={groupName} organizationId={organizationId} />
         </TabsContent>
 
         <TabsContent value="invoices" className="space-y-6">
