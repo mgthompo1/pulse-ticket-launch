@@ -3,10 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Users, Calendar, DollarSign, Ticket, TrendingUp } from "lucide-react";
+import { Download, Users, Calendar, DollarSign, Ticket, TrendingUp, Search } from "lucide-react";
 import { format } from "date-fns";
 
 interface EventAnalyticsProps {
@@ -75,9 +76,19 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [eventDetails, setEventDetails] = useState<EventDetails | null>(null);
   const [orders, setOrders] = useState<OrderDetails[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<OrderDetails[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  // Helper function to split name into first and last
+  const splitName = (fullName: string) => {
+    const parts = fullName.trim().split(' ');
+    const firstName = parts[0] || '';
+    const lastName = parts.slice(1).join(' ') || '';
+    return { firstName, lastName };
+  };
 
   const loadEventAnalytics = async (eventId: string) => {
     setLoading(true);
@@ -110,6 +121,7 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
 
       if (ordersError) throw ordersError;
       setOrders(ordersData || []);
+      setFilteredOrders(ordersData || []);
 
       // Calculate analytics
       if (ordersData) {
@@ -149,26 +161,28 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
   };
 
   const exportToCSV = () => {
-    if (!orders.length || !eventDetails) return;
+    if (!filteredOrders.length || !eventDetails) return;
 
     const csvContent = [
-      ['Customer Name', 'Email', 'Phone', 'Order Date', 'Total Amount', 'Ticket Type', 'Quantity', 'Ticket Code', 'Checked In', 'Check-in Date'].join(','),
-      ...orders.flatMap(order => 
-        order.order_items.flatMap(item => 
+      ['First Name', 'Last Name', 'Email', 'Phone', 'Order Date', 'Total Amount', 'Ticket Type', 'Quantity', 'Ticket Code', 'Checked In', 'Check-in Date'].join(','),
+      ...filteredOrders.flatMap(order => {
+        const { firstName, lastName } = splitName(order.customer_name);
+        return order.order_items.flatMap(item =>
           item.tickets.map(ticket => [
-            `"${order.customer_name}"`,
+            `"${firstName}"`,
+            `"${lastName}"`,
             `"${order.customer_email}"`,
             `"${order.customer_phone || ''}"`,
             `"${format(new Date(order.created_at), 'yyyy-MM-dd HH:mm')}"`,
             order.total_amount,
             `"${item.ticket_types?.name || 'Unknown'}"`,
             item.quantity,
-             `"${ticket.ticket_code}"`,
-             ticket.checked_in === true ? 'Yes' : 'No',
-             ticket.used_at ? `"${format(new Date(ticket.used_at), 'yyyy-MM-dd HH:mm')}"` : ''
+            `"${ticket.ticket_code}"`,
+            ticket.checked_in === true ? 'Yes' : 'No',
+            ticket.used_at ? `"${format(new Date(ticket.used_at), 'yyyy-MM-dd HH:mm')}"` : ''
           ].join(','))
-        )
-      )
+        );
+      })
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -186,6 +200,27 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
       description: "Analytics report exported successfully"
     });
   };
+
+  // Filter orders based on search query
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredOrders(orders);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtered = orders.filter(order => {
+      const { firstName, lastName } = splitName(order.customer_name);
+      return (
+        firstName.toLowerCase().includes(query) ||
+        lastName.toLowerCase().includes(query) ||
+        order.customer_name.toLowerCase().includes(query) ||
+        order.customer_email.toLowerCase().includes(query) ||
+        (order.customer_phone && order.customer_phone.toLowerCase().includes(query))
+      );
+    });
+    setFilteredOrders(filtered);
+  }, [searchQuery, orders]);
 
   useEffect(() => {
     if (selectedEventId) {
@@ -339,18 +374,31 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                 <CardTitle>Order Details</CardTitle>
                 <CardDescription>Complete list of orders and attendee information</CardDescription>
               </div>
-              <Button onClick={exportToCSV} variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
-              </Button>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search orders..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8 w-64"
+                  />
+                </div>
+                <Button onClick={exportToCSV} variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Customer</TableHead>
-                        <TableHead>Contact</TableHead>
+                        <TableHead>First Name</TableHead>
+                        <TableHead>Last Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Phone</TableHead>
                         <TableHead>Order Date</TableHead>
                         <TableHead>Items</TableHead>
                         <TableHead>Amount</TableHead>
@@ -358,18 +406,23 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                         <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
-                  <TableBody>
-                    {orders.map((order) => (
-                      <TableRow key={order.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{order.customer_name}</p>
-                            <p className="text-sm text-muted-foreground">{order.customer_email}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <p className="text-sm">{order.customer_phone || 'Not provided'}</p>
-                        </TableCell>
+                    <TableBody>
+                      {filteredOrders.map((order) => {
+                        const { firstName, lastName } = splitName(order.customer_name);
+                        return (
+                          <TableRow key={order.id}>
+                          <TableCell>
+                            <p className="font-medium">{firstName}</p>
+                          </TableCell>
+                          <TableCell>
+                            <p className="font-medium">{lastName}</p>
+                          </TableCell>
+                          <TableCell>
+                            <p className="text-sm">{order.customer_email}</p>
+                          </TableCell>
+                          <TableCell>
+                            <p className="text-sm">{order.customer_phone || 'Not provided'}</p>
+                          </TableCell>
                         <TableCell>
                           <p className="text-sm">{format(new Date(order.created_at), 'MMM d, yyyy')}</p>
                           <p className="text-xs text-muted-foreground">{format(new Date(order.created_at), 'HH:mm')}</p>
@@ -407,12 +460,18 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                            <Badge variant={order.status === 'completed' || order.status === 'paid' ? 'default' : 'secondary'}>
                              {order.status}
                            </Badge>
-                         </TableCell>
-                      </TableRow>
-                    ))}
+                           </TableCell>
+                          </TableRow>
+                        );
+                      })}
                   </TableBody>
                 </Table>
               </div>
+              {filteredOrders.length === 0 && orders.length > 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No orders match your search
+                </div>
+              )}
               {orders.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   No orders found for this event
