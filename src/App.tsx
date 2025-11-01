@@ -13,7 +13,8 @@ import Auth from "./pages/Auth";
 import { AuthConfirm } from "./pages/AuthConfirm";
 import OrgDashboard from "./pages/OrgDashboard";
 import TicketWidget from "./pages/TicketWidget";
-import GroupTicketWidget from "./pages/GroupTicketWidget";
+import GroupPortal from "./pages/GroupPortal";
+import GroupPublicWidget from "./pages/GroupPublicWidget";
 import AttractionWidget from "./pages/AttractionWidget";
 import AttractionBookingDemo from "./pages/AttractionBookingDemo";
 import MasterAdmin from "./pages/MasterAdmin";
@@ -54,7 +55,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/auth/confirm" element={<AuthConfirm />} />
             <Route path="/widget/:eventId" element={<TicketWidget />} />
-            <Route path="/group/:slug" element={<GroupTicketWidget />} />
+            <Route path="/group/:slug/widget" element={<GroupPublicWidget />} />
             <Route path="/attraction/:attractionId" element={<AttractionWidget />} />
             <Route path="/booking-demo" element={<AttractionBookingDemo />} />
             {/* DEPRECATED: /admin-auth has been removed due to hardcoded credentials security vulnerability */}
@@ -110,7 +111,14 @@ const App = () => (
                 </ProtectedAdminRoute>
               </ThemeProvider>
             } />
-            
+            <Route path="/group/:slug" element={
+              <ThemeProvider>
+                <ProtectedRoute>
+                  <GroupPortal />
+                </ProtectedRoute>
+              </ThemeProvider>
+            } />
+
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

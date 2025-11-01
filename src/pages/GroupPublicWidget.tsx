@@ -52,7 +52,7 @@ interface GroupAllocation {
   };
 }
 
-export const GroupTicketWidget = () => {
+export const GroupPublicWidget = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -406,4 +406,4 @@ export const GroupTicketWidget = () => {
   );
 };
 
-export default GroupTicketWidget;
+export default GroupPublicWidget;

@@ -44,6 +44,7 @@ interface GroupInvoicesProps {
   groupId: string;
   groupName: string;
   organizationId: string;
+  readOnly?: boolean; // Set to true when viewed by group (not master org)
 }
 
 interface Invoice {
@@ -70,6 +71,7 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
   groupId,
   groupName,
   organizationId,
+  readOnly = false,
 }) => {
   const { toast } = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -535,7 +537,7 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
                             <FileText className="h-3 w-3 mr-1" />
                             View PDF
                           </Button>
-                          {invoice.status === 'draft' && (
+                          {!readOnly && invoice.status === 'draft' && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -545,7 +547,7 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
                               Send
                             </Button>
                           )}
-                          {invoice.status !== 'paid' && (
+                          {!readOnly && invoice.status !== 'paid' && (
                             <Button
                               size="sm"
                               variant="outline"
