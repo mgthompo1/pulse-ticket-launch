@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -29,6 +30,7 @@ interface Group {
   logo_url: string | null;
   url_slug: string;
   organization_id: string;
+  passkey: string | null;
   organizations: {
     name: string;
     logo_url: string | null;
@@ -94,6 +96,9 @@ export const GroupPortal = () => {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passkeyInput, setPasskeyInput] = useState("");
+  const [passkeyError, setPasskeyError] = useState("");
 
   useEffect(() => {
     if (slug) {
@@ -101,6 +106,16 @@ export const GroupPortal = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
+
+  useEffect(() => {
+    // Check if passkey is stored in sessionStorage
+    if (group && slug) {
+      const storedPasskey = sessionStorage.getItem(`group_passkey_${slug}`);
+      if (storedPasskey && storedPasskey === group.passkey) {
+        setIsAuthenticated(true);
+      }
+    }
+  }, [group, slug]);
 
   const loadGroupData = async () => {
     setLoading(true);
@@ -132,33 +147,7 @@ export const GroupPortal = () => {
 
       setGroup(groupData as Group);
 
-      // 2. Verify user is a coordinator for this group
-      const { data: user } = await supabase.auth.getUser();
-
-      if (user?.user) {
-        const { data: coordinatorData, error: coordinatorError } = await supabase
-          .from("group_coordinators")
-          .select("*")
-          .eq("group_id", groupData.id)
-          .eq("user_id", user.user.id)
-          .maybeSingle();
-
-        if (coordinatorError) {
-          console.error('Coordinator check error:', coordinatorError);
-        }
-
-        if (!coordinatorData) {
-          setError("You are not authorized to access this group portal. Please contact your group administrator.");
-          return;
-        }
-
-        console.log('User is coordinator:', coordinatorData);
-      } else {
-        setError("Authentication required to access this portal.");
-        return;
-      }
-
-      // 3. Load allocations
+      // 2. Load allocations
       const { data: allocationsData, error: allocationsError } = await supabase
         .from("group_ticket_allocations")
         .select(`
@@ -325,6 +314,26 @@ export const GroupPortal = () => {
     }
   };
 
+  const handlePasskeySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!group || !group.passkey) {
+      setPasskeyError("This group has not set up a passkey yet.");
+      return;
+    }
+
+    if (passkeyInput === group.passkey) {
+      // Save passkey to sessionStorage
+      if (slug) {
+        sessionStorage.setItem(`group_passkey_${slug}`, passkeyInput);
+      }
+      setIsAuthenticated(true);
+      setPasskeyError("");
+    } else {
+      setPasskeyError("Incorrect passkey. Please try again.");
+      setPasskeyInput("");
+    }
+  };
+
   const copyWidgetLink = () => {
     if (!group) return;
     const widgetUrl = `${window.location.origin}/group/${group.url_slug}/widget`;
@@ -364,6 +373,60 @@ export const GroupPortal = () => {
               </div>
               <Button onClick={() => navigate("/")}>Go to Home</Button>
             </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show passkey input if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <div className="flex items-center gap-4 mb-4">
+              {group.logo_url && (
+                <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                  <img
+                    src={group.logo_url}
+                    alt={group.name}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              )}
+              <div>
+                <CardTitle className="text-2xl">{group.name}</CardTitle>
+                <CardDescription>Group Admin Portal</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handlePasskeySubmit} className="space-y-4">
+              <div>
+                <label htmlFor="passkey" className="block text-sm font-medium mb-2">
+                  Enter Passkey
+                </label>
+                <input
+                  id="passkey"
+                  type="password"
+                  value={passkeyInput}
+                  onChange={(e) => setPasskeyInput(e.target.value)}
+                  placeholder="Enter group passkey"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  autoFocus
+                />
+                {passkeyError && (
+                  <p className="text-sm text-red-600 mt-2">{passkeyError}</p>
+                )}
+              </div>
+              <Button type="submit" className="w-full" disabled={!passkeyInput}>
+                Access Portal
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                Contact your group administrator if you don't have the passkey.
+              </p>
+            </form>
           </CardContent>
         </Card>
       </div>

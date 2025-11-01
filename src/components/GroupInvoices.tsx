@@ -426,6 +426,26 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
     type LucideIcon = typeof Clock;
     type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
 
+    // For groups (readOnly), show simplified statuses
+    if (readOnly) {
+      if (status === "paid") {
+        return (
+          <Badge variant="default" className="gap-1 bg-green-600">
+            <CheckCircle className="h-3 w-3" />
+            PAID
+          </Badge>
+        );
+      } else {
+        return (
+          <Badge variant="destructive" className="gap-1">
+            <AlertCircle className="h-3 w-3" />
+            UNPAID
+          </Badge>
+        );
+      }
+    }
+
+    // For org admins, show detailed statuses
     const statusConfig: Record<string, { variant: BadgeVariant; icon: LucideIcon; label: string }> = {
       draft: { variant: "secondary", icon: Clock, label: "Draft" },
       sent: { variant: "default", icon: Send, label: "Sent" },
@@ -433,6 +453,7 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
       partial: { variant: "default", icon: DollarSign, label: "Partial" },
       paid: { variant: "default", icon: CheckCircle, label: "Paid" },
       overdue: { variant: "destructive", icon: AlertCircle, label: "Overdue" },
+      pending: { variant: "default", icon: Clock, label: "Pending" },
     };
 
     const config = statusConfig[status] || statusConfig.draft;
@@ -452,13 +473,15 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
         <div>
           <h3 className="text-xl font-bold">Invoices</h3>
           <p className="text-muted-foreground">
-            Manage invoices for {groupName}
+            {readOnly ? `Invoices for ${groupName}` : `Manage invoices for ${groupName}`}
           </p>
         </div>
-        <Button onClick={() => setShowGenerateDialog(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Generate Invoice
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setShowGenerateDialog(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Generate Invoice
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -475,13 +498,17 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
               <div>
                 <h3 className="font-semibold text-lg">No Invoices Yet</h3>
                 <p className="text-muted-foreground">
-                  Generate invoices to bill this group for discounted tickets
+                  {readOnly
+                    ? "No invoices have been generated for your group yet."
+                    : "Generate invoices to bill this group for discounted tickets"}
                 </p>
               </div>
-              <Button onClick={() => setShowGenerateDialog(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Generate First Invoice
-              </Button>
+              {!readOnly && (
+                <Button onClick={() => setShowGenerateDialog(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Generate First Invoice
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -70,6 +70,7 @@ interface GroupFormData {
   billing_contact_email: string;
   billing_address: string;
   url_slug: string;
+  passkey: string; // Passkey for group coordinators to access portal
 }
 
 export const GroupsManagement: React.FC = () => {
@@ -235,11 +236,12 @@ export const GroupsManagement: React.FC = () => {
       billing_contact_email: "",
       billing_address: "",
       url_slug: "",
+      passkey: "",
     });
     setShowGroupDialog(true);
   };
 
-  const handleEditGroup = (group: Group) => {
+  const handleEditGroup = (group: Group & { passkey?: string }) => {
     setEditingGroup(group);
     setFormData({
       name: group.name,
@@ -251,6 +253,7 @@ export const GroupsManagement: React.FC = () => {
       billing_contact_email: "",
       billing_address: "",
       url_slug: group.url_slug || "",
+      passkey: group.passkey || "",
     });
     setShowGroupDialog(true);
   };
@@ -258,10 +261,10 @@ export const GroupsManagement: React.FC = () => {
   const handleSaveGroup = async () => {
     if (!organizationId) return;
 
-    if (!formData.name || !formData.contact_email) {
+    if (!formData.name || !formData.contact_email || !formData.passkey) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields",
+        description: "Please fill in all required fields (Name, Contact Email, and Passkey)",
         variant: "destructive",
       });
       return;
@@ -282,6 +285,7 @@ export const GroupsManagement: React.FC = () => {
             billing_contact_email: formData.billing_contact_email,
             billing_address: formData.billing_address,
             url_slug: formData.url_slug,
+            passkey: formData.passkey,
           })
           .eq("id", editingGroup.id);
 
@@ -304,6 +308,7 @@ export const GroupsManagement: React.FC = () => {
           billing_contact_email: formData.billing_contact_email,
           billing_address: formData.billing_address,
           url_slug: formData.url_slug,
+          passkey: formData.passkey,
           is_active: true,
         });
 
@@ -635,6 +640,20 @@ export const GroupsManagement: React.FC = () => {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Used for the group's custom ticket portal URL
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="passkey">Portal Passkey *</Label>
+                <Input
+                  id="passkey"
+                  type="text"
+                  value={formData.passkey}
+                  onChange={(e) => handleInputChange("passkey", e.target.value)}
+                  placeholder="CHURCH2024"
+                  className="font-mono uppercase"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This passkey will be required to access the group admin portal. Share it with group coordinators.
                 </p>
               </div>
             </div>

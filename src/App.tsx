@@ -111,13 +111,7 @@ const App = () => (
                 </ProtectedAdminRoute>
               </ThemeProvider>
             } />
-            <Route path="/group/:slug" element={
-              <ThemeProvider>
-                <ProtectedRoute>
-                  <GroupPortal />
-                </ProtectedRoute>
-              </ThemeProvider>
-            } />
+            <Route path="/group/:slug" element={<GroupPortal />} />
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

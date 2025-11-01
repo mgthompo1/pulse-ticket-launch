@@ -37,9 +37,11 @@ interface OrderDetails {
   customer_email: string;
   customer_phone: string | null;
   total_amount: number;
+  donation_amount: number | null;
   status: string;
   created_at: string;
   custom_answers: any;
+  group_name: string | null;
   order_items: Array<{
     id: string;
     quantity: number;
@@ -81,6 +83,8 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
   const [customQuestions, setCustomQuestions] = useState<Array<{ id: string; label: string }>>([]);
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(false);
+  const [hasDonations, setHasDonations] = useState(false);
+  const [hasGroupSales, setHasGroupSales] = useState(false);
   const { toast } = useToast();
 
   // Helper function to split name into first and last
@@ -133,8 +137,63 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
         .order('created_at', { ascending: false });
 
       if (ordersError) throw ordersError;
-      setOrders(ordersData || []);
-      setFilteredOrders(ordersData || []);
+
+      // Get all ticket IDs to check for group sales
+      const allTicketIds: string[] = [];
+      ordersData?.forEach((order: any) => {
+        order.order_items?.forEach((item: any) => {
+          item.tickets?.forEach((ticket: any) => {
+            if (ticket.id) allTicketIds.push(ticket.id);
+          });
+        });
+      });
+
+      // Query group_ticket_sales to get group info for these tickets
+      const groupSalesMap = new Map<string, string>(); // ticket_id -> group_name
+      if (allTicketIds.length > 0) {
+        const { data: groupSales } = await supabase
+          .from('group_ticket_sales')
+          .select(`
+            ticket_id,
+            groups (name)
+          `)
+          .in('ticket_id', allTicketIds);
+
+        groupSales?.forEach((sale: any) => {
+          if (sale.groups?.name) {
+            groupSalesMap.set(sale.ticket_id, sale.groups.name);
+          }
+        });
+      }
+
+      // Enhance orders with group names
+      const enhancedOrders = ordersData?.map((order: any) => {
+        // Find group name from any ticket in this order
+        let groupName: string | null = null;
+        for (const item of order.order_items || []) {
+          for (const ticket of item.tickets || []) {
+            if (groupSalesMap.has(ticket.id)) {
+              groupName = groupSalesMap.get(ticket.id) || null;
+              break;
+            }
+          }
+          if (groupName) break;
+        }
+
+        return {
+          ...order,
+          group_name: groupName
+        };
+      });
+
+      // Check if any orders have donations or group sales
+      const hasDonation = enhancedOrders?.some(order => order.donation_amount && order.donation_amount > 0) || false;
+      const hasGroup = enhancedOrders?.some(order => order.group_name) || false;
+      setHasDonations(hasDonation);
+      setHasGroupSales(hasGroup);
+
+      setOrders(enhancedOrders || []);
+      setFilteredOrders(enhancedOrders || []);
 
       // Get custom questions from widget customization
       const eventCustomQuestions: Array<{ id: string; label: string }> = [];
@@ -195,7 +254,15 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
     if (!filteredOrders.length || !eventDetails) return;
 
     // Build header with custom questions
-    const baseHeaders = ['First Name', 'Last Name', 'Email', 'Phone', 'Order Date', 'Total Amount', 'Ticket Type', 'Quantity', 'Ticket Code', 'Checked In', 'Check-in Date'];
+    const baseHeaders = ['First Name', 'Last Name', 'Email', 'Phone', 'Order Date', 'Total Amount'];
+
+    // Add conditional headers
+    if (hasDonations) baseHeaders.push('Donation');
+    if (hasGroupSales) baseHeaders.push('Group Name');
+
+    // Add remaining headers
+    baseHeaders.push('Ticket Type', 'Quantity', 'Ticket Code', 'Checked In', 'Check-in Date');
+
     const customQuestionHeaders = customQuestions.map((question) => `"${question.label}"`);
     const headers = [...baseHeaders, ...customQuestionHeaders];
 
@@ -206,20 +273,32 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
         const customAnswers = customQuestions.map(question => `"${getAnswerForQuestion(order, question.id)}"`);
 
         return order.order_items.flatMap(item =>
-          item.tickets.map(ticket => [
-            `"${firstName}"`,
-            `"${lastName}"`,
-            `"${order.customer_email}"`,
-            `"${order.customer_phone || ''}"`,
-            `"${format(new Date(order.created_at), 'yyyy-MM-dd HH:mm')}"`,
-            order.total_amount,
-            `"${item.ticket_types?.name || 'Unknown'}"`,
-            item.quantity,
-            `"${ticket.ticket_code}"`,
-            ticket.checked_in === true ? 'Yes' : 'No',
-            ticket.used_at ? `"${format(new Date(ticket.used_at), 'yyyy-MM-dd HH:mm')}"` : '',
-            ...customAnswers
-          ].join(','))
+          item.tickets.map(ticket => {
+            const baseRow = [
+              `"${firstName}"`,
+              `"${lastName}"`,
+              `"${order.customer_email}"`,
+              `"${order.customer_phone || ''}"`,
+              `"${format(new Date(order.created_at), 'yyyy-MM-dd HH:mm')}"`,
+              order.total_amount
+            ];
+
+            // Add conditional columns
+            if (hasDonations) baseRow.push(order.donation_amount?.toFixed(2) || '0.00');
+            if (hasGroupSales) baseRow.push(`"${order.group_name || '-'}"`);
+
+            // Add remaining columns
+            baseRow.push(
+              `"${item.ticket_types?.name || 'Unknown'}"`,
+              item.quantity,
+              `"${ticket.ticket_code}"`,
+              ticket.checked_in === true ? 'Yes' : 'No',
+              ticket.used_at ? `"${format(new Date(ticket.used_at), 'yyyy-MM-dd HH:mm')}"` : '',
+              ...customAnswers
+            );
+
+            return baseRow.join(',');
+          })
         );
       })
     ].join('\n');
@@ -441,6 +520,8 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                         <TableHead className="w-28">Order Date</TableHead>
                         <TableHead className="w-32">Items</TableHead>
                         <TableHead className="w-20">Amount</TableHead>
+                        {hasDonations && <TableHead className="w-20">Donation</TableHead>}
+                        {hasGroupSales && <TableHead className="w-32">Group Name</TableHead>}
                         {customQuestions.map((question) => (
                           <TableHead key={question.id} className="w-48" title={question.label}>
                             {truncateQuestion(question.label, 35)}
@@ -486,6 +567,16 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                          <TableCell className="py-2 px-2">
                            <p className="font-medium text-sm">${order.total_amount.toFixed(2)}</p>
                          </TableCell>
+                         {hasDonations && (
+                           <TableCell className="py-2 px-2">
+                             <p className="text-sm">${order.donation_amount?.toFixed(2) || '0.00'}</p>
+                           </TableCell>
+                         )}
+                         {hasGroupSales && (
+                           <TableCell className="py-2 px-2">
+                             <p className="text-xs truncate">{order.group_name || '-'}</p>
+                           </TableCell>
+                         )}
                          {customQuestions.map((question) => (
                            <TableCell key={question.id} className="py-2 px-2">
                              <p className="text-xs truncate">{getAnswerForQuestion(order, question.id)}</p>
