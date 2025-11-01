@@ -78,7 +78,7 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
   const [orders, setOrders] = useState<OrderDetails[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<OrderDetails[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [customQuestions, setCustomQuestions] = useState<string[]>([]);
+  const [customQuestions, setCustomQuestions] = useState<Array<{ id: string; label: string }>>([]);
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -92,9 +92,9 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
   };
 
   // Helper to get answer for a specific question
-  const getAnswerForQuestion = (order: OrderDetails, question: string): string => {
+  const getAnswerForQuestion = (order: OrderDetails, questionId: string): string => {
     if (!order.custom_answers || typeof order.custom_answers !== 'object') return '-';
-    return String(order.custom_answers[question] || '-');
+    return String(order.custom_answers[questionId] || '-');
   };
 
   // Helper to truncate question text for column headers
@@ -136,16 +136,22 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
       setOrders(ordersData || []);
       setFilteredOrders(ordersData || []);
 
-      // Get custom questions from event configuration (not from orders)
-      // This ensures we only show currently configured questions
-      const eventCustomQuestions: string[] = [];
-      if (eventData.custom_questions && Array.isArray(eventData.custom_questions)) {
-        eventData.custom_questions.forEach((q: any) => {
-          if (q.question) {
-            eventCustomQuestions.push(q.question);
+      // Get custom questions from widget customization
+      const eventCustomQuestions: Array<{ id: string; label: string }> = [];
+
+      if (eventData.widget_customization?.customQuestions?.questions &&
+          Array.isArray(eventData.widget_customization.customQuestions.questions)) {
+        eventData.widget_customization.customQuestions.questions.forEach((q: any) => {
+          if (q.id && q.label) {
+            // Filter out the __group_purchase__ question
+            if (q.id !== '__group_purchase__') {
+              eventCustomQuestions.push({ id: q.id, label: q.label });
+            }
           }
         });
       }
+
+      console.log('Custom questions loaded:', eventCustomQuestions);
       setCustomQuestions(eventCustomQuestions);
 
       // Calculate analytics
@@ -190,14 +196,14 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
 
     // Build header with custom questions
     const baseHeaders = ['First Name', 'Last Name', 'Email', 'Phone', 'Order Date', 'Total Amount', 'Ticket Type', 'Quantity', 'Ticket Code', 'Checked In', 'Check-in Date'];
-    const customQuestionHeaders = customQuestions.map((question) => `"${question}"`);
+    const customQuestionHeaders = customQuestions.map((question) => `"${question.label}"`);
     const headers = [...baseHeaders, ...customQuestionHeaders];
 
     const csvContent = [
       headers.join(','),
       ...filteredOrders.flatMap(order => {
         const { firstName, lastName } = splitName(order.customer_name);
-        const customAnswers = customQuestions.map(question => `"${getAnswerForQuestion(order, question)}"`);
+        const customAnswers = customQuestions.map(question => `"${getAnswerForQuestion(order, question.id)}"`);
 
         return order.order_items.flatMap(item =>
           item.tickets.map(ticket => [
@@ -435,9 +441,9 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                         <TableHead className="w-28">Order Date</TableHead>
                         <TableHead className="w-32">Items</TableHead>
                         <TableHead className="w-20">Amount</TableHead>
-                        {customQuestions.map((question, index) => (
-                          <TableHead key={question} className="w-48" title={question}>
-                            {truncateQuestion(question, 35)}
+                        {customQuestions.map((question) => (
+                          <TableHead key={question.id} className="w-48" title={question.label}>
+                            {truncateQuestion(question.label, 35)}
                           </TableHead>
                         ))}
                         <TableHead className="w-20">Status</TableHead>
@@ -481,8 +487,8 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                            <p className="font-medium text-sm">${order.total_amount.toFixed(2)}</p>
                          </TableCell>
                          {customQuestions.map((question) => (
-                           <TableCell key={question} className="py-2 px-2">
-                             <p className="text-xs truncate">{getAnswerForQuestion(order, question)}</p>
+                           <TableCell key={question.id} className="py-2 px-2">
+                             <p className="text-xs truncate">{getAnswerForQuestion(order, question.id)}</p>
                            </TableCell>
                          ))}
                          <TableCell className="py-2 px-2">
