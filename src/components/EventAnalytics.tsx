@@ -97,6 +97,12 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
     return String(order.custom_answers[question] || '-');
   };
 
+  // Helper to truncate question text for column headers
+  const truncateQuestion = (question: string, maxLength: number = 30): string => {
+    if (question.length <= maxLength) return question;
+    return question.substring(0, maxLength) + '...';
+  };
+
   const loadEventAnalytics = async (eventId: string) => {
     setLoading(true);
     try {
@@ -130,14 +136,17 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
       setOrders(ordersData || []);
       setFilteredOrders(ordersData || []);
 
-      // Collect all unique custom question keys across all orders
-      const allQuestionKeys = new Set<string>();
-      ordersData?.forEach(order => {
-        if (order.custom_answers && typeof order.custom_answers === 'object') {
-          Object.keys(order.custom_answers).forEach(key => allQuestionKeys.add(key));
-        }
-      });
-      setCustomQuestions(Array.from(allQuestionKeys));
+      // Get custom questions from event configuration (not from orders)
+      // This ensures we only show currently configured questions
+      const eventCustomQuestions: string[] = [];
+      if (eventData.custom_questions && Array.isArray(eventData.custom_questions)) {
+        eventData.custom_questions.forEach((q: any) => {
+          if (q.question) {
+            eventCustomQuestions.push(q.question);
+          }
+        });
+      }
+      setCustomQuestions(eventCustomQuestions);
 
       // Calculate analytics
       if (ordersData) {
@@ -181,7 +190,7 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
 
     // Build header with custom questions
     const baseHeaders = ['First Name', 'Last Name', 'Email', 'Phone', 'Order Date', 'Total Amount', 'Ticket Type', 'Quantity', 'Ticket Code', 'Checked In', 'Check-in Date'];
-    const customQuestionHeaders = customQuestions.map((_, index) => `Question ${index + 1}`);
+    const customQuestionHeaders = customQuestions.map((question) => `"${question}"`);
     const headers = [...baseHeaders, ...customQuestionHeaders];
 
     const csvContent = [
@@ -419,17 +428,19 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>First Name</TableHead>
-                        <TableHead>Last Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Order Date</TableHead>
-                        <TableHead>Items</TableHead>
-                        <TableHead>Amount</TableHead>
+                        <TableHead className="w-24">First Name</TableHead>
+                        <TableHead className="w-24">Last Name</TableHead>
+                        <TableHead className="w-40">Email</TableHead>
+                        <TableHead className="w-28">Phone</TableHead>
+                        <TableHead className="w-28">Order Date</TableHead>
+                        <TableHead className="w-32">Items</TableHead>
+                        <TableHead className="w-20">Amount</TableHead>
                         {customQuestions.map((question, index) => (
-                          <TableHead key={question}>Q{index + 1}</TableHead>
+                          <TableHead key={question} className="w-48" title={question}>
+                            {truncateQuestion(question, 35)}
+                          </TableHead>
                         ))}
-                        <TableHead>Status</TableHead>
+                        <TableHead className="w-20">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -437,26 +448,26 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                         const { firstName, lastName } = splitName(order.customer_name);
                         return (
                           <TableRow key={order.id}>
-                          <TableCell className="py-2">
+                          <TableCell className="py-2 px-2">
                             <p className="font-medium text-sm">{firstName}</p>
                           </TableCell>
-                          <TableCell className="py-2">
+                          <TableCell className="py-2 px-2">
                             <p className="font-medium text-sm">{lastName}</p>
                           </TableCell>
-                          <TableCell className="py-2">
-                            <p className="text-xs">{order.customer_email}</p>
+                          <TableCell className="py-2 px-2">
+                            <p className="text-xs truncate">{order.customer_email}</p>
                           </TableCell>
-                          <TableCell className="py-2">
+                          <TableCell className="py-2 px-2">
                             <p className="text-xs">{order.customer_phone || 'Not provided'}</p>
                           </TableCell>
-                        <TableCell className="py-2">
+                        <TableCell className="py-2 px-2">
                           <p className="text-xs">{format(new Date(order.created_at), 'MMM d, yyyy')}</p>
                           <p className="text-[10px] text-muted-foreground">{format(new Date(order.created_at), 'HH:mm')}</p>
                         </TableCell>
-                         <TableCell className="py-2">
+                         <TableCell className="py-2 px-2">
                            <div>
                              {order.order_items.map((item, index) => (
-                               <div key={index} className="text-xs">
+                               <div key={index} className="text-xs truncate">
                                  {item.quantity}x {
                                    item.item_type === 'merchandise'
                                      ? (item.merchandise?.name || 'Unknown Merchandise')
@@ -466,15 +477,15 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                              ))}
                            </div>
                          </TableCell>
-                         <TableCell className="py-2">
+                         <TableCell className="py-2 px-2">
                            <p className="font-medium text-sm">${order.total_amount.toFixed(2)}</p>
                          </TableCell>
                          {customQuestions.map((question) => (
-                           <TableCell key={question} className="py-2">
-                             <p className="text-xs">{getAnswerForQuestion(order, question)}</p>
+                           <TableCell key={question} className="py-2 px-2">
+                             <p className="text-xs truncate">{getAnswerForQuestion(order, question)}</p>
                            </TableCell>
                          ))}
-                         <TableCell className="py-2">
+                         <TableCell className="py-2 px-2">
                            <Badge variant={order.status === 'completed' || order.status === 'paid' ? 'default' : 'secondary'} className="text-xs">
                              {order.status}
                            </Badge>
