@@ -74,16 +74,18 @@ export const GuestSeatSelector = ({
   const loadSeatMap = async () => {
     try {
       setLoading(true);
-      
-      // Load seat map for the event
+
+      // Load seat map for the event (use first one if multiple exist)
       const { data: seatMapData, error: mapError } = await supabase
         .from('seat_maps')
         .select('*')
         .eq('event_id', eventId)
+        .limit(1)
         .single();
 
       if (mapError || !seatMapData) {
         // No seat map found - allow guest to skip seat selection
+        console.error("Seat map load error:", mapError);
         setLoading(false);
         return;
       }

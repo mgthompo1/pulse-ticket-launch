@@ -650,15 +650,20 @@ const TicketWidget = () => {
     console.log("=== ADD TO CART DEBUG ===");
     console.log("Event ID:", eventId);
     console.log("Ticket Type:", ticketType);
-    
+    console.log("Ticket Type use_assigned_seating:", ticketType.use_assigned_seating);
+
+    // Check if THIS ticket type requires assigned seating
+    const ticketTypeRequiresSeating = ticketType.use_assigned_seating === true;
+    console.log("Ticket type requires assigned seating:", ticketTypeRequiresSeating);
+
     // First check if seat maps are enabled in event customization
     const seatMapsEnabled = eventData?.widget_customization?.seatMaps?.enabled;
     console.log("Seat maps enabled in customization:", seatMapsEnabled);
-    
-    // Only check for seat maps if they're enabled in customization
-    if (seatMapsEnabled) {
+
+    // Only check for seat maps if they're enabled AND this ticket type requires assigned seating
+    if (seatMapsEnabled && ticketTypeRequiresSeating) {
       console.log("Checking for seat maps in database...");
-      
+
       const { data: seatMaps, error: seatMapError } = await anonymousSupabase
         .from('seat_maps')
         .select('id, name, total_seats')

@@ -106,6 +106,7 @@ export interface TicketType {
   sale_start_date?: string | null;
   sale_end_date?: string | null;
   event_id: string;
+  use_assigned_seating?: boolean;
 }
 
 export interface CartItem extends TicketType {
