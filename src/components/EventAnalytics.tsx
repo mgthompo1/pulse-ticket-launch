@@ -78,6 +78,7 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
   const [orders, setOrders] = useState<OrderDetails[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<OrderDetails[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [customQuestions, setCustomQuestions] = useState<string[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -88,6 +89,12 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
     const firstName = parts[0] || '';
     const lastName = parts.slice(1).join(' ') || '';
     return { firstName, lastName };
+  };
+
+  // Helper to get answer for a specific question
+  const getAnswerForQuestion = (order: OrderDetails, question: string): string => {
+    if (!order.custom_answers || typeof order.custom_answers !== 'object') return '-';
+    return String(order.custom_answers[question] || '-');
   };
 
   const loadEventAnalytics = async (eventId: string) => {
@@ -122,6 +129,15 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
       if (ordersError) throw ordersError;
       setOrders(ordersData || []);
       setFilteredOrders(ordersData || []);
+
+      // Collect all unique custom question keys across all orders
+      const allQuestionKeys = new Set<string>();
+      ordersData?.forEach(order => {
+        if (order.custom_answers && typeof order.custom_answers === 'object') {
+          Object.keys(order.custom_answers).forEach(key => allQuestionKeys.add(key));
+        }
+      });
+      setCustomQuestions(Array.from(allQuestionKeys));
 
       // Calculate analytics
       if (ordersData) {
@@ -163,10 +179,17 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
   const exportToCSV = () => {
     if (!filteredOrders.length || !eventDetails) return;
 
+    // Build header with custom questions
+    const baseHeaders = ['First Name', 'Last Name', 'Email', 'Phone', 'Order Date', 'Total Amount', 'Ticket Type', 'Quantity', 'Ticket Code', 'Checked In', 'Check-in Date'];
+    const customQuestionHeaders = customQuestions.map((_, index) => `Question ${index + 1}`);
+    const headers = [...baseHeaders, ...customQuestionHeaders];
+
     const csvContent = [
-      ['First Name', 'Last Name', 'Email', 'Phone', 'Order Date', 'Total Amount', 'Ticket Type', 'Quantity', 'Ticket Code', 'Checked In', 'Check-in Date'].join(','),
+      headers.join(','),
       ...filteredOrders.flatMap(order => {
         const { firstName, lastName } = splitName(order.customer_name);
+        const customAnswers = customQuestions.map(question => `"${getAnswerForQuestion(order, question)}"`);
+
         return order.order_items.flatMap(item =>
           item.tickets.map(ticket => [
             `"${firstName}"`,
@@ -179,7 +202,8 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
             item.quantity,
             `"${ticket.ticket_code}"`,
             ticket.checked_in === true ? 'Yes' : 'No',
-            ticket.used_at ? `"${format(new Date(ticket.used_at), 'yyyy-MM-dd HH:mm')}"` : ''
+            ticket.used_at ? `"${format(new Date(ticket.used_at), 'yyyy-MM-dd HH:mm')}"` : '',
+            ...customAnswers
           ].join(','))
         );
       })
@@ -402,7 +426,9 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                         <TableHead>Order Date</TableHead>
                         <TableHead>Items</TableHead>
                         <TableHead>Amount</TableHead>
-                        <TableHead>Custom Answers</TableHead>
+                        {customQuestions.map((question, index) => (
+                          <TableHead key={question}>Q{index + 1}</TableHead>
+                        ))}
                         <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -411,28 +437,28 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                         const { firstName, lastName } = splitName(order.customer_name);
                         return (
                           <TableRow key={order.id}>
-                          <TableCell>
-                            <p className="font-medium">{firstName}</p>
+                          <TableCell className="py-2">
+                            <p className="font-medium text-sm">{firstName}</p>
                           </TableCell>
-                          <TableCell>
-                            <p className="font-medium">{lastName}</p>
+                          <TableCell className="py-2">
+                            <p className="font-medium text-sm">{lastName}</p>
                           </TableCell>
-                          <TableCell>
-                            <p className="text-sm">{order.customer_email}</p>
+                          <TableCell className="py-2">
+                            <p className="text-xs">{order.customer_email}</p>
                           </TableCell>
-                          <TableCell>
-                            <p className="text-sm">{order.customer_phone || 'Not provided'}</p>
+                          <TableCell className="py-2">
+                            <p className="text-xs">{order.customer_phone || 'Not provided'}</p>
                           </TableCell>
-                        <TableCell>
-                          <p className="text-sm">{format(new Date(order.created_at), 'MMM d, yyyy')}</p>
-                          <p className="text-xs text-muted-foreground">{format(new Date(order.created_at), 'HH:mm')}</p>
+                        <TableCell className="py-2">
+                          <p className="text-xs">{format(new Date(order.created_at), 'MMM d, yyyy')}</p>
+                          <p className="text-[10px] text-muted-foreground">{format(new Date(order.created_at), 'HH:mm')}</p>
                         </TableCell>
-                         <TableCell>
+                         <TableCell className="py-2">
                            <div>
                              {order.order_items.map((item, index) => (
-                               <div key={index} className="text-sm">
+                               <div key={index} className="text-xs">
                                  {item.quantity}x {
-                                   item.item_type === 'merchandise' 
+                                   item.item_type === 'merchandise'
                                      ? (item.merchandise?.name || 'Unknown Merchandise')
                                      : (item.ticket_types?.name || 'General Admission')
                                  }
@@ -440,24 +466,16 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                              ))}
                            </div>
                          </TableCell>
-                         <TableCell>
-                           <p className="font-medium">${order.total_amount.toFixed(2)}</p>
+                         <TableCell className="py-2">
+                           <p className="font-medium text-sm">${order.total_amount.toFixed(2)}</p>
                          </TableCell>
-                         <TableCell>
-                           <div className="space-y-1">
-                             {order.custom_answers && Object.keys(order.custom_answers).length > 0 ? (
-                               Object.entries(order.custom_answers).map(([key, value]) => (
-                                 <div key={key} className="text-xs">
-                                   <span className="font-medium">{key}:</span> {String(value)}
-                                 </div>
-                               ))
-                             ) : (
-                               <span className="text-xs text-muted-foreground">No custom answers</span>
-                             )}
-                           </div>
-                         </TableCell>
-                         <TableCell>
-                           <Badge variant={order.status === 'completed' || order.status === 'paid' ? 'default' : 'secondary'}>
+                         {customQuestions.map((question) => (
+                           <TableCell key={question} className="py-2">
+                             <p className="text-xs">{getAnswerForQuestion(order, question)}</p>
+                           </TableCell>
+                         ))}
+                         <TableCell className="py-2">
+                           <Badge variant={order.status === 'completed' || order.status === 'paid' ? 'default' : 'secondary'} className="text-xs">
                              {order.status}
                            </Badge>
                            </TableCell>
