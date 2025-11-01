@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit2, Trash2, DollarSign } from "lucide-react";
+import { Plus, Edit2, Trash2, DollarSign, MapPin } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +28,7 @@ interface TicketType {
   quantity_sold: number;
   sale_start_date: string | null;
   sale_end_date: string | null;
+  use_assigned_seating?: boolean;
 }
 
 interface TicketTypesManagerProps {
@@ -46,6 +49,7 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
     quantity_sold: 0,
     sale_start_date: null,
     sale_end_date: null,
+    use_assigned_seating: false,
   });
 
   useEffect(() => {
@@ -91,6 +95,7 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
             quantity_available: formData.quantity_available,
             sale_start_date: formData.sale_start_date,
             sale_end_date: formData.sale_end_date,
+            use_assigned_seating: formData.use_assigned_seating || false,
           })
           .eq("id", editingTicket.id);
 
@@ -112,6 +117,7 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
             quantity_available: formData.quantity_available,
             sale_start_date: formData.sale_start_date,
             sale_end_date: formData.sale_end_date,
+            use_assigned_seating: formData.use_assigned_seating || false,
           });
 
         if (error) throw error;
@@ -147,6 +153,7 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
       quantity_sold: ticket.quantity_sold,
       sale_start_date: ticket.sale_start_date,
       sale_end_date: ticket.sale_end_date,
+      use_assigned_seating: ticket.use_assigned_seating || false,
     });
     setIsDialogOpen(true);
   };
@@ -189,6 +196,7 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
       quantity_sold: 0,
       sale_start_date: null,
       sale_end_date: null,
+      use_assigned_seating: false,
     });
     setEditingTicket(null);
   };
@@ -279,6 +287,30 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
                   />
                 </div>
 
+                <div className="flex items-start space-x-3 rounded-md border p-4">
+                  <Checkbox
+                    id="use_assigned_seating"
+                    checked={formData.use_assigned_seating || false}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, use_assigned_seating: checked as boolean })
+                    }
+                  />
+                  <div className="space-y-1 leading-none">
+                    <Label
+                      htmlFor="use_assigned_seating"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Require Assigned Seating
+                      </div>
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Customers must select specific seats from the event seat map when purchasing this ticket type
+                    </p>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="saleStart">Sale Start Date</Label>
@@ -340,17 +372,25 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
             <Card key={ticket.id}>
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{ticket.name}</CardTitle>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-lg">{ticket.name}</CardTitle>
+                      {ticket.use_assigned_seating && (
+                        <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          Assigned Seating
+                        </Badge>
+                      )}
+                    </div>
                     <CardDescription>{ticket.description}</CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={() => handleEdit(ticket)}>
                       <Edit2 className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => ticket.id && handleDelete(ticket.id)}
                       className="text-destructive hover:text-destructive"
                     >
