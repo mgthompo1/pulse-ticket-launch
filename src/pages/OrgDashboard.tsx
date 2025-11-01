@@ -35,6 +35,7 @@ import { SecurityDashboard } from "@/components/SecurityDashboard";
 import { MarketingTools } from "@/components/MarketingTools";
 import { AnalyticsCharts } from "@/components/AnalyticsCharts";
 import { AttractionAnalytics } from "@/components/AttractionAnalytics";
+import { RecentSalesCard } from "@/components/RecentSalesCard";
 import Support from "@/pages/Support";
 import { DashboardHelp } from "@/components/DashboardHelp";
 import { OrganizationUserManagement } from "@/components/OrganizationUserManagement";
@@ -173,8 +174,8 @@ const OrgDashboard = () => {
     revenueData: []
   });
   
-  // Order data for custom answers
-  const [, setOrderData] = useState<any[]>([]);
+  // Order data for custom answers and recent sales
+  const [orderData, setOrderData] = useState<any[]>([]);
 
   // Listen for help requests from child components
   React.useEffect(() => {
@@ -691,15 +692,18 @@ const OrgDashboard = () => {
     const { data: orderData } = await supabase
       .from("orders")
       .select(`
-        id, 
-        total_amount, 
-        created_at, 
+        id,
+        total_amount,
+        created_at,
         event_id,
         status,
         custom_answers,
+        customer_name,
+        customer_email,
         events(name),
         order_items(
           quantity,
+          item_type,
           ticket_types(name)
         )
       `)
@@ -1069,12 +1073,32 @@ const OrgDashboard = () => {
 
                       {/* Analytics Charts */}
                       {canAccessAnalytics() && (
-                        <AnalyticsCharts
-                          salesData={analyticsData.salesData.map(item => ({ month: item.month, revenue: item.sales }))}
-                          eventTypeData={analyticsData.eventTypesData}
-                          revenueData={analyticsData.revenueData}
-                          isLoading={false}
-                        />
+                        <>
+                          <AnalyticsCharts
+                            salesData={analyticsData.salesData.map(item => ({ month: item.month, revenue: item.sales }))}
+                            eventTypeData={analyticsData.eventTypesData}
+                            revenueData={analyticsData.revenueData}
+                            isLoading={false}
+                          />
+
+                          {/* Recent Sales Card */}
+                          <RecentSalesCard
+                            sales={orderData
+                              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                              .slice(0, 10)
+                              .map(order => ({
+                                id: order.id,
+                                event_name: order.events?.name || 'Unknown Event',
+                                customer_name: order.customer_name || 'Unknown Customer',
+                                customer_email: order.customer_email || '',
+                                total_amount: Number(order.total_amount) || 0,
+                                created_at: order.created_at,
+                                ticket_count: order.order_items?.reduce((sum: number, item: any) =>
+                                  item.item_type === 'ticket' ? sum + (item.quantity || 0) : sum, 0) || 0
+                              }))}
+                            isLoading={isLoadingAnalytics}
+                          />
+                        </>
                       )}
                     </div>
                   ) : (
