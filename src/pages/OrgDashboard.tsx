@@ -1085,7 +1085,7 @@ const OrgDashboard = () => {
                           <RecentSalesCard
                             sales={orderData
                               .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                              .slice(0, 10)
+                              .slice(0, 5)
                               .map(order => ({
                                 id: order.id,
                                 event_name: order.events?.name || 'Unknown Event',
