@@ -10,10 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail, Phone, MapPin, Calendar, DollarSign, Ticket, Heart, Tag, Send, CreditCard } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, Ticket, Heart, Tag, Send, CreditCard, FileText, Link as LinkIcon, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ComposeEmailModal } from "@/components/ComposeEmailModal";
+import { EditCustomerModal } from "@/components/EditCustomerModal";
 
 interface Contact {
   id: string;
@@ -32,6 +33,20 @@ interface Contact {
   events_attended: number;
   last_order_date: string | null;
   created_at: string;
+  payment_methods?: {
+    stripe?: {
+      customer_id: string;
+      payment_method_id: string;
+      last4: string;
+      brand: string;
+      exp_month: number;
+      exp_year: number;
+    };
+    windcave?: {
+      customer_id: string;
+      token: string;
+    };
+  };
 }
 
 interface Order {
@@ -64,12 +79,20 @@ interface CustomerDetailModalProps {
   contact: Contact | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSendEventLink?: () => void;
+  onCreateCustomOrder?: () => void;
+  onCreateInvoice?: () => void;
+  onCustomerUpdated?: () => void;
 }
 
 export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
   contact,
   open,
   onOpenChange,
+  onSendEventLink,
+  onCreateCustomOrder,
+  onCreateInvoice,
+  onCustomerUpdated,
 }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [emails, setEmails] = useState<CRMEmail[]>([]);
@@ -77,6 +100,7 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
   const [loadingEmails, setLoadingEmails] = useState(false);
   const [resendingReceipt, setResendingReceipt] = useState<string | null>(null);
   const [composeEmailOpen, setComposeEmailOpen] = useState(false);
+  const [editCustomerOpen, setEditCustomerOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -221,14 +245,63 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
                 {contact.email}
               </DialogDescription>
             </div>
-            <Button
-              onClick={() => setComposeEmailOpen(true)}
-              size="sm"
-              className="shrink-0"
-            >
-              <Mail className="h-4 w-4 mr-2" />
-              Email Customer
-            </Button>
+            <div className="flex flex-wrap gap-2 shrink-0">
+              <Button
+                onClick={() => setEditCustomerOpen(true)}
+                size="sm"
+                variant="outline"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+              <Button
+                onClick={() => setComposeEmailOpen(true)}
+                size="sm"
+                variant="outline"
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Email
+              </Button>
+              {onSendEventLink && (
+                <Button
+                  onClick={() => {
+                    onSendEventLink();
+                    onOpenChange(false);
+                  }}
+                  size="sm"
+                  variant="outline"
+                >
+                  <LinkIcon className="h-4 w-4 mr-2" />
+                  Send Event Link
+                </Button>
+              )}
+              {onCreateCustomOrder && (
+                <Button
+                  onClick={() => {
+                    onCreateCustomOrder();
+                    onOpenChange(false);
+                  }}
+                  size="sm"
+                  variant="outline"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Custom Order
+                </Button>
+              )}
+              {onCreateInvoice && (
+                <Button
+                  onClick={() => {
+                    onCreateInvoice();
+                    onOpenChange(false);
+                  }}
+                  size="sm"
+                  className="bg-black text-white hover:bg-black/90"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Invoice
+                </Button>
+              )}
+            </div>
           </div>
         </DialogHeader>
 
@@ -265,6 +338,56 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               )}
             </CardContent>
           </Card>
+
+          {/* Payment Methods */}
+          {contact.payment_methods && (contact.payment_methods.stripe || contact.payment_methods.windcave) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5" />
+                  Saved Payment Methods
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {contact.payment_methods.stripe && (
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 bg-indigo-100 rounded">
+                        <CreditCard className="h-5 w-5 text-indigo-600" />
+                      </div>
+                      <div>
+                        <div className="font-medium capitalize">
+                          {contact.payment_methods.stripe.brand} •••• {contact.payment_methods.stripe.last4}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Expires {contact.payment_methods.stripe.exp_month}/{contact.payment_methods.stripe.exp_year}
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant="secondary">Stripe</Badge>
+                  </div>
+                )}
+                {contact.payment_methods.windcave && (
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded">
+                        <CreditCard className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <div className="font-medium">
+                          Card on file
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Token: {contact.payment_methods.windcave.token.substring(0, 8)}...
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant="secondary">Windcave</Badge>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Stats Overview */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -489,6 +612,16 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
             title: "Email Sent",
             description: `Email sent to ${contact.email}`,
           });
+        }}
+      />
+
+      {/* Edit Customer Modal */}
+      <EditCustomerModal
+        contact={contact}
+        open={editCustomerOpen}
+        onOpenChange={setEditCustomerOpen}
+        onSuccess={() => {
+          onCustomerUpdated?.();
         }}
       />
     </Dialog>
