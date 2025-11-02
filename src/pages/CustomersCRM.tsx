@@ -7,10 +7,18 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganizations } from "@/hooks/useOrganizations";
-import { Search, UserCog, DollarSign, TrendingUp, Calendar, Mail, Phone, MapPin, Tag } from "lucide-react";
+import { Search, UserCog, DollarSign, TrendingUp, Calendar, Mail, Phone, MapPin, Tag, MoreVertical, Send, FileText, Link as LinkIcon, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerDetailModal } from "@/components/CustomerDetailModal";
 import { BulkEmailModal } from "@/components/BulkEmailModal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Contact {
   id: string;
@@ -29,6 +37,7 @@ interface Contact {
   events_attended: number;
   last_order_date: string | null;
   created_at: string;
+  groups?: { name: string }[] | null;
 }
 
 const CustomersCRM: React.FC = () => {
@@ -76,9 +85,27 @@ const CustomersCRM: React.FC = () => {
     try {
       console.log('📊 Loading contacts for organization:', currentOrganization.name, currentOrganization.id);
 
+      // Fetch contacts with group information
       const { data, error } = await supabase
         .from("contacts")
-        .select("*")
+        .select(`
+          *,
+          contact_events (
+            order_id,
+            orders (
+              id,
+              order_items (
+                tickets (
+                  group_ticket_sales (
+                    groups (
+                      name
+                    )
+                  )
+                )
+              )
+            )
+          )
+        `)
         .eq("organization_id", currentOrganization.id)
         .order("created_at", { ascending: false });
 
@@ -86,7 +113,31 @@ const CustomersCRM: React.FC = () => {
 
       if (data) {
         console.log('✅ Loaded contacts:', data.length);
-        setContacts(data);
+
+        // Process data to extract unique groups for each contact
+        const processedContacts = data.map((contact: any) => {
+          const groups = new Set<string>();
+
+          // Navigate through the nested structure to find groups
+          contact.contact_events?.forEach((ce: any) => {
+            ce.orders?.order_items?.forEach((item: any) => {
+              item.tickets?.forEach((ticket: any) => {
+                ticket.group_ticket_sales?.forEach((gts: any) => {
+                  if (gts.groups?.name) {
+                    groups.add(gts.groups.name);
+                  }
+                });
+              });
+            });
+          });
+
+          return {
+            ...contact,
+            groups: groups.size > 0 ? Array.from(groups).map(name => ({ name })) : null
+          };
+        });
+
+        setContacts(processedContacts);
 
         // Calculate stats
         const totalLTV = data.reduce((sum, contact) => sum + Number(contact.lifetime_value || 0), 0);
@@ -228,27 +279,42 @@ const CustomersCRM: React.FC = () => {
             Manage customer relationships, donations, and patron engagement
           </p>
         </div>
-        {selectedContacts.size > 0 && (
-          <div className="flex items-center gap-3">
-            <Badge variant="secondary" className="text-sm px-3 py-1">
-              {selectedContacts.size} selected
-            </Badge>
+        <div className="flex items-center gap-3">
+          {selectedContacts.size > 0 ? (
+            <>
+              <Badge variant="secondary" className="text-sm px-3 py-1">
+                {selectedContacts.size} selected
+              </Badge>
+              <Button
+                onClick={() => setBulkEmailOpen(true)}
+                size="sm"
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Send Email to Selected
+              </Button>
+              <Button
+                onClick={() => setSelectedContacts(new Set())}
+                variant="outline"
+                size="sm"
+              >
+                Clear Selection
+              </Button>
+            </>
+          ) : (
             <Button
-              onClick={() => setBulkEmailOpen(true)}
-              size="sm"
+              onClick={() => {
+                toast({
+                  title: "Add Customer",
+                  description: "Feature coming soon!",
+                });
+              }}
+              className="bg-black text-white hover:bg-black/90"
             >
-              <Mail className="h-4 w-4 mr-2" />
-              Send Email to Selected
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add Customer
             </Button>
-            <Button
-              onClick={() => setSelectedContacts(new Set())}
-              variant="outline"
-              size="sm"
-            >
-              Clear Selection
-            </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -327,13 +393,16 @@ const CustomersCRM: React.FC = () => {
                         onCheckedChange={toggleAllContacts}
                       />
                     </th>
-                    <th className="text-left p-4 font-medium text-sm">Customer</th>
+                    <th className="text-left p-4 font-medium text-sm">First Name</th>
+                    <th className="text-left p-4 font-medium text-sm">Last Name</th>
                     <th className="text-left p-4 font-medium text-sm">Email</th>
+                    <th className="text-left p-4 font-medium text-sm">Group</th>
                     <th className="text-right p-4 font-medium text-sm">Lifetime Value</th>
                     <th className="text-right p-4 font-medium text-sm">Donations</th>
                     <th className="text-right p-4 font-medium text-sm">Orders</th>
                     <th className="text-right p-4 font-medium text-sm">Events</th>
                     <th className="text-left p-4 font-medium text-sm">Last Order</th>
+                    <th className="text-left p-4 font-medium text-sm w-24">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -350,7 +419,7 @@ const CustomersCRM: React.FC = () => {
                       </td>
                       <td className="p-4 cursor-pointer" onClick={() => handleContactClick(contact)}>
                         <div className="font-medium text-blue-600 hover:text-blue-800">
-                          {contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || contact.email}
+                          {contact.first_name || '-'}
                         </div>
                         {(contact.city || contact.country) && (
                           <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
@@ -358,6 +427,11 @@ const CustomersCRM: React.FC = () => {
                             {[contact.city, contact.country].filter(Boolean).join(', ')}
                           </div>
                         )}
+                      </td>
+                      <td className="p-4 cursor-pointer" onClick={() => handleContactClick(contact)}>
+                        <div className="font-medium">
+                          {contact.last_name || '-'}
+                        </div>
                         {contact.tags && contact.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-2">
                             {contact.tags.slice(0, 2).map((tag, idx) => (
@@ -376,6 +450,24 @@ const CustomersCRM: React.FC = () => {
                       <td className="p-4 text-sm text-muted-foreground cursor-pointer" onClick={() => handleContactClick(contact)}>
                         {contact.email}
                       </td>
+                      <td className="p-4 cursor-pointer" onClick={() => handleContactClick(contact)}>
+                        {contact.groups && contact.groups.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {contact.groups.slice(0, 1).map((group, idx) => (
+                              <Badge key={idx} variant="outline" className="text-xs">
+                                {group.name}
+                              </Badge>
+                            ))}
+                            {contact.groups.length > 1 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{contact.groups.length - 1}
+                              </Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
+                        )}
+                      </td>
                       <td className="p-4 text-right font-semibold cursor-pointer" onClick={() => handleContactClick(contact)}>
                         {formatCurrency(contact.lifetime_value)}
                       </td>
@@ -392,6 +484,51 @@ const CustomersCRM: React.FC = () => {
                       <td className="p-4 text-right cursor-pointer" onClick={() => handleContactClick(contact)}>{contact.events_attended}</td>
                       <td className="p-4 text-sm text-muted-foreground cursor-pointer" onClick={() => handleContactClick(contact)}>
                         {formatDate(contact.last_order_date)}
+                      </td>
+                      <td className="p-4" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-56">
+                            <DropdownMenuLabel>Phone Sales</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => {
+                              toast({
+                                title: "Send Event Link",
+                                description: "Feature coming soon!",
+                              });
+                            }}>
+                              <LinkIcon className="h-4 w-4 mr-2" />
+                              Send Event Link
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              toast({
+                                title: "Create Custom Order",
+                                description: "Feature coming soon!",
+                              });
+                            }}>
+                              <FileText className="h-4 w-4 mr-2" />
+                              Create Custom Order
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              toast({
+                                title: "Send Invoice",
+                                description: "Feature coming soon!",
+                              });
+                            }}>
+                              <Send className="h-4 w-4 mr-2" />
+                              Create & Send Invoice
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleContactClick(contact)}>
+                              <Mail className="h-4 w-4 mr-2" />
+                              Send Email
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                     </tr>
                   ))}
