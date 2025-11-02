@@ -6,11 +6,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail, Phone, MapPin, Calendar, DollarSign, Ticket, Heart, Tag, Send, CreditCard, FileText, Link as LinkIcon, Edit } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, Ticket, Heart, Tag, Send, CreditCard, FileText, Link as LinkIcon, Edit, Trash2, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ComposeEmailModal } from "@/components/ComposeEmailModal";
@@ -25,7 +35,9 @@ interface Contact {
   phone: string | null;
   city: string | null;
   country: string | null;
+  notes: string | null;
   tags: string[] | null;
+  organization_id: string;
   total_orders: number;
   total_spent: number;
   total_donations: number;
@@ -101,6 +113,10 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
   const [resendingReceipt, setResendingReceipt] = useState<string | null>(null);
   const [composeEmailOpen, setComposeEmailOpen] = useState(false);
   const [editCustomerOpen, setEditCustomerOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [selectedEmail, setSelectedEmail] = useState<CRMEmail | null>(null);
+  const [emailDetailOpen, setEmailDetailOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -161,12 +177,16 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
         .from("crm_emails")
         .select("id, subject, body_html, status, sent_at, opened_at, clicked_at, sender_name, created_at")
         .eq("contact_id", contact.id)
+        .eq("organization_id", contact.organization_id)
         .order("created_at", { ascending: false })
         .limit(20);
 
-      console.log("📧 Email history result:", { data, error, count: data?.length });
+      console.log("📧 Email history result:", { data, error, count: data?.length, emails: data });
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Error loading emails:", error);
+        throw error;
+      }
 
       if (data) {
         setEmails(data);
@@ -210,6 +230,40 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
     }
   };
 
+  const handleDeleteCustomer = async () => {
+    if (!contact) return;
+
+    setDeleting(true);
+    try {
+      // Delete the contact
+      const { error } = await supabase
+        .from("contacts")
+        .delete()
+        .eq("id", contact.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Customer Deleted",
+        description: `${contact.email} has been removed from your CRM`,
+      });
+
+      // Close the modal and refresh the parent
+      onOpenChange(false);
+      onCustomerUpdated?.();
+    } catch (error) {
+      console.error("Error deleting customer:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete customer",
+        variant: "destructive"
+      });
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NZ', {
       style: 'currency',
@@ -240,9 +294,8 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <DialogTitle className="text-2xl">{displayName}</DialogTitle>
-              <DialogDescription className="flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                {contact.email}
+              <DialogDescription>
+                Customer since {new Date(contact.created_at).toLocaleDateString()}
               </DialogDescription>
             </div>
             <div className="flex flex-wrap gap-2 shrink-0">
@@ -306,38 +359,63 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Contact Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Contact Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {contact.phone && (
+          {/* Contact Information and Notes - Side by Side */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Contact Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Contact Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>{contact.phone}</span>
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <span>{contact.email}</span>
                 </div>
-              )}
 
-              {(contact.city || contact.country) && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span>{[contact.city, contact.country].filter(Boolean).join(', ')}</span>
-                </div>
-              )}
+                {contact.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <span>{contact.phone}</span>
+                  </div>
+                )}
 
-              {contact.tags && contact.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {contact.tags.map((tag, idx) => (
-                    <Badge key={idx} variant="secondary">
-                      <Tag className="h-3 w-3 mr-1" />
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                {(contact.city || contact.country) && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span>{[contact.city, contact.country].filter(Boolean).join(', ')}</span>
+                  </div>
+                )}
+
+                {contact.tags && contact.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {contact.tags.map((tag, idx) => (
+                      <Badge key={idx} variant="secondary">
+                        <Tag className="h-3 w-3 mr-1" />
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Notes */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <StickyNote className="h-5 w-5" />
+                  Notes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {contact.notes ? (
+                  <p className="text-sm whitespace-pre-wrap">{contact.notes}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">No notes added</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Payment Methods */}
           {contact.payment_methods && (contact.payment_methods.stripe || contact.payment_methods.windcave) && (
@@ -538,7 +616,14 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               ) : (
                 <div className="space-y-2">
                   {emails.map((email) => (
-                    <div key={email.id} className="border rounded-md p-3 hover:bg-slate-50 transition-colors">
+                    <div
+                      key={email.id}
+                      className="border rounded-md p-3 hover:bg-slate-50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        setSelectedEmail(email);
+                        setEmailDetailOpen(true);
+                      }}
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm truncate">
@@ -597,6 +682,30 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               day: 'numeric'
             })}
           </div>
+
+          {/* Danger Zone */}
+          <Separator />
+          <div className="pt-6 pb-2">
+            <div className="border border-destructive/30 rounded-lg p-4 bg-destructive/5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-destructive mb-1">Delete Customer</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Permanently remove this customer from your CRM. This action cannot be undone.
+                  </p>
+                </div>
+                <Button
+                  onClick={() => setDeleteDialogOpen(true)}
+                  variant="destructive"
+                  size="sm"
+                  className="shrink-0"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Customer
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </DialogContent>
 
@@ -624,6 +733,107 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
           onCustomerUpdated?.();
         }}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete <strong>{contact.email}</strong> from your CRM.
+              This action cannot be undone.
+              {orders.length > 0 && (
+                <span className="block mt-2 text-destructive font-medium">
+                  Warning: This customer has {orders.length} order{orders.length !== 1 ? 's' : ''} in your system.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteCustomer}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete Customer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Email Detail Modal */}
+      <Dialog open={emailDetailOpen} onOpenChange={setEmailDetailOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Email Details
+            </DialogTitle>
+            {selectedEmail && (
+              <DialogDescription>
+                Sent {selectedEmail.sent_at ? formatDate(selectedEmail.sent_at) : formatDate(selectedEmail.created_at)}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+
+          {selectedEmail && (
+            <div className="space-y-4">
+              {/* Email Metadata */}
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">From</div>
+                  <div className="text-sm">{selectedEmail.sender_name || 'System'}</div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">Status</div>
+                  <Badge
+                    variant={
+                      selectedEmail.status === 'sent' || selectedEmail.status === 'delivered'
+                        ? 'default'
+                        : selectedEmail.status === 'failed' || selectedEmail.status === 'bounced'
+                        ? 'destructive'
+                        : 'secondary'
+                    }
+                    className="text-xs"
+                  >
+                    {selectedEmail.status}
+                  </Badge>
+                </div>
+                {selectedEmail.opened_at && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground">Opened</div>
+                    <div className="text-sm">{formatDate(selectedEmail.opened_at)}</div>
+                  </div>
+                )}
+                {selectedEmail.clicked_at && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground">Clicked</div>
+                    <div className="text-sm">{formatDate(selectedEmail.clicked_at)}</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Subject */}
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">Subject</div>
+                <div className="text-base font-semibold">{selectedEmail.subject}</div>
+              </div>
+
+              <Separator />
+
+              {/* Email Body */}
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-2">Message</div>
+                <div
+                  className="prose prose-sm max-w-none p-4 bg-white border rounded-lg"
+                  dangerouslySetInnerHTML={{ __html: selectedEmail.body_html }}
+                />
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };
