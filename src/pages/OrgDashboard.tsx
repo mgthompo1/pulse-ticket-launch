@@ -945,11 +945,24 @@ const OrgDashboard = () => {
 
             {/* Right side - Actions */}
             <div className="flex items-center gap-2">
+              {/* Create New Event CTA - Black button */}
+              {isEventsMode() && (
+                <Button
+                  onClick={() => setActiveTab("events")}
+                  className="bg-black text-white hover:bg-black/90 font-manrope font-semibold text-sm px-3 sm:px-4 py-2 h-9"
+                >
+                  <Calendar className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Create New Event</span>
+                  <span className="sm:hidden">Create</span>
+                </Button>
+              )}
+
               <button
                 onClick={() => setShowHelp(true)}
                 className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 font-manrope"
               >
-                <HelpCircle className="h-4 w-4 text-slate-500" /> Help
+                <HelpCircle className="h-4 w-4 text-slate-500" />
+                <span className="hidden md:inline">Help</span>
               </button>
               <button
                 onClick={() => navigate("/")}
