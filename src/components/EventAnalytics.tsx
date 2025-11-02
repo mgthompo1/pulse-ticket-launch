@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -399,26 +398,53 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Select Event</CardTitle>
-          <CardDescription>Choose an event to view detailed analytics</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Select value={selectedEventId} onValueChange={setSelectedEventId}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select an event to analyze" />
-            </SelectTrigger>
-            <SelectContent>
-              {events.map((event) => (
-                <SelectItem key={event.id} value={event.id}>
-                  {event.name} - {format(new Date(event.event_date), 'MMM d, yyyy')}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
+      <div>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold">Select Event</h3>
+          <p className="text-sm text-muted-foreground">Choose an event to view detailed analytics</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {events.map((event) => (
+            <Card
+              key={event.id}
+              className={`cursor-pointer transition-all hover:shadow-md ${
+                selectedEventId === event.id
+                  ? 'ring-2 ring-primary border-primary'
+                  : 'hover:border-primary/50'
+              }`}
+              onClick={() => setSelectedEventId(event.id)}
+            >
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">{event.name}</CardTitle>
+                <CardDescription className="flex items-center gap-2 mt-2">
+                  <Calendar className="h-4 w-4" />
+                  {format(new Date(event.event_date), 'MMM d, yyyy')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  {event.venue && (
+                    <p className="text-sm text-muted-foreground">
+                      {event.venue}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <Badge
+                      variant={event.status === 'published' ? 'default' : 'secondary'}
+                      className="text-xs"
+                    >
+                      {event.status}
+                    </Badge>
+                    <p className="text-xs text-muted-foreground">
+                      Capacity: {event.capacity}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
 
       {loading && (
         <Card>

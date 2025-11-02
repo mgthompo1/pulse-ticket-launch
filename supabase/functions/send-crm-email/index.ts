@@ -88,21 +88,70 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { data: membership, error: membershipError } = await supabase
-      .from("organization_users")
-      .select("id")
-      .eq("organization_id", organizationId)
-      .eq("user_id", user.id)
-      .single();
+    console.log(`🔍 Checking authorization for user ${user.id} in org ${organizationId}`);
 
-    if (membershipError || !membership) {
+    // First check if user is the organization owner
+    const { data: org, error: orgCheckError } = await supabase
+      .from("organizations")
+      .select("user_id")
+      .eq("id", organizationId)
+      .maybeSingle();
+
+    if (orgCheckError) {
+      console.error("❌ Error checking organization:", orgCheckError);
       return new Response(
-        JSON.stringify({ error: "Not authorized to send emails for this organization" }),
+        JSON.stringify({
+          error: "Error checking organization",
+          details: orgCheckError.message
+        }),
         {
-          status: 403,
+          status: 500,
           headers: { "Content-Type": "application/json", ...corsHeaders },
         }
       );
+    }
+
+    const isOwner = org && org.user_id === user.id;
+
+    if (isOwner) {
+      console.log(`✅ User is the owner of the organization`);
+    } else {
+      // If not owner, check if they're a member
+      const { data: membership, error: membershipError } = await supabase
+        .from("organization_users")
+        .select("id, role")
+        .eq("organization_id", organizationId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      console.log('Membership check result:', { membership, membershipError });
+
+      if (membershipError) {
+        console.error("❌ Membership query error:", membershipError);
+        return new Response(
+          JSON.stringify({
+            error: "Error checking organization membership",
+            details: membershipError.message
+          }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
+      }
+
+      if (!membership) {
+        console.error(`❌ User ${user.id} is not the owner or a member of org ${organizationId}`);
+        return new Response(
+          JSON.stringify({ error: "Not authorized to send emails for this organization" }),
+          {
+            status: 403,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
+      }
+
+      console.log(`✅ User is a ${membership.role} of the organization`);
     }
 
     // Get contact details
@@ -148,7 +197,10 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     const senderName = senderUser?.full_name || organization.name;
-    const senderEmail = organization.email || "noreply@resend.dev";
+    // Always use ticketflo.org domain for FROM address (verified with Resend)
+    const fromEmail = "noreply@ticketflo.org";
+    // Use organization email as reply-to if available
+    const organizationReplyTo = organization.email || replyTo;
 
     // Create full HTML email with branding
     const fullHtml = `
@@ -179,11 +231,6 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="margin: 10px 0 0 0;">
                 ${organization.name}
               </p>
-              ${organization.email ? `
-              <p style="margin: 5px 0 0 0;">
-                <a href="mailto:${organization.email}" style="color: #2563eb; text-decoration: none;">${organization.email}</a>
-              </p>
-              ` : ''}
             </div>
           </div>
         </body>
@@ -194,17 +241,45 @@ const handler = async (req: Request): Promise<Response> => {
     const plainText = bodyText || bodyHtml.replace(/<[^>]*>/g, "");
 
     // Initialize Resend
-    const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendApiKey) {
+      console.error("❌ RESEND_API_KEY not configured");
+      return new Response(
+        JSON.stringify({ error: "Email service not configured" }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+
+    const resend = new Resend(resendApiKey);
 
     // Send email via Resend
+    console.log(`📧 Attempting to send email to ${contact.email} from ${fromEmail} (reply-to: ${organizationReplyTo || 'none'})`);
     const emailResponse = await resend.emails.send({
-      from: `${senderName} <${senderEmail}>`,
+      from: `${senderName} <${fromEmail}>`,
       to: [contact.email],
       subject: subject,
       html: fullHtml,
       text: plainText,
-      ...(replyTo && { reply_to: replyTo }),
+      reply_to: organizationReplyTo || undefined,
     });
+
+    // Check if Resend returned an error
+    if (emailResponse.error) {
+      console.error("❌ Resend API error:", emailResponse.error);
+      return new Response(
+        JSON.stringify({
+          error: "Failed to send email via Resend",
+          details: emailResponse.error
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
 
     console.log("✅ CRM email sent successfully:", emailResponse);
 
@@ -218,7 +293,7 @@ const handler = async (req: Request): Promise<Response> => {
         subject: subject,
         body_html: bodyHtml,
         body_text: plainText,
-        sender_email: senderEmail,
+        sender_email: fromEmail,
         sender_name: senderName,
         sent_by_user_id: user.id,
         recipient_email: contact.email,

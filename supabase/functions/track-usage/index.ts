@@ -32,13 +32,33 @@ serve(async (req) => {
     const feeFixed = 0.50; // $0.50
     const totalPlatformFee = (parseFloat(transaction_amount) * (feePercentage / 100)) + feeFixed;
 
-    // Get current billing period (current month)
+    // Get billing customer to determine billing period
+    const { data: billingCustomer } = await supabaseClient
+      .from('billing_customers')
+      .select('billing_interval_days, next_billing_at, last_billed_at')
+      .eq('organization_id', organization_id)
+      .single();
+
+    // Calculate billing period based on organization's billing cycle
     const now = new Date();
-    const billingPeriodStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const billingPeriodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    let billingPeriodStart: Date;
+    let billingPeriodEnd: Date;
+
+    if (billingCustomer?.next_billing_at) {
+      // Use the organization's actual billing cycle
+      const intervalDays = billingCustomer.billing_interval_days || 14;
+      billingPeriodEnd = new Date(billingCustomer.next_billing_at);
+      billingPeriodStart = new Date(billingPeriodEnd);
+      billingPeriodStart.setDate(billingPeriodStart.getDate() - intervalDays);
+    } else {
+      // Fallback to current month if no billing customer exists yet
+      billingPeriodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      billingPeriodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    }
 
     console.log('Calculated platform fee:', totalPlatformFee);
     console.log('Billing period:', billingPeriodStart.toISOString().split('T')[0], 'to', billingPeriodEnd.toISOString().split('T')[0]);
+    console.log('Billing interval:', billingCustomer?.billing_interval_days || 'default (monthly)');
 
     // Check if usage record already exists for this order
     const { data: existingRecord } = await supabaseClient

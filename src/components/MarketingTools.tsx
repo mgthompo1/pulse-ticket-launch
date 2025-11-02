@@ -7,15 +7,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  Mail, 
-  Share2, 
-  QrCode, 
-  TrendingUp, 
-  Target, 
+import {
+  Mail,
+  Share2,
+  QrCode,
+  TrendingUp,
+  Target,
   Copy,
   Download,
-  ExternalLink
+  ExternalLink,
+  Calendar
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -110,24 +111,36 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
       if (!selectedEvent || !user) return;
 
       try {
-        // Get orders for this event
+        // Get orders for this event with order items and tickets
         const { data: orders, error: ordersError } = await supabase
           .from("orders")
-          .select("id, total_amount, status, created_at")
-          .eq("event_id", selectedEvent.id);
+          .select(`
+            id,
+            total_amount,
+            status,
+            created_at,
+            order_items (
+              id,
+              quantity,
+              tickets (
+                id,
+                status
+              )
+            )
+          `)
+          .eq("event_id", selectedEvent.id)
+          .in("status", ["completed", "paid"]);
 
         if (ordersError) throw ordersError;
 
-        // Get tickets sold for this event
-        const { data: tickets, error: ticketsError } = await supabase
-          .from("tickets")
-          .select("id, status")
-          .eq("event_id", selectedEvent.id);
+        // Calculate total tickets from order items
+        let totalTicketsSold = 0;
+        orders?.forEach((order: any) => {
+          order.order_items?.forEach((item: any) => {
+            totalTicketsSold += item.tickets?.length || 0;
+          });
+        });
 
-        if (ticketsError) throw ticketsError;
-
-        // Calculate analytics
-        const totalTicketsSold = tickets?.filter(t => t.status === 'purchased')?.length || 0;
         const totalRevenue = orders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
         const totalOrders = orders?.length || 0;
 
@@ -188,41 +201,57 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
   if (!selectedEvent) {
     return (
       <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Marketing Tools</CardTitle>
-            <CardDescription>Select an event to access marketing tools</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {events.length === 0 ? (
+        <div>
+          <h2 className="text-2xl font-bold">Marketing Tools</h2>
+          <p className="text-muted-foreground mb-4">Select an event to access marketing tools</p>
+        </div>
+
+        {events.length === 0 ? (
+          <Card>
+            <CardContent className="p-6">
               <p className="text-muted-foreground text-center py-8">
                 No events found. Create an event first to access marketing tools.
               </p>
-            ) : (
-              <div className="space-y-4">
-                <Label>Select an Event</Label>
-                <Select onValueChange={(eventId) => {
-                  const event = events.find(e => e.id === eventId);
-                  if (event) setSelectedEvent(event);
-                }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose an event to promote" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {events.map((event) => (
-                      <SelectItem key={event.id} value={event.id}>
-                        <div className="flex items-center justify-between w-full">
-                          <span>{event.name}</span>
-                          <Badge variant="outline" className="ml-2">{event.status}</Badge>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {events.map((event) => (
+              <Card
+                key={event.id}
+                className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+                onClick={() => setSelectedEvent(event)}
+              >
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">{event.name}</CardTitle>
+                  <CardDescription className="flex items-center gap-2 mt-2">
+                    <Calendar className="h-4 w-4" />
+                    {new Date(event.event_date).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-1">
+                    {event.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {event.description}
+                      </p>
+                    )}
+                    <Badge
+                      variant={event.status === 'published' ? 'default' : 'secondary'}
+                      className="text-xs"
+                    >
+                      {event.status}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     );
   }

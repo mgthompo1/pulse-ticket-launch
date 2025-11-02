@@ -176,7 +176,7 @@ export const BulkEmailModal: React.FC<BulkEmailModalProps> = ({
         const personalizedBody = replaceVariables(bodyHtml, contact);
         const personalizedSubject = replaceVariables(subject, contact);
 
-        const { error: sendError } = await supabase.functions.invoke('send-crm-email', {
+        const response = await supabase.functions.invoke('send-crm-email', {
           body: {
             contactId: contact.id,
             organizationId: currentOrganization.id,
@@ -185,12 +185,29 @@ export const BulkEmailModal: React.FC<BulkEmailModalProps> = ({
           },
         });
 
-        if (sendError) throw sendError;
+        console.log('Full response:', response);
+
+        // Try to read the response body
+        if (response.error && response.response) {
+          try {
+            const errorText = await response.response.clone().text();
+            console.error('Response body:', errorText);
+          } catch (e) {
+            console.error('Could not read response body');
+          }
+        }
+
+        if (response.error) {
+          console.error(`❌ Error sending email to ${contact.email}:`, response.error);
+          console.error('Function response data:', response.data);
+          throw response.error;
+        }
 
         sent++;
         setSuccessCount(sent);
       } catch (err: any) {
         console.error(`❌ Error sending email to ${contact.email}:`, err);
+        console.error('Full error details:', JSON.stringify(err, null, 2));
         failed++;
         setFailureCount(failed);
       }

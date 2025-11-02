@@ -180,7 +180,11 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
         },
       });
 
-      if (sendError) throw sendError;
+      if (sendError) {
+        console.error("❌ Error sending email:", sendError);
+        console.error('Function response data:', data);
+        throw sendError;
+      }
 
       console.log("✅ Email sent:", data);
 
@@ -193,6 +197,7 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
       onOpenChange(false);
     } catch (err: any) {
       console.error("❌ Error sending email:", err);
+      console.error('Full error details:', JSON.stringify(err, null, 2));
       setError(err.message || "Failed to send email");
       toast({
         title: "Error",

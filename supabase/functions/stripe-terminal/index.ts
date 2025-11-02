@@ -68,21 +68,56 @@ serve(async (req) => {
 
       case "confirm_payment":
         const { paymentIntentId, posTransactionData } = data;
-        
+
         // Retrieve payment intent to confirm it was successful
         const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
-        
+
         if (intent.status === "succeeded") {
           // Record POS transaction
-          const { error } = await supabase
+          const { data: posTransaction, error } = await supabase
             .from("pos_transactions")
             .insert({
               ...posTransactionData,
               stripe_payment_intent_id: paymentIntentId,
               status: "completed",
-            });
+            })
+            .select()
+            .single();
 
           if (error) throw error;
+
+          // Track usage for billing (platform fees)
+          try {
+            if (posTransaction?.event_id && posTransaction?.total_amount) {
+              console.log("Tracking usage for POS transaction billing...");
+
+              // Get organization_id from event
+              const { data: eventData, error: eventError } = await supabase
+                .from("events")
+                .select("organization_id")
+                .eq("id", posTransaction.event_id)
+                .single();
+
+              if (!eventError && eventData?.organization_id) {
+                const { error: trackingError } = await supabase.functions.invoke('track-usage', {
+                  body: {
+                    order_id: posTransaction.id, // Use POS transaction ID as order_id
+                    organization_id: eventData.organization_id,
+                    transaction_amount: posTransaction.total_amount
+                  }
+                });
+
+                if (trackingError) {
+                  console.error("❌ Error tracking usage for billing:", trackingError);
+                } else {
+                  console.log("✅ Usage tracked successfully for billing");
+                }
+              }
+            }
+          } catch (usageTrackingError) {
+            console.error("❌ Usage tracking error:", usageTrackingError);
+            // Don't fail the whole process for usage tracking issues
+          }
 
           return new Response(
             JSON.stringify({ success: true, transaction: intent }),

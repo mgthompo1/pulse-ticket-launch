@@ -151,6 +151,46 @@ serve(async (req) => {
 
     console.log("Order status updated successfully");
 
+    // Track usage for billing (platform fees)
+    console.log("Tracking usage for billing...");
+    try {
+      // Get order details for usage tracking
+      const { data: orderForBilling, error: billingOrderError } = await supabaseClient
+        .from("orders")
+        .select(`
+          id,
+          total_amount,
+          event_id,
+          events (
+            organization_id
+          )
+        `)
+        .eq("id", orderId)
+        .single();
+
+      if (!billingOrderError && orderForBilling && (orderForBilling.events as any)?.organization_id) {
+        const { error: trackingError } = await supabaseClient.functions.invoke('track-usage', {
+          body: {
+            order_id: orderId,
+            organization_id: (orderForBilling.events as any).organization_id,
+            transaction_amount: orderForBilling.total_amount
+          }
+        });
+
+        if (trackingError) {
+          console.error("❌ Error tracking usage for billing:", trackingError);
+          // Don't fail the whole process for usage tracking issues
+        } else {
+          console.log("✅ Usage tracked successfully for billing");
+        }
+      } else {
+        console.error("❌ Could not get order details for usage tracking:", billingOrderError);
+      }
+    } catch (usageTrackingError) {
+      console.error("❌ Usage tracking error:", usageTrackingError);
+      // Don't fail the whole process for usage tracking issues
+    }
+
     // Create or update contact record and donations (if CRM is enabled)
     try {
       console.log("Checking if CRM is enabled for this organization...");

@@ -683,8 +683,15 @@ const StripeElementsWrapper = ({ organizationId, onSuccess }: { organizationId: 
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+
+      if (!stripePublishableKey) {
+        console.error("VITE_STRIPE_PUBLISHABLE_KEY not configured in environment variables");
+        return;
+      }
+
       import("@stripe/stripe-js").then(({ loadStripe }) => {
-        setStripePromise(loadStripe("pk_live_51RkWYvIkAZJOEIBEU4kM4sZ1jv3Jkdhfcr953tdGveqHA83bUo6pDA3KBSUUe9QbWbgTnT9uvXWSUO65PEFqlZ06009YvC3tjO"));
+        setStripePromise(loadStripe(stripePublishableKey));
       });
     }
   }, []);
@@ -695,8 +702,8 @@ const StripeElementsWrapper = ({ organizationId, onSuccess }: { organizationId: 
 
   return (
     <Elements stripe={stripePromise}>
-      <PaymentMethodSetup 
-        organizationId={organizationId} 
+      <PaymentMethodSetup
+        organizationId={organizationId}
         onSuccess={onSuccess}
       />
     </Elements>

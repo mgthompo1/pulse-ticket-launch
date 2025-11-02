@@ -36,16 +36,47 @@ serve(async (req) => {
 
     console.log('Checking billing status for organization:', organization_id);
 
-    // Verify user owns this organization
-    const { data: org, error: orgError } = await supabaseClient
-      .from('organizations')
-      .select('*')
-      .eq('id', organization_id)
-      .eq('user_id', user.id)
-      .single();
+    // Verify user has access to this organization (owner or member)
+    console.log(`🔍 Checking authorization for user ${user.id} in org ${organization_id}`);
 
-    if (orgError || !org) {
-      throw new Error('Organization not found or access denied');
+    // First check if user is the organization owner
+    const { data: org, error: orgCheckError } = await supabaseClient
+      .from('organizations')
+      .select('user_id')
+      .eq('id', organization_id)
+      .maybeSingle();
+
+    if (orgCheckError) {
+      console.error('❌ Error checking organization:', orgCheckError);
+      throw new Error('Error checking organization');
+    }
+
+    const isOwner = org && org.user_id === user.id;
+
+    if (isOwner) {
+      console.log(`✅ User is the owner of the organization`);
+    } else {
+      // If not owner, check if they're a member
+      const { data: membership, error: membershipError } = await supabaseClient
+        .from('organization_users')
+        .select('id, role')
+        .eq('organization_id', organization_id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      console.log('Membership check result:', { membership, membershipError });
+
+      if (membershipError) {
+        console.error('❌ Membership query error:', membershipError);
+        throw new Error('Error checking organization membership');
+      }
+
+      if (!membership) {
+        console.error(`❌ User ${user.id} is not the owner or a member of org ${organization_id}`);
+        throw new Error('Organization not found or access denied');
+      }
+
+      console.log(`✅ User is a ${membership.role} of the organization`);
     }
 
     // Check billing setup status
