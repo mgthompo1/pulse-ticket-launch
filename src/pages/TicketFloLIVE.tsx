@@ -11,10 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { CreditCard, Users, CheckCircle, Printer, Plus, ShoppingCart, BarChart3, TrendingUp, DollarSign, Package, Menu, Search, Home, Tag, Eye, UserCheck } from "lucide-react";
+import { CreditCard, Users, CheckCircle, Printer, Plus, ShoppingCart, BarChart3, TrendingUp, DollarSign, Package, Menu, Search, Home, Tag, Eye, UserCheck, Settings, FileSignature, ChevronDown, ChevronRight } from "lucide-react";
 import { LanyardPreviewData, LanyardTemplate, createDefaultLanyardTemplate, getAllLanyardTemplates } from "@/types/lanyard-template";
 import { LanyardPreviewSimple } from "@/components/LanyardPreviewSimple";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { WaiverConfiguration } from "@/components/WaiverConfiguration";
+import { SignedWaivers } from "@/components/SignedWaivers";
+import { WaiverSigningModal } from "@/components/WaiverSigningModal";
 
 interface GuestStatus {
   ticket_id: string;
@@ -65,6 +68,7 @@ const TicketFloLIVE = () => {
   // Modern UI state
   const [activeTab, setActiveTab] = useState("checkin");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSettingsExpanded, setIsSettingsExpanded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   // Lanyard state
@@ -98,6 +102,15 @@ const TicketFloLIVE = () => {
   
   // Organization configuration
   const [organizationConfig, setOrganizationConfig] = useState<WindcaveHITConfig | null>(null);
+
+  // Waiver state
+  const [waiverModalOpen, setWaiverModalOpen] = useState(false);
+  const [waiverTicketInfo, setWaiverTicketInfo] = useState<{
+    ticketId: string;
+    ticketCode: string;
+    customerName: string;
+    customerEmail: string;
+  } | null>(null);
 
   // Analytics state
 const [analytics, setAnalytics] = useState<{
@@ -474,11 +487,74 @@ const handleCreateConcessionItem = async () => {
 
     setLoading(true);
     try {
+      // First, look up the ticket with customer info from related tables
+      const { data: ticketData, error: ticketError } = await supabase
+        .from("tickets")
+        .select(`
+          id,
+          ticket_code,
+          status,
+          used_at,
+          order_items (
+            orders (
+              customer_name,
+              customer_email
+            )
+          )
+        `)
+        .eq("ticket_code", ticketCode.trim())
+        .single();
+
+      if (ticketError || !ticketData) {
+        toast({ title: "Ticket not found", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+
+      // Extract customer info from nested structure
+      const customerName = ticketData.order_items?.orders?.customer_name || "";
+      const customerEmail = ticketData.order_items?.orders?.customer_email || "";
+      const isAlreadyCheckedIn = ticketData.status === "used" || !!ticketData.used_at;
+
+      // Check if there are active waivers that need to be signed
+      if (eventData?.organizations && !isAlreadyCheckedIn) {
+        const { data: activeWaivers } = await supabase
+          .from("waiver_templates")
+          .select("id")
+          .eq("organization_id", eventData.organizations.id)
+          .eq("is_active", true)
+          .or(`event_id.eq.${eventId},event_id.is.null`)
+          .limit(1);
+
+        if (activeWaivers && activeWaivers.length > 0) {
+          // Check if waivers already signed
+          const { data: existingSignatures } = await supabase
+            .from("waiver_signatures")
+            .select("id")
+            .eq("ticket_id", ticketData.id)
+            .limit(1);
+
+          if (!existingSignatures || existingSignatures.length === 0) {
+            // Show waiver modal before checking in
+            setWaiverTicketInfo({
+              ticketId: ticketData.id,
+              ticketCode: ticketCode.trim(),
+              customerName: customerName,
+              customerEmail: customerEmail,
+            });
+            setWaiverModalOpen(true);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
+      // Proceed with check-in
       const { data, error } = await supabase.functions.invoke("check-in-guest", {
         body: {
           ticketCode: ticketCode.trim(),
           notes: checkInNotes,
-          staffId: "current-user-id", // Would get from auth context
+          staffId: user?.id || "current-user-id",
         },
       });
 
@@ -488,6 +564,39 @@ const handleCreateConcessionItem = async () => {
         toast({ title: "Guest checked in successfully!" });
         setTicketCode("");
         setCheckInNotes("");
+        loadGuests();
+      } else {
+        toast({ title: data.error || "Check-in failed", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Check-in error:", error);
+      toast({ title: "Check-in failed", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleWaiverSigned = async () => {
+    // After waiver is signed, proceed with check-in
+    if (!waiverTicketInfo) return;
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-in-guest", {
+        body: {
+          ticketCode: waiverTicketInfo.ticketCode,
+          notes: checkInNotes,
+          staffId: user?.id || "current-user-id",
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({ title: "Guest checked in successfully!" });
+        setTicketCode("");
+        setCheckInNotes("");
+        setWaiverTicketInfo(null);
         loadGuests();
       } else {
         toast({ title: data.error || "Check-in failed", variant: "destructive" });
@@ -916,10 +1025,15 @@ const handleCreateConcessionItem = async () => {
     { id: "checkin", icon: CheckCircle, label: "Check-In" },
     { id: "pos", icon: CreditCard, label: "Point of Sale" },
     { id: "guests", icon: Users, label: "Guest Status" },
-    { id: "concessions", icon: Package, label: "Manage Items" },
-    ...(user ? [{ id: "lanyards", icon: Tag, label: "Lanyard Config" }] : []),
     { id: "analytics", icon: BarChart3, label: "Analytics" },
   ];
+
+  // Settings sub-items (only visible when user is authenticated)
+  const settingsItems = user ? [
+    { id: "concessions", icon: Package, label: "Manage Items" },
+    { id: "lanyards", icon: Tag, label: "Lanyard Config" },
+    { id: "waivers", icon: FileSignature, label: "Waivers" },
+  ] : [];
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -941,7 +1055,7 @@ const handleCreateConcessionItem = async () => {
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-2 py-4 space-y-1">
+        <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
           {sidebarItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -960,6 +1074,50 @@ const handleCreateConcessionItem = async () => {
               </button>
             );
           })}
+
+          {/* Settings Section with Collapsible Sub-items */}
+          {user && settingsItems.length > 0 && (
+            <div className="space-y-1">
+              <button
+                onClick={() => setIsSettingsExpanded(!isSettingsExpanded)}
+                className="w-full flex items-center justify-between px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors"
+              >
+                <div className="flex items-center">
+                  <Settings className="h-5 w-5" />
+                  {!isSidebarCollapsed && <span className="ml-3">Settings</span>}
+                </div>
+                {!isSidebarCollapsed && (
+                  isSettingsExpanded ?
+                    <ChevronDown className="h-4 w-4" /> :
+                    <ChevronRight className="h-4 w-4" />
+                )}
+              </button>
+
+              {/* Settings Sub-items */}
+              {isSettingsExpanded && !isSidebarCollapsed && (
+                <div className="ml-4 space-y-1">
+                  {settingsItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = activeTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveTab(item.id)}
+                        className={`w-full flex items-center px-3 py-2 rounded-lg transition-colors text-sm ${
+                          isActive
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span className="ml-3">{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </nav>
 
         {/* Dashboard Button */}
@@ -1826,6 +1984,20 @@ const handleCreateConcessionItem = async () => {
             </div>
           )}
 
+          {/* Waivers Configuration Tab */}
+          {activeTab === "waivers" && eventData?.organizations && (
+            <div className="space-y-6">
+              <WaiverConfiguration
+                eventId={eventId as string}
+                organizationId={eventData.organizations.id}
+              />
+              <SignedWaivers
+                eventId={eventId as string}
+                organizationId={eventData.organizations.id}
+              />
+            </div>
+          )}
+
           {/* Analytics Tab */}
           {activeTab === "analytics" && (
           <div className="space-y-6">
@@ -2037,6 +2209,21 @@ const handleCreateConcessionItem = async () => {
           )}
         </main>
       </div>
+
+      {/* Waiver Signing Modal */}
+      {waiverTicketInfo && eventData?.organizations && (
+        <WaiverSigningModal
+          open={waiverModalOpen}
+          onOpenChange={setWaiverModalOpen}
+          eventId={eventId as string}
+          organizationId={eventData.organizations.id}
+          ticketId={waiverTicketInfo.ticketId}
+          ticketCode={waiverTicketInfo.ticketCode}
+          customerName={waiverTicketInfo.customerName}
+          customerEmail={waiverTicketInfo.customerEmail}
+          onWaiverSigned={handleWaiverSigned}
+        />
+      )}
     </div>
   );
 };

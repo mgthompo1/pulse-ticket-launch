@@ -290,8 +290,8 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-start justify-between">
+        <DialogHeader className="pr-10">
+          <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <DialogTitle className="text-2xl">{displayName}</DialogTitle>
               <DialogDescription>

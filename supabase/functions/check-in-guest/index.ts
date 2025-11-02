@@ -70,28 +70,29 @@ serve(async (req) => {
 
     if (checkinError) throw checkinError;
 
-    // Update ticket status
+    // Update ticket status to used
     const { error: updateError } = await supabase
       .from("tickets")
-      .update({ checked_in: true })
+      .update({
+        status: 'used',
+        used_at: new Date().toISOString()
+      })
       .eq("id", ticket.id);
 
     if (updateError) throw updateError;
 
-    // Get guest details
-    const { data: guestInfo, error: guestError } = await supabase
+    // Try to get guest details (optional - don't fail if view doesn't exist)
+    const { data: guestInfo } = await supabase
       .from("guest_status_view")
       .select("*")
       .eq("ticket_id", ticket.id)
       .single();
 
-    if (guestError) throw guestError;
-
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         checkin,
-        guest: guestInfo 
+        guest: guestInfo || null
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
