@@ -42,7 +42,7 @@ serve(async (req) => {
     // First check if user is the organization owner
     const { data: org, error: orgCheckError } = await supabaseClient
       .from('organizations')
-      .select('user_id')
+      .select('user_id, name')
       .eq('id', organization_id)
       .maybeSingle();
 
@@ -51,7 +51,12 @@ serve(async (req) => {
       throw new Error('Error checking organization');
     }
 
-    const isOwner = org && org.user_id === user.id;
+    if (!org) {
+      console.error('❌ Organization not found:', organization_id);
+      throw new Error('Organization not found');
+    }
+
+    const isOwner = org.user_id === user.id;
 
     if (isOwner) {
       console.log(`✅ User is the owner of the organization`);
