@@ -22,7 +22,8 @@ import {
   AlertCircle,
   CheckCircle,
   ArrowRight,
-  Lock
+  Lock,
+  Heart
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
@@ -299,6 +300,10 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
   const [promoDiscount, setPromoDiscount] = useState(0);
   const [promoMessage, setPromoMessage] = useState('');
 
+  // Donation state
+  const [selectedDonationAmount, setSelectedDonationAmount] = useState<number | null>(null);
+  const [customDonationAmount, setCustomDonationAmount] = useState<string>('');
+
   // Extract theme colors from event data with proper memoization
   const theme: Theme = useMemo(() => {
     const themeData = eventData.widget_customization?.theme;
@@ -332,6 +337,15 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
     eventData.widget_customization?.theme?.bodyTextColor,
     eventData.widget_customization?.theme?.fontFamily
   ]);
+
+  // Donation configuration
+  const crmEnabled = eventData?.organizations?.crm_enabled ?? (eventData as any)?.crm_enabled;
+  const isDonationsEnabled = eventData?.donations_enabled && crmEnabled;
+  const donationSuggestedAmounts = (eventData?.donation_suggested_amounts || [5, 10, 25, 50, 100]).map(amount =>
+    typeof amount === 'string' ? parseFloat(amount) : amount
+  );
+  const donationTitle = eventData?.donation_title || 'Support Our Cause';
+  const donationDescription = eventData?.donation_description;
 
   // Improvement #2: Progressive loading simulation (disabled for now to avoid setState warnings)
   // useEffect(() => {
@@ -452,7 +466,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
     eventId: eventData.id,
     ticketAmount: discountedTicketAmount,
     addonAmount: discountedMerchandiseAmount,
-    donationAmount: 0, // BetaCheckout doesn't seem to have donations yet
+    donationAmount: selectedDonationAmount || 0,
     bookingFeePercent: bookingFeesEnabled ? 1.0 : 0,
     enabled: true,
   });
@@ -477,6 +491,21 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
         [questionId]: value
       }
     }));
+  };
+
+  const handleDonationAmountSelect = (amount: number) => {
+    setSelectedDonationAmount(amount);
+    setCustomDonationAmount('');
+  };
+
+  const handleCustomDonationChange = (value: string) => {
+    setCustomDonationAmount(value);
+    const amount = parseFloat(value);
+    if (!isNaN(amount) && amount > 0) {
+      setSelectedDonationAmount(amount);
+    } else {
+      setSelectedDonationAmount(null);
+    }
   };
 
   const validateForm = () => {
@@ -534,13 +563,21 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
       });
       return;
     }
-    
+
     if (cartItems.length === 0) {
       toast({
         title: "Please select at least one ticket",
         variant: "destructive"
       });
       return;
+    }
+
+    // Include donation amount in customer info
+    if (selectedDonationAmount && selectedDonationAmount > 0) {
+      setCustomerInfo(prev => ({
+        ...prev,
+        donationAmount: selectedDonationAmount
+      }));
     }
 
     // For Stripe payment
@@ -741,6 +778,76 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                           </div>
                         );
                       })}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Donation Card */}
+                {isDonationsEnabled && (
+                  <Card style={{ backgroundColor: theme.cardBackgroundColor }}>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2" style={{ color: theme.headerTextColor }}>
+                        <Heart className="h-5 w-5" style={{ color: theme.primaryColor }} />
+                        {donationTitle}
+                      </CardTitle>
+                      {donationDescription && (
+                        <p className="text-sm mt-2" style={{ color: theme.bodyTextColor }}>
+                          {donationDescription}
+                        </p>
+                      )}
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Suggested Amounts */}
+                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                        {donationSuggestedAmounts.map((amount) => (
+                          <Button
+                            key={amount}
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleDonationAmountSelect(amount)}
+                            className={`font-semibold ${selectedDonationAmount === amount && !customDonationAmount ? 'ring-2' : ''}`}
+                            style={{
+                              borderColor: selectedDonationAmount === amount && !customDonationAmount ? theme.primaryColor : theme.borderColor,
+                              color: selectedDonationAmount === amount && !customDonationAmount ? theme.primaryColor : theme.bodyTextColor,
+                              backgroundColor: selectedDonationAmount === amount && !customDonationAmount ? `${theme.primaryColor}10` : theme.cardBackgroundColor
+                            }}
+                          >
+                            ${amount}
+                          </Button>
+                        ))}
+                      </div>
+
+                      {/* Custom Amount */}
+                      <div className="space-y-2">
+                        <Label style={{ color: theme.bodyTextColor }}>Or enter a custom amount</Label>
+                        <div className="flex items-center gap-2">
+                          <span style={{ color: theme.bodyTextColor }}>$</span>
+                          <Input
+                            type="number"
+                            min="1"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={customDonationAmount}
+                            onChange={(e) => handleCustomDonationChange(e.target.value)}
+                            style={{ backgroundColor: theme.inputBackgroundColor }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* No donation option */}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedDonationAmount(null);
+                          setCustomDonationAmount('');
+                        }}
+                        className="text-sm"
+                        style={{ color: theme.bodyTextColor }}
+                      >
+                        Continue without donating
+                      </Button>
                     </CardContent>
                   </Card>
                 )}

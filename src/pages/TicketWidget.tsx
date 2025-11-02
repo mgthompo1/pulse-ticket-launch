@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Minus, Plus, ShoppingCart, ArrowLeft, Calendar, Ticket, CreditCard, MapPin, HelpCircle } from "lucide-react";
+import { Minus, Plus, ShoppingCart, ArrowLeft, Calendar, Ticket, CreditCard, MapPin, HelpCircle, Heart } from "lucide-react";
 import { GuestSeatSelector } from "@/components/GuestSeatSelector";
 import MerchandiseSelector from "@/components/MerchandiseSelector";
 import { Badge } from "@/components/ui/badge";
@@ -188,6 +188,16 @@ const TicketWidget = () => {
 
   // Destructure theme colors for easier use
         const { primaryColor, buttonTextColor, backgroundColor, headerTextColor, bodyTextColor, fontFamily } = theme;
+
+  // Donation configuration
+  const crmEnabled = eventData?.organizations?.crm_enabled ?? (eventData as any)?.crm_enabled;
+  const isDonationsEnabled = eventData?.donations_enabled && crmEnabled;
+  const donationSuggestedAmounts = (eventData?.donation_suggested_amounts || [5, 10, 25, 50, 100]).map(amount =>
+    typeof amount === 'string' ? parseFloat(amount) : amount
+  );
+  const donationTitle = eventData?.donation_title || 'Support Our Cause';
+  const donationDescription = eventData?.donation_description;
+
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [merchandiseCart, setMerchandiseCart] = useState<MerchandiseCartItem[]>([]);
@@ -196,6 +206,8 @@ const TicketWidget = () => {
     email: "",
     phone: ""
   });
+  const [selectedDonationAmount, setSelectedDonationAmount] = useState<number | null>(null);
+  const [customDonationAmount, setCustomDonationAmount] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [windcaveDropIn, setWindcaveDropIn] = useState<WindcaveDropInInstance | null>(null);
@@ -777,9 +789,24 @@ const TicketWidget = () => {
       };
       setCart(prevCart => [...prevCart, newCartItem]);
     }
-    
+
     setShowSeatSelection(false);
     setPendingSeatSelection(null);
+  };
+
+  const handleDonationAmountSelect = (amount: number) => {
+    setSelectedDonationAmount(amount);
+    setCustomDonationAmount('');
+  };
+
+  const handleCustomDonationChange = (value: string) => {
+    setCustomDonationAmount(value);
+    const amount = parseFloat(value);
+    if (!isNaN(amount) && amount > 0) {
+      setSelectedDonationAmount(amount);
+    } else {
+      setSelectedDonationAmount(null);
+    }
   };
 
   const getMerchandiseTotal = () => {
@@ -884,8 +911,12 @@ const TicketWidget = () => {
         }))
       ];
 
-      // Include customAnswers in customerInfo
-      const fullCustomerInfo = { ...customerInfo, customAnswers };
+      // Include customAnswers and donationAmount in customerInfo
+      const fullCustomerInfo = {
+        ...customerInfo,
+        customAnswers,
+        donationAmount: selectedDonationAmount || undefined
+      };
 
       if (paymentProvider === "windcave") {
         // Create Windcave session and initialize Drop-In
@@ -1952,6 +1983,76 @@ const TicketWidget = () => {
                         </div>
                       ))}
                     </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Donation Card */}
+              {isDonationsEnabled && (
+                <Card className="animate-in fade-in-0" style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-2xl font-bold" style={{ color: headerTextColor }}>
+                      <Heart className="h-6 w-6" style={{ color: primaryColor }} />
+                      {donationTitle}
+                    </CardTitle>
+                    {donationDescription && (
+                      <p className="text-gray-600 mt-2" style={{ color: bodyTextColor }}>
+                        {donationDescription}
+                      </p>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Suggested Amounts */}
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                      {donationSuggestedAmounts.map((amount) => (
+                        <Button
+                          key={amount}
+                          type="button"
+                          variant="outline"
+                          onClick={() => handleDonationAmountSelect(amount)}
+                          className={`font-semibold ${selectedDonationAmount === amount && !customDonationAmount ? 'ring-2' : ''}`}
+                          style={{
+                            borderColor: selectedDonationAmount === amount && !customDonationAmount ? primaryColor : theme.borderColor,
+                            color: selectedDonationAmount === amount && !customDonationAmount ? primaryColor : bodyTextColor,
+                            backgroundColor: selectedDonationAmount === amount && !customDonationAmount ? `${primaryColor}10` : theme.cardBackgroundColor
+                          }}
+                        >
+                          ${amount}
+                        </Button>
+                      ))}
+                    </div>
+
+                    {/* Custom Amount */}
+                    <div className="space-y-2">
+                      <Label style={{ color: bodyTextColor }}>Or enter a custom amount</Label>
+                      <div className="flex items-center gap-2">
+                        <span style={{ color: bodyTextColor }}>$</span>
+                        <Input
+                          type="number"
+                          min="1"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={customDonationAmount}
+                          onChange={(e) => handleCustomDonationChange(e.target.value)}
+                          style={{ backgroundColor: theme.inputBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* No donation option */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedDonationAmount(null);
+                        setCustomDonationAmount('');
+                      }}
+                      className="text-sm"
+                      style={{ color: bodyTextColor }}
+                    >
+                      Continue without donating
+                    </Button>
                   </CardContent>
                 </Card>
               )}
