@@ -53,6 +53,7 @@ interface Group {
   logo_url: string | null;
   is_active: boolean;
   created_at: string;
+  passkey: string | null;
   // Stats from related tables
   total_allocations?: number;
   total_sold?: number;
@@ -94,6 +95,7 @@ export const GroupsManagement: React.FC = () => {
     billing_contact_email: "",
     billing_address: "",
     url_slug: "",
+    passkey: "",
   });
 
   useEffect(() => {
@@ -159,6 +161,7 @@ export const GroupsManagement: React.FC = () => {
         logo_url: string | null;
         is_active: boolean;
         created_at: string;
+        passkey: string | null;
         group_ticket_allocations: { allocated_quantity: number; used_quantity: number }[];
         group_ticket_sales: { paid_price: number; discount_amount: number }[];
       }) => {
@@ -176,6 +179,7 @@ export const GroupsManagement: React.FC = () => {
           logo_url: group.logo_url,
           is_active: group.is_active,
           created_at: group.created_at,
+          passkey: group.passkey,
           total_allocations: allocations.reduce(
             (sum, a) => sum + a.allocated_quantity,
             0
@@ -241,7 +245,7 @@ export const GroupsManagement: React.FC = () => {
     setShowGroupDialog(true);
   };
 
-  const handleEditGroup = (group: Group & { passkey?: string }) => {
+  const handleEditGroup = (group: Group) => {
     setEditingGroup(group);
     setFormData({
       name: group.name,
