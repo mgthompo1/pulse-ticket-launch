@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useOrganizations } from "@/hooks/useOrganizations";
 import {
   Plus,
   Search,
@@ -76,13 +76,12 @@ interface GroupFormData {
 
 export const GroupsManagement: React.FC = () => {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { currentOrganization, loading: orgLoading } = useOrganizations();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [selectedGroupForAllocations, setSelectedGroupForAllocations] = useState<Group | null>(null);
   const [copiedGroupId, setCopiedGroupId] = useState<string | null>(null);
   const [formData, setFormData] = useState<GroupFormData>({
@@ -99,34 +98,13 @@ export const GroupsManagement: React.FC = () => {
   });
 
   useEffect(() => {
-    loadOrganizationAndGroups();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  const loadOrganizationAndGroups = async () => {
-    if (!user) return;
-
-    try {
-      // Load organization
-      const { data: orgData, error: orgError } = await supabase
-        .from("organizations")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
-      if (orgError) throw orgError;
-
-      setOrganizationId(orgData.id);
-      await loadGroups(orgData.id);
-    } catch (error) {
-      console.error("Error loading organization:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load organization data",
-        variant: "destructive",
-      });
+    if (currentOrganization) {
+      console.log("📊 GroupsManagement: Loading groups for organization:", currentOrganization.name, currentOrganization.id);
+      loadGroups(currentOrganization.id);
+    } else if (!orgLoading) {
+      setLoading(false);
     }
-  };
+  }, [currentOrganization, orgLoading]);
 
   const loadGroups = async (orgId: string) => {
     setLoading(true);
@@ -263,7 +241,7 @@ export const GroupsManagement: React.FC = () => {
   };
 
   const handleSaveGroup = async () => {
-    if (!organizationId) return;
+    if (!currentOrganization) return;
 
     if (!formData.name || !formData.contact_email || !formData.passkey) {
       toast({
@@ -302,7 +280,7 @@ export const GroupsManagement: React.FC = () => {
       } else {
         // Create new group
         const { error } = await supabase.from("groups").insert({
-          organization_id: organizationId,
+          organization_id: currentOrganization.id,
           name: formData.name,
           description: formData.description,
           contact_name: formData.contact_name,
@@ -325,9 +303,7 @@ export const GroupsManagement: React.FC = () => {
       }
 
       setShowGroupDialog(false);
-      if (organizationId) {
-        loadGroups(organizationId);
-      }
+      loadGroups(currentOrganization.id);
     } catch (error: any) {
       console.error("Error saving group:", error);
       console.error("Error details:", {
@@ -360,8 +336,8 @@ export const GroupsManagement: React.FC = () => {
         description: "Group deleted successfully",
       });
 
-      if (organizationId) {
-        loadGroups(organizationId);
+      if (currentOrganization) {
+        loadGroups(currentOrganization.id);
       }
     } catch (error: any) {
       console.error("Error deleting group:", error);
@@ -399,7 +375,7 @@ export const GroupsManagement: React.FC = () => {
   );
 
   // If viewing allocations for a specific group, show that view
-  if (selectedGroupForAllocations && organizationId) {
+  if (selectedGroupForAllocations && currentOrganization) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
@@ -415,7 +391,7 @@ export const GroupsManagement: React.FC = () => {
         <GroupAllocations
           groupId={selectedGroupForAllocations.id}
           groupName={selectedGroupForAllocations.name}
-          organizationId={organizationId}
+          organizationId={currentOrganization.id}
         />
       </div>
     );

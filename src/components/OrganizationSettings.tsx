@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useOrganizations } from "@/hooks/useOrganizations";
 import { Building2, Mail, Globe, Phone, MapPin, Upload, Save, Settings, Calendar, MapPin as Attraction, Users, UserCog, Calculator } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { TaxSettings } from "@/components/TaxSettings";
@@ -32,7 +32,7 @@ interface OrganizationData {
 
 const OrganizationSettings: React.FC = () => {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { currentOrganization, loading: orgLoading, reloadOrganizations } = useOrganizations();
 
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -53,67 +53,43 @@ const OrganizationSettings: React.FC = () => {
   });
 
   useEffect(() => {
-    loadOrganization();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+    if (currentOrganization) {
+      console.log("⚙️ OrganizationSettings: Loading settings for organization:", currentOrganization.name, currentOrganization.id);
+      loadOrganization();
+    }
+  }, [currentOrganization]);
 
   const loadOrganization = async () => {
-    if (!user) return;
+    if (!currentOrganization) return;
 
     try {
-      // First, try to find organization where user is the owner
+      // Load full organization data for the current organization
       const { data: orgData, error } = await supabase
         .from("organizations")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("id", currentOrganization.id)
         .single();
 
-      let organizationData = orgData;
-
-      // If no owned organization found, check if user is a member of any organization
-      if (error && error.code === 'PGRST116') {
-        console.log("No owned organization found, checking memberships...");
-
-        const { data: membershipData, error: membershipError } = await supabase
-          .from("organization_users")
-          .select(`
-            organization_id,
-            role,
-            organizations (*)
-          `)
-          .eq("user_id", user.id)
-          .limit(1)
-          .single();
-
-        if (membershipError) {
-          console.error("Error loading organization membership:", membershipError);
-          return;
-        }
-
-        if (membershipData?.organizations) {
-          organizationData = membershipData.organizations as typeof orgData;
-          console.log("Found organization via membership:", organizationData);
-        }
-      } else if (error) {
+      if (error) {
         console.error("Error loading organization:", error);
         return;
       }
 
-      if (organizationData) {
+      if (orgData) {
         setOrganizationData({
-          id: organizationData.id,
-          name: organizationData.name || "",
-          email: organizationData.email || "",
-          website: organizationData.website || "",
-          logo_url: organizationData.logo_url || "",
-          address: organizationData.address || "",
-          city: organizationData.city || "",
-          postal_code: organizationData.postal_code || "",
-          country: organizationData.country || "New Zealand",
-          phone: organizationData.phone || "",
-          system_type: organizationData.system_type || "EVENTS",
-          groups_enabled: organizationData.groups_enabled || false,
-          crm_enabled: organizationData.crm_enabled || false,
+          id: orgData.id,
+          name: orgData.name || "",
+          email: orgData.email || "",
+          website: orgData.website || "",
+          logo_url: orgData.logo_url || "",
+          address: orgData.address || "",
+          city: orgData.city || "",
+          postal_code: orgData.postal_code || "",
+          country: orgData.country || "New Zealand",
+          phone: orgData.phone || "",
+          system_type: orgData.system_type || "EVENTS",
+          groups_enabled: orgData.groups_enabled || false,
+          crm_enabled: orgData.crm_enabled || false,
         });
       }
     } catch (error) {
@@ -250,7 +226,10 @@ const OrganizationSettings: React.FC = () => {
         description: "Organization settings saved successfully!"
       });
 
-      // If system_type was changed, refresh the page to update the UI
+      // Reload organizations to update the switcher and current organization state
+      await reloadOrganizations();
+
+      // If system_type or feature flags changed, refresh the page to update the UI
       // We need to refresh because the OrgDashboard component needs to reload with the new system type
       setTimeout(() => {
         window.location.reload();
