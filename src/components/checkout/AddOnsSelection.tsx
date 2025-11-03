@@ -11,6 +11,7 @@ interface AddOnsSelectionProps {
   onNext: () => void;
   onBack: () => void;
   theme: Theme;
+  hasCartItems?: boolean;
 }
 
 export const AddOnsSelection: React.FC<AddOnsSelectionProps> = ({
@@ -18,7 +19,8 @@ export const AddOnsSelection: React.FC<AddOnsSelectionProps> = ({
   onMerchandiseCartUpdate,
   onNext,
   onBack,
-  theme
+  theme,
+  hasCartItems = true
 }) => {
   return (
     <div className="space-y-6">
@@ -46,13 +48,16 @@ export const AddOnsSelection: React.FC<AddOnsSelectionProps> = ({
         >
           Back to Tickets
         </Button>
-        <Button 
-          onClick={onNext} 
-          size="lg" 
+        <Button
+          onClick={onNext}
+          size="lg"
           className="border-0"
-          style={{ 
+          disabled={!hasCartItems}
+          title={!hasCartItems ? "Please add at least one ticket to your cart" : ""}
+          style={{
             backgroundColor: theme.primaryColor,
-                                color: theme.buttonTextColor
+                                color: theme.buttonTextColor,
+            opacity: !hasCartItems ? 0.5 : 1
           }}
         >
           Continue to Details

@@ -208,7 +208,17 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   };
 
   const nextStep = () => {
-    const stepOrder: CheckoutStep[] = isStripePayment 
+    // Validate cart has items before leaving tickets step
+    if (currentStep === 'tickets' && cartItems.length === 0 && merchandiseCart.length === 0) {
+      toast({
+        title: "Cart is empty",
+        description: "Please add at least one ticket to your cart before continuing",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const stepOrder: CheckoutStep[] = isStripePayment
       ? ['event', 'tickets', 'details']
       : ['event', 'tickets', 'details', 'payment'];
     const currentIndex = stepOrder.indexOf(currentStep);
@@ -475,6 +485,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                         onNext={nextStep}
                         onBack={prevStep}
                         theme={theme}
+                        hasCartItems={cartItems.length > 0 || merchandiseCart.length > 0}
                       />
                     </div>
                   </CardContent>
