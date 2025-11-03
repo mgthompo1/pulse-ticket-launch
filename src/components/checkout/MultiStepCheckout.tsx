@@ -462,6 +462,8 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                       hideHeader={true}
                       hideContinueButton={true}
                       buttonText={eventData.widget_customization?.branding?.buttonText || "Add to Cart"}
+                      groupId={groupId}
+                      allocationId={allocationId}
                     />
                     
                     {/* Add-ons Section */}

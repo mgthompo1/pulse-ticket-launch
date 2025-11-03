@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,8 @@ interface TicketSelectionProps {
   hideHeader?: boolean;
   hideContinueButton?: boolean;
   buttonText?: string;
+  groupId?: string | null;
+  allocationId?: string | null;
 }
 
 export const TicketSelection: React.FC<TicketSelectionProps> = ({
@@ -27,10 +29,18 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
   theme,
   hideHeader = false,
   hideContinueButton = false,
-  buttonText = "Add to Cart"
+  buttonText = "Add to Cart",
+  groupId,
+  allocationId
 }) => {
   const [showSeatSelection, setShowSeatSelection] = useState(false);
   const [pendingSeatSelection, setPendingSeatSelection] = useState<TicketType | null>(null);
+  const [groupAllocation, setGroupAllocation] = useState<{
+    allocated_quantity: number;
+    used_quantity: number;
+    reserved_quantity: number;
+    ticket_type_id: string;
+  } | null>(null);
   
   
   // Create anonymous Supabase client for seat map queries
@@ -44,6 +54,41 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
       }
     }
   );
+
+  // Load group allocation if this is a group purchase
+  useEffect(() => {
+    const loadAllocation = async () => {
+      if (!allocationId) return;
+
+      console.log("🎯 TicketSelection: Loading allocation for", allocationId);
+
+      const { data: allocation, error } = await anonymousSupabase
+        .from("group_ticket_allocations")
+        .select("ticket_type_id, allocated_quantity, used_quantity, reserved_quantity")
+        .eq("id", allocationId)
+        .single();
+
+      if (error) {
+        console.error("Error loading allocation:", error);
+      } else if (allocation) {
+        console.log("🎯 TicketSelection: Allocation loaded:", allocation);
+        setGroupAllocation(allocation);
+      }
+    };
+
+    loadAllocation();
+  }, [allocationId]);
+
+  // Helper to get available quantity (group allocation or ticket type)
+  const getAvailableQuantity = (ticketType: TicketType): number => {
+    const isGroupPurchase = !!groupId && !!allocationId;
+    if (isGroupPurchase && groupAllocation && ticketType.id === groupAllocation.ticket_type_id) {
+      const remaining = groupAllocation.allocated_quantity - groupAllocation.used_quantity - groupAllocation.reserved_quantity;
+      console.log(`🎯 TicketSelection: Group allocation remaining for ${ticketType.name}:`, remaining);
+      return Math.max(0, remaining);
+    }
+    return ticketType.quantity_available - ticketType.quantity_sold;
+  };
 
   const hasSelectedTickets = cartItems.some(item => item.quantity > 0);
 
@@ -118,11 +163,12 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
 
       <div className="space-y-4">
         {ticketTypes.map((ticketType) => {
-          const isAvailable = ticketType.quantity_available > ticketType.quantity_sold;
-          
+          const availableQuantity = getAvailableQuantity(ticketType);
+          const isAvailable = availableQuantity > 0;
+
           return (
-            <Card 
-              key={ticketType.id} 
+            <Card
+              key={ticketType.id}
               className={!isAvailable ? 'opacity-50' : ''}
               style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}
             >
@@ -139,24 +185,24 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
                   <div className="text-right">
                     <div className="text-xl font-bold" style={{ color: theme.headerTextColor }}>${ticketType.price}</div>
                     <Badge variant={isAvailable ? "secondary" : "secondary"}>
-                      {isAvailable 
-                        ? `${ticketType.quantity_available - ticketType.quantity_sold} available`
+                      {isAvailable
+                        ? `${availableQuantity} available`
                         : 'Sold out'
                       }
                     </Badge>
                   </div>
                 </div>
               </CardHeader>
-              
+
               {isAvailable && (
                 <CardContent>
                   <div className="flex justify-end">
-                    <Button 
+                    <Button
                       onClick={() => addToCartWithSeatCheck(ticketType)}
                       variant="secondary"
                       className="border-0"
-                      disabled={ticketType.quantity_available - ticketType.quantity_sold <= 0}
-                      style={{ 
+                      disabled={availableQuantity <= 0}
+                      style={{
                         backgroundColor: theme.primaryColor,
                         color: theme.buttonTextColor
                       }}
