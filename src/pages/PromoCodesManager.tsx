@@ -45,6 +45,7 @@ interface PromoCode {
   event_id: string | null;
   notification_email: string | null;
   created_at: string;
+  groupName?: string; // Populated separately
 }
 
 interface PromoCodeFormData {
@@ -137,7 +138,33 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
       const { data, error } = await query;
 
       if (error) throw error;
-      setPromoCodes(data || []);
+
+      // Extract group IDs from descriptions and fetch group names
+      const codesWithGroups = await Promise.all(
+        (data || []).map(async (code) => {
+          if (code.description && code.description.startsWith('GROUP:')) {
+            // Extract group ID from description like "GROUP:uuid - reason"
+            const groupIdMatch = code.description.match(/^GROUP:([a-f0-9-]+)/);
+            if (groupIdMatch) {
+              const groupId = groupIdMatch[1];
+
+              // Fetch group name
+              const { data: groupData } = await supabase
+                .from('groups')
+                .select('name')
+                .eq('id', groupId)
+                .single();
+
+              if (groupData) {
+                return { ...code, groupName: groupData.name };
+              }
+            }
+          }
+          return code;
+        })
+      );
+
+      setPromoCodes(codesWithGroups);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -598,9 +625,20 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                           <Copy className="h-4 w-4" />
                         </Button>
                       </div>
-                      {code.description && (
+                      {code.groupName ? (
+                        <div className="mt-1">
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            GROUP: {code.groupName}
+                          </Badge>
+                          {code.description && code.description.includes(' - ') && (
+                            <p className="text-xs text-gray-600 mt-1">
+                              {code.description.split(' - ').slice(1).join(' - ')}
+                            </p>
+                          )}
+                        </div>
+                      ) : code.description && !code.description.startsWith('GROUP:') ? (
                         <p className="text-xs text-gray-600 mt-1">{code.description}</p>
-                      )}
+                      ) : null}
                       {!code.event_id && (
                         <Badge variant="secondary" className="mt-1">All Events</Badge>
                       )}
