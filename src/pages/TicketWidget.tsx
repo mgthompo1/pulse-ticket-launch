@@ -199,6 +199,12 @@ const TicketWidget = () => {
   const donationDescription = eventData?.donation_description;
 
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
+  const [groupAllocation, setGroupAllocation] = useState<{
+    allocated_quantity: number;
+    used_quantity: number;
+    reserved_quantity: number;
+    ticket_type_id: string;
+  } | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [merchandiseCart, setMerchandiseCart] = useState<MerchandiseCartItem[]>([]);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
@@ -505,6 +511,9 @@ const TicketWidget = () => {
           console.log("🎯 Allocation data:", allocation);
           console.log("🎯 Allocated ticket_type_id:", allocation.ticket_type_id);
 
+          // Store allocation data in state for quantity limiting
+          setGroupAllocation(allocation);
+
           // Filter to only show the allocated ticket type
           filteredTypes = types?.filter(t => t.id === allocation.ticket_type_id) || [];
           console.log("🎯 Filtered ticket types:", filteredTypes);
@@ -548,6 +557,18 @@ const TicketWidget = () => {
               loadEventData();
     }
   }, [eventId, loadEventData]);
+
+  // Helper function to get available quantity (group allocation or ticket type)
+  const getAvailableQuantity = (ticketType: TicketType): number => {
+    if (isGroupPurchase && groupAllocation && ticketType.id === groupAllocation.ticket_type_id) {
+      // For group purchases, use allocation's remaining quantity
+      const remaining = groupAllocation.allocated_quantity - groupAllocation.used_quantity - groupAllocation.reserved_quantity;
+      console.log(`🎯 Group allocation remaining for ${ticketType.name}:`, remaining);
+      return Math.max(0, remaining);
+    }
+    // For normal purchases, use ticket type's availability
+    return ticketType.quantity_available - ticketType.quantity_sold;
+  };
 
   // Debug effect to log theme changes
   useEffect(() => {
@@ -2083,7 +2104,7 @@ const TicketWidget = () => {
                                 <div className="text-right">
                                   <div className="text-xl font-bold text-gray-900">${ticketType.price}</div>
                                   <div className="text-sm text-gray-500 font-medium">
-                                    {ticketType.quantity_available - ticketType.quantity_sold} available
+                                    {getAvailableQuantity(ticketType)} available
                                   </div>
                                 </div>
                               </div>
@@ -2094,14 +2115,14 @@ const TicketWidget = () => {
                             
                             {/* Add to Cart Button - Side by side on larger screens */}
                             <div className="lg:ml-8">
-                              <Button 
+                              <Button
                                 onClick={() => addToCart(ticketType)}
                                 className="w-full lg:w-auto font-semibold rounded-lg shadow-sm hover:shadow-md transition-all duration-200"
                                 style={{ backgroundColor: primaryColor, color: buttonTextColor }}
-                                disabled={ticketType.quantity_available - ticketType.quantity_sold <= 0}
+                                disabled={getAvailableQuantity(ticketType) <= 0}
                                 size="default"
                               >
-                                {ticketType.quantity_available - ticketType.quantity_sold <= 0 ? (
+                                {getAvailableQuantity(ticketType) <= 0 ? (
                                   "Sold Out"
                                 ) : (
                                   <>
