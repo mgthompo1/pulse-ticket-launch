@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,8 +13,10 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { FileSignature, AlertCircle } from "lucide-react";
+import { FileSignature, AlertCircle, Pen, Type, RotateCcw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import SignatureCanvas from "react-signature-canvas";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface WaiverTemplate {
   id: string;
@@ -61,6 +63,11 @@ export const WaiverSigningModal: React.FC<WaiverSigningModalProps> = ({
   const [emergencyContactName, setEmergencyContactName] = useState("");
   const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
   const [hasAgreed, setHasAgreed] = useState(false);
+
+  // Signature state
+  const signaturePadRef = useRef<SignatureCanvas>(null);
+  const [signatureType, setSignatureType] = useState<'draw' | 'type'>('draw');
+  const [typedSignature, setTypedSignature] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -152,6 +159,29 @@ export const WaiverSigningModal: React.FC<WaiverSigningModalProps> = ({
       return;
     }
 
+    // Validate signature
+    if (currentWaiver.require_signature) {
+      if (signatureType === 'draw') {
+        if (!signaturePadRef.current || signaturePadRef.current.isEmpty()) {
+          toast({
+            title: "Signature Required",
+            description: "Please draw your signature",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else if (signatureType === 'type') {
+        if (!typedSignature.trim()) {
+          toast({
+            title: "Signature Required",
+            description: "Please type your full name as signature",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+    }
+
     if (!hasAgreed) {
       toast({
         title: "Agreement Required",
@@ -163,6 +193,20 @@ export const WaiverSigningModal: React.FC<WaiverSigningModalProps> = ({
 
     setSigning(true);
     try {
+      // Get signature data
+      let signatureData = "digital_acceptance";
+      let signatureTypeValue = "digital_acceptance";
+
+      if (currentWaiver.require_signature) {
+        if (signatureType === 'draw' && signaturePadRef.current) {
+          signatureData = signaturePadRef.current.toDataURL();
+          signatureTypeValue = "drawn";
+        } else if (signatureType === 'type') {
+          signatureData = typedSignature;
+          signatureTypeValue = "typed";
+        }
+      }
+
       const { error } = await supabase
         .from("waiver_signatures")
         .insert({
@@ -175,8 +219,8 @@ export const WaiverSigningModal: React.FC<WaiverSigningModalProps> = ({
           date_of_birth: dateOfBirth || null,
           emergency_contact_name: emergencyContactName || null,
           emergency_contact_phone: emergencyContactPhone || null,
-          signature_data: "digital_acceptance",
-          signature_type: "digital_acceptance",
+          signature_data: signatureData,
+          signature_type: signatureTypeValue,
           waiver_content_snapshot: currentWaiver.content,
           signed_at: new Date().toISOString(),
         });
@@ -187,6 +231,11 @@ export const WaiverSigningModal: React.FC<WaiverSigningModalProps> = ({
       if (currentWaiverIndex < waivers.length - 1) {
         setCurrentWaiverIndex(currentWaiverIndex + 1);
         setHasAgreed(false);
+        // Clear signature for next waiver
+        if (signaturePadRef.current) {
+          signaturePadRef.current.clear();
+        }
+        setTypedSignature("");
         toast({
           title: "Waiver Signed",
           description: `${waivers.length - currentWaiverIndex - 1} more to go`,
@@ -322,6 +371,63 @@ export const WaiverSigningModal: React.FC<WaiverSigningModalProps> = ({
             )}
           </div>
 
+          {/* Signature Section */}
+          {currentWaiver.require_signature && (
+            <div className="space-y-4 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold text-sm">
+                  Your Signature <span className="text-destructive">*</span>
+                </h4>
+              </div>
+
+              <Tabs value={signatureType} onValueChange={(v) => setSignatureType(v as 'draw' | 'type')}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="draw" className="flex items-center gap-2">
+                    <Pen className="h-4 w-4" />
+                    Draw
+                  </TabsTrigger>
+                  <TabsTrigger value="type" className="flex items-center gap-2">
+                    <Type className="h-4 w-4" />
+                    Type
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="draw" className="space-y-2">
+                  <div className="border-2 rounded-lg bg-white">
+                    <SignatureCanvas
+                      ref={signaturePadRef}
+                      canvasProps={{
+                        className: 'w-full h-40 cursor-crosshair',
+                      }}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => signaturePadRef.current?.clear()}
+                    className="w-full"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Clear Signature
+                  </Button>
+                </TabsContent>
+
+                <TabsContent value="type" className="space-y-2">
+                  <Input
+                    value={typedSignature}
+                    onChange={(e) => setTypedSignature(e.target.value)}
+                    placeholder="Type your full legal name"
+                    className="font-serif text-2xl italic"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Type your full name as it appears on official documents
+                  </p>
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
+
           {/* Agreement Checkbox */}
           <div className="flex items-start space-x-3 border-t pt-4">
             <Checkbox
@@ -337,7 +443,7 @@ export const WaiverSigningModal: React.FC<WaiverSigningModalProps> = ({
                 I have read and agree to the terms of this waiver
               </label>
               <p className="text-sm text-muted-foreground mt-1">
-                By checking this box, you are providing a legal digital signature
+                By {currentWaiver.require_signature ? "signing and" : ""} checking this box, you are providing a legal digital signature
               </p>
             </div>
           </div>

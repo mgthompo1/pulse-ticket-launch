@@ -13,6 +13,15 @@ serve(async (req) => {
   }
 
   try {
+    // SECURITY: Get and validate authentication header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - Missing authentication" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+      );
+    }
+
     const {
       contact_id,
       organization_id,
@@ -29,6 +38,39 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+
+    // SECURITY: Validate user authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - Invalid token" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+      );
+    }
+
+    // SECURITY: Verify user has permission to manage this contact
+    const { data: hasPermission, error: permError } = await supabase.rpc('check_contact_access', {
+      p_contact_id: contact_id,
+      p_user_id: user.id,
+      p_required_permission: 'manage_crm'
+    });
+
+    if (permError) {
+      console.error("Permission check error:", permError);
+      throw new Error("Permission check failed");
+    }
+
+    if (!hasPermission) {
+      return new Response(
+        JSON.stringify({ error: "Forbidden - You don't have permission to manage this contact" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+      );
+    }
+
+    console.log("Authorization successful for user:", user.id);
 
     // Get contact details
     const { data: contact, error: contactError } = await supabase

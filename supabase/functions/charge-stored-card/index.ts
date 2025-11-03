@@ -18,6 +18,15 @@ serve(async (req) => {
   }
 
   try {
+    // SECURITY: Get and validate authentication header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - Missing authentication" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+      );
+    }
+
     const {
       event_id,
       contact_id,
@@ -36,6 +45,38 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+
+    // SECURITY: Validate user authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - Invalid token" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+      );
+    }
+
+    // SECURITY: Verify user has permission to create orders for this event
+    const { data: hasEventAccess, error: eventPermError } = await supabase.rpc('check_event_access', {
+      p_event_id: event_id,
+      p_user_id: user.id
+    });
+
+    if (eventPermError) {
+      console.error("Event permission check error:", eventPermError);
+      throw new Error("Event permission check failed");
+    }
+
+    if (!hasEventAccess) {
+      return new Response(
+        JSON.stringify({ error: "Forbidden - You don't have permission to create orders for this event" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+      );
+    }
+
+    console.log("Authorization successful for user:", user.id);
 
     // Get contact with payment methods
     const { data: contact, error: contactError } = await supabase
@@ -70,6 +111,14 @@ serve(async (req) => {
 
     if (eventError || !event) {
       throw new Error("Event not found");
+    }
+
+    // SECURITY: Verify contact belongs to same organization as event
+    if (contact.organization_id !== event.organization_id) {
+      return new Response(
+        JSON.stringify({ error: "Forbidden - Contact does not belong to this event's organization" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+      );
     }
 
     // Get payment credentials

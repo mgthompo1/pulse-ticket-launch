@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import jsPDF from "jspdf";
 
 interface WaiverSignature {
   id: string;
@@ -99,6 +100,140 @@ export const SignedWaivers: React.FC<SignedWaiversProps> = ({
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
+  };
+
+  const handleDownloadPDF = async (signature: WaiverSignature) => {
+    try {
+      const pdf = new jsPDF();
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
+      const maxWidth = pageWidth - 2 * margin;
+      let yPosition = margin;
+
+      // Title
+      pdf.setFontSize(18);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Signed Waiver", pageWidth / 2, yPosition, { align: "center" });
+      yPosition += 15;
+
+      // Waiver title
+      pdf.setFontSize(14);
+      pdf.text(signature.waiver_templates?.title || "Waiver", margin, yPosition);
+      yPosition += 10;
+
+      // Signer information
+      pdf.setFontSize(10);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(`Signer: ${signature.signer_name}`, margin, yPosition);
+      yPosition += 7;
+
+      if (signature.signer_email) {
+        pdf.text(`Email: ${signature.signer_email}`, margin, yPosition);
+        yPosition += 7;
+      }
+
+      if (signature.date_of_birth) {
+        pdf.text(`Date of Birth: ${new Date(signature.date_of_birth).toLocaleDateString()}`, margin, yPosition);
+        yPosition += 7;
+      }
+
+      if (signature.tickets) {
+        pdf.text(`Ticket: ${signature.tickets.ticket_code}`, margin, yPosition);
+        yPosition += 7;
+      }
+
+      if (signature.emergency_contact_name) {
+        pdf.text(`Emergency Contact: ${signature.emergency_contact_name}`, margin, yPosition);
+        yPosition += 7;
+        if (signature.emergency_contact_phone) {
+          pdf.text(`Emergency Phone: ${signature.emergency_contact_phone}`, margin, yPosition);
+          yPosition += 7;
+        }
+      }
+
+      pdf.text(`Signed At: ${formatDate(signature.signed_at)}`, margin, yPosition);
+      yPosition += 12;
+
+      // Waiver content
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Waiver Content:", margin, yPosition);
+      yPosition += 7;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      const contentLines = pdf.splitTextToSize(signature.waiver_content_snapshot, maxWidth);
+
+      for (const line of contentLines) {
+        if (yPosition > pageHeight - 40) {
+          pdf.addPage();
+          yPosition = margin;
+        }
+        pdf.text(line, margin, yPosition);
+        yPosition += 5;
+      }
+
+      yPosition += 10;
+
+      // Signature
+      if (yPosition > pageHeight - 60) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+
+      pdf.setFontSize(10);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Signature:", margin, yPosition);
+      yPosition += 7;
+
+      if (signature.signature_type === "drawn") {
+        // Add drawn signature as image
+        try {
+          pdf.addImage(signature.signature_data, "PNG", margin, yPosition, 80, 30);
+          yPosition += 35;
+        } catch (error) {
+          console.error("Error adding signature image:", error);
+          pdf.setFont("helvetica", "italic");
+          pdf.text("(Signature image could not be embedded)", margin, yPosition);
+          yPosition += 7;
+        }
+      } else if (signature.signature_type === "typed") {
+        pdf.setFont("times", "italic");
+        pdf.setFontSize(16);
+        pdf.text(signature.signature_data, margin, yPosition);
+        yPosition += 7;
+        pdf.line(margin, yPosition, margin + 80, yPosition);
+        yPosition += 7;
+      } else {
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(9);
+        pdf.text("Digital Acceptance - Signer accepted terms digitally", margin, yPosition);
+        yPosition += 7;
+      }
+
+      // Footer
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(128);
+      pdf.text(`Document ID: ${signature.id}`, margin, pageHeight - 10);
+      pdf.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - margin, pageHeight - 10, { align: "right" });
+
+      // Save PDF
+      const filename = `waiver_${signature.signer_name.replace(/\s+/g, "_")}_${new Date(signature.signed_at).toISOString().split("T")[0]}.pdf`;
+      pdf.save(filename);
+
+      toast({
+        title: "PDF Downloaded",
+        description: "Signed waiver has been downloaded as PDF",
+      });
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -189,6 +324,14 @@ export const SignedWaivers: React.FC<SignedWaiversProps> = ({
                         <Eye className="h-4 w-4 mr-2" />
                         View
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDownloadPDF(signature)}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        PDF
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -202,10 +345,24 @@ export const SignedWaivers: React.FC<SignedWaiversProps> = ({
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Signed Waiver Details</DialogTitle>
-            <DialogDescription>
-              {selectedSignature && formatDate(selectedSignature.signed_at)}
-            </DialogDescription>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <DialogTitle>Signed Waiver Details</DialogTitle>
+                <DialogDescription>
+                  {selectedSignature && formatDate(selectedSignature.signed_at)}
+                </DialogDescription>
+              </div>
+              {selectedSignature && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleDownloadPDF(selectedSignature)}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download PDF
+                </Button>
+              )}
+            </div>
           </DialogHeader>
 
           {selectedSignature && (
@@ -294,13 +451,32 @@ export const SignedWaivers: React.FC<SignedWaiversProps> = ({
                         Signer accepted terms digitally
                       </p>
                     </div>
-                  ) : (
+                  ) : selectedSignature.signature_type === "drawn" ? (
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground mb-2">
-                        Signature Type: {selectedSignature.signature_type}
+                        Drawn Signature
                       </p>
-                      {/* Placeholder for signature image */}
-                      <p className="text-sm italic">Signature data available</p>
+                      <img
+                        src={selectedSignature.signature_data}
+                        alt="Signature"
+                        className="max-w-full h-auto mx-auto border-b border-gray-300"
+                        style={{ maxHeight: '120px' }}
+                      />
+                    </div>
+                  ) : selectedSignature.signature_type === "typed" ? (
+                    <div className="text-center py-4">
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Typed Signature
+                      </p>
+                      <p className="font-serif text-3xl italic border-b border-gray-300 inline-block px-4">
+                        {selectedSignature.signature_data}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-muted-foreground">
+                        Unknown signature type: {selectedSignature.signature_type}
+                      </p>
                     </div>
                   )}
                 </div>

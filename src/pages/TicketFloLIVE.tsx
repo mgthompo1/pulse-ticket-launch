@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,6 +63,7 @@ const TicketFloLIVE = () => {
   const [loading, setLoading] = useState(false);
   const [ticketCode, setTicketCode] = useState("");
   const [checkInNotes, setCheckInNotes] = useState("");
+  const ticketCodeInputRef = useRef<HTMLInputElement>(null);
   const [customerInfo, setCustomerInfo] = useState({ name: "", email: "" });
 
   // Modern UI state
@@ -480,13 +481,23 @@ const handleCreateConcessionItem = async () => {
   };
 
   const handleCheckIn = async () => {
-    if (!ticketCode.trim()) {
+    console.log("=== Starting check-in process ===");
+
+    // Get the actual input value from the ref (for barcode scanners that type too fast)
+    const actualTicketCode = ticketCodeInputRef.current?.value || ticketCode;
+    console.log("Ticket code from state:", ticketCode);
+    console.log("Ticket code from input:", ticketCodeInputRef.current?.value);
+    console.log("Using ticket code:", actualTicketCode);
+
+    if (!actualTicketCode.trim()) {
       toast({ title: "Please enter a ticket code", variant: "destructive" });
       return;
     }
 
     setLoading(true);
     try {
+      console.log("Querying for ticket:", actualTicketCode.trim());
+
       // First, look up the ticket with customer info from related tables
       const { data: ticketData, error: ticketError } = await supabase
         .from("tickets")
@@ -502,10 +513,13 @@ const handleCreateConcessionItem = async () => {
             )
           )
         `)
-        .eq("ticket_code", ticketCode.trim())
+        .eq("ticket_code", actualTicketCode.trim())
         .single();
 
+      console.log("Ticket query result:", { ticketData, ticketError });
+
       if (ticketError || !ticketData) {
+        console.error("Ticket lookup failed:", ticketError);
         toast({ title: "Ticket not found", variant: "destructive" });
         setLoading(false);
         return;
@@ -516,7 +530,10 @@ const handleCreateConcessionItem = async () => {
       const customerEmail = ticketData.order_items?.orders?.customer_email || "";
       const isAlreadyCheckedIn = ticketData.status === "used" || !!ticketData.used_at;
 
+      console.log("Customer info:", { customerName, customerEmail, isAlreadyCheckedIn });
+
       // Check if there are active waivers that need to be signed
+      console.log("Checking for active waivers...");
       if (eventData?.organizations && !isAlreadyCheckedIn) {
         const { data: activeWaivers } = await supabase
           .from("waiver_templates")
@@ -526,6 +543,8 @@ const handleCreateConcessionItem = async () => {
           .or(`event_id.eq.${eventId},event_id.is.null`)
           .limit(1);
 
+        console.log("Active waivers found:", activeWaivers);
+
         if (activeWaivers && activeWaivers.length > 0) {
           // Check if waivers already signed
           const { data: existingSignatures } = await supabase
@@ -534,11 +553,14 @@ const handleCreateConcessionItem = async () => {
             .eq("ticket_id", ticketData.id)
             .limit(1);
 
+          console.log("Existing signatures:", existingSignatures);
+
           if (!existingSignatures || existingSignatures.length === 0) {
+            console.log("No signatures found - showing waiver modal");
             // Show waiver modal before checking in
             setWaiverTicketInfo({
               ticketId: ticketData.id,
-              ticketCode: ticketCode.trim(),
+              ticketCode: actualTicketCode.trim(),
               customerName: customerName,
               customerEmail: customerEmail,
             });
@@ -550,27 +572,51 @@ const handleCreateConcessionItem = async () => {
       }
 
       // Proceed with check-in
+      console.log("Proceeding to call edge function...");
       const { data, error } = await supabase.functions.invoke("check-in-guest", {
         body: {
-          ticketCode: ticketCode.trim(),
+          ticketCode: actualTicketCode.trim(),
           notes: checkInNotes,
           staffId: user?.id || "current-user-id",
         },
       });
 
-      if (error) throw error;
+      console.log("Check-in response:", { data, error });
 
-      if (data.success) {
+      if (error) {
+        console.error("Edge function error:", error);
+        toast({
+          title: "Check-in failed",
+          description: error.message || "Unknown error",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (data?.success) {
         toast({ title: "Guest checked in successfully!" });
         setTicketCode("");
+        if (ticketCodeInputRef.current) {
+          ticketCodeInputRef.current.value = "";
+        }
         setCheckInNotes("");
         loadGuests();
       } else {
-        toast({ title: data.error || "Check-in failed", variant: "destructive" });
+        console.error("Check-in failed with data:", data);
+        toast({
+          title: "Check-in failed",
+          description: data?.error || "Unknown error",
+          variant: "destructive"
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Check-in error:", error);
-      toast({ title: "Check-in failed", variant: "destructive" });
+      toast({
+        title: "Check-in failed",
+        description: error?.message || "An unexpected error occurred",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -590,20 +636,43 @@ const handleCreateConcessionItem = async () => {
         },
       });
 
-      if (error) throw error;
+      console.log("Check-in response after waiver:", { data, error });
 
-      if (data.success) {
+      if (error) {
+        console.error("Edge function error:", error);
+        toast({
+          title: "Check-in failed",
+          description: error.message || "Unknown error",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (data?.success) {
         toast({ title: "Guest checked in successfully!" });
         setTicketCode("");
+        if (ticketCodeInputRef.current) {
+          ticketCodeInputRef.current.value = "";
+        }
         setCheckInNotes("");
         setWaiverTicketInfo(null);
         loadGuests();
       } else {
-        toast({ title: data.error || "Check-in failed", variant: "destructive" });
+        console.error("Check-in failed with data:", data);
+        toast({
+          title: "Check-in failed",
+          description: data?.error || "Unknown error",
+          variant: "destructive"
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Check-in error:", error);
-      toast({ title: "Check-in failed", variant: "destructive" });
+      toast({
+        title: "Check-in failed",
+        description: error?.message || "An unexpected error occurred",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -1221,11 +1290,22 @@ const handleCreateConcessionItem = async () => {
                       <Label htmlFor="ticketCode">Quick Scan/Check-In</Label>
                       <div className="flex space-x-2">
                         <Input
+                          ref={ticketCodeInputRef}
                           id="ticketCode"
                           placeholder="Scan or enter ticket code"
                           value={ticketCode}
                           onChange={(e) => setTicketCode(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !loading) {
+                              e.preventDefault();
+                              // Small delay to let barcode scanner finish typing all characters
+                              setTimeout(() => {
+                                handleCheckIn();
+                              }, 100);
+                            }
+                          }}
                           className="flex-1"
+                          autoComplete="off"
                         />
                         <Button onClick={handleCheckIn} disabled={loading}>
                           <CheckCircle className="mr-2 h-4 w-4" />
