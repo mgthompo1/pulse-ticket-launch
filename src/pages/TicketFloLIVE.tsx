@@ -490,7 +490,14 @@ const handleCreateConcessionItem = async () => {
     console.log("Using ticket code:", actualTicketCode);
 
     if (!actualTicketCode.trim()) {
+      console.warn("⚠️ Check-in aborted - empty ticket code");
       toast({ title: "Please enter a ticket code", variant: "destructive" });
+      return;
+    }
+
+    // Prevent duplicate submissions
+    if (loading) {
+      console.warn("⚠️ Check-in already in progress");
       return;
     }
 
@@ -581,13 +588,28 @@ const handleCreateConcessionItem = async () => {
         },
       });
 
-      console.log("Check-in response:", { data, error });
+      console.log("Check-in response - Success:", data?.success);
+      console.log("Check-in response - Data:", data);
+      console.log("Check-in response - Error:", error);
 
       if (error) {
         console.error("Edge function error:", error);
+        console.error("Error name:", error.name);
+        console.error("Error message:", error.message);
+        console.error("Error context:", error.context);
+
+        // Try to get more details from the response
+        let errorMessage = error.message || "Unknown error";
+
+        // If it's a FunctionsHttpError, the actual error might be in data
+        if (data && typeof data === 'object' && 'error' in data) {
+          errorMessage = data.error;
+          console.error("Server error message:", data.error);
+        }
+
         toast({
           title: "Check-in failed",
-          description: error.message || "Unknown error",
+          description: errorMessage,
           variant: "destructive"
         });
         setLoading(false);
@@ -595,6 +617,7 @@ const handleCreateConcessionItem = async () => {
       }
 
       if (data?.success) {
+        console.log("✅ Check-in successful!");
         toast({ title: "Guest checked in successfully!" });
         setTicketCode("");
         if (ticketCodeInputRef.current) {
@@ -603,10 +626,11 @@ const handleCreateConcessionItem = async () => {
         setCheckInNotes("");
         loadGuests();
       } else {
-        console.error("Check-in failed with data:", data);
+        console.error("❌ Check-in failed with data:", data);
+        console.error("Error message from server:", data?.error);
         toast({
           title: "Check-in failed",
-          description: data?.error || "Unknown error",
+          description: data?.error || "Unknown error occurred",
           variant: "destructive"
         });
       }
@@ -640,9 +664,22 @@ const handleCreateConcessionItem = async () => {
 
       if (error) {
         console.error("Edge function error:", error);
+        console.error("Error name:", error.name);
+        console.error("Error message:", error.message);
+        console.error("Error context:", error.context);
+
+        // Try to get more details from the response
+        let errorMessage = error.message || "Unknown error";
+
+        // If it's a FunctionsHttpError, the actual error might be in data
+        if (data && typeof data === 'object' && 'error' in data) {
+          errorMessage = data.error;
+          console.error("Server error message:", data.error);
+        }
+
         toast({
           title: "Check-in failed",
-          description: error.message || "Unknown error",
+          description: errorMessage,
           variant: "destructive"
         });
         setLoading(false);
@@ -1298,10 +1335,10 @@ const handleCreateConcessionItem = async () => {
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' && !loading) {
                               e.preventDefault();
-                              // Small delay to let barcode scanner finish typing all characters
+                              // Delay to let barcode scanner finish typing all characters
                               setTimeout(() => {
                                 handleCheckIn();
-                              }, 100);
+                              }, 200);
                             }
                           }}
                           className="flex-1"

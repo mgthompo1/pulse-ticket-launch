@@ -324,9 +324,15 @@ export const GroupsManagement: React.FC = () => {
       if (organizationId) {
         loadGroups(organizationId);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving group:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to save group";
+      console.error("Error details:", {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+      });
+      const errorMessage = error?.message || error?.details || "Failed to save group";
       toast({
         title: "Error",
         description: errorMessage,
@@ -353,9 +359,15 @@ export const GroupsManagement: React.FC = () => {
       if (organizationId) {
         loadGroups(organizationId);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting group:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to delete group";
+      console.error("Error details:", {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+      });
+      const errorMessage = error?.message || error?.details || "Failed to delete group";
       toast({
         title: "Error",
         description: errorMessage,

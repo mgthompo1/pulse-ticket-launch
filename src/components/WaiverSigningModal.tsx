@@ -266,6 +266,10 @@ export const WaiverSigningModal: React.FC<WaiverSigningModalProps> = ({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Loading Waivers</DialogTitle>
+            <DialogDescription>Please wait while we load the required waivers...</DialogDescription>
+          </DialogHeader>
           <div className="text-center py-8">
             <p className="text-sm text-muted-foreground">Loading waivers...</p>
           </div>
