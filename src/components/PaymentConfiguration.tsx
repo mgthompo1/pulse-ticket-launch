@@ -48,7 +48,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
       // Get basic organization info (non-sensitive) including Stripe Connect status
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
-        .select('payment_provider, currency, credit_card_processing_fee_percentage, stripe_account_id, stripe_booking_fee_enabled, stripe_publishable_key, stripe_secret_key, stripe_terminal_location_id')
+        .select('payment_provider, currency, credit_card_processing_fee_percentage, stripe_account_id, stripe_booking_fee_enabled, stripe_terminal_location_id')
         .eq('id', organizationId)
         .single();
 
@@ -70,10 +70,6 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         setCreditCardProcessingFee(orgData.credit_card_processing_fee_percentage || 0);
         setStripeConnectedAccountId(orgData.stripe_account_id || '');
         setEnableBookingFees(orgData.stripe_booking_fee_enabled || false);
-
-        // Get Stripe credentials from organizations table
-        setStripePublishableKey(orgData.stripe_publishable_key || '');
-        setStripeSecretKey(orgData.stripe_secret_key || '');
         setStripeTerminalLocationId(orgData.stripe_terminal_location_id || '');
       }
 
