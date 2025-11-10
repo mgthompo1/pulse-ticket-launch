@@ -28,12 +28,17 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
 
   // Handle OAuth callback and account creation callback from URL params
   useEffect(() => {
+    console.log('[StripeConnectButton] useEffect running');
+    console.log('[StripeConnectButton] window.location.search:', window.location.search);
+
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     const state = urlParams.get('state');
     const error = urlParams.get('error');
     const connected = urlParams.get('connected');
     const refresh = urlParams.get('refresh');
+
+    console.log('[StripeConnectButton] OAuth params:', { code: code?.substring(0, 20) + '...', state, error, connected, refresh });
 
     if (error) {
       toast({
@@ -75,11 +80,15 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
 
     // Handle OAuth flow completion
     if (code && state) {
+      console.log('[StripeConnectButton] Calling completeConnection');
       completeConnection(code, state);
+    } else {
+      console.log('[StripeConnectButton] No code/state found, skipping OAuth callback');
     }
   }, []);
 
   const completeConnection = async (code: string, state: string) => {
+    console.log('[StripeConnectButton] completeConnection called with code:', code.substring(0, 20) + '...', 'state:', state);
     setLoading(true);
     try {
       const { error } = await supabase.functions.invoke('stripe-connect-oauth', {
