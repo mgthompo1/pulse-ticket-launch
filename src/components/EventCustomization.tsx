@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -2287,15 +2288,15 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="event-date">Event Date & Time *</Label>
-                  <Input
+                <div>
+                  <DateTimePicker
                     id="event-date"
-                    type="datetime-local"
-                    value={eventData?.event_date ? new Date(eventData.event_date).toISOString().slice(0, 16) : ""}
-                    onChange={(e) => {
-                      setEventData(prev => prev ? { ...prev, event_date: e.target.value } : null);
+                    label="Event Date & Time *"
+                    value={eventData?.event_date || null}
+                    onChange={(date) => {
+                      setEventData(prev => prev ? { ...prev, event_date: date } : null);
                     }}
+                    placeholder="Select event date and time"
                   />
                 </div>
                 

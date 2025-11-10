@@ -152,6 +152,27 @@ serve(async (req) => {
 
       console.log('✅ Organization updated with Connect account');
 
+      // Update Stripe account metadata with organization_id
+      // This allows webhooks to find the correct organization
+      try {
+        const Stripe = (await import('https://esm.sh/stripe@14.21.0')).default;
+        const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+          apiVersion: '2024-11-20.acacia',
+          httpClient: Stripe.createFetchHttpClient(),
+        });
+
+        await stripe.accounts.update(tokenData.stripe_user_id, {
+          metadata: {
+            organization_id: orgId
+          }
+        });
+
+        console.log('✅ Updated Stripe account metadata with organization_id');
+      } catch (metadataError) {
+        console.error('Warning: Failed to update Stripe account metadata:', metadataError);
+        // Don't fail the whole operation if metadata update fails
+      }
+
       return new Response(JSON.stringify({
         success: true,
         stripe_account_id: tokenData.stripe_user_id,

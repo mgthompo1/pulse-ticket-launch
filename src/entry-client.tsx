@@ -3,6 +3,7 @@ import { hydrateRoot, createRoot, Root } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import * as Sentry from "@sentry/react";
+import 'react-datepicker/dist/react-datepicker.css';
 import './index.css';
 import './App.css';
 import App from './App';

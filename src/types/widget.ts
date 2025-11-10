@@ -21,6 +21,8 @@ export interface WidgetCustomization {
   branding?: {
     showOrgLogo?: boolean;
     customHeaderText?: string;
+    buttonText?: string;
+    buttonTextType?: 'default' | 'register' | 'buy' | 'donate' | 'buynow' | 'rsvp' | 'custom';
   };
   resourceSelection?: {
     label?: string;
@@ -41,6 +43,8 @@ export interface WidgetCustomization {
   fontFamily?: string;
   showOrgLogo?: boolean;
   customHeaderText?: string;
+  buttonText?: string;
+  buttonTextType?: 'default' | 'register' | 'buy' | 'donate' | 'buynow' | 'rsvp' | 'custom';
   label?: string;
   placeholder?: string;
   anyOption?: string;

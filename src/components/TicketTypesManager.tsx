@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, Edit2, Trash2, DollarSign, MapPin } from "lucide-react";
@@ -312,22 +313,22 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="saleStart">Sale Start Date</Label>
-                    <Input
+                  <div>
+                    <DateTimePicker
                       id="saleStart"
-                      type="datetime-local"
-                      value={formData.sale_start_date || ""}
-                      onChange={(e) => setFormData({ ...formData, sale_start_date: e.target.value || null })}
+                      label="Sale Start Date"
+                      value={formData.sale_start_date}
+                      onChange={(date) => setFormData({ ...formData, sale_start_date: date || null })}
+                      placeholder="Select sale start date (optional)"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="saleEnd">Sale End Date</Label>
-                    <Input
+                  <div>
+                    <DateTimePicker
                       id="saleEnd"
-                      type="datetime-local"
-                      value={formData.sale_end_date || ""}
-                      onChange={(e) => setFormData({ ...formData, sale_end_date: e.target.value || null })}
+                      label="Sale End Date"
+                      value={formData.sale_end_date}
+                      onChange={(date) => setFormData({ ...formData, sale_end_date: date || null })}
+                      placeholder="Select sale end date (optional)"
                     />
                   </div>
                 </div>

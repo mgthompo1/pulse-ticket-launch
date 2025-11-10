@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -1332,14 +1333,13 @@ const OrgDashboard = () => {
                               className="font-manrope text-sm"
                             />
                           </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="event-date" className="font-manrope font-medium text-sm text-slate-700">Event Date *</Label>
-                            <Input
+                          <div>
+                            <DateTimePicker
                               id="event-date"
-                              type="datetime-local"
+                              label="Event Date *"
                               value={eventForm.date}
-                              onChange={(e) => setEventForm(prev => ({ ...prev, date: e.target.value }))}
-                              className="font-manrope text-sm"
+                              onChange={(date) => setEventForm(prev => ({ ...prev, date }))}
+                              placeholder="Select event date and time"
                             />
                           </div>
                           <div className="space-y-2">
