@@ -409,21 +409,17 @@ serve(async (req) => {
 
     // Use Connect ONLY when booking fees are enabled AND organization has connected account
     let stripeAccountId = null;
-    let transferAmount = amountInCents;
     let useConnectPayment = false;
-    
+
     if (isEventPayment && enableBookingFees && event?.organizations?.stripe_account_id) {
       // Connect is required when booking fees are enabled
       stripeAccountId = event.organizations.stripe_account_id;
       useConnectPayment = true;
-      
-      const platformFeeAmount = Math.round((bookingFee || 0) * 100);
-      transferAmount = amountInCents - platformFeeAmount;
-      
-      console.log("=== CONNECT PAYMENT WITH BOOKING FEES ===");
+
+      console.log("=== CONNECT PAYMENT WITH BOOKING FEES (DESTINATION CHARGES) ===");
       console.log("Total amount:", amountInCents, "cents");
-      console.log("Platform fee:", platformFeeAmount, "cents"); 
-      console.log("Transfer to organization:", transferAmount, "cents");
+      console.log("Platform application fee:", Math.round((bookingFee || 0) * 100), "cents");
+      console.log("Connected account will be charged directly (pays their own Stripe fees)");
     } else if (isEventPayment && enableBookingFees && !event?.organizations?.stripe_account_id) {
       // Booking fees enabled but no connected account - this is an error
       throw new Error("Booking fees require Stripe Connect. Please connect your Stripe account first.");
@@ -462,14 +458,18 @@ serve(async (req) => {
 
     // Add Connect parameters only if using Connect payment
     if (useConnectPayment && stripeAccountId) {
+      // Use DESTINATION CHARGES (not separate charges and transfers)
+      // This means the connected account is charged directly and pays their own fees
+      // Platform receives application_fee_amount as clean revenue
+      const platformFeeAmount = Math.round((bookingFee || 0) * 100);
+      paymentIntentParams.application_fee_amount = platformFeeAmount;
       paymentIntentParams.on_behalf_of = stripeAccountId;
-      paymentIntentParams.transfer_data = {
-        destination: stripeAccountId,
-        amount: transferAmount,
-      };
-      console.log("=== CREATING CONNECT PAYMENT INTENT ===");
-      console.log("Connected account:", stripeAccountId);
-      console.log("Transfer amount:", transferAmount, "cents");
+
+      console.log("=== CREATING DESTINATION CHARGE (CONNECT) ===");
+      console.log("Connected account (charged directly):", stripeAccountId);
+      console.log("Total charge amount:", amountInCents, "cents");
+      console.log("Platform application fee:", platformFeeAmount, "cents");
+      console.log("Organization receives:", amountInCents - platformFeeAmount, "cents (minus their Stripe fees)");
     } else {
       console.log("=== CREATING DIRECT PAYMENT INTENT ===");
       console.log("Payment goes directly to organization's Stripe account");
