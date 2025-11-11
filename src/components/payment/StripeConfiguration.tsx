@@ -57,68 +57,62 @@ export const StripeConfiguration = ({
 
   return (
     <div className="space-y-6">
-      {/* Stripe API Configuration */}
+      {/* Manual Stripe API Configuration - Disabled, using Stripe Connect instead
+      <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Stripe API Configuration
+            </CardTitle>
+            <CardDescription>
+              Configure your Stripe API keys and account settings
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="stripeAccountId">Stripe Account ID</Label>
+              <Input
+                id="stripeAccountId"
+                value={stripeAccountId}
+                onChange={(e) => onStripeAccountIdChange(e.target.value)}
+                placeholder="acct_..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="stripePublishableKey">Stripe Publishable Key</Label>
+              <Input
+                id="stripePublishableKey"
+                value={stripePublishableKey}
+                onChange={(e) => onStripePublishableKeyChange(e.target.value)}
+                placeholder="pk_test_... or pk_live_..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="stripeSecretKey">Stripe Secret Key</Label>
+              <Input
+                id="stripeSecretKey"
+                type="password"
+                value={stripeSecretKey}
+                onChange={(e) => onStripeSecretKeyChange(e.target.value)}
+                placeholder="sk_test_... or sk_live_..."
+              />
+            </div>
+        </CardContent>
+      </Card>
+      */}
+
+      {/* Terminal and Currency Settings */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            Stripe API Configuration
+            Stripe Settings
           </CardTitle>
           <CardDescription>
-            Configure your Stripe API keys and account settings
+            Configure currency and terminal settings
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="stripeAccountId">Stripe Account ID</Label>
-            <Input
-              id="stripeAccountId"
-              value={stripeAccountId}
-              onChange={(e) => onStripeAccountIdChange(e.target.value)}
-              placeholder="acct_..."
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="stripePublishableKey">Stripe Publishable Key</Label>
-            <Input
-              id="stripePublishableKey"
-              value={stripePublishableKey}
-              onChange={(e) => onStripePublishableKeyChange(e.target.value)}
-              placeholder="pk_test_... or pk_live_..."
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="stripeSecretKey">Stripe Secret Key</Label>
-            <Input
-              id="stripeSecretKey"
-              type="password"
-              value={stripeSecretKey}
-              onChange={(e) => onStripeSecretKeyChange(e.target.value)}
-              placeholder="sk_test_... or sk_live_..."
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="stripeTerminalLocationId">Stripe Terminal Location ID (Optional)</Label>
-            <Input
-              id="stripeTerminalLocationId"
-              value={stripeTerminalLocationId}
-              onChange={(e) => onStripeTerminalLocationIdChange?.(e.target.value)}
-              placeholder="tml_..."
-            />
-            <p className="text-sm text-muted-foreground">
-              Required for Tap to Pay on iPhone in the iOS app. Create a location in your{" "}
-              <a
-                href="https://dashboard.stripe.com/terminal/locations"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                Stripe Dashboard
-              </a>.
-            </p>
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="stripeCurrency">Transaction Currency</Label>
             <Select value={currency} onValueChange={onCurrencyChange}>
@@ -144,6 +138,27 @@ export const StripeConfiguration = ({
                 <SelectItem value="HUF">Hungarian Forint (HUF)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="stripeTerminalLocationId">Stripe Terminal Location ID (Optional)</Label>
+            <Input
+              id="stripeTerminalLocationId"
+              value={stripeTerminalLocationId}
+              onChange={(e) => onStripeTerminalLocationIdChange?.(e.target.value)}
+              placeholder="tml_..."
+            />
+            <p className="text-sm text-muted-foreground">
+              Required for Tap to Pay on iPhone in the iOS app. Create a location in your{" "}
+              <a
+                href="https://dashboard.stripe.com/terminal/locations"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                Stripe Dashboard
+              </a>.
+            </p>
           </div>
         </CardContent>
       </Card>

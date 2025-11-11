@@ -99,7 +99,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
     setLoading(true);
     
     try {
-      // Update organization with all data (including Stripe credentials)
+      // Update organization (no manual Stripe credentials with Connect)
       const { error: orgError } = await supabase
         .from('organizations')
         .update({
@@ -107,8 +107,6 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
           currency: currency,
           credit_card_processing_fee_percentage: creditCardProcessingFee,
           stripe_booking_fee_enabled: enableBookingFees,
-          stripe_publishable_key: stripePublishableKey,
-          stripe_secret_key: stripeSecretKey,
           stripe_terminal_location_id: stripeTerminalLocationId
         })
         .eq('id', organizationId);
