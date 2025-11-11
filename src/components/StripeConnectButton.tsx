@@ -26,19 +26,12 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
   const [creatingAccount, setCreatingAccount] = useState(false);
   const { toast } = useToast();
 
-  // Handle OAuth callback and account creation callback from URL params
+  // Handle OAuth callback results from URL params
   useEffect(() => {
-    console.log('[StripeConnectButton] useEffect running');
-    console.log('[StripeConnectButton] window.location.search:', window.location.search);
-
     const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const state = urlParams.get('state');
     const error = urlParams.get('error');
     const connected = urlParams.get('connected');
     const refresh = urlParams.get('refresh');
-
-    console.log('[StripeConnectButton] OAuth params:', { code: code?.substring(0, 20) + '...', state, error, connected, refresh });
 
     if (error) {
       toast({
@@ -46,14 +39,18 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
         description: `Stripe connection failed: ${error}`,
         variant: "destructive"
       });
+
+      // Clean up URL params
+      const newUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, '', newUrl);
       return;
     }
 
-    // Handle successful account creation and onboarding completion
+    // Handle successful connection (from callback endpoint)
     if (connected === 'true') {
       toast({
         title: "Success!",
-        description: "Your Stripe account has been created and connected successfully.",
+        description: "Your Stripe account has been connected successfully.",
       });
 
       // Clean up URL params
@@ -77,50 +74,7 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
       window.history.replaceState({}, '', newUrl);
       return;
     }
-
-    // Handle OAuth flow completion
-    if (code && state) {
-      console.log('[StripeConnectButton] Calling completeConnection');
-      completeConnection(code, state);
-    } else {
-      console.log('[StripeConnectButton] No code/state found, skipping OAuth callback');
-    }
   }, []);
-
-  const completeConnection = async (code: string, state: string) => {
-    console.log('[StripeConnectButton] completeConnection called with code:', code.substring(0, 20) + '...', 'state:', state);
-    setLoading(true);
-    try {
-      const { error } = await supabase.functions.invoke('stripe-connect-oauth', {
-        body: { code, state, action: 'complete_connection' },
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Success!",
-        description: "Your Stripe account has been connected successfully.",
-      });
-
-      // Clean up URL params
-      const newUrl = window.location.pathname + window.location.hash;
-      window.history.replaceState({}, '', newUrl);
-
-      onConnectionChange?.();
-    } catch (error: any) {
-      console.error('Connection completion error:', error);
-      toast({
-        title: "Connection Error",
-        description: error.message || "Failed to complete connection",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleConnect = async () => {
     setLoading(true);

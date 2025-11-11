@@ -16,20 +16,24 @@ serve(async (req) => {
 
     const url = new URL(req.url);
     const urlAction = url.searchParams.get('action');
-    
+
     // Read request body once
     const body = await req.text();
+    console.log('📦 Request body:', body);
     let bodyData = {};
     if (body) {
       try {
         bodyData = JSON.parse(body);
-      } catch {
+        console.log('📦 Parsed body data:', bodyData);
+      } catch (e) {
+        console.error('❌ Failed to parse body:', e);
         bodyData = {};
       }
     }
-    
+
     // Determine action from URL or body
     const action = urlAction || (bodyData as any).action || 'create_connect_url';
+    console.log('🎬 Action determined:', action);
 
     // Initialize Supabase client
     const supabaseClient = createClient(
@@ -46,16 +50,19 @@ serve(async (req) => {
 
     // Get user from auth header
     const authHeader = req.headers.get('Authorization');
+    console.log('🔐 Auth header present:', !!authHeader);
     if (!authHeader) {
       throw new Error('Authorization header is required');
     }
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
-    
+
     if (userError || !user) {
+      console.error('❌ User auth error:', userError);
       throw new Error('User not authenticated');
     }
+    console.log('✅ User authenticated:', user.id);
 
     if (action === 'create_connect_url') {
       // Create OAuth URL for connecting Stripe account
@@ -75,7 +82,9 @@ serve(async (req) => {
         throw new Error('Organization not found');
       }
 
-      const redirectUri = `${req.headers.get('origin')}/dashboard?tab=payments`;
+      // Use dedicated callback endpoint
+      const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+      const redirectUri = `${supabaseUrl}/functions/v1/stripe-connect-callback`;
       const state = `${org.id}|${user.id}`; // Include org and user ID in state
 
       const connectUrl = `https://connect.stripe.com/oauth/authorize?` +
@@ -96,10 +105,13 @@ serve(async (req) => {
     }
 
     if (action === 'complete_connection') {
+      console.log('🔄 Starting complete_connection flow');
       // Handle the OAuth callback - exchange code for access token
       const { code, state } = bodyData as any;
-      
+      console.log('📝 OAuth params - code:', code?.substring(0, 20) + '...', 'state:', state);
+
       if (!code) {
+        console.error('❌ No authorization code provided');
         throw new Error('Authorization code is required');
       }
 
