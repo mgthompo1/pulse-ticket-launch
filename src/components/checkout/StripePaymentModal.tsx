@@ -115,81 +115,26 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
     const loadStripeConfig = async () => {
       if (isOpen && !stripePublishableKey) {
         setIsLoading(true);
-        
-        try {
-          let data, error;
-          
-          // Try the new function first, fallback to direct table query
-          const { data: rpcData, error: rpcError } = await supabase
-            .rpc('get_public_payment_config', { 
-              p_event_id: eventData.id 
-            });
-          
-          if (rpcError) {
-            console.log('RPC function failed, trying fallback query:', rpcError);
-            // Fallback: direct query to organizations table
-            const { data: fallbackData, error: fallbackError } = await supabase
-              .from('events')
-              .select(`
-                organizations (
-                  stripe_publishable_key,
-                  payment_provider,
-                  currency,
-                  credit_card_processing_fee_percentage,
-                  apple_pay_merchant_id,
-                  windcave_enabled
-                )
-              `)
-              .eq('id', eventData.id)
-              .single();
-            
-            if (fallbackError || !fallbackData?.organizations) {
-              error = fallbackError;
-              data = null;
-            } else {
-              // Transform fallback data to match RPC format
-              data = [{
-                stripe_publishable_key: (fallbackData.organizations as any).stripe_publishable_key || null,
-                payment_provider: fallbackData.organizations.payment_provider,
-                currency: fallbackData.organizations.currency,
-                credit_card_processing_fee_percentage: fallbackData.organizations.credit_card_processing_fee_percentage,
-                apple_pay_merchant_id: (fallbackData.organizations as any).apple_pay_merchant_id || null,
-                windcave_enabled: (fallbackData.organizations as any).windcave_enabled || false,
-                stripe_account_id: null // Not available in fallback
-              }];
-              error = null;
-            }
-          } else {
-            data = rpcData;
-            error = rpcError;
-          }
 
-          if (error) {
-            console.error('Error loading payment config:', error);
+        try {
+          // With Stripe Connect, always use the platform publishable key
+          const platformKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+          const configCurrency = eventData.organizations?.currency || 'USD';
+
+          if (platformKey) {
+            console.log('✅ Using platform Stripe publishable key for Connect');
+            setStripePublishableKey(platformKey);
+            setCurrency(configCurrency);
+          } else {
+            console.error('❌ Platform Stripe publishable key not configured in environment');
             toast({
               title: "Payment Error",
-              description: "Failed to load payment configuration",
+              description: "Payment system not configured",
               variant: "destructive"
             });
-            return;
-          }
-
-          if (data && data.length > 0) {
-            const publishableKey = data[0].stripe_publishable_key;
-            const configCurrency = data[0].currency || 'USD';
-            
-            if (publishableKey) {
-              setStripePublishableKey(publishableKey);
-              setCurrency(configCurrency);
-            } else {
-              toast({
-                title: "Payment Error",
-                description: "Payment configuration not found",
-                variant: "destructive"
-              });
-            }
           }
         } catch (error) {
+          console.error('Error initializing Stripe:', error);
           toast({
             title: "Payment Error",
             description: "Failed to initialize payment system",

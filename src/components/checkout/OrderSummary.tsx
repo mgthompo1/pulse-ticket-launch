@@ -137,32 +137,18 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     ? taxBreakdown.grandTotal + processingFeeWithTax + flatBookingFee
     : Math.max(0, subtotal - discount + processingFee + bookingFee + donationAmount);
 
-  // Load Stripe configuration when on payment step
+  // Load Stripe configuration - use platform publishable key for Stripe Connect
   useEffect(() => {
-    const loadStripeConfig = async () => {
-      if (currentStep === 'payment' && eventData.organizations?.payment_provider === 'stripe') {
-        try {
-          const { data: paymentConfig, error: configError } = await supabase
-            .rpc('get_organization_payment_config', { 
-              p_organization_id: eventData.organization_id 
-            });
-
-          if (!configError && paymentConfig && paymentConfig.length > 0) {
-            const config = paymentConfig[0];
-            if (config.stripe_publishable_key) {
-              setStripePublishableKey(config.stripe_publishable_key);
-            }
-          }
-
-          // Booking fees setting is now loaded from eventData
-        } catch (error) {
-          console.error('Error loading Stripe config:', error);
-        }
+    if (eventData.organizations?.payment_provider === 'stripe') {
+      // With Stripe Connect, always use the platform publishable key
+      const platformKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+      if (platformKey) {
+        setStripePublishableKey(platformKey);
+      } else {
+        console.error('❌ Platform Stripe publishable key not configured in environment');
       }
-    };
-
-    loadStripeConfig();
-  }, [currentStep, eventData]);
+    }
+  }, [eventData]);
 
   const handlePayment = async () => {
     if (!customerInfo) {
