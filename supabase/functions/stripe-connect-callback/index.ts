@@ -1,7 +1,18 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 serve(async (req) => {
+  // Handle CORS
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+
   try {
     console.log('=== STRIPE CONNECT CALLBACK STARTED ===');
 
@@ -17,7 +28,7 @@ serve(async (req) => {
     if (error) {
       console.error('❌ OAuth error:', error, errorDescription);
       return Response.redirect(
-        `${req.headers.get('origin') || 'https://ticketflo.org'}/dashboard?tab=payments&error=${encodeURIComponent(error)}`,
+        `https://www.ticketflo.org/dashboard?tab=payments&error=${encodeURIComponent(error)}`,
         302
       );
     }
@@ -25,7 +36,7 @@ serve(async (req) => {
     if (!code || !state) {
       console.error('❌ Missing code or state');
       return Response.redirect(
-        `${req.headers.get('origin') || 'https://ticketflo.org'}/dashboard?tab=payments&error=missing_params`,
+        `https://www.ticketflo.org/dashboard?tab=payments&error=missing_params`,
         302
       );
     }
@@ -37,7 +48,7 @@ serve(async (req) => {
     if (!orgId || !userId) {
       console.error('❌ Invalid state parameter');
       return Response.redirect(
-        `${req.headers.get('origin') || 'https://ticketflo.org'}/dashboard?tab=payments&error=invalid_state`,
+        `https://www.ticketflo.org/dashboard?tab=payments&error=invalid_state`,
         302
       );
     }
@@ -74,7 +85,7 @@ serve(async (req) => {
       const errorText = await tokenResponse.text();
       console.error('❌ Stripe OAuth token exchange failed:', errorText);
       return Response.redirect(
-        `${req.headers.get('origin') || 'https://ticketflo.org'}/dashboard?tab=payments&error=token_exchange_failed`,
+        `https://www.ticketflo.org/dashboard?tab=payments&error=token_exchange_failed`,
         302
       );
     }
@@ -99,7 +110,7 @@ serve(async (req) => {
     if (updateError) {
       console.error('❌ Failed to update organization:', updateError);
       return Response.redirect(
-        `${req.headers.get('origin') || 'https://ticketflo.org'}/dashboard?tab=payments&error=db_update_failed`,
+        `https://www.ticketflo.org/dashboard?tab=payments&error=db_update_failed`,
         302
       );
     }
@@ -127,7 +138,7 @@ serve(async (req) => {
     }
 
     // Redirect back to dashboard with success flag
-    const redirectUrl = `${req.headers.get('origin') || 'https://ticketflo.org'}/dashboard?tab=payments&connected=true`;
+    const redirectUrl = `https://www.ticketflo.org/dashboard?tab=payments&connected=true`;
     console.log('✅ Redirecting to:', redirectUrl);
 
     return Response.redirect(redirectUrl, 302);
@@ -135,7 +146,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('❌ Callback error:', error);
     return Response.redirect(
-      `${req.headers.get('origin') || 'https://ticketflo.org'}/dashboard?tab=payments&error=unexpected_error`,
+      `https://www.ticketflo.org/dashboard?tab=payments&error=unexpected_error`,
       302
     );
   }

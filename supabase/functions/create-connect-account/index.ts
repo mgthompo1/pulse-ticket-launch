@@ -55,9 +55,19 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    const requestBody = await req.json();
+    // Parse request body safely
+    const bodyText = await req.text();
+    let requestBody: any = {};
+    if (bodyText) {
+      try {
+        requestBody = JSON.parse(bodyText);
+      } catch (e) {
+        console.error("Failed to parse request body:", e);
+        throw new Error("Invalid request body");
+      }
+    }
     console.log("Request body:", requestBody);
-    
+
     const { organizationId } = requestBody;
     if (!organizationId) {
       console.error("No organizationId in request body");
