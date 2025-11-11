@@ -196,7 +196,8 @@ serve(async (req) => {
             id,
             name,
             currency,
-            stripe_booking_fee_enabled
+            stripe_booking_fee_enabled,
+            stripe_account_id
           )
         `)
         .eq("id", eventId)
