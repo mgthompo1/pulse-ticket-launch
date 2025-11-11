@@ -183,11 +183,44 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
       return;
     }
 
+    // Check Stripe minimum payment amounts
+    // Note: All amounts must convert to at least 50 cents USD
+    if (eventData.organizations?.payment_provider === 'stripe') {
+      const currency = (eventData.organizations?.currency || 'USD').toUpperCase();
+      const minimumAmounts: { [key: string]: number } = {
+        'USD': 0.50,
+        'AUD': 0.75,   // ~0.50 USD at typical exchange rates
+        'CAD': 0.65,   // ~0.50 USD at typical exchange rates
+        'EUR': 0.50,
+        'GBP': 0.30,
+        'NZD': 1.00,   // ~0.50 USD at typical exchange rates (NZD is weaker)
+        'SGD': 0.70,   // ~0.50 USD at typical exchange rates
+        'CHF': 0.50,
+        'JPY': 50,
+        'SEK': 3.00,
+        'NOK': 3.00,
+        'DKK': 2.50,
+        'PLN': 2.00,
+        'CZK': 15.00,
+        'HUF': 175.00,
+      };
+
+      const minAmount = minimumAmounts[currency] || 0.50;
+      if (total < minAmount) {
+        toast({
+          title: "Payment Amount Too Small",
+          description: `Stripe requires a minimum payment of ${currency} ${minAmount.toFixed(2)}. Your current total is ${currency} ${total.toFixed(2)}. Please add more items to your order.`,
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     // Debug payment provider configuration
     console.log("=== PAYMENT PROVIDER DEBUG ===");
     console.log("eventData.organizations:", eventData.organizations);
     console.log("payment_provider:", eventData.organizations?.payment_provider);
-    
+
     // Remove the strict payment provider check for now since it's preventing valid Windcave payments
     // The windcave-session function will handle proper validation
     console.log("Proceeding with payment processing...");
@@ -508,12 +541,12 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span style={{ color: theme.bodyTextColor }}>Booking Fee</span>
                     <span style={{ color: theme.bodyTextColor }}>
-                      ${(taxBreakdown?.bookingFee ?? bookingFee).toFixed(2)}
+                      ${bookingFee.toFixed(2)}
                     </span>
                   </div>
                   {taxBreakdown && taxBreakdown.bookingFeeTax > 0 && (
                     <div className="flex justify-between text-sm text-muted-foreground">
-                      <span style={{ color: theme.bodyTextColor }}>{taxName} on fee:</span>
+                      <span style={{ color: theme.bodyTextColor }}>{taxName} on Booking Fee:</span>
                       <span style={{ color: theme.bodyTextColor }}>${taxBreakdown.bookingFeeTax.toFixed(2)}</span>
                     </div>
                   )}
