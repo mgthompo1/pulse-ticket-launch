@@ -130,8 +130,11 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     : processingFee;
 
   // Use tax-aware total if tax is enabled, otherwise fall back to old calculation
+  // Note: taxBreakdown.grandTotal already includes tickets, addons, donations, 1% booking fee, and all taxes
+  // We only need to add: processing fee (with tax) and the $0.50 flat booking fee
+  const flatBookingFee = bookingFeesEnabled && eventData.organizations?.payment_provider === 'stripe' ? 0.50 : 0;
   const total = taxBreakdown
-    ? taxBreakdown.grandTotal + processingFeeWithTax
+    ? taxBreakdown.grandTotal + processingFeeWithTax + flatBookingFee
     : Math.max(0, subtotal - discount + processingFee + bookingFee + donationAmount);
 
   // Load Stripe configuration when on payment step
