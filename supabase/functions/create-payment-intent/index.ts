@@ -458,20 +458,21 @@ serve(async (req) => {
 
     // Add Connect parameters only if using Connect payment
     if (useConnectPayment && stripeAccountId) {
-      // Use DESTINATION CHARGES (not separate charges and transfers)
-      // Key difference: transfer_data has destination but NO amount field
-      // This means ALL funds go to connected account minus application_fee_amount
-      // Connected account pays their own Stripe fees
+      // Use DESTINATION CHARGES with on_behalf_of
+      // on_behalf_of: Required for Connect - makes charge settle on connected account
+      // transfer_data.destination: Where funds go (without amount = all funds minus app fee)
+      // application_fee_amount: Platform's revenue
       const platformFeeAmount = Math.round((bookingFee || 0) * 100);
       paymentIntentParams.application_fee_amount = platformFeeAmount;
+      paymentIntentParams.on_behalf_of = stripeAccountId;
       paymentIntentParams.transfer_data = {
         destination: stripeAccountId,
         // NO amount field = destination charge (all funds go to destination minus app fee)
       };
 
       console.log("=== CREATING DESTINATION CHARGE (CONNECT) ===");
-      console.log("Connected account (receives funds):", stripeAccountId);
-      console.log("Total charge amount:", amountInCents, "cents");
+      console.log("Connected account (settles charge):", stripeAccountId);
+      console.log("Total charge amount:", amountInCents, "cents", currency.toUpperCase());
       console.log("Platform application fee:", platformFeeAmount, "cents");
       console.log("Organization receives:", amountInCents - platformFeeAmount, "cents (minus their Stripe fees)");
     } else {
