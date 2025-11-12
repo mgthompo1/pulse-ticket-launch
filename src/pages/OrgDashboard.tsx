@@ -44,6 +44,7 @@ import AttractionManagement from "@/components/AttractionManagement";
 import AttractionCustomization from "@/components/AttractionCustomization";
 import GroupsManagement from "@/components/GroupsManagement";
 import CustomersCRM from "@/pages/CustomersCRM";
+import IssuingPage from "@/pages/IssuingPage";
 import { useNavigate } from "react-router-dom";
 
 // Types
@@ -143,6 +144,11 @@ const OrgDashboard = () => {
   const canAccessCRM = () => {
     const role = currentOrganization?.role;
     return (role === 'owner' || role === 'admin') && currentOrganization?.crm_enabled === true;
+  };
+
+  const canAccessIssuing = () => {
+    const role = currentOrganization?.role;
+    return (role === 'owner' || role === 'admin') && currentOrganization?.issuing_enabled === true;
   };
 
   // System type checking
@@ -1468,6 +1474,12 @@ const OrgDashboard = () => {
                 {canAccessCRM() && (
                   <TabsContent value="customers" className="space-y-6">
                     <CustomersCRM />
+                  </TabsContent>
+                )}
+
+                {canAccessIssuing() && (
+                  <TabsContent value="issuing" className="space-y-6">
+                    <IssuingPage />
                   </TabsContent>
                 )}
 

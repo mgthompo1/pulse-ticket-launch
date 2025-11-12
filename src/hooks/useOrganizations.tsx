@@ -9,6 +9,7 @@ interface Organization {
   system_type?: string;
   groups_enabled?: boolean;
   crm_enabled?: boolean;
+  issuing_enabled?: boolean;
   logo_url?: string | null;
 }
 
@@ -20,6 +21,7 @@ interface OrganizationWithRole {
   system_type?: string;
   groups_enabled?: boolean;
   crm_enabled?: boolean;
+  issuing_enabled?: boolean;
   logo_url?: string | null;
 }
 
