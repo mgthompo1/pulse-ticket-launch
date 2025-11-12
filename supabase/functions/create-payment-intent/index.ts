@@ -407,26 +407,33 @@ serve(async (req) => {
       });
     }
 
-    // Use Connect ONLY when booking fees are enabled AND organization has connected account
+    // Use Connect whenever organization has connected account (regardless of booking fee setting)
     let stripeAccountId = null;
     let useConnectPayment = false;
 
-    if (isEventPayment && enableBookingFees && event?.organizations?.stripe_account_id) {
-      // Connect is required when booking fees are enabled
+    if (isEventPayment && event?.organizations?.stripe_account_id) {
+      // Organization has Stripe Connect - always use Connect
       stripeAccountId = event.organizations.stripe_account_id;
       useConnectPayment = true;
 
-      console.log("=== CONNECT PAYMENT WITH BOOKING FEES (DESTINATION CHARGES) ===");
-      console.log("Total amount:", amountInCents, "cents");
-      console.log("Platform application fee:", Math.round((bookingFee || 0) * 100), "cents");
-      console.log("Connected account will be charged directly (pays their own Stripe fees)");
+      if (enableBookingFees) {
+        console.log("=== CONNECT PAYMENT WITH BOOKING FEES (DESTINATION CHARGES) ===");
+        console.log("Total amount:", amountInCents, "cents");
+        console.log("Platform application fee:", Math.round((bookingFee || 0) * 100), "cents");
+        console.log("Connected account will be charged directly (pays their own Stripe fees)");
+      } else {
+        console.log("=== CONNECT PAYMENT WITHOUT BOOKING FEES (DESTINATION CHARGES) ===");
+        console.log("Total amount:", amountInCents, "cents");
+        console.log("Platform application fee: $0 (booking fees disabled)");
+        console.log("Organization receives 100% of payment (minus their Stripe fees)");
+      }
     } else if (isEventPayment && enableBookingFees && !event?.organizations?.stripe_account_id) {
       // Booking fees enabled but no connected account - this is an error
       throw new Error("Booking fees require Stripe Connect. Please connect your Stripe account first.");
     } else {
       console.log("=== DIRECT PAYMENT (NO CONNECT) ===");
       console.log("Using organization's Stripe account directly");
-      console.log("Booking fees:", enableBookingFees ? "enabled but not passed to customer" : "disabled");
+      console.log("Organization has not connected via Stripe Connect");
     }
 
     // Initialize Stripe with the appropriate key
@@ -461,14 +468,19 @@ serve(async (req) => {
       // Use DESTINATION CHARGES with on_behalf_of
       // on_behalf_of: Required for Connect - makes charge settle on connected account
       // transfer_data.destination: Where funds go (without amount = all funds minus app fee)
-      // application_fee_amount: Platform's revenue
-      const platformFeeAmount = Math.round((bookingFee || 0) * 100);
-      paymentIntentParams.application_fee_amount = platformFeeAmount;
+      // application_fee_amount: Platform's revenue (can be 0 if booking fees disabled)
+      const platformFeeAmount = enableBookingFees ? Math.round((bookingFee || 0) * 100) : 0;
+
       paymentIntentParams.on_behalf_of = stripeAccountId;
       paymentIntentParams.transfer_data = {
         destination: stripeAccountId,
         // NO amount field = destination charge (all funds go to destination minus app fee)
       };
+
+      // Only add application fee if it's greater than 0
+      if (platformFeeAmount > 0) {
+        paymentIntentParams.application_fee_amount = platformFeeAmount;
+      }
 
       console.log("=== CREATING DESTINATION CHARGE (CONNECT) ===");
       console.log("Connected account (settles charge):", stripeAccountId);

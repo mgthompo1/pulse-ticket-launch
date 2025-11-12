@@ -8,6 +8,30 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+const ensureSupabaseConfig = () => {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Supabase configuration is missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.');
+  }
+
+  return { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY };
+};
+
+const parseSupabaseError = async (response: Response): Promise<string> => {
+  const text = await response.text();
+  try {
+    const payload = JSON.parse(text);
+    if (payload && typeof payload.error === 'string' && payload.error.trim().length > 0) {
+      return payload.error;
+    }
+    return text || `HTTP ${response.status}`;
+  } catch {
+    return text || `HTTP ${response.status}`;
+  }
+};
+
 export interface PasskeyRegistrationResult {
   success: boolean;
   error?: string;
@@ -97,17 +121,28 @@ export const usePasskeys = () => {
         return { success: false, error: 'You must be signed in to register a passkey' };
       }
 
+      let supabaseConfig;
+      try {
+        supabaseConfig = ensureSupabaseConfig();
+      } catch (configError) {
+        console.error('Passkey registration configuration error:', configError);
+        return { 
+          success: false, 
+          error: configError instanceof Error ? configError.message : 'Supabase configuration is missing' 
+        };
+      }
+
+      const { url: supabaseUrl, anonKey } = supabaseConfig;
+      
       // Get registration options from server using direct fetch to bypass caching issues
-      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://yoxsewbpoqxscsutqlcb.supabase.co";
-      const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlveHNld2Jwb3F4c2NzdXRxbGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0MzU4NDgsImV4cCI6MjA2ODAxMTg0OH0.CrW53mnoXiatBWePensSroh0yfmVALpcWxX2dXYde5k";
       
       const optionsResponse = await fetch(
-        `${SUPABASE_URL}/functions/v1/webauthn-registration-options?t=${Date.now()}`,
+        `${supabaseUrl}/functions/v1/webauthn-registration-options?t=${Date.now()}`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': SUPABASE_PUBLISHABLE_KEY,
+            'apikey': anonKey,
             'Authorization': `Bearer ${session.access_token}`
           }
         }
@@ -119,7 +154,7 @@ export const usePasskeys = () => {
       if (optionsResponse.ok) {
         options = await optionsResponse.json();
       } else {
-        optionsError = new Error(`HTTP ${optionsResponse.status}: ${await optionsResponse.text()}`);
+        optionsError = new Error(await parseSupabaseError(optionsResponse));
       }
 
       if (optionsError || !options) {
@@ -132,12 +167,12 @@ export const usePasskeys = () => {
 
       // Verify registration on server using direct fetch
       const verifyResponse = await fetch(
-        `${SUPABASE_URL}/functions/v1/webauthn-registration-verify?t=${Date.now()}`,
+        `${supabaseUrl}/functions/v1/webauthn-registration-verify?t=${Date.now()}`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': SUPABASE_PUBLISHABLE_KEY,
+            'apikey': anonKey,
             'Authorization': `Bearer ${session.access_token}`
           },
           body: JSON.stringify({
@@ -153,7 +188,7 @@ export const usePasskeys = () => {
       if (verifyResponse.ok) {
         verificationResult = await verifyResponse.json();
       } else {
-        verificationError = new Error(`HTTP ${verifyResponse.status}: ${await verifyResponse.text()}`);
+        verificationError = new Error(await parseSupabaseError(verifyResponse));
       }
 
       if (verificationError || !verificationResult?.verified) {
@@ -198,18 +233,29 @@ export const usePasskeys = () => {
     setIsLoading(true);
 
     try {
+      let supabaseConfig;
+      try {
+        supabaseConfig = ensureSupabaseConfig();
+      } catch (configError) {
+        console.error('Passkey authentication configuration error:', configError);
+        return { 
+          success: false, 
+          error: configError instanceof Error ? configError.message : 'Supabase configuration is missing' 
+        };
+      }
+
+      const { url: supabaseUrl, anonKey } = supabaseConfig;
+      
       // Get authentication options from server using direct fetch to bypass caching issues
-      const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://yoxsewbpoqxscsutqlcb.supabase.co";
-      const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlveHNld2Jwb3F4c2NzdXRxbGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0MzU4NDgsImV4cCI6MjA2ODAxMTg0OH0.CrW53mnoXiatBWePensSroh0yfmVALpcWxX2dXYde5k";
       
       const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/webauthn-authentication-options?t=${Date.now()}`,
+        `${supabaseUrl}/functions/v1/webauthn-authentication-options?t=${Date.now()}`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': SUPABASE_PUBLISHABLE_KEY,
-            'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`
           },
           body: JSON.stringify({ email })
         }
@@ -221,17 +267,17 @@ export const usePasskeys = () => {
       if (response.ok) {
         options = await response.json();
       } else {
-        optionsError = new Error(`HTTP ${response.status}: ${await response.text()}`);
+        optionsError = new Error(await parseSupabaseError(response));
       }
 
       if (optionsError || !options) {
         console.error('Error getting authentication options:', optionsError);
         
-        if (optionsError?.message?.includes('No passkeys found')) {
-          return { success: false, error: 'No passkeys found for this account' };
+        if (optionsError?.message?.toLowerCase().includes('passkey authentication is not available')) {
+          return { success: false, error: 'Passkey authentication is not available for this account' };
         }
         
-        return { success: false, error: 'Failed to prepare passkey authentication' };
+        return { success: false, error: optionsError?.message || 'Failed to prepare passkey authentication' };
       }
 
       // Start WebAuthn authentication
@@ -239,13 +285,13 @@ export const usePasskeys = () => {
 
       // Verify authentication on server using direct fetch
       const verifyResponse = await fetch(
-        `${SUPABASE_URL}/functions/v1/webauthn-authentication-verify?t=${Date.now()}`,
+        `${supabaseUrl}/functions/v1/webauthn-authentication-verify?t=${Date.now()}`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': SUPABASE_PUBLISHABLE_KEY,
-            'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`
           },
           body: JSON.stringify({
             email,
@@ -260,7 +306,7 @@ export const usePasskeys = () => {
       if (verifyResponse.ok) {
         verificationResult = await verifyResponse.json();
       } else {
-        verificationError = new Error(`HTTP ${verifyResponse.status}: ${await verifyResponse.text()}`);
+        verificationError = new Error(await parseSupabaseError(verifyResponse));
       }
 
       if (verificationError || !verificationResult?.verified) {
@@ -268,17 +314,25 @@ export const usePasskeys = () => {
         return { success: false, error: 'Failed to verify passkey authentication' };
       }
 
-      // Set the session from the authentication result
-      if (verificationResult.accessToken && verificationResult.refreshToken) {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: verificationResult.accessToken,
-          refresh_token: verificationResult.refreshToken
-        });
+      if (!verificationResult.token || !verificationResult.email) {
+        console.error('Passkey verification response missing token or email');
+        return { success: false, error: 'Failed to establish session' };
+      }
 
-        if (sessionError) {
-          console.error('Error setting session:', sessionError);
-          return { success: false, error: 'Failed to establish session' };
-        }
+      const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+        email: verificationResult.email,
+        token: verificationResult.token,
+        type: 'magiclink'
+      });
+
+      if (verifyError) {
+        console.error('Error verifying magic link token:', verifyError);
+        return { success: false, error: verifyError.message || 'Failed to establish session' };
+      }
+
+      if (!verifyData?.session) {
+        console.error('Magic link verification succeeded but session is missing');
+        return { success: false, error: 'Failed to establish session' };
       }
 
       toast({
@@ -288,7 +342,7 @@ export const usePasskeys = () => {
 
       return { 
         success: true,
-        user: verificationResult.user
+        user: verifyData?.user || verificationResult.user
       };
 
     } catch (error: any) {

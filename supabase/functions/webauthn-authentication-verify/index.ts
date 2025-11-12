@@ -218,20 +218,15 @@ serve(async (req) => {
     const sessionProperties = (sessionData as any).properties ?? sessionData;
     const actionLink = sessionProperties?.action_link ?? (sessionData as any)?.action_link;
 
-    if (!actionLink) {
-      console.error("Magic link action URL not available in session response");
-      return new Response(JSON.stringify({ error: "Failed to create session" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
+    let token: string | null = sessionProperties?.email_otp ?? null;
 
-    let token: string | null = null;
-    try {
-      const actionUrl = new URL(actionLink);
-      token = actionUrl.searchParams.get("token");
-    } catch (parseError) {
-      console.error("Failed to parse action link for token:", parseError);
+    if (!token && actionLink) {
+      try {
+        const actionUrl = new URL(actionLink);
+        token = actionUrl.searchParams.get("token");
+      } catch (parseError) {
+        console.error("Failed to parse action link for token:", parseError);
+      }
     }
 
     if (!token) {
