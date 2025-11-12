@@ -104,26 +104,24 @@ export const CardDetailsDialog: React.FC<CardDetailsDialogProps> = ({
 
     setGeneratingTopupLink(true);
     try {
-      // TODO: Call edge function to generate top-up link
-      // const { data, error } = await supabase.functions.invoke('generate-topup-link', {
-      //   body: {
-      //     cardId: card.id,
-      //     parentEmail: card.cardholder_email,
-      //   },
-      // });
+      // Call edge function to generate top-up link
+      const { data, error } = await supabase.functions.invoke('generate-topup-link', {
+        body: {
+          cardId: card.id,
+        },
+      });
 
-      // if (error) throw error;
+      if (error) throw error;
 
-      // For MVP demo, generate a mock token
-      const mockToken = `demo_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-      const topupUrl = `${window.location.origin}/topup/${mockToken}`;
+      // Construct full URL
+      const topupUrl = `${window.location.origin}${data.topupUrl}`;
 
       // Copy to clipboard
       await navigator.clipboard.writeText(topupUrl);
 
       toast({
         title: 'Top-Up Link Generated!',
-        description: 'Link copied to clipboard. Share this with the cardholder to load funds.',
+        description: `Link copied to clipboard. Expires ${new Date(data.expiresAt).toLocaleDateString()}`,
       });
     } catch (error: any) {
       console.error('Error generating top-up link:', error);

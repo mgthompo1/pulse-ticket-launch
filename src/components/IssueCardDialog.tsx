@@ -40,7 +40,7 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
 
   // Form state
   const [cardType, setCardType] = useState<string>('coordinator');
-  const [groupId, setGroupId] = useState<string>('');
+  const [groupId, setGroupId] = useState<string>('none');
   const [cardholderName, setCardholderName] = useState('');
   const [cardholderEmail, setCardholderEmail] = useState('');
   const [cardholderPhone, setCardholderPhone] = useState('');
@@ -76,7 +76,7 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
 
   const resetForm = () => {
     setCardType('coordinator');
-    setGroupId('');
+    setGroupId('none');
     setCardholderName('');
     setCardholderEmail('');
     setCardholderPhone('');
@@ -129,54 +129,28 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
         initialBalance: balanceCents,
       });
 
-      // TODO: Call edge function to issue card via Stripe Issuing API
-      // For now, we'll create a placeholder record
-      // const { data, error } = await supabase.functions.invoke('issue-card', {
-      //   body: {
-      //     organizationId: currentOrganization.id,
-      //     groupId: groupId || null,
-      //     cardType,
-      //     cardholderName,
-      //     cardholderEmail,
-      //     cardholderPhone: cardholderPhone || null,
-      //     cardholderDob: cardholderDob || null,
-      //     initialBalance: balanceCents,
-      //     spendingLimitAmount: Math.round(parseFloat(spendingLimitAmount || '0') * 100),
-      //     spendingLimitInterval,
-      //     purpose: purpose || null,
-      //   },
-      // });
-
-      // if (error) throw error;
-
-      // For MVP demo, create a mock card in the database
-      const { error: insertError } = await supabase
-        .from('issuing_cards')
-        .insert({
-          organization_id: currentOrganization.id,
-          group_id: groupId || null,
-          card_type: cardType,
-          cardholder_name: cardholderName,
-          cardholder_email: cardholderEmail,
-          cardholder_phone: cardholderPhone || null,
-          cardholder_dob: cardholderDob || null,
-          // Mock Stripe IDs (in production, these come from Stripe API)
-          stripe_cardholder_id: `ich_mock_${Date.now()}`,
-          stripe_card_id: `ic_mock_${Date.now()}`,
-          card_last4: String(Math.floor(1000 + Math.random() * 9000)),
-          card_exp_month: 12,
-          card_exp_year: new Date().getFullYear() + 3,
-          card_status: 'active',
-          initial_balance: balanceCents,
-          current_balance: balanceCents,
-          spending_limit_amount: spendingLimitAmount
+      // Call edge function to issue card via Stripe Issuing API
+      const { data, error } = await supabase.functions.invoke('issue-card', {
+        body: {
+          organizationId: currentOrganization.id,
+          groupId: groupId === 'none' ? null : groupId,
+          cardType,
+          cardholderName,
+          cardholderEmail,
+          cardholderPhone: cardholderPhone || null,
+          cardholderDob: cardholderDob || null,
+          initialBalance: balanceCents,
+          spendingLimitAmount: spendingLimitAmount
             ? Math.round(parseFloat(spendingLimitAmount) * 100)
             : null,
-          spending_limit_interval: spendingLimitInterval || null,
+          spendingLimitInterval: spendingLimitInterval || null,
           purpose: purpose || null,
-        });
+        },
+      });
 
-      if (insertError) throw insertError;
+      if (error) throw error;
+
+      console.log('✅ Card issued successfully:', data);
 
       toast({
         title: 'Success!',
@@ -235,7 +209,7 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
                   <SelectValue placeholder="No group" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No group</SelectItem>
+                  <SelectItem value="none">No group</SelectItem>
                   {groups.map((group) => (
                     <SelectItem key={group.id} value={group.id}>
                       {group.name}

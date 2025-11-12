@@ -65,6 +65,7 @@ export const useOrganizations = () => {
             system_type: org.system_type,
             groups_enabled: org.groups_enabled || false,
             crm_enabled: org.crm_enabled || false,
+            issuing_enabled: org.issuing_enabled || false,
             logo_url: org.logo_url,
           });
         });
@@ -83,6 +84,7 @@ export const useOrganizations = () => {
             system_type,
             groups_enabled,
             crm_enabled,
+            issuing_enabled,
             logo_url
           )
         `)
@@ -106,6 +108,7 @@ export const useOrganizations = () => {
                 system_type: org.system_type,
                 groups_enabled: org.groups_enabled || false,
                 crm_enabled: org.crm_enabled || false,
+                issuing_enabled: org.issuing_enabled || false,
                 logo_url: org.logo_url,
               });
             }

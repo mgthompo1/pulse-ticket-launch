@@ -1,9 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { 
+import {
   generateAuthenticationOptions,
   type GenerateAuthenticationOptionsOpts
 } from "https://esm.sh/@simplewebauthn/server@9.0.3";
+import { decode as base64urlDecode } from "https://deno.land/std@0.190.0/encoding/base64url.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,8 +49,8 @@ serve(async (req) => {
 
     if (userError || !user) {
       console.error("User lookup error:", userError);
-      return new Response(JSON.stringify({ error: "User not found" }), {
-        status: 404,
+      return new Response(JSON.stringify({ error: "Passkey authentication is not available for this account" }), {
+        status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
@@ -69,8 +70,8 @@ serve(async (req) => {
     }
 
     if (!userCredentials || userCredentials.length === 0) {
-      return new Response(JSON.stringify({ error: "No passkeys found for this user" }), {
-        status: 404,
+      return new Response(JSON.stringify({ error: "Passkey authentication is not available for this account" }), {
+        status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
@@ -89,17 +90,33 @@ serve(async (req) => {
       }
     }
 
+    const allowCredentials = userCredentials.map((cred: any) => ({
+      id: (() => {
+        try {
+          return base64urlDecode(cred.credential_id);
+        } catch (decodeError) {
+          console.error("Failed to decode credential id", decodeError);
+          return new Uint8Array();
+        }
+      })(),
+      type: "public-key",
+      transports: cred.credential_transports && cred.credential_transports.length > 0
+        ? cred.credential_transports
+        : ["internal"]
+    })).filter((cred: any) => cred.id.length > 0);
+
+    if (allowCredentials.length === 0) {
+      return new Response(JSON.stringify({ error: "Passkey authentication is not available for this account" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     // Prepare authentication options
     const opts: GenerateAuthenticationOptionsOpts = {
       rpID,
       timeout: 60000,
-      allowCredentials: userCredentials.map((cred: any) => ({
-        id: new TextEncoder().encode(cred.credential_id),
-        type: "public-key",
-        transports: cred.credential_transports && cred.credential_transports.length > 0
-          ? cred.credential_transports
-          : ["internal"]
-      })),
+      allowCredentials,
       userVerification: "preferred"
     };
 

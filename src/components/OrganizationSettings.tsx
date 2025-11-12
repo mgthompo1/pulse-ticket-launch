@@ -537,22 +537,6 @@ const OrganizationSettings: React.FC = () => {
                   }
                 />
               </div>
-
-              {organizationData.groups_enabled && (
-                <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                  <p className="text-sm font-medium">What Groups Enable:</p>
-                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                    <li>Allocate ticket inventory to specific groups</li>
-                    <li>Each group gets their own portal and widget</li>
-                    <li>Groups can discount tickets for their members</li>
-                    <li>Automatic invoicing for discount differences</li>
-                    <li>Group coordinators receive sales notifications</li>
-                  </ul>
-                  <p className="text-sm text-blue-600 mt-3">
-                    When enabled, a "Groups" section will appear in your navigation menu.
-                  </p>
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -584,26 +568,6 @@ const OrganizationSettings: React.FC = () => {
                   }
                 />
               </div>
-
-              {organizationData.crm_enabled && (
-                <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                  <p className="text-sm font-medium">What CRM Enables:</p>
-                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                    <li>Unified customer records across all events</li>
-                    <li>Donation tracking during ticket checkout</li>
-                    <li>Patron attendance and order history</li>
-                    <li>Lifetime value and engagement metrics</li>
-                    <li>Transaction receipts and tax documentation</li>
-                    <li>Export data for reporting and compliance</li>
-                  </ul>
-                  <p className="text-sm text-blue-600 mt-3">
-                    When enabled, a "Customers" section will appear in your navigation menu.
-                  </p>
-                  <p className="text-sm text-amber-600 mt-2">
-                    <strong>Privacy:</strong> Customer data is encrypted and only accessible to authorized team members with CRM permissions.
-                  </p>
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -649,26 +613,6 @@ const OrganizationSettings: React.FC = () => {
                       }
                     />
                   </div>
-
-                  {organizationData.issuing_enabled && (
-                    <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                      <p className="text-sm font-medium">What Issuing Enables:</p>
-                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                        <li>Issue virtual cards to group coordinators and leaders</li>
-                        <li>Parents can load cards for campers with spending money</li>
-                        <li>Set spending limits and merchant category restrictions</li>
-                        <li>Real-time transaction tracking and notifications</li>
-                        <li>Earn interchange revenue from card transactions</li>
-                        <li>Track and request payouts for accumulated interchange</li>
-                      </ul>
-                      <p className="text-sm text-blue-600 mt-3">
-                        When enabled, an "Issuing" section will appear in your navigation menu.
-                      </p>
-                      <p className="text-sm text-green-600 mt-2">
-                        <strong>Revenue Opportunity:</strong> Earn 1.5%-2.5% interchange on all card transactions, shared 80/20 with the platform.
-                      </p>
-                    </div>
-                  )}
                 </>
               )}
             </CardContent>

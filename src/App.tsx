@@ -39,6 +39,7 @@ import ErrorMonitoring from "./pages/ErrorMonitoring";
 import DemoLanding from "./pages/DemoLanding";
 import { InvitationPasswordSetup } from "./components/InvitationPasswordSetup";
 import { InvitationAcceptance } from "./components/InvitationAcceptance";
+import TopUpPage from "./pages/TopUpPage";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,7 @@ const App = () => (
             <Route path="/group/:slug/widget" element={<GroupPublicWidget />} />
             <Route path="/attraction/:attractionId" element={<AttractionWidget />} />
             <Route path="/booking-demo" element={<AttractionBookingDemo />} />
+            <Route path="/topup/:token" element={<TopUpPage />} />
             {/* DEPRECATED: /admin-auth has been removed due to hardcoded credentials security vulnerability */}
             {/* Use /secure-admin instead which has database-backed authentication with TOTP support */}
             <Route path="/secure-admin" element={<SecureAdminAuth />} />

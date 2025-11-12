@@ -1,12 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { 
+import {
   verifyAuthenticationResponse,
   type VerifyAuthenticationResponseOpts
 } from "https://esm.sh/@simplewebauthn/server@9.0.3";
-import type { 
-  AuthenticationResponseJSON 
+import type {
+  AuthenticationResponseJSON
 } from "https://esm.sh/@simplewebauthn/types@9.0.1";
+import { decode as base64urlDecode } from "https://deno.land/std@0.190.0/encoding/base64url.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -113,16 +114,49 @@ serve(async (req) => {
     }
 
     // Verify authentication response
+    const credentialIDBuffer = (() => {
+      try {
+        return base64urlDecode(
+          typeof (storedCredential as any).credential_id === "string"
+            ? (storedCredential as any).credential_id
+            : credentialID
+        );
+      } catch (decodeError) {
+        console.error("Failed to decode stored credential id:", decodeError);
+        throw new Error("Stored credential is invalid");
+      }
+    })();
+
+    const credentialPublicKeyData = (storedCredential as any).credential_public_key;
+    const credentialPublicKey = (() => {
+      if (credentialPublicKeyData instanceof Uint8Array) {
+        return credentialPublicKeyData;
+      }
+      if (Array.isArray(credentialPublicKeyData)) {
+        return new Uint8Array(credentialPublicKeyData);
+      }
+      if (credentialPublicKeyData?.type === "Buffer" && Array.isArray(credentialPublicKeyData.data)) {
+        return new Uint8Array(credentialPublicKeyData.data);
+      }
+      if (typeof credentialPublicKeyData === "string" && credentialPublicKeyData.startsWith("\\x")) {
+        const hex = credentialPublicKeyData.slice(2);
+        const bytes = new Uint8Array(hex.length / 2);
+        for (let i = 0; i < bytes.length; i++) {
+          bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+        }
+        return bytes;
+      }
+      throw new Error("Unsupported credential public key format");
+    })();
+
     const opts: VerifyAuthenticationResponseOpts = {
       response: credential,
       expectedChallenge,
       expectedOrigin,
       expectedRPID: rpID,
       authenticator: {
-        credentialID: typeof (storedCredential as any).credential_id === 'string'
-          ? new TextEncoder().encode((storedCredential as any).credential_id)
-          : (storedCredential as any).credential_id,
-        credentialPublicKey: new Uint8Array((storedCredential as any).credential_public_key),
+        credentialID: credentialIDBuffer,
+        credentialPublicKey,
         counter: Number((storedCredential as any).credential_counter) || 0,
         transports: Array.isArray((storedCredential as any).credential_transports)
           ? (storedCredential as any).credential_transports
@@ -181,13 +215,41 @@ serve(async (req) => {
       });
     }
 
+    const sessionProperties = (sessionData as any).properties ?? sessionData;
+    const actionLink = sessionProperties?.action_link ?? (sessionData as any)?.action_link;
+
+    if (!actionLink) {
+      console.error("Magic link action URL not available in session response");
+      return new Response(JSON.stringify({ error: "Failed to create session" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    let token: string | null = null;
+    try {
+      const actionUrl = new URL(actionLink);
+      token = actionUrl.searchParams.get("token");
+    } catch (parseError) {
+      console.error("Failed to parse action link for token:", parseError);
+    }
+
+    if (!token) {
+      console.error("Magic link token missing from action link");
+      return new Response(JSON.stringify({ error: "Failed to create session" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     console.log("Session created successfully");
 
     return new Response(JSON.stringify({ 
       verified: true,
       message: "Authentication successful!",
-      accessToken: (sessionData.properties as any)?.access_token,
-      refreshToken: (sessionData.properties as any)?.refresh_token,
+      token,
+      email: user.email,
+      redirectTo: sessionProperties?.redirect_to ?? `${Deno.env.get("SUPABASE_URL")}/dashboard`,
       user: {
         id: user.id,
         email: user.email,

@@ -1,12 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { 
+import {
   verifyRegistrationResponse,
   type VerifyRegistrationResponseOpts
 } from "https://esm.sh/@simplewebauthn/server@9.0.3";
-import type { 
-  RegistrationResponseJSON 
+import type {
+  RegistrationResponseJSON
 } from "https://esm.sh/@simplewebauthn/types@9.0.1";
+import { encode as base64urlEncode } from "https://deno.land/std@0.190.0/encoding/base64url.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -134,16 +135,23 @@ serve(async (req) => {
     console.log("Registration verified successfully");
 
     // Store the credential in the database
+    const credentialID = base64urlEncode(registrationInfo.credentialID);
+    const credentialPublicKey = registrationInfo.credentialPublicKey instanceof Uint8Array
+      ? registrationInfo.credentialPublicKey
+      : new Uint8Array(registrationInfo.credentialPublicKey);
+
     const { error: storeError } = await supabaseClient
       .rpc("webauthn_store_credential", {
         p_user_id: user.id,
-        p_credential_id: Array.from(registrationInfo.credentialID).join(''),
-        p_credential_public_key: Array.from(registrationInfo.credentialPublicKey),
+        p_credential_id: credentialID,
+        p_credential_public_key: credentialPublicKey,
         p_credential_counter: Number(registrationInfo.counter) || 0,
-        p_credential_device_type: registrationInfo.credentialDeviceType || 'unknown',
+        p_credential_device_type: registrationInfo.credentialDeviceType || "unknown",
         p_credential_backed_up: Boolean(registrationInfo.credentialBackedUp),
         p_credential_transports: Array.isArray(credential.response.transports)
-          ? credential.response.transports.filter(t => t === "internal" || t === "hybrid")
+          ? credential.response.transports.filter((t) =>
+            ["internal", "hybrid", "usb", "nfc", "ble"].includes(t)
+          )
           : ["internal"],
         p_credential_name: credentialName || "My Passkey"
       });
