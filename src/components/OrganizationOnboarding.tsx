@@ -54,6 +54,7 @@ const OrganizationOnboarding: React.FC<OrganizationOnboardingProps> = ({ onCompl
 
     setLoading(true);
     try {
+      // Step 1: Create organization
       const { data, error } = await supabase
         .from("organizations")
         .insert({
@@ -62,15 +63,35 @@ const OrganizationOnboarding: React.FC<OrganizationOnboardingProps> = ({ onCompl
           email: formData.email,
           website: formData.website || null,
         })
-        .select();
+        .select()
+        .single();
 
       if (error) {
         console.error("Insert error:", error);
         throw error;
       }
 
-      if (!data || data.length === 0) {
+      if (!data) {
         throw new Error("Organization created but no data returned");
+      }
+
+      console.log("✅ Organization created:", data.id);
+
+      // Step 2: Create organization membership (link user to organization)
+      const { error: memberError } = await supabase
+        .from("organization_members")
+        .insert({
+          organization_id: data.id,
+          user_id: user.id,
+          role: "owner"
+        });
+
+      if (memberError) {
+        console.error("Error creating organization membership:", memberError);
+        // Don't fail the whole process - org was created
+        // Just log the error and continue
+      } else {
+        console.log("✅ Organization membership created");
       }
 
       toast({
