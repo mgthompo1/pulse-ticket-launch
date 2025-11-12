@@ -20,6 +20,8 @@ interface PaymentRecord {
   customer_name: string;
   customer_email: string;
   total_amount: number;
+  booking_fee: number;
+  stripe_fee: number;
   payment_provider: string;
   payment_method: string;
   card_last_four: string;
@@ -53,10 +55,12 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
           customer_name,
           customer_email,
           total_amount,
+          booking_fee,
           status,
           created_at,
           windcave_session_id,
           stripe_session_id,
+          stripe_payment_intent_id,
           events!inner (
             id,
             name,
@@ -71,21 +75,29 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
       if (ordersError) console.error('Orders error:', ordersError);
 
       // Transform orders into payment records
-      const orderRecords: PaymentRecord[] = orders?.map(order => ({
-        id: order.id,
-        order_id: order.id,
-        event_name: (order.events as any)?.name || 'Unknown Event',
-        customer_name: order.customer_name,
-        customer_email: order.customer_email,
-        total_amount: order.total_amount,
-        payment_provider: order.stripe_session_id ? 'stripe' : order.windcave_session_id ? 'windcave' : 'unknown',
-        payment_method: 'Card',
-        card_last_four: '****',
-        payment_date: order.created_at,
-        status: order.status,
-        windcave_session_id: order.windcave_session_id,
-        stripe_session_id: order.stripe_session_id,
-      })) || [];
+      const orderRecords: PaymentRecord[] = orders?.map(order => {
+        // Calculate Stripe fee (2.70% + $0.30 for NZ)
+        const isStripe = !!order.stripe_session_id;
+        const estimatedStripeFee = isStripe ? (order.total_amount * 0.027) + 0.30 : 0;
+
+        return {
+          id: order.id,
+          order_id: order.id,
+          event_name: (order.events as any)?.name || 'Unknown Event',
+          customer_name: order.customer_name,
+          customer_email: order.customer_email,
+          total_amount: order.total_amount,
+          booking_fee: order.booking_fee || 0,
+          stripe_fee: estimatedStripeFee,
+          payment_provider: order.stripe_session_id ? 'stripe' : order.windcave_session_id ? 'windcave' : 'unknown',
+          payment_method: 'Card',
+          card_last_four: '****',
+          payment_date: order.created_at,
+          status: order.status,
+          windcave_session_id: order.windcave_session_id,
+          stripe_session_id: order.stripe_session_id,
+        };
+      }) || [];
 
       // Combine and sort all payment records by date
       const allPayments = [...orderRecords].sort((a, b) =>
@@ -182,6 +194,8 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
       'Customer Name',
       'Customer Email',
       'Amount',
+      'Platform Fee',
+      'Stripe Fee',
       'Payment Provider',
       'Payment Method',
       'Card Last 4',
@@ -194,7 +208,9 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
       payment.event_name,
       payment.customer_name,
       payment.customer_email,
-      payment.total_amount,
+      payment.total_amount.toFixed(2),
+      payment.booking_fee.toFixed(2),
+      payment.stripe_fee.toFixed(2),
       payment.payment_provider,
       payment.payment_method,
       payment.card_last_four,
@@ -305,6 +321,8 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
                   <TableHead>Event</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Amount</TableHead>
+                  <TableHead>Platform Fee</TableHead>
+                  <TableHead>Stripe Fee</TableHead>
                   <TableHead>Provider</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
@@ -334,6 +352,16 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
                     <TableCell>
                       <div className="font-medium">
                         ${payment.total_amount.toFixed(2)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm text-green-600">
+                        ${payment.booking_fee.toFixed(2)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm text-red-600">
+                        ${payment.stripe_fee.toFixed(2)}
                       </div>
                     </TableCell>
                     <TableCell>

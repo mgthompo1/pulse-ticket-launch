@@ -148,14 +148,21 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
 
     setLoading(true);
     try {
-      const { error } = await supabase.functions.invoke('stripe-connect-oauth', {
+      console.log('🔌 Attempting to disconnect Stripe account...');
+
+      const { data, error } = await supabase.functions.invoke('stripe-connect-oauth', {
         body: { action: 'disconnect' },
         headers: {
           'Content-Type': 'application/json',
         }
       });
 
-      if (error) throw error;
+      console.log('📡 Disconnect response:', { data, error });
+
+      if (error) {
+        console.error('❌ Disconnect error from edge function:', error);
+        throw error;
+      }
 
       toast({
         title: "Disconnected",
@@ -164,9 +171,9 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
 
       onConnectionChange?.();
     } catch (error: any) {
-      console.error('Disconnect error:', error);
+      console.error('❌ Disconnect error:', error);
       toast({
-        title: "Disconnect Error", 
+        title: "Disconnect Error",
         description: error.message || "Failed to disconnect account",
         variant: "destructive"
       });

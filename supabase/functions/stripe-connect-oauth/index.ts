@@ -196,21 +196,41 @@ serve(async (req) => {
     }
 
     if (action === 'disconnect') {
-      // Disconnect the Stripe account
-      const { data: org, error: orgError } = await supabaseClient
-        .from('organizations')
-        .select('stripe_account_id, stripe_access_token')
+      console.log('🔌 Starting disconnect flow for user:', user.id);
+
+      // Find organization through organization_members table
+      const { data: membership, error: memberError } = await supabaseClient
+        .from('organization_members')
+        .select('organization_id, role')
         .eq('user_id', user.id)
         .single();
 
+      if (memberError || !membership) {
+        console.error('❌ Organization membership not found:', memberError);
+        throw new Error('Organization not found for user');
+      }
+
+      console.log('✅ Found organization:', membership.organization_id);
+
+      // Get the organization's Stripe details
+      const { data: org, error: orgError } = await supabaseClient
+        .from('organizations')
+        .select('id, stripe_account_id, stripe_access_token')
+        .eq('id', membership.organization_id)
+        .single();
+
       if (orgError || !org) {
+        console.error('❌ Organization not found:', orgError);
         throw new Error('Organization not found');
       }
+
+      console.log('📋 Organization Stripe Account ID:', org.stripe_account_id);
 
       if (org.stripe_account_id) {
         // Revoke the access token
         try {
-          await fetch('https://connect.stripe.com/oauth/deauthorize', {
+          console.log('🔓 Revoking Stripe access token...');
+          const deauthResponse = await fetch('https://connect.stripe.com/oauth/deauthorize', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded'
@@ -220,8 +240,15 @@ serve(async (req) => {
               stripe_user_id: org.stripe_account_id
             })
           });
+
+          if (!deauthResponse.ok) {
+            const errorText = await deauthResponse.text();
+            console.warn('⚠️ Stripe deauthorization failed:', errorText);
+          } else {
+            console.log('✅ Stripe access token revoked');
+          }
         } catch (error) {
-          console.warn('Warning: Failed to revoke Stripe access token:', error);
+          console.warn('⚠️ Failed to revoke Stripe access token:', error);
           // Continue with disconnection even if revocation fails
         }
       }
@@ -236,13 +263,14 @@ serve(async (req) => {
           stripe_scope: null,
           updated_at: new Date().toISOString()
         })
-        .eq('user_id', user.id);
+        .eq('id', org.id);
 
       if (updateError) {
+        console.error('❌ Failed to update organization:', updateError);
         throw new Error('Failed to disconnect account');
       }
 
-      console.log('✅ Stripe account disconnected');
+      console.log('✅ Stripe account disconnected successfully');
 
       return new Response(JSON.stringify({
         success: true,

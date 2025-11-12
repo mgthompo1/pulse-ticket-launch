@@ -44,10 +44,13 @@ serve(async (req) => {
     console.log("Stripe account ID:", org.stripe_account_id);
 
     // Initialize Stripe with platform account
-    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    // Use platform secret key (live mode) for production payouts
+    const stripeSecretKey = Deno.env.get("STRIPE_PLATFORM_SECRET_KEY") || Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeSecretKey) {
-      throw new Error("STRIPE_SECRET_KEY not configured");
+      throw new Error("STRIPE_PLATFORM_SECRET_KEY or STRIPE_SECRET_KEY not configured");
     }
+
+    console.log("Using Stripe key:", stripeSecretKey.substring(0, 12) + "...");
 
     const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16",

@@ -13,13 +13,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 interface PayoutsAndFeesProps {
   organizationId: string;
@@ -50,18 +43,31 @@ interface PayoutSummary {
   paid_amount: number;
 }
 
+interface StripeBalanceData {
+  balance: {
+    available: number;
+    pending: number;
+    total: number;
+    currency: string;
+  };
+  fees: {
+    stripe_fees: number;
+    platform_fees: number;
+  };
+}
+
 export const PayoutsAndFees = ({ organizationId }: PayoutsAndFeesProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [summary, setSummary] = useState<PayoutSummary | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [balanceData, setBalanceData] = useState<StripeBalanceData | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadData();
-  }, [organizationId, statusFilter]);
+  }, [organizationId]);
 
   const loadData = async () => {
     try {
@@ -78,18 +84,21 @@ export const PayoutsAndFees = ({ organizationId }: PayoutsAndFeesProps) => {
         setSummary(summaryData[0]);
       }
 
-      // Load payouts with optional status filter
-      let query = supabase
+      // Load Stripe balance and fees
+      const { data: balanceResponse, error: balanceError } = await supabase.functions.invoke('get-stripe-balance', {
+        body: { organizationId },
+      });
+
+      if (!balanceError && balanceResponse) {
+        setBalanceData(balanceResponse);
+      }
+
+      // Load payouts
+      const { data: payoutsData, error: payoutsError } = await supabase
         .from('payouts')
         .select('*')
         .eq('organization_id', organizationId)
         .order('payout_date', { ascending: false });
-
-      if (statusFilter !== 'all') {
-        query = query.eq('payout_status', statusFilter);
-      }
-
-      const { data: payoutsData, error: payoutsError } = await query;
 
       if (payoutsError) throw payoutsError;
       setPayouts(payoutsData || []);
@@ -188,7 +197,7 @@ export const PayoutsAndFees = ({ organizationId }: PayoutsAndFeesProps) => {
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Deposited</CardTitle>
@@ -199,37 +208,52 @@ export const PayoutsAndFees = ({ organizationId }: PayoutsAndFeesProps) => {
               {summary ? formatCurrency(summary.paid_amount) : '$0.00'}
             </div>
             <p className="text-xs text-muted-foreground">
-              {summary?.total_payouts || 0} payouts
+              Paid to bank account
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Fees</CardTitle>
-            <TrendingDown className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Stripe Fees</CardTitle>
+            <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {summary ? formatCurrency(summary.total_fees) : '$0.00'}
+            <div className="text-2xl font-bold text-red-600">
+              {balanceData ? formatCurrency(balanceData.fees.stripe_fees, balanceData.balance.currency) : '$0.00'}
             </div>
             <p className="text-xs text-muted-foreground">
-              Processing & platform fees
+              Transaction processing fees
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Platform Fees</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {summary ? formatCurrency(summary.pending_amount) : '$0.00'}
+            <div className="text-2xl font-bold text-green-600">
+              {balanceData ? formatCurrency(balanceData.fees.platform_fees, balanceData.balance.currency) : '$0.00'}
             </div>
             <p className="text-xs text-muted-foreground">
-              In transit or pending
+              Ticketflo Platform Fees
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Balance Pending</CardTitle>
+            <DollarSign className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {balanceData ? formatCurrency(balanceData.balance.total, balanceData.balance.currency) : '$0.00'}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              In Stripe, not yet paid out
             </p>
           </CardContent>
         </Card>
@@ -245,33 +269,19 @@ export const PayoutsAndFees = ({ organizationId }: PayoutsAndFeesProps) => {
                 Track all deposits from payment processors to your bank account
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="in_transit">In Transit</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button onClick={handleSyncPayouts} disabled={syncing} size="sm">
-                {syncing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Syncing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Sync Payouts
-                  </>
-                )}
-              </Button>
-            </div>
+            <Button onClick={handleSyncPayouts} disabled={syncing} size="sm">
+              {syncing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Syncing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Sync Payouts
+                </>
+              )}
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -279,9 +289,7 @@ export const PayoutsAndFees = ({ organizationId }: PayoutsAndFeesProps) => {
             <div className="text-center py-8 text-muted-foreground">
               <p>No payouts found</p>
               <p className="text-sm mt-2">
-                {statusFilter === 'all'
-                  ? 'Connect your Stripe account to track payouts'
-                  : 'Try changing the status filter'}
+                Payouts will appear here once your Stripe account processes them
               </p>
             </div>
           ) : (
