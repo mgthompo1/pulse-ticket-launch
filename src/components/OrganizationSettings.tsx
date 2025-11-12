@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganizations } from "@/hooks/useOrganizations";
-import { Building2, Mail, Globe, Phone, MapPin, Upload, Save, Settings, Calendar, MapPin as Attraction, Users, UserCog, Calculator } from "lucide-react";
+import { Building2, Mail, Globe, Phone, MapPin, Upload, Save, Settings, Calendar, MapPin as Attraction, Users, UserCog, Calculator, CreditCard } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { TaxSettings } from "@/components/TaxSettings";
 
@@ -28,6 +28,8 @@ interface OrganizationData {
   system_type: string | null;
   groups_enabled: boolean;
   crm_enabled: boolean;
+  issuing_enabled: boolean;
+  stripe_account_id: string | null;
 }
 
 const OrganizationSettings: React.FC = () => {
@@ -50,6 +52,8 @@ const OrganizationSettings: React.FC = () => {
     system_type: "EVENTS",
     groups_enabled: false,
     crm_enabled: false,
+    issuing_enabled: false,
+    stripe_account_id: null,
   });
 
   useEffect(() => {
@@ -90,6 +94,8 @@ const OrganizationSettings: React.FC = () => {
           system_type: orgData.system_type || "EVENTS",
           groups_enabled: orgData.groups_enabled || false,
           crm_enabled: orgData.crm_enabled || false,
+          issuing_enabled: orgData.issuing_enabled || false,
+          stripe_account_id: orgData.stripe_account_id || null,
         });
       }
     } catch (error) {
@@ -214,6 +220,7 @@ const OrganizationSettings: React.FC = () => {
           system_type: organizationData.system_type,
           groups_enabled: organizationData.groups_enabled,
           crm_enabled: organizationData.crm_enabled,
+          issuing_enabled: organizationData.issuing_enabled,
         })
         .eq("id", organizationData.id);
 
@@ -596,6 +603,73 @@ const OrganizationSettings: React.FC = () => {
                     <strong>Privacy:</strong> Customer data is encrypted and only accessible to authorized team members with CRM permissions.
                   </p>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Virtual Card Issuing
+              </CardTitle>
+              <CardDescription>
+                Issue virtual prepaid cards to coordinators and parents via Stripe Issuing with spending controls and interchange tracking
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {!organizationData.stripe_account_id ? (
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg space-y-3">
+                  <p className="text-sm font-medium text-amber-900">
+                    Stripe Connect Required
+                  </p>
+                  <p className="text-sm text-amber-800">
+                    Virtual card issuing requires a connected Stripe account. Please connect your Stripe account first to enable this feature.
+                  </p>
+                  <p className="text-xs text-amber-700 mt-2">
+                    Navigate to <strong>Settings → Payments → Stripe Connect</strong> to connect your account.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between space-x-4">
+                    <div className="flex-1 space-y-1">
+                      <Label htmlFor="issuing-enabled" className="text-base font-medium cursor-pointer">
+                        Enable Virtual Card Issuing
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Issue virtual prepaid cards with spending controls and earn interchange revenue from transactions
+                      </p>
+                    </div>
+                    <Switch
+                      id="issuing-enabled"
+                      checked={organizationData.issuing_enabled}
+                      onCheckedChange={(checked) =>
+                        setOrganizationData(prev => ({ ...prev, issuing_enabled: checked }))
+                      }
+                    />
+                  </div>
+
+                  {organizationData.issuing_enabled && (
+                    <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                      <p className="text-sm font-medium">What Issuing Enables:</p>
+                      <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                        <li>Issue virtual cards to group coordinators and leaders</li>
+                        <li>Parents can load cards for campers with spending money</li>
+                        <li>Set spending limits and merchant category restrictions</li>
+                        <li>Real-time transaction tracking and notifications</li>
+                        <li>Earn interchange revenue from card transactions</li>
+                        <li>Track and request payouts for accumulated interchange</li>
+                      </ul>
+                      <p className="text-sm text-blue-600 mt-3">
+                        When enabled, an "Issuing" section will appear in your navigation menu.
+                      </p>
+                      <p className="text-sm text-green-600 mt-2">
+                        <strong>Revenue Opportunity:</strong> Earn 1.5%-2.5% interchange on all card transactions, shared 80/20 with the platform.
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

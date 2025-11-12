@@ -28,7 +28,7 @@ interface AppSidebarProps {
   selectedEvent: Event | null;
 }
 
-const getSidebarItems = (systemType: string, groupsEnabled: boolean, crmEnabled: boolean) => {
+const getSidebarItems = (systemType: string, groupsEnabled: boolean, crmEnabled: boolean, issuingEnabled: boolean) => {
   const items = [
     { id: "overview", title: "Overview", icon: BarChart3 },
     {
@@ -60,6 +60,11 @@ const getSidebarItems = (systemType: string, groupsEnabled: boolean, crmEnabled:
     items.push({ id: "groups", title: "Groups", icon: UsersRound });
   }
 
+  // Conditionally add Issuing menu item if enabled
+  if (issuingEnabled) {
+    items.push({ id: "issuing", title: "Issuing", icon: DollarSign });
+  }
+
   // Add remaining items
   items.push(
     { id: "support", title: "Support", icon: Mail },
@@ -80,6 +85,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
   const [systemType, setSystemType] = useState<string>("EVENTS");
   const [groupsEnabled, setGroupsEnabled] = useState<boolean>(false);
   const [crmEnabled, setCrmEnabled] = useState<boolean>(false);
+  const [issuingEnabled, setIssuingEnabled] = useState<boolean>(false);
 
   useEffect(() => {
     const loadOrganization = async () => {
@@ -89,7 +95,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
         // First, try to find organization where user is the owner
         const { data: orgData, error } = await supabase
           .from("organizations")
-          .select("logo_url, name, system_type, groups_enabled, crm_enabled")
+          .select("logo_url, name, system_type, groups_enabled, crm_enabled, issuing_enabled")
           .eq("user_id", user.id)
           .single();
 
@@ -109,7 +115,8 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
                 name,
                 system_type,
                 groups_enabled,
-                crm_enabled
+                crm_enabled,
+                issuing_enabled
               )
             `)
             .eq("user_id", user.id)
@@ -136,6 +143,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
           setSystemType(organizationData.system_type || "EVENTS");
           setGroupsEnabled(organizationData.groups_enabled || false);
           setCrmEnabled(organizationData.crm_enabled || false);
+          setIssuingEnabled(organizationData.issuing_enabled || false);
         }
       } catch (error) {
         console.error("Error loading organization:", error);
@@ -155,7 +163,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
         <SidebarGroup className="px-3 !pt-3 pb-4">
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {getSidebarItems(systemType, groupsEnabled, crmEnabled).map((item) => {
+              {getSidebarItems(systemType, groupsEnabled, crmEnabled, issuingEnabled).map((item) => {
                 const isDisabled = item.requiresEvent && !selectedEvent;
                 const isActive = activeTab === item.id;
                 
