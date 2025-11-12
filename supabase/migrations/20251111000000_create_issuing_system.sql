@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS issuing_cards (
   expires_at TIMESTAMP WITH TIME ZONE,
   cancelled_at TIMESTAMP WITH TIME ZONE,
   cancellation_reason TEXT,
-  issued_by UUID REFERENCES users(id),
+  issued_by UUID REFERENCES auth.users(id),
 
   -- Metadata
   notes TEXT,
@@ -171,7 +171,7 @@ CREATE TABLE IF NOT EXISTS issuing_card_loads (
   ),
 
   -- Who loaded it
-  loaded_by UUID REFERENCES users(id),
+  loaded_by UUID REFERENCES auth.users(id),
   parent_email TEXT, -- If loaded by parent via top-up link
 
   -- Top-up link tracking
@@ -236,7 +236,7 @@ CREATE TABLE IF NOT EXISTS issuing_interchange_payouts (
 
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  created_by UUID REFERENCES users(id)
+  created_by UUID REFERENCES auth.users(id)
 );
 
 CREATE INDEX idx_interchange_payouts_organization ON issuing_interchange_payouts(organization_id);
@@ -296,7 +296,7 @@ CREATE TABLE IF NOT EXISTS issuing_activity_log (
   -- Activity details
   action TEXT NOT NULL, -- 'card_issued', 'card_loaded', 'card_cancelled', 'transaction_approved', etc.
   actor_type TEXT NOT NULL CHECK (actor_type IN ('system', 'admin', 'coordinator', 'parent')),
-  actor_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  actor_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   actor_email TEXT,
 
   -- Context
