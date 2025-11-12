@@ -11,6 +11,23 @@ interface GenerateTopupLinkRequest {
   expiryDays?: number; // Default 30 days
 }
 
+interface OrganizationSummary {
+  id: string;
+  name: string;
+  user_id: string;
+}
+
+interface IssuingCardRecord {
+  id: string;
+  organization_id: string;
+  group_id: string | null;
+  cardholder_name: string;
+  cardholder_email: string;
+  card_status: string;
+  card_last4: string;
+  organizations: OrganizationSummary | OrganizationSummary[] | null;
+}
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -76,7 +93,7 @@ serve(async (req) => {
         )
       `)
       .eq('id', body.cardId)
-      .single();
+      .single<IssuingCardRecord>();
 
     if (cardError || !card) {
       console.error('❌ Card lookup error:', cardError);
@@ -84,7 +101,15 @@ serve(async (req) => {
     }
 
     // Verify user owns the organization
-    if (card.organizations.user_id !== user.id) {
+    const cardOrganization = Array.isArray(card.organizations)
+      ? card.organizations[0]
+      : card.organizations;
+
+    if (!cardOrganization) {
+      throw new Error('Card organization data is missing');
+    }
+
+    if (cardOrganization.user_id !== user.id) {
       throw new Error('Access denied: Card belongs to different organization');
     }
 
