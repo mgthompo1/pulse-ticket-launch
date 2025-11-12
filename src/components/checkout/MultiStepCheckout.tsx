@@ -76,10 +76,11 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   const [attendees, setAttendees] = useState<AttendeeInfo[]>([]);
   const [showStripeModal, setShowStripeModal] = useState(false);
 
-  // Extract theme colors from event data
+  // Extract theme colors and branding from event data
             const themeData = eventData.widget_customization?.theme;
+      const brandingData = eventData.widget_customization?.branding;
       const isEnabled = themeData?.enabled === true;
-      
+
       const theme: Theme = {
         enabled: isEnabled,
         primaryColor: isEnabled ? (themeData?.primaryColor || '#ff4d00') : '#000000',
@@ -94,6 +95,9 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
         bodyTextColor: isEnabled ? (themeData?.bodyTextColor || '#6b7280') : '#6b7280',
         fontFamily: isEnabled ? (themeData?.fontFamily || 'Manrope') : 'Manrope'
       };
+
+  // Extract button text from branding
+  const buttonText = brandingData?.buttonText || 'Get Tickets';
 
   // Dynamic steps based on payment provider
   const isStripePayment = eventData.organizations?.payment_provider === 'stripe';
@@ -412,16 +416,16 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
           <div className="lg:w-1/3 flex items-end lg:-translate-y-4 translate-y-0 transition-transform">
             {currentStep === 'event' && (
               <div className="bg-white rounded-lg border p-3 w-full max-w-sm" style={{ borderColor: '#d1d5db' }}>
-                <Button 
+                <Button
                   onClick={nextStep}
                   size="default"
                   className="font-semibold px-6 py-3 text-base shadow-none hover:shadow-sm transition-all duration-200 w-full border-0 rounded-md"
-                  style={{ 
-                    backgroundColor: theme.primaryColor, 
+                  style={{
+                    backgroundColor: theme.primaryColor,
                     color: theme.buttonTextColor
                   }}
                 >
-                  Get Tickets
+                  {buttonText}
                 </Button>
               </div>
             )}
