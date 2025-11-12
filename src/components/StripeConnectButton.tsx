@@ -150,8 +150,8 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
     try {
       console.log('🔌 Attempting to disconnect Stripe account...');
 
-      const { data, error } = await supabase.functions.invoke('stripe-connect-oauth', {
-        body: { action: 'disconnect' },
+      const { data, error } = await supabase.functions.invoke('stripe-connect-oauth?action=disconnect', {
+        body: {},
         headers: {
           'Content-Type': 'application/json',
         }
@@ -164,12 +164,19 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
         throw error;
       }
 
-      toast({
-        title: "Disconnected",
-        description: "Your Stripe account has been disconnected.",
-      });
-
-      onConnectionChange?.();
+      // Check if disconnect was actually successful
+      if (data?.success === true || data?.message?.includes('disconnected')) {
+        toast({
+          title: "Disconnected",
+          description: "Your Stripe account has been disconnected.",
+        });
+        onConnectionChange?.();
+      } else if (data?.connect_url) {
+        // If we got a connect_url, the disconnect didn't work
+        throw new Error('Disconnect failed - received connection URL instead');
+      } else {
+        throw new Error('Unexpected response from disconnect');
+      }
     } catch (error: any) {
       console.error('❌ Disconnect error:', error);
       toast({

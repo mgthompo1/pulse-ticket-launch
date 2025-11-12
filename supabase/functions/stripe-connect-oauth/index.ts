@@ -198,32 +198,19 @@ serve(async (req) => {
     if (action === 'disconnect') {
       console.log('🔌 Starting disconnect flow for user:', user.id);
 
-      // Find organization through organization_members table
-      const { data: membership, error: memberError } = await supabaseClient
-        .from('organization_members')
-        .select('organization_id, role')
-        .eq('user_id', user.id)
-        .single();
-
-      if (memberError || !membership) {
-        console.error('❌ Organization membership not found:', memberError);
-        throw new Error('Organization not found for user');
-      }
-
-      console.log('✅ Found organization:', membership.organization_id);
-
-      // Get the organization's Stripe details
+      // Get the organization directly by user_id
       const { data: org, error: orgError } = await supabaseClient
         .from('organizations')
         .select('id, stripe_account_id, stripe_access_token')
-        .eq('id', membership.organization_id)
+        .eq('user_id', user.id)
         .single();
 
       if (orgError || !org) {
         console.error('❌ Organization not found:', orgError);
-        throw new Error('Organization not found');
+        throw new Error('Organization not found for user');
       }
 
+      console.log('✅ Found organization:', org.id);
       console.log('📋 Organization Stripe Account ID:', org.stripe_account_id);
 
       if (org.stripe_account_id) {
