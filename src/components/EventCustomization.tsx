@@ -23,6 +23,7 @@ import { EventLogoUploader } from "@/components/events/EventLogoUploader";
 import { EmailTemplatePreview } from "@/components/EmailTemplatePreview";
 import PromoCodesManager from "@/pages/PromoCodesManager";
 import GroupDiscountsManager from "@/pages/GroupDiscountsManager";
+import { VenueLocationPicker } from "@/components/VenueLocationPicker";
 
 // Type definitions for better type safety
 interface EmailBlock {
@@ -268,7 +269,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       
       const { data, error} = await supabase
         .from("events")
-        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, organization_id, description, event_date, event_end_date, capacity, requires_approval, ticket_delivery_method, donations_enabled, donation_title, donation_description, donation_suggested_amounts")
+        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, venue_address, venue_lat, venue_lng, venue_place_id, organization_id, description, event_date, event_end_date, capacity, requires_approval, ticket_delivery_method, donations_enabled, donation_title, donation_description, donation_suggested_amounts")
         .eq("id", eventId)
         .single();
 
@@ -293,6 +294,9 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         status: data.status,
         logo_url: data.logo_url,
         venue: data.venue,
+        venue_lat: data.venue_lat,
+        venue_lng: data.venue_lng,
+        venue_place_id: data.venue_place_id,
         description: data.description,
         event_date: data.event_date,
         event_end_date: data.event_end_date,
@@ -2447,15 +2451,23 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   />
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="event-venue">Venue</Label>
-                  <Input
-                    id="event-venue"
-                    value={eventData?.venue || ""}
-                    onChange={(e) => {
-                      setEventData(prev => prev ? { ...prev, venue: e.target.value } : null);
+                <div>
+                  <VenueLocationPicker
+                    value={{
+                      address: eventData?.venue || "",
+                      lat: eventData?.venue_lat,
+                      lng: eventData?.venue_lng,
+                      placeId: eventData?.venue_place_id
                     }}
-                    placeholder="Enter venue name"
+                    onChange={(location) => {
+                      setEventData(prev => prev ? {
+                        ...prev,
+                        venue: location.address,
+                        venue_lat: location.lat,
+                        venue_lng: location.lng,
+                        venue_place_id: location.placeId
+                      } : null);
+                    }}
                   />
                 </div>
               </div>
@@ -2558,6 +2570,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         .update({
                           name: eventData.name,
                           venue: eventData.venue,
+                          venue_address: eventData.venue,
+                          venue_lat: eventData.venue_lat,
+                          venue_lng: eventData.venue_lng,
+                          venue_place_id: eventData.venue_place_id,
                           description: eventData.description,
                           event_date: eventData.event_date,
                           event_end_date: eventData.event_end_date,

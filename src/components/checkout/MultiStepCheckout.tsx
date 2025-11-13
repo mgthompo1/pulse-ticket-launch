@@ -16,6 +16,7 @@ import { Theme } from '@/types/theme';
 import { usePromoCodeAndDiscounts } from '@/hooks/usePromoCodeAndDiscounts';
 import { useTicketReservation } from '@/hooks/useTicketReservation';
 import { useTaxCalculation, formatTaxForOrder } from '@/hooks/useTaxCalculation';
+import { VenueMap } from '@/components/VenueMap';
 
 interface PromoCodeHooks {
   promoCode: string;
@@ -349,12 +350,17 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
             </div>
 
                       {/* Venue */}
-          {eventData.venue && (
-            <div className="flex items-center gap-3 text-lg" style={{ color: theme.bodyTextColor }}>
-                <MapPin className="h-6 w-6" style={{ color: theme.primaryColor }} />
-                <span className="font-medium">{eventData.venue}</span>
-              </div>
-            )}
+          {((eventData as any).venue_address || eventData.venue) && (
+            <div className="space-y-2">
+              <VenueMap
+                address={(eventData as any).venue_address || eventData.venue}
+                lat={(eventData as any).venue_lat}
+                lng={(eventData as any).venue_lng}
+                height="250px"
+                className="mb-2"
+              />
+            </div>
+          )}
 
                       {/* Host/Organization */}
           {(eventData.organizations as any)?.name && (
