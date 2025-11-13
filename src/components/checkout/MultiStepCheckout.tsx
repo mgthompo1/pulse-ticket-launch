@@ -117,6 +117,8 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   const currentStepData = steps.find(step => step.key === currentStep);
 
   // Calculate totals for promo code hooks
+  // Total number of attendee forms needed (accounting for attendees_per_ticket multiplier)
+  const totalAttendees = cartItems.reduce((sum, item) => sum + (item.quantity * (item.attendees_per_ticket || 1)), 0);
   const ticketCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const ticketTotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const merchandiseTotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
@@ -440,7 +442,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
               <Card style={{ backgroundColor: theme.backgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
                 <CardHeader>
                   <CardTitle className="text-2xl font-bold" style={{ color: theme.headerTextColor }}>
-                    Event description
+                    {eventData.widget_customization?.textCustomization?.eventDescriptionTitle || "Event description"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -461,9 +463,9 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                 <Card style={{ backgroundColor: theme.backgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
                   <CardHeader>
                     <CardTitle className="text-2xl font-bold" style={{ color: theme.headerTextColor }}>
-                      Select Your Tickets
+                      {eventData.widget_customization?.textCustomization?.ticketSelectionTitle || "Select Your Tickets"}
                     </CardTitle>
-                    <p style={{ color: theme.bodyTextColor }}>Choose your tickets and any additional items</p>
+                    <p style={{ color: theme.bodyTextColor }}>{eventData.widget_customization?.textCustomization?.ticketSelectionSubtitle || "Choose your tickets and any additional items"}</p>
                   </CardHeader>
                   <CardContent className="space-y-8">
                     {/* Ticket Selection */}
@@ -505,7 +507,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                 theme={theme}
                 isStripePayment={isStripePayment}
                 eventData={eventData}
-                ticketCount={ticketCount}
+                ticketCount={totalAttendees}
               />
             )}
 

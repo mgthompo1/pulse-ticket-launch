@@ -17,7 +17,7 @@ import { TrendIndicator } from "@/components/TrendIndicator";
 import { MiniSparkline } from "@/components/MiniSparkline";
 import { DashboardSkeleton } from "@/components/DashboardSkeleton";
 import { TimeRangeFilter, TimeRange } from "@/components/TimeRangeFilter";
-import { calculateDateRange, calculatePreviousPeriod } from "@/lib/dateUtils";
+import { calculateDateRange, calculatePreviousPeriod, formatEventDateRange } from "@/lib/dateUtils";
 
 import { EventAnalytics } from "@/components/EventAnalytics";
 import AIChatbot from "@/components/AIChatbot";
@@ -58,6 +58,7 @@ type DashboardEvent = {
   revenue: number;
   created_at: string;
   event_date: string;
+  event_end_date?: string | null;
 };
 
 type EventTypeDatum = { name: string; value: number; color: string }; // Total revenue by event
@@ -223,6 +224,7 @@ const OrgDashboard = () => {
   const [eventForm, setEventForm] = useState({
     name: "",
     date: "",
+    endDate: "",
     venue: "",
     capacity: "",
     description: ""
@@ -325,7 +327,8 @@ const OrgDashboard = () => {
         tickets_sold: 0, // Will be calculated from orders
         revenue: 0, // Will be calculated from orders
         created_at: event.created_at,
-        event_date: event.event_date
+        event_date: event.event_date,
+        event_end_date: event.event_end_date || null
       }));
 
       setEvents(mappedEvents);
@@ -864,6 +867,29 @@ const OrgDashboard = () => {
       return;
     }
 
+    if (eventForm.endDate) {
+      const startDate = new Date(eventForm.date);
+      const endDate = new Date(eventForm.endDate);
+
+      if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+        toast({
+          title: "Error",
+          description: "Please provide valid start and end dates",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (endDate < startDate) {
+        toast({
+          title: "Error",
+          description: "End date must be on or after the start date",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     setIsCreatingEvent(true);
     try {
       const { error } = await supabase
@@ -871,6 +897,7 @@ const OrgDashboard = () => {
         .insert({
           name: eventForm.name,
           event_date: eventForm.date,
+          event_end_date: eventForm.endDate || null,
           venue: eventForm.venue,
           capacity: parseInt(eventForm.capacity),
           description: eventForm.description,
@@ -891,6 +918,7 @@ const OrgDashboard = () => {
       setEventForm({
         name: "",
         date: "",
+        endDate: "",
         venue: "",
         capacity: "",
         description: ""
@@ -988,7 +1016,7 @@ const OrgDashboard = () => {
             <AppSidebar
               activeTab={activeTab}
               setActiveTab={setActiveTab}
-              selectedEvent={selectedEvent ? { id: selectedEvent.id, name: selectedEvent.name, event_date: selectedEvent.event_date, status: selectedEvent.status } : null}
+              selectedEvent={selectedEvent ? { id: selectedEvent.id, name: selectedEvent.name, event_date: selectedEvent.event_date, event_end_date: selectedEvent.event_end_date, status: selectedEvent.status } : null}
             />
           </div>
 
@@ -1209,7 +1237,10 @@ const OrgDashboard = () => {
                           <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border border-slate-200 rounded-xl hover:bg-slate-50/50 transition-colors gap-3">
                             <div className="space-y-1 flex-1">
                               <h3 className="font-manrope font-medium text-sm text-slate-900">{event.name}</h3>
-                              <p className="font-manrope text-xs text-slate-600">{new Date(event.event_date).toLocaleDateString()} • {event.venue}</p>
+                              <p className="font-manrope text-xs text-slate-600">
+                                {formatEventDateRange(event.event_date, event.event_end_date, { dateStyle: 'medium' })}
+                                {event.venue ? ` • ${event.venue}` : ''}
+                              </p>
                             </div>
                             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
                               <div className="text-left sm:text-right">
@@ -1273,7 +1304,10 @@ const OrgDashboard = () => {
                               <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-slate-200 rounded-xl hover:bg-slate-50/50 transition-colors gap-4 w-full" style={{ width: '100%' }}>
                                 <div className="space-y-2 flex-1">
                                   <h3 className="font-manrope font-semibold text-base text-slate-900">{event.name}</h3>
-                                  <p className="font-manrope text-sm text-slate-600">{new Date(event.event_date).toLocaleDateString()} • {event.venue}</p>
+                                  <p className="font-manrope text-sm text-slate-600">
+                                    {formatEventDateRange(event.event_date, event.event_end_date, { dateStyle: 'medium' })}
+                                    {event.venue ? ` • ${event.venue}` : ''}
+                                  </p>
                                   <Badge 
                                     variant={event.status === "published" ? "default" : "secondary"} 
                                     className="w-fit font-manrope font-medium text-sm"
@@ -1342,10 +1376,19 @@ const OrgDashboard = () => {
                           <div>
                             <DateTimePicker
                               id="event-date"
-                              label="Event Date *"
+                              label="Start Date & Time *"
                               value={eventForm.date}
                               onChange={(date) => setEventForm(prev => ({ ...prev, date }))}
-                              placeholder="Select event date and time"
+                              placeholder="Select event start date and time"
+                            />
+                          </div>
+                          <div>
+                            <DateTimePicker
+                              id="event-end-date"
+                              label="End Date & Time (optional)"
+                              value={eventForm.endDate || null}
+                              onChange={(date) => setEventForm(prev => ({ ...prev, endDate: date || "" }))}
+                              placeholder="Select event end date and time"
                             />
                           </div>
                           <div className="space-y-2">
@@ -1446,7 +1489,7 @@ const OrgDashboard = () => {
                 </TabsContent>
 
                 <TabsContent value="marketing" className="space-y-6">
-                  <MarketingTools selectedEvent={selectedEvent ? { id: selectedEvent.id, name: selectedEvent.name, status: selectedEvent.status, event_date: selectedEvent.event_date, description: undefined } : undefined} />
+                  <MarketingTools selectedEvent={selectedEvent ? { id: selectedEvent.id, name: selectedEvent.name, status: selectedEvent.status, event_date: selectedEvent.event_date, event_end_date: selectedEvent.event_end_date, description: undefined } : undefined} />
                 </TabsContent>
 
                 {canAccessBilling() && (

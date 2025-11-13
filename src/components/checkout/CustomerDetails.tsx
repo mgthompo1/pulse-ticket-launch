@@ -367,6 +367,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
               attendees={attendees}
               onChange={setAttendees}
               customQuestions={safeCustomQuestions}
+              textCustomization={eventData?.widget_customization?.textCustomization}
             />
           )}
 

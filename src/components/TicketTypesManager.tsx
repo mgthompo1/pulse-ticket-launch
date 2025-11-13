@@ -30,6 +30,7 @@ interface TicketType {
   sale_start_date: string | null;
   sale_end_date: string | null;
   use_assigned_seating?: boolean;
+  attendees_per_ticket?: number;
 }
 
 interface TicketTypesManagerProps {
@@ -51,6 +52,7 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
     sale_start_date: null,
     sale_end_date: null,
     use_assigned_seating: false,
+    attendees_per_ticket: 1,
   });
 
   useEffect(() => {
@@ -97,6 +99,7 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
             sale_start_date: formData.sale_start_date,
             sale_end_date: formData.sale_end_date,
             use_assigned_seating: formData.use_assigned_seating || false,
+            attendees_per_ticket: formData.attendees_per_ticket || 1,
           })
           .eq("id", editingTicket.id);
 
@@ -119,6 +122,7 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
             sale_start_date: formData.sale_start_date,
             sale_end_date: formData.sale_end_date,
             use_assigned_seating: formData.use_assigned_seating || false,
+            attendees_per_ticket: formData.attendees_per_ticket || 1,
           });
 
         if (error) throw error;
@@ -155,6 +159,7 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
       sale_start_date: ticket.sale_start_date,
       sale_end_date: ticket.sale_end_date,
       use_assigned_seating: ticket.use_assigned_seating || false,
+      attendees_per_ticket: ticket.attendees_per_ticket || 1,
     });
     setIsDialogOpen(true);
   };
@@ -198,6 +203,7 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
       sale_start_date: null,
       sale_end_date: null,
       use_assigned_seating: false,
+      attendees_per_ticket: 1,
     });
     setEditingTicket(null);
   };
@@ -276,16 +282,31 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="quantity">Available Quantity *</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    min="1"
-                    value={formData.quantity_available}
-                    onChange={(e) => setFormData({ ...formData, quantity_available: parseInt(e.target.value) || 0 })}
-                    required
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">Available Quantity *</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      min="1"
+                      value={formData.quantity_available}
+                      onChange={(e) => setFormData({ ...formData, quantity_available: parseInt(e.target.value) || 0 })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="attendees_per_ticket">Attendees per Ticket</Label>
+                    <Input
+                      id="attendees_per_ticket"
+                      type="number"
+                      min="1"
+                      value={formData.attendees_per_ticket || 1}
+                      onChange={(e) => setFormData({ ...formData, attendees_per_ticket: parseInt(e.target.value) || 1 })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Number of attendee forms to collect per ticket (e.g., 2 for parent + child)
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex items-start space-x-3 rounded-md border p-4">

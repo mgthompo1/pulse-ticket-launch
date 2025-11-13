@@ -22,6 +22,13 @@ interface AttendeeDetailsFormProps {
   attendees: AttendeeInfo[];
   onChange: (attendees: AttendeeInfo[]) => void;
   customQuestions?: CustomQuestion[];
+  textCustomization?: {
+    attendeeInfoTitle?: string;
+    attendeeInfoDescription?: string;
+    primaryTicketLabel?: string;
+    ticketLabelPrefix?: string;
+    ticketLabels?: Record<number, string>;
+  };
 }
 
 export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
@@ -30,10 +37,18 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
   buyerEmail,
   attendees,
   onChange,
-  customQuestions = []
+  customQuestions = [],
+  textCustomization
 }) => {
   // Safety check - ensure customQuestions is always an array
   const safeCustomQuestions = Array.isArray(customQuestions) ? customQuestions : [];
+
+  // Get text customization with defaults
+  const attendeeInfoTitle = textCustomization?.attendeeInfoTitle || "Attendee Information";
+  const attendeeInfoDescription = textCustomization?.attendeeInfoDescription || "Please provide the name and email for each ticket holder. This helps us identify attendees at check-in.";
+  const primaryTicketLabel = textCustomization?.primaryTicketLabel || "(Primary Ticket Holder)";
+  const ticketLabelPrefix = textCustomization?.ticketLabelPrefix || "Ticket";
+  const ticketLabels = textCustomization?.ticketLabels || {};
   // Initialize attendees array when ticket count changes
   useEffect(() => {
     if (ticketCount > 0 && attendees.length !== ticketCount) {
@@ -93,17 +108,23 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
       <CardHeader className="pb-4">
         <CardTitle className="text-lg flex items-center gap-2">
           <Users className="h-5 w-5" />
-          Attendee Information
+          {attendeeInfoTitle}
         </CardTitle>
         <CardDescription>
-          Please provide the name and email for each ticket holder. This helps us identify attendees at check-in.
+          {attendeeInfoDescription}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {attendees.map((attendee, index) => (
-          <div key={index} className="bg-white p-4 rounded-lg border border-slate-200">
+        {attendees.map((attendee, index) => {
+          // Use custom label if provided, otherwise use default pattern
+          const customLabel = ticketLabels[index];
+          const ticketLabel = customLabel || `${ticketLabelPrefix} ${index + 1}`;
+          const isPrimary = index === 0;
+
+          return (
+            <div key={index} className="bg-white p-4 rounded-lg border border-slate-200">
             <h4 className="font-medium text-sm text-slate-700 mb-3">
-              Ticket {index + 1} {index === 0 && <span className="text-xs text-slate-500">(Primary Ticket Holder)</span>}
+              {ticketLabel} {isPrimary && !customLabel && <span className="text-xs text-slate-500">{primaryTicketLabel}</span>}
             </h4>
 
             <div className="space-y-3">
@@ -265,8 +286,9 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
                 </div>
               )}
             </div>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );

@@ -29,6 +29,20 @@ export interface WidgetCustomization {
     placeholder?: string;
     anyOption?: string;
   };
+  textCustomization?: {
+    // Event step
+    eventDescriptionTitle?: string;
+    // Tickets step
+    ticketSelectionTitle?: string;
+    ticketSelectionSubtitle?: string;
+    // Details step
+    attendeeInfoTitle?: string;
+    attendeeInfoDescription?: string;
+    primaryTicketLabel?: string;
+    ticketLabelPrefix?: string;
+    // Ticket-specific labels (e.g., "Parent", "Child")
+    ticketLabels?: Record<number, string>; // { 0: "Parent", 1: "Child" }
+  };
   // Legacy flat structure for backwards compatibility
   primaryColor?: string;
   buttonTextColor?: string;
@@ -111,6 +125,7 @@ export interface TicketType {
   sale_end_date?: string | null;
   event_id: string;
   use_assigned_seating?: boolean;
+  attendees_per_ticket?: number; // Number of attendees per ticket (default: 1)
 }
 
 export interface CartItem extends TicketType {

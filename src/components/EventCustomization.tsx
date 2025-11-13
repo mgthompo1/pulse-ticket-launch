@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -78,6 +79,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     venue: string | null;
     description: string | null;
     event_date: string;
+    event_end_date: string | null;
     capacity: number;
     requires_approval: boolean | null;
     widget_customization?: Record<string, unknown>;
@@ -129,7 +131,21 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     payment: {
       successUrl: ""
     },
-    checkoutMode: "onepage" as 'onepage' | 'multistep' | 'beta'
+    checkoutMode: "onepage" as 'onepage' | 'multistep' | 'beta',
+    textCustomization: {
+      // Event step
+      eventDescriptionTitle: "Event description",
+      // Tickets step
+      ticketSelectionTitle: "Select Your Tickets",
+      ticketSelectionSubtitle: "Choose your tickets and any additional items",
+      // Details step
+      attendeeInfoTitle: "Attendee Information",
+      attendeeInfoDescription: "Please provide the name and email for each ticket holder. This helps us identify attendees at check-in.",
+      primaryTicketLabel: "(Primary Ticket Holder)",
+      ticketLabelPrefix: "Ticket",
+      // Ticket-specific labels
+      ticketLabels: {}
+    }
   });
 
   // Ticket customization state
@@ -252,7 +268,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       
       const { data, error} = await supabase
         .from("events")
-        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, organization_id, description, event_date, capacity, requires_approval, ticket_delivery_method, donations_enabled, donation_title, donation_description, donation_suggested_amounts")
+        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, organization_id, description, event_date, event_end_date, capacity, requires_approval, ticket_delivery_method, donations_enabled, donation_title, donation_description, donation_suggested_amounts")
         .eq("id", eventId)
         .single();
 
@@ -279,6 +295,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         venue: data.venue,
         description: data.description,
         event_date: data.event_date,
+        event_end_date: data.event_end_date,
         capacity: data.capacity,
         requires_approval: data.requires_approval,
         ticket_delivery_method: data.ticket_delivery_method || undefined,
@@ -318,9 +335,16 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
       if (data?.widget_customization) {
         // Use widget_customization from database as source of truth
+        // Deep merge to preserve nested objects like textCustomization
+        const dbCustomization = data.widget_customization as Record<string, unknown>;
         const newWidgetCustomization = {
           ...widgetCustomization,
-          ...(data.widget_customization as Record<string, unknown> || {})
+          ...dbCustomization,
+          // Ensure textCustomization is properly merged, not replaced
+          textCustomization: {
+            ...widgetCustomization.textCustomization,
+            ...(dbCustomization.textCustomization as Record<string, unknown> || {})
+          }
         };
         setWidgetCustomization(newWidgetCustomization as any);
       }
@@ -1426,16 +1450,6 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       Patrons can also enter a custom amount
                     </p>
                   </div>
-
-                  <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                    <p className="text-sm font-medium">Donation Features:</p>
-                    <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                      <li>Optional donation during ticket checkout</li>
-                      <li>Tracked in customer CRM profiles</li>
-                      <li>Included in transaction receipts</li>
-                      <li>Automatic donation tracking and reporting</li>
-                    </ul>
-                  </div>
                 </div>
               )}
             </CardContent>
@@ -1505,6 +1519,164 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               </CardContent>
             </Card>
           )}
+
+          {/* Text Customization */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Tag className="h-5 w-5" />
+                Text Customization
+              </CardTitle>
+              <CardDescription>
+                Customize text labels throughout the checkout flow
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Accordion type="multiple" className="w-full">
+                {/* 1. Event Description Step */}
+                <AccordionItem value="event-step">
+                  <AccordionTrigger className="text-sm font-medium">
+                    1. Event Description Step
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="eventDescriptionTitle">Event Description Title</Label>
+                      <Input
+                        id="eventDescriptionTitle"
+                        value={widgetCustomization.textCustomization?.eventDescriptionTitle || "Event description"}
+                        onChange={(e) => updateWidgetCustomization(['textCustomization', 'eventDescriptionTitle'], e.target.value)}
+                        placeholder="Event description"
+                      />
+                      <p className="text-xs text-muted-foreground">Title shown on the first page of the checkout flow</p>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* 2. Ticket Selection Step */}
+                <AccordionItem value="ticket-step">
+                  <AccordionTrigger className="text-sm font-medium">
+                    2. Ticket Selection Step
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="ticketSelectionTitle">Ticket Selection Title</Label>
+                      <Input
+                        id="ticketSelectionTitle"
+                        value={widgetCustomization.textCustomization?.ticketSelectionTitle || "Select Your Tickets"}
+                        onChange={(e) => updateWidgetCustomization(['textCustomization', 'ticketSelectionTitle'], e.target.value)}
+                        placeholder="Select Your Tickets"
+                      />
+                      <p className="text-xs text-muted-foreground">Main title for the ticket selection page</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ticketSelectionSubtitle">Ticket Selection Subtitle</Label>
+                      <Input
+                        id="ticketSelectionSubtitle"
+                        value={widgetCustomization.textCustomization?.ticketSelectionSubtitle || "Choose your tickets and any additional items"}
+                        onChange={(e) => updateWidgetCustomization(['textCustomization', 'ticketSelectionSubtitle'], e.target.value)}
+                        placeholder="Choose your tickets and any additional items"
+                      />
+                      <p className="text-xs text-muted-foreground">Subtitle text below the ticket selection title</p>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* 3. Contact Information Card */}
+                <AccordionItem value="contact-step">
+                  <AccordionTrigger className="text-sm font-medium">
+                    3. Contact Information Labels
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="ticketLabelPrefix">Ticket Label Prefix</Label>
+                      <Input
+                        id="ticketLabelPrefix"
+                        value={widgetCustomization.textCustomization?.ticketLabelPrefix || "Ticket"}
+                        onChange={(e) => updateWidgetCustomization(['textCustomization', 'ticketLabelPrefix'], e.target.value)}
+                        placeholder="Ticket"
+                      />
+                      <p className="text-xs text-muted-foreground">Prefix used for ticket labels (e.g., "Ticket 1", "Ticket 2")</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="primaryTicketLabel">Primary Ticket Holder Label</Label>
+                      <Input
+                        id="primaryTicketLabel"
+                        value={widgetCustomization.textCustomization?.primaryTicketLabel || "(Primary Ticket Holder)"}
+                        onChange={(e) => updateWidgetCustomization(['textCustomization', 'primaryTicketLabel'], e.target.value)}
+                        placeholder="(Primary Ticket Holder)"
+                      />
+                      <p className="text-xs text-muted-foreground">Label shown for the first ticket/attendee</p>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* 4. Attendee Details Step */}
+                <AccordionItem value="attendee-step">
+                  <AccordionTrigger className="text-sm font-medium">
+                    4. Attendee Details Step
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="attendeeInfoTitle">Attendee Information Title</Label>
+                      <Input
+                        id="attendeeInfoTitle"
+                        value={widgetCustomization.textCustomization?.attendeeInfoTitle || "Attendee Information"}
+                        onChange={(e) => updateWidgetCustomization(['textCustomization', 'attendeeInfoTitle'], e.target.value)}
+                        placeholder="Attendee Information"
+                      />
+                      <p className="text-xs text-muted-foreground">Title for the attendee information section</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="attendeeInfoDescription">Attendee Information Description</Label>
+                      <Textarea
+                        id="attendeeInfoDescription"
+                        value={widgetCustomization.textCustomization?.attendeeInfoDescription || "Please provide the name and email for each ticket holder. This helps us identify attendees at check-in."}
+                        onChange={(e) => updateWidgetCustomization(['textCustomization', 'attendeeInfoDescription'], e.target.value)}
+                        placeholder="Please provide the name and email for each ticket holder..."
+                        rows={3}
+                      />
+                      <p className="text-xs text-muted-foreground">Description text for the attendee information section</p>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* 5. Custom Ticket Labels */}
+                <AccordionItem value="custom-labels">
+                  <AccordionTrigger className="text-sm font-medium">
+                    5. Custom Ticket Labels
+                  </AccordionTrigger>
+                  <AccordionContent className="space-y-4 pt-4">
+                    <div className="flex items-start gap-2 mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <HelpCircle className="h-4 w-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                      <p className="text-xs text-muted-foreground">
+                        For Special Use Cases you can set custom labels for each ticket position.
+                      </p>
+                    </div>
+                    <div className="space-y-3">
+                      {[0, 1, 2, 3, 4].map((index) => (
+                        <div key={index} className="grid grid-cols-[100px_1fr] gap-3 items-center">
+                          <Label className="text-sm">Ticket {index + 1}:</Label>
+                          <Input
+                            value={(widgetCustomization.textCustomization?.ticketLabels as Record<number, string>)?.[index] || ''}
+                            onChange={(e) => {
+                              const newLabels = { ...(widgetCustomization.textCustomization?.ticketLabels || {}) };
+                              if (e.target.value.trim()) {
+                                newLabels[index] = e.target.value;
+                              } else {
+                                delete newLabels[index];
+                              }
+                              updateWidgetCustomization(['textCustomization', 'ticketLabels'], newLabels);
+                            }}
+                            placeholder={`e.g., ${index === 0 ? 'Parent' : 'Child'}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
 
           {/* Widget Preview */}
           <Card>
@@ -2211,7 +2383,8 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 eventDetails={{
                   name: eventData?.name || "Sample Event Name",
                   venue: eventData?.venue || "Sample Venue",
-                  event_date: new Date().toISOString(),
+                  event_date: eventData?.event_date || new Date().toISOString(),
+                  event_end_date: eventData?.event_end_date || null,
                   logo_url: eventData?.logo_url || currentLogoUrl || undefined
                 }}
                 organizationDetails={{
@@ -2287,16 +2460,28 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <div>
                   <DateTimePicker
                     id="event-date"
-                    label="Event Date & Time *"
+                    label="Start Date & Time *"
                     value={eventData?.event_date || null}
                     onChange={(date) => {
                       setEventData(prev => prev ? { ...prev, event_date: date } : null);
                     }}
-                    placeholder="Select event date and time"
+                    placeholder="Select event start date and time"
+                  />
+                </div>
+
+                <div>
+                  <DateTimePicker
+                    id="event-end-date"
+                    label="End Date & Time (optional)"
+                    value={eventData?.event_end_date || null}
+                    onChange={(date) => {
+                      setEventData(prev => prev ? { ...prev, event_end_date: date } : null);
+                    }}
+                    placeholder="Select event end date and time"
                   />
                 </div>
                 
@@ -2343,7 +2528,30 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 <Button 
                   onClick={async () => {
                     if (!eventData) return;
-                    
+
+                    if (eventData.event_end_date) {
+                      const startDate = new Date(eventData.event_date);
+                      const endDate = new Date(eventData.event_end_date);
+
+                      if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+                        toast({
+                          title: "Error",
+                          description: "Please provide valid start and end dates",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+
+                      if (endDate < startDate) {
+                        toast({
+                          title: "Error",
+                          description: "End date must be on or after the start date",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+                    }
+
                     try {
                       const { error } = await supabase
                         .from("events")
@@ -2352,6 +2560,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                           venue: eventData.venue,
                           description: eventData.description,
                           event_date: eventData.event_date,
+                          event_end_date: eventData.event_end_date,
                           capacity: eventData.capacity,
                           requires_approval: eventData.requires_approval
                         })

@@ -23,7 +23,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
   label,
   id,
   className,
-  showTimeZone = true,
+  showTimeZone = false,
   placeholder = "Select date and time",
   minDate,
   maxDate,

@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { FileText, Loader2, AlertCircle, Calendar, Plus, Minus, DollarSign, Send, CreditCard } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { formatEventDateRange } from "@/lib/dateUtils";
 
 interface Contact {
   id: string;
@@ -38,6 +39,7 @@ interface Event {
   id: string;
   name: string;
   event_date: string;
+  event_end_date?: string | null;
   status: string;
 }
 
@@ -95,12 +97,12 @@ const generateOrderEmail = (
 
     <p>Or copy this link: <a href="${checkoutUrl}">${checkoutUrl}</a></p>
 
-    <p>Event Date: ${new Date(event.event_date).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })}</p>
+    <p>Event Date: ${formatEventDateRange(
+      event.event_date,
+      event.event_end_date,
+      { dateStyle: 'full' },
+      'en-US'
+    )}</p>
 
     <p>If you have any questions, just reply to this email!</p>
   `;
@@ -143,12 +145,12 @@ const generateReceiptEmailForOrder = (
 
         <div style="margin: 20px 0; padding: 15px; background-color: #f0fdf4; border-radius: 6px;">
           <strong>Event Date:</strong><br/>
-          ${new Date(event.event_date).toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          })}
+          ${formatEventDateRange(
+            event.event_date,
+            event.event_end_date,
+            { dateStyle: 'full' },
+            'en-US'
+          )}
         </div>
 
         <div style="margin: 30px 0; padding: 20px; background-color: #f0fdf4; border-radius: 8px; text-align: center;">
@@ -197,7 +199,7 @@ export const CreateCustomOrderModal: React.FC<CreateCustomOrderModalProps> = ({
     try {
       const { data, error } = await supabase
         .from("events")
-        .select("id, name, event_date, status")
+        .select("id, name, event_date, event_end_date, status")
         .eq("organization_id", organizationId)
         .in("status", ["published", "draft"])
         .order("event_date", { ascending: true });
@@ -429,12 +431,12 @@ export const CreateCustomOrderModal: React.FC<CreateCustomOrderModalProps> = ({
               <Calendar className="h-4 w-4" />
               <AlertDescription>
                 <strong>Event Date:</strong>{' '}
-                {new Date(selectedEvent.event_date).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
+                {formatEventDateRange(
+                  selectedEvent.event_date,
+                  selectedEvent.event_end_date,
+                  { dateStyle: 'full' },
+                  'en-US'
+                )}
               </AlertDescription>
             </Alert>
           )}

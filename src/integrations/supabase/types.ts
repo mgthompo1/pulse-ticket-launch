@@ -1066,6 +1066,7 @@ export type Database = {
           donations_enabled: boolean | null
           email_customization: Json | null
           event_date: string
+          event_end_date: string | null
           featured_image_url: string | null
           id: string
           logo_url: string | null
@@ -1088,6 +1089,7 @@ export type Database = {
           donations_enabled?: boolean | null
           email_customization?: Json | null
           event_date: string
+          event_end_date?: string | null
           featured_image_url?: string | null
           id?: string
           logo_url?: string | null
@@ -1110,6 +1112,7 @@ export type Database = {
           donations_enabled?: boolean | null
           email_customization?: Json | null
           event_date?: string
+          event_end_date?: string | null
           featured_image_url?: string | null
           id?: string
           logo_url?: string | null

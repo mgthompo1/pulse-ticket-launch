@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { FileText, Loader2, AlertCircle, Calendar, Plus, Minus, DollarSign, Send, CreditCard } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { formatEventDateRange } from "@/lib/dateUtils";
 
 interface Contact {
   id: string;
@@ -38,6 +39,7 @@ interface Event {
   id: string;
   name: string;
   event_date: string;
+  event_end_date?: string | null;
   status: string;
 }
 
@@ -108,12 +110,12 @@ const generateInvoiceEmail = (
         <div style="margin-bottom: 30px;">
           <h3 style="margin: 0 0 10px 0; color: #000;">Event Details</h3>
           <strong>${event.name}</strong><br/>
-          ${new Date(event.event_date).toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          })}
+          ${formatEventDateRange(
+            event.event_date,
+            event.event_end_date,
+            { dateStyle: 'full' },
+            'en-US'
+          )}
         </div>
 
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
@@ -207,12 +209,12 @@ const generateReceiptEmail = (
         <div style="margin-bottom: 30px;">
           <h3 style="margin: 0 0 10px 0; color: #000;">Event Details</h3>
           <strong>${event.name}</strong><br/>
-          ${new Date(event.event_date).toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          })}
+          ${formatEventDateRange(
+            event.event_date,
+            event.event_end_date,
+            { dateStyle: 'full' },
+            'en-US'
+          )}
         </div>
 
         <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
@@ -287,7 +289,7 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
     try {
       const { data, error } = await supabase
         .from("events")
-        .select("id, name, event_date, status")
+        .select("id, name, event_date, event_end_date, status")
         .eq("organization_id", organizationId)
         .in("status", ["published", "draft"])
         .order("event_date", { ascending: true });
@@ -526,12 +528,12 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
               <Calendar className="h-4 w-4" />
               <AlertDescription>
                 <strong>Event Date:</strong>{' '}
-                {new Date(selectedEvent.event_date).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
+                {formatEventDateRange(
+                  selectedEvent.event_date,
+                  selectedEvent.event_end_date,
+                  { dateStyle: 'full' },
+                  'en-US'
+                )}
               </AlertDescription>
             </Alert>
           )}

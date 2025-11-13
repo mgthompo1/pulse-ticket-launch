@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Send, Loader2, AlertCircle, Calendar, ExternalLink } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { formatEventDateRange } from "@/lib/dateUtils";
 
 interface Contact {
   id: string;
@@ -28,6 +29,7 @@ interface Event {
   id: string;
   name: string;
   event_date: string;
+  event_end_date?: string | null;
   status: string;
 }
 
@@ -62,7 +64,7 @@ export const SendEventLinkModal: React.FC<SendEventLinkModalProps> = ({
     try {
       const { data, error } = await supabase
         .from("events")
-        .select("id, name, event_date, status")
+        .select("id, name, event_date, event_end_date, status")
         .eq("organization_id", organizationId)
         .in("status", ["published", "draft"])
         .order("event_date", { ascending: true });
@@ -102,12 +104,12 @@ export const SendEventLinkModal: React.FC<SendEventLinkModalProps> = ({
 
         <p>Or copy this link: <a href="${widgetUrl}">${widgetUrl}</a></p>
 
-        <p>Event Date: ${new Date(selectedEvent.event_date).toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        })}</p>
+        <p>Event Date: ${formatEventDateRange(
+          selectedEvent.event_date,
+          selectedEvent.event_end_date,
+          { dateStyle: 'full' },
+          'en-US'
+        )}</p>
 
         <p>If you have any questions, just reply to this email!</p>
       `;
@@ -195,12 +197,12 @@ export const SendEventLinkModal: React.FC<SendEventLinkModalProps> = ({
               <AlertDescription>
                 <div className="text-sm">
                   <strong>Event Date:</strong>{' '}
-                  {new Date(selectedEvent.event_date).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
+                  {formatEventDateRange(
+                    selectedEvent.event_date,
+                    selectedEvent.event_end_date,
+                    { dateStyle: 'full' },
+                    'en-US'
+                  )}
                   <br />
                   <strong>Widget Link:</strong>{' '}
                   <code className="text-xs bg-slate-100 px-1 py-0.5 rounded">

@@ -23,12 +23,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SocialMediaIntegration } from "./SocialMediaIntegration";
 import { ReminderEmailCampaigns } from "./ReminderEmailCampaigns";
+import { formatEventDateRange } from "@/lib/dateUtils";
 
 interface Event {
   id: string;
   name: string;
   status: string;
   event_date: string;
+  event_end_date?: string | null;
   description?: string;
 }
 
@@ -77,7 +79,7 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
         // Then get events for this organization
         const { data: eventsData, error: eventsError } = await supabase
           .from("events")
-          .select("id, name, status, event_date, description")
+          .select("id, name, status, event_date, event_end_date, description")
           .eq("organization_id", org.id)
           .order("created_at", { ascending: false });
 
@@ -226,11 +228,12 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
                   <CardTitle className="text-base">{event.name}</CardTitle>
                   <CardDescription className="flex items-center gap-2 mt-2">
                     <Calendar className="h-4 w-4" />
-                    {new Date(event.event_date).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
+                    {formatEventDateRange(
+                      event.event_date,
+                      event.event_end_date,
+                      { dateStyle: 'medium' },
+                      'en-US'
+                    )}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
