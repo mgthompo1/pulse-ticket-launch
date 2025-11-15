@@ -31,9 +31,10 @@ interface MerchandiseSelectorProps {
   eventId: string;
   onCartUpdate: (items: CartItem[]) => void;
   theme?: Theme;
+  onHasMerchandise?: (hasMerchandise: boolean) => void;
 }
 
-const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCartUpdate, theme }) => {
+const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCartUpdate, theme, onHasMerchandise }) => {
   const [merchandise, setMerchandise] = useState<MerchandiseItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +47,10 @@ const MerchandiseSelector: React.FC<MerchandiseSelectorProps> = ({ eventId, onCa
   useEffect(() => {
     onCartUpdate(cart);
   }, [cart, onCartUpdate]);
+
+  useEffect(() => {
+    onHasMerchandise?.(merchandise.length > 0);
+  }, [merchandise, onHasMerchandise]);
 
   const fetchMerchandise = async () => {
     try {

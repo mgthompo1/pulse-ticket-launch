@@ -32,6 +32,7 @@ const MerchandiseManager: React.FC<MerchandiseManagerProps> = ({ eventId }) => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<MerchandiseItem | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -149,24 +150,49 @@ const MerchandiseManager: React.FC<MerchandiseManagerProps> = ({ eventId }) => {
     if (!confirm('Are you sure you want to delete this merchandise item?')) return;
 
     try {
-      const { error } = await supabase
-        .from('merchandise')
-        .delete()
-        .eq('id', id);
+      // First, check if this merchandise has been ordered
+      const { data: orderItems, error: checkError } = await supabase
+        .from('order_items')
+        .select('id')
+        .eq('merchandise_id', id)
+        .limit(1);
 
-      if (error) throw error;
+      if (checkError) throw checkError;
 
-      toast({
-        title: "Success",
-        description: "Merchandise item deleted successfully",
-      });
+      // If merchandise has been ordered, soft delete (mark as inactive) instead
+      if (orderItems && orderItems.length > 0) {
+        const { error: updateError } = await supabase
+          .from('merchandise')
+          .update({ is_active: false })
+          .eq('id', id);
+
+        if (updateError) throw updateError;
+
+        toast({
+          title: "Merchandise Archived",
+          description: "This item has been ordered before, so it was archived instead of deleted to preserve order history.",
+        });
+      } else {
+        // No orders exist, safe to actually delete
+        const { error: deleteError } = await supabase
+          .from('merchandise')
+          .delete()
+          .eq('id', id);
+
+        if (deleteError) throw deleteError;
+
+        toast({
+          title: "Success",
+          description: "Merchandise item deleted successfully",
+        });
+      }
 
       fetchMerchandise();
     } catch (error) {
       console.error('Error deleting merchandise:', error);
       toast({
         title: "Error",
-        description: "Failed to delete merchandise item",
+        description: "Failed to delete merchandise item. Please try again.",
         variant: "destructive",
       });
     }
@@ -192,10 +218,23 @@ const MerchandiseManager: React.FC<MerchandiseManagerProps> = ({ eventId }) => {
     return <div>Loading merchandise...</div>;
   }
 
+  const displayedMerchandise = showInactive
+    ? merchandise
+    : merchandise.filter(item => item.is_active);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Event Merchandise</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-bold">Event Merchandise</h2>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowInactive(!showInactive)}
+          >
+            {showInactive ? 'Hide' : 'Show'} Archived
+          </Button>
+        </div>
         <Button onClick={() => setShowForm(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add Merchandise
@@ -310,7 +349,7 @@ const MerchandiseManager: React.FC<MerchandiseManagerProps> = ({ eventId }) => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {merchandise.map((item) => (
+        {displayedMerchandise.map((item) => (
           <Card key={item.id}>
             <CardContent className="p-4">
               {item.image_url && (
@@ -351,9 +390,41 @@ const MerchandiseManager: React.FC<MerchandiseManagerProps> = ({ eventId }) => {
                   <Button size="sm" variant="outline" onClick={() => handleEdit(item)}>
                     <Edit className="h-3 w-3" />
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleDelete(item.id)}>
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  {!item.is_active ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          const { error } = await supabase
+                            .from('merchandise')
+                            .update({ is_active: true })
+                            .eq('id', item.id);
+
+                          if (error) throw error;
+
+                          toast({
+                            title: "Success",
+                            description: "Merchandise item reactivated",
+                          });
+                          fetchMerchandise();
+                        } catch (error) {
+                          console.error('Error reactivating merchandise:', error);
+                          toast({
+                            title: "Error",
+                            description: "Failed to reactivate merchandise item",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      Reactivate
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => handleDelete(item.id)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -361,12 +432,18 @@ const MerchandiseManager: React.FC<MerchandiseManagerProps> = ({ eventId }) => {
         ))}
       </div>
 
-      {merchandise.length === 0 && (
+      {displayedMerchandise.length === 0 && (
         <Card>
           <CardContent className="text-center py-8">
             <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No merchandise items yet</h3>
-            <p className="text-muted-foreground">Add merchandise items to sell alongside tickets.</p>
+            <h3 className="text-lg font-medium mb-2">
+              {merchandise.length === 0 ? 'No merchandise items yet' : 'No active merchandise items'}
+            </h3>
+            <p className="text-muted-foreground">
+              {merchandise.length === 0
+                ? 'Add merchandise items to sell alongside tickets.'
+                : 'Click "Show Archived" to view inactive items.'}
+            </p>
           </CardContent>
         </Card>
       )}
