@@ -14,17 +14,19 @@ export const MiniSparkline = ({ data, color = "#3b82f6" }: MiniSparklineProps) =
   }
 
   return (
-    <ResponsiveContainer width={80} height={32}>
-      <LineChart data={data}>
-        <Line
-          type="monotone"
-          dataKey="value"
-          stroke={color}
-          strokeWidth={2}
-          dot={false}
-          isAnimationActive={false}
-        />
-      </LineChart>
-    </ResponsiveContainer>
+    <div style={{ width: 80, height: 32 }}>
+      <ResponsiveContainer>
+        <LineChart data={data}>
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke={color}
+            strokeWidth={2}
+            dot={false}
+            isAnimationActive={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 };

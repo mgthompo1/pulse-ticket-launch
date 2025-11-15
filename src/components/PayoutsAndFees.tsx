@@ -91,6 +91,9 @@ export const PayoutsAndFees = ({ organizationId }: PayoutsAndFeesProps) => {
 
       if (!balanceError && balanceResponse) {
         setBalanceData(balanceResponse);
+      } else if (balanceError) {
+        // Silently fail - balance data is optional
+        console.debug('Could not load Stripe balance:', balanceError.message);
       }
 
       // Load payouts
@@ -102,13 +105,16 @@ export const PayoutsAndFees = ({ organizationId }: PayoutsAndFeesProps) => {
 
       if (payoutsError) throw payoutsError;
       setPayouts(payoutsData || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading payouts:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load payout data',
-        variant: 'destructive',
-      });
+      // Only show toast for unexpected errors
+      if (error.message && !error.message.includes('not found')) {
+        toast({
+          title: 'Error',
+          description: 'Failed to load payout data',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -131,10 +137,22 @@ export const PayoutsAndFees = ({ organizationId }: PayoutsAndFeesProps) => {
       // Reload data
       await loadData();
     } catch (error: any) {
-      console.error('Error syncing payouts:', error);
+      // Parse the error message to provide better user feedback
+      let errorMessage = 'Failed to sync payouts';
+
+      if (error.message) {
+        if (error.message.includes('not connected') || error.message.includes('stripe_account_id')) {
+          errorMessage = 'Please connect your Stripe account first';
+        } else if (error.message.includes('STRIPE') || error.message.includes('configured')) {
+          errorMessage = 'Stripe integration not configured. Please contact support.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to sync payouts',
+        title: 'Sync Failed',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {

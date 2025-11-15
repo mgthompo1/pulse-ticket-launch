@@ -67,32 +67,34 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
           <CardDescription className="font-manrope text-base text-slate-600">Monthly revenue by event (last 30 days)</CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={salesData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis 
-                dataKey="month" 
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
-                angle={-45}
-                textAnchor="end"
-                height={80}
-              />
-              <YAxis 
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
-                tickFormatter={(value) => `$${(value / 1000).toFixed(1)}k`}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar
-                dataKey="revenue"
-                fill="var(--brand-accent)"
-                radius={[8, 8, 4, 4]}
-                animationDuration={1000}
-                animationBegin={0}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer>
+              <BarChart data={salesData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="month"
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
+                <YAxis
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickFormatter={(value) => `$${(value / 1000).toFixed(1)}k`}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar
+                  dataKey="revenue"
+                  fill="var(--brand-accent)"
+                  radius={[8, 8, 4, 4]}
+                  animationDuration={1000}
+                  animationBegin={0}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </CardContent>
       </Card>
 
@@ -141,32 +143,34 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
           <CardDescription className="font-manrope text-base text-slate-600">Revenue by event for the last 7 days</CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={revenueData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis 
-                dataKey="day" 
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
-                angle={-45}
-                textAnchor="end"
-                height={80}
-              />
-              <YAxis 
-                stroke="hsl(var(--muted-foreground))"
-                fontSize={12}
-                tickFormatter={(value) => `$${(value / 1000).toFixed(1)}k`}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar
-                dataKey="revenue"
-                fill="var(--brand-accent)"
-                radius={[8, 8, 4, 4]}
-                animationDuration={1000}
-                animationBegin={0}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer>
+              <BarChart data={revenueData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis
+                  dataKey="day"
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
+                <YAxis
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickFormatter={(value) => `$${(value / 1000).toFixed(1)}k`}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar
+                  dataKey="revenue"
+                  fill="var(--brand-accent)"
+                  radius={[8, 8, 4, 4]}
+                  animationDuration={1000}
+                  animationBegin={0}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </CardContent>
       </Card>
 
