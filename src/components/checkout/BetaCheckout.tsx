@@ -163,10 +163,6 @@ const EventHero: React.FC<{
                   {eventData.venue}
                 </span>
               )}
-
-              <span className="px-3 py-1 rounded-full border" style={{ borderColor: theme.borderColor, backgroundColor: theme.backgroundColor }}>
-                {eventData.widget_customization?.branding?.instantTicketsText || 'Instant mobile tickets'}
-              </span>
             </div>
             
             {(eventData.organizations as any)?.name && (
@@ -321,11 +317,6 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
   
   // Event info modal state
   const [showEventInfoModal, setShowEventInfoModal] = useState(false);
-  
-  // Promo code state
-  const [promoCode, setPromoCode] = useState('');
-  const [promoDiscount, setPromoDiscount] = useState(0);
-  const [promoMessage, setPromoMessage] = useState('');
 
   // Donation state
   const [selectedDonationAmount, setSelectedDonationAmount] = useState<number | null>(null);
@@ -453,7 +444,8 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
     const ticketSubtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const merchandiseSubtotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
     const subtotal = ticketSubtotal + merchandiseSubtotal;
-    const discountedSubtotal = Math.max(0, subtotal - promoDiscount);
+    const discount = promoCodeHooks?.getTotalDiscount() || 0;
+    const discountedSubtotal = Math.max(0, subtotal - discount);
 
     const feePercentage = eventData.organizations?.credit_card_processing_fee_percentage || 3;
     const fees = discountedSubtotal * (feePercentage / 100);
@@ -464,12 +456,12 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
       discountedSubtotal,
       fees,
       total,
-      discount: promoDiscount,
+      discount,
       feePercentage,
       currency: eventData.organizations?.currency || 'USD',
       ticketCount: cartItems.reduce((sum, item) => sum + item.quantity, 0)
     };
-  }, [cartItems, merchandiseCart, promoDiscount, eventData.organizations?.credit_card_processing_fee_percentage, eventData.organizations?.currency]);
+  }, [cartItems, merchandiseCart, promoCodeHooks, eventData.organizations?.credit_card_processing_fee_percentage, eventData.organizations?.currency]);
 
   // Calculate total number of attendee forms needed (accounting for attendees_per_ticket multiplier)
   const totalAttendees = useMemo(() => {
@@ -571,20 +563,6 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const handlePromoCode = () => {
-    const code = promoCode.trim().toUpperCase();
-    if (code === 'SAVE10' && cartTotals.subtotal >= 50) {
-      setPromoDiscount(10);
-      setPromoMessage('Promo applied: SAVE10 – $10 off');
-    } else if (code === 'WELCOME20' && cartTotals.subtotal >= 100) {
-      setPromoDiscount(20);
-      setPromoMessage('Promo applied: WELCOME20 – $20 off');
-    } else {
-      setPromoDiscount(0);
-      setPromoMessage('Invalid code or minimum not met');
-    }
   };
 
   const handleCheckout = () => {
@@ -791,7 +769,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                                 style={{ backgroundColor: theme.inputBackgroundColor }}
                                 value={customerInfo.customAnswers[question.id] || ''}
                                 onChange={(e) => handleCustomAnswerChange(question.id, e.target.value)}
-                                placeholder=""
+                                placeholder="Type your response..."
                               />
                             ) : (
                               <Input
@@ -800,7 +778,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                                 onChange={(e) => handleCustomAnswerChange(question.id, e.target.value)}
                                 style={{ backgroundColor: theme.inputBackgroundColor }}
                                 className={errors[question.id] ? 'border-red-500' : ''}
-                                placeholder=""
+                                placeholder="Type your response..."
                               />
                             )}
 
@@ -1044,7 +1022,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
               {/* Right Column - Order Summary (Sticky) */}
               <div className="lg:col-span-4">
                 {/* Improvement #4: Sticky mobile selector for better UX */}
-                <div className="lg:sticky lg:top-6">
+                <div className="lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
                   <Card style={{ backgroundColor: theme.cardBackgroundColor }}>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2" style={{ color: theme.headerTextColor }}>
@@ -1082,34 +1060,51 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                           ))}
 
                           {/* Promo Code Section */}
-                          <div className="border-t pt-4" style={{ borderColor: theme.borderColor }}>
-                            <div className="space-y-3">
-                              <div className="flex gap-2">
-                                <Input
-                                  type="text"
-                                  placeholder="Promo code"
-                                  value={promoCode}
-                                  onChange={(e) => setPromoCode(e.target.value)}
-                                  className="flex-1 text-sm"
-                                  style={{ backgroundColor: theme.inputBackgroundColor }}
-                                />
-                                <Button
-                                  onClick={handlePromoCode}
-                                  variant="outline"
-                                  size="sm"
-                                >
-                                  Apply
-                                </Button>
+                          {promoCodeHooks && (
+                            <div className="border-t pt-4" style={{ borderColor: theme.borderColor }}>
+                              <div className="space-y-3">
+                                <div className="flex gap-2">
+                                  <Input
+                                    type="text"
+                                    placeholder="Promo code"
+                                    value={promoCodeHooks.promoCode}
+                                    onChange={(e) => promoCodeHooks.setPromoCode(e.target.value)}
+                                    className="flex-1 text-sm"
+                                    style={{ backgroundColor: theme.inputBackgroundColor }}
+                                    disabled={promoCodeHooks.isValidating}
+                                  />
+                                  {promoCodeHooks.promoDiscount > 0 ? (
+                                    <Button
+                                      onClick={promoCodeHooks.clearPromoCode}
+                                      variant="outline"
+                                      size="sm"
+                                    >
+                                      Clear
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      onClick={promoCodeHooks.applyPromoCode}
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={promoCodeHooks.isValidating || !promoCodeHooks.promoCode.trim()}
+                                    >
+                                      {promoCodeHooks.isValidating ? 'Validating...' : 'Apply'}
+                                    </Button>
+                                  )}
+                                </div>
+                                {promoCodeHooks.promoError && (
+                                  <p className="text-xs" style={{ color: theme.bodyTextColor }}>
+                                    {promoCodeHooks.promoError}
+                                  </p>
+                                )}
+                                {promoCodeHooks.promoDiscount > 0 && (
+                                  <p className="text-xs" style={{ color: theme.primaryColor }}>
+                                    Promo code applied: ${promoCodeHooks.promoDiscount.toFixed(2)} off
+                                  </p>
+                                )}
                               </div>
-                              {promoMessage && (
-                                <p className="text-xs" style={{ 
-                                  color: promoDiscount > 0 ? theme.primaryColor : theme.bodyTextColor 
-                                }}>
-                                  {promoMessage}
-                                </p>
-                              )}
                             </div>
-                          </div>
+                          )}
 
                           <div className="border-t pt-4" style={{ borderColor: theme.borderColor }}>
                             <div className="space-y-2 text-sm">
@@ -1122,13 +1117,13 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                                   }).format(cartTotals.subtotal)}
                                 </span>
                               </div>
-                              {promoDiscount > 0 && (
+                              {cartTotals.discount > 0 && (
                                 <div className="flex justify-between" style={{ color: theme.primaryColor }}>
                                   <span>Discount:</span>
                                   <span>-{new Intl.NumberFormat('en-US', {
                                     style: 'currency',
                                     currency: cartTotals.currency,
-                                  }).format(promoDiscount)}</span>
+                                  }).format(cartTotals.discount)}</span>
                                 </div>
                               )}
                               <div className="flex justify-between items-center" style={{ color: theme.bodyTextColor }}>

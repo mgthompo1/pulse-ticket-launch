@@ -210,7 +210,7 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
                             value={currentValue}
                             onChange={(e) => handleCustomAnswerChange(index, questionId, e.target.value)}
                             required={question.required}
-                            placeholder=""
+                            placeholder="Type your response..."
                             className="bg-white"
                           />
                         )}
@@ -222,7 +222,7 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
                             value={currentValue}
                             onChange={(e) => handleCustomAnswerChange(index, questionId, e.target.value)}
                             required={question.required}
-                            placeholder=""
+                            placeholder="Type your response..."
                             rows={3}
                             className="bg-white"
                           />

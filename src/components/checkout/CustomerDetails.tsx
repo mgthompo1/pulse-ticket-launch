@@ -151,7 +151,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 <FormControl>
                   <Input
                     type={question.type === 'email' ? 'email' : question.type === 'phone' ? 'tel' : 'text'}
-                    placeholder=""
+                    placeholder="Type your response..."
                     {...field}
                     style={{ backgroundColor: theme.inputBackgroundColor }}
                   />
@@ -177,7 +177,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 </FormLabel>
                 <FormControl>
                   <Textarea
-                    placeholder=""
+                    placeholder="Type your response..."
                     {...field}
                     style={{ backgroundColor: theme.inputBackgroundColor }}
                   />
