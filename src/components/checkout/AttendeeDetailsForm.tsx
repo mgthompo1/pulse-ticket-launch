@@ -12,6 +12,7 @@ import { CustomQuestion } from '@/types/widget';
 export interface AttendeeInfo {
   attendee_name: string;
   attendee_email: string;
+  attendee_phone?: string;
   custom_answers?: Record<string, string>;
 }
 
@@ -19,6 +20,7 @@ interface AttendeeDetailsFormProps {
   ticketCount: number;
   buyerName: string;
   buyerEmail: string;
+  buyerPhone?: string;
   attendees: AttendeeInfo[];
   onChange: (attendees: AttendeeInfo[]) => void;
   customQuestions?: CustomQuestion[];
@@ -29,16 +31,19 @@ interface AttendeeDetailsFormProps {
     ticketLabelPrefix?: string;
     ticketLabels?: Record<number, string>;
   };
+  cartItems?: Array<{ name: string; quantity: number; attendees_per_ticket?: number }>;
 }
 
 export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
   ticketCount,
   buyerName,
   buyerEmail,
+  buyerPhone,
   attendees,
   onChange,
   customQuestions = [],
-  textCustomization
+  textCustomization,
+  cartItems = []
 }) => {
   // Safety check - ensure customQuestions is always an array
   const safeCustomQuestions = Array.isArray(customQuestions) ? customQuestions : [];
@@ -49,6 +54,33 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
   const primaryTicketLabel = textCustomization?.primaryTicketLabel || "(Primary Ticket Holder)";
   const ticketLabelPrefix = textCustomization?.ticketLabelPrefix || "Ticket";
   const ticketLabels = textCustomization?.ticketLabels || {};
+
+  // Generate ticket labels from cart items
+  const generateTicketLabels = (): string[] => {
+    const labels: string[] = [];
+
+    if (cartItems && cartItems.length > 0) {
+      // Generate labels based on actual cart items
+      cartItems.forEach((item) => {
+        const attendeesPerTicket = item.attendees_per_ticket || 1;
+        const totalForThisItem = item.quantity * attendeesPerTicket;
+
+        for (let i = 0; i < totalForThisItem; i++) {
+          labels.push(item.name);
+        }
+      });
+    } else {
+      // Fallback to generic numbering if no cart items
+      for (let i = 0; i < ticketCount; i++) {
+        labels.push(`${ticketLabelPrefix} ${i + 1}`);
+      }
+    }
+
+    return labels;
+  };
+
+  const generatedTicketLabels = generateTicketLabels();
+
   // Initialize attendees array when ticket count changes
   useEffect(() => {
     if (ticketCount > 0 && attendees.length !== ticketCount) {
@@ -60,6 +92,7 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
           newAttendees.push({
             attendee_name: buyerName || '',
             attendee_email: buyerEmail || '',
+            attendee_phone: buyerPhone || '',
             custom_answers: attendees[i]?.custom_answers || {}
           });
         } else {
@@ -67,6 +100,7 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
           newAttendees.push(attendees[i] || {
             attendee_name: '',
             attendee_email: '',
+            attendee_phone: '',
             custom_answers: {}
           });
         }
@@ -75,7 +109,7 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
       onChange(newAttendees);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticketCount, buyerName, buyerEmail]);
+  }, [ticketCount, buyerName, buyerEmail, buyerPhone]);
 
   const handleAttendeeChange = (index: number, field: keyof AttendeeInfo, value: string) => {
     const newAttendees = [...attendees];
@@ -98,6 +132,19 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
     onChange(newAttendees);
   };
 
+  const handleSameAsPrimaryContact = (checked: boolean) => {
+    if (checked && attendees.length > 0) {
+      const newAttendees = [...attendees];
+      newAttendees[0] = {
+        ...newAttendees[0],
+        attendee_name: buyerName || '',
+        attendee_email: buyerEmail || '',
+        attendee_phone: buyerPhone || ''
+      };
+      onChange(newAttendees);
+    }
+  };
+
   // Don't show if only 1 ticket (buyer info is enough)
   if (ticketCount <= 1) {
     return null;
@@ -116,16 +163,32 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
       </CardHeader>
       <CardContent className="space-y-4">
         {attendees.map((attendee, index) => {
-          // Use custom label if provided, otherwise use default pattern
+          // Use custom label if provided, otherwise use generated label from cart items
           const customLabel = ticketLabels[index];
-          const ticketLabel = customLabel || `${ticketLabelPrefix} ${index + 1}`;
+          const ticketLabel = customLabel || generatedTicketLabels[index] || `${ticketLabelPrefix} ${index + 1}`;
           const isPrimary = index === 0;
 
           return (
             <div key={index} className="bg-white p-4 rounded-lg border border-slate-200">
             <h4 className="font-medium text-sm text-slate-700 mb-3">
-              {ticketLabel} {isPrimary && !customLabel && <span className="text-xs text-slate-500">{primaryTicketLabel}</span>}
+              {ticketLabel}
             </h4>
+
+            {/* "Same as primary contact" checkbox - only on first attendee */}
+            {isPrimary && (
+              <div className="flex items-center space-x-2 mb-3 pb-3 border-b border-slate-200">
+                <Checkbox
+                  id={`same-as-primary-${index}`}
+                  onCheckedChange={handleSameAsPrimaryContact}
+                />
+                <Label
+                  htmlFor={`same-as-primary-${index}`}
+                  className="text-sm font-normal cursor-pointer"
+                >
+                  Same as primary contact information
+                </Label>
+              </div>
+            )}
 
             <div className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -158,6 +221,20 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
                     className="bg-white"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor={`attendee-phone-${index}`} className="text-sm">
+                  Phone Number
+                </Label>
+                <Input
+                  id={`attendee-phone-${index}`}
+                  type="tel"
+                  placeholder="Enter phone number"
+                  value={attendee.attendee_phone || ''}
+                  onChange={(e) => handleAttendeeChange(index, 'attendee_phone', e.target.value)}
+                  className="bg-white"
+                />
               </div>
 
               {/* Custom Questions for this Attendee */}

@@ -140,6 +140,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       ticketSelectionTitle: "Select Your Tickets",
       ticketSelectionSubtitle: "Choose your tickets and any additional items",
       // Details step
+      primaryContactLabel: "Primary Contact Information",
       attendeeInfoTitle: "Attendee Information",
       attendeeInfoDescription: "Please provide the name and email for each ticket holder. This helps us identify attendees at check-in.",
       primaryTicketLabel: "(Primary Ticket Holder)",
@@ -1620,6 +1621,16 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     4. Attendee Details Step
                   </AccordionTrigger>
                   <AccordionContent className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="primaryContactLabel">Primary Contact Label</Label>
+                      <Input
+                        id="primaryContactLabel"
+                        value={widgetCustomization.textCustomization?.primaryContactLabel ?? "Primary Contact Information"}
+                        onChange={(e) => updateWidgetCustomization(['textCustomization', 'primaryContactLabel'], e.target.value)}
+                        placeholder="Primary Contact Information"
+                      />
+                      <p className="text-xs text-muted-foreground">Label shown when multiple attendees are present</p>
+                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="attendeeInfoTitle">Attendee Information Title</Label>
                       <Input

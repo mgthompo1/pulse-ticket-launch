@@ -23,6 +23,7 @@ interface CustomerDetailsProps {
   isStripePayment?: boolean;
   eventData?: EventData;
   ticketCount?: number;
+  cartItems?: Array<{ name: string; quantity: number; attendees_per_ticket?: number }>;
 }
 
 const customerFormSchema = z.object({
@@ -40,7 +41,8 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   theme,
   isStripePayment = false,
   eventData,
-  ticketCount = 0
+  ticketCount = 0,
+  cartItems = []
 }) => {
   // Safety check - ensure customQuestions is always an array
   const safeCustomQuestions = Array.isArray(customQuestions) ? customQuestions : [];
@@ -289,18 +291,26 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
     }
   };
 
+  const showAttendeeForms = ticketCount > 1;
+  const contactLabel = showAttendeeForms
+    ? (eventData?.widget_customization?.textCustomization?.primaryContactLabel || 'Primary Contact Information')
+    : 'Contact Information';
+  const headerTitle = showAttendeeForms
+    ? (eventData?.widget_customization?.textCustomization?.primaryContactLabel || 'Primary Contact Information')
+    : 'Your Details';
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold mb-2" style={{ color: theme.headerTextColor }}>Your Details</h2>
-        <p style={{ color: theme.bodyTextColor }}>Please provide your information to complete the purchase</p>
+        <h2 className="text-2xl font-bold mb-2" style={{ color: theme.headerTextColor }}>{headerTitle}</h2>
+        <p style={{ color: theme.bodyTextColor}}>Please provide your information to complete the purchase</p>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
             <CardHeader>
-              <CardTitle style={{ color: theme.headerTextColor }}>Contact Information</CardTitle>
+              <CardTitle style={{ color: theme.headerTextColor }}>{contactLabel}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField
@@ -364,10 +374,12 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
               ticketCount={ticketCount}
               buyerName={form.watch('name')}
               buyerEmail={form.watch('email')}
+              buyerPhone={form.watch('phone')}
               attendees={attendees}
               onChange={setAttendees}
               customQuestions={safeCustomQuestions}
               textCustomization={eventData?.widget_customization?.textCustomization}
+              cartItems={cartItems}
             />
           )}
 

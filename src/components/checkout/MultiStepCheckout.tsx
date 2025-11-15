@@ -520,6 +520,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                 isStripePayment={isStripePayment}
                 eventData={eventData}
                 ticketCount={totalAttendees}
+                cartItems={cartItems}
               />
             )}
 
