@@ -198,7 +198,7 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
                     return (
                       <div key={questionId} className="space-y-2">
                         <Label htmlFor={`attendee-${index}-${questionId}`} className="text-sm">
-                          {questionLabel}
+                          {question.label || question.question}
                           {question.required && <span className="text-red-500 ml-1">*</span>}
                         </Label>
 
@@ -210,6 +210,7 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
                             value={currentValue}
                             onChange={(e) => handleCustomAnswerChange(index, questionId, e.target.value)}
                             required={question.required}
+                            placeholder=""
                             className="bg-white"
                           />
                         )}
@@ -221,6 +222,7 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
                             value={currentValue}
                             onChange={(e) => handleCustomAnswerChange(index, questionId, e.target.value)}
                             required={question.required}
+                            placeholder=""
                             rows={3}
                             className="bg-white"
                           />
@@ -276,7 +278,7 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
                               required={question.required}
                             />
                             <Label htmlFor={`attendee-${index}-${questionId}`} className="font-normal cursor-pointer">
-                              {question.question}
+                              {question.label || question.question}
                             </Label>
                           </div>
                         )}

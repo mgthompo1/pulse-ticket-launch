@@ -18,8 +18,11 @@ interface PaymentRecord {
   order_id: string;
   event_name: string;
   customer_name: string;
+  first_name: string;
+  last_name: string;
   customer_email: string;
   total_amount: number;
+  ticket_price: number;
   booking_fee: number;
   stripe_fee: number;
   payment_provider: string;
@@ -79,15 +82,28 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
         // Calculate Stripe fee (2.70% + $0.30 for NZ)
         const isStripe = !!order.stripe_session_id;
         const estimatedStripeFee = isStripe ? (order.total_amount * 0.027) + 0.30 : 0;
+        const bookingFee = order.booking_fee || 0;
+
+        // Calculate ticket price (total paid by customer - platform fee)
+        // Note: Stripe fee is taken by Stripe, not included in the total_amount charged to customer
+        const ticketPrice = order.total_amount - bookingFee;
+
+        // Split customer name into first and last name
+        const nameParts = order.customer_name.trim().split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
 
         return {
           id: order.id,
           order_id: order.id,
           event_name: (order.events as any)?.name || 'Unknown Event',
           customer_name: order.customer_name,
+          first_name: firstName,
+          last_name: lastName,
           customer_email: order.customer_email,
           total_amount: order.total_amount,
-          booking_fee: order.booking_fee || 0,
+          ticket_price: ticketPrice,
+          booking_fee: bookingFee,
           stripe_fee: estimatedStripeFee,
           payment_provider: order.stripe_session_id ? 'stripe' : order.windcave_session_id ? 'windcave' : 'unknown',
           payment_method: 'Card',
@@ -189,33 +205,33 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
 
   const exportToCSV = () => {
     const csvHeaders = [
-      'Order ID',
-      'Event Name',
-      'Customer Name',
-      'Customer Email',
-      'Amount',
-      'Platform Fee',
-      'Stripe Fee',
-      'Payment Provider',
-      'Payment Method',
-      'Card Last 4',
       'Payment Date',
-      'Status'
+      'First Name',
+      'Last Name',
+      'Email',
+      'Event Name',
+      'Total Amount Paid',
+      'Ticket Price',
+      'Platform Fee',
+      'Estimated Stripe Fee',
+      'Payment Provider',
+      'Status',
+      'Order ID'
     ];
 
     const csvData = payments.map(payment => [
-      payment.order_id,
-      payment.event_name,
-      payment.customer_name,
+      format(new Date(payment.payment_date), 'yyyy-MM-dd HH:mm:ss'),
+      payment.first_name,
+      payment.last_name,
       payment.customer_email,
+      payment.event_name,
       payment.total_amount.toFixed(2),
+      payment.ticket_price.toFixed(2),
       payment.booking_fee.toFixed(2),
       payment.stripe_fee.toFixed(2),
       payment.payment_provider,
-      payment.payment_method,
-      payment.card_last_four,
-      format(new Date(payment.payment_date), 'yyyy-MM-dd HH:mm:ss'),
-      payment.status
+      payment.status,
+      payment.order_id
     ]);
 
     const csvContent = [csvHeaders, ...csvData]
@@ -239,6 +255,8 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
   };
 
   const filteredPayments = payments.filter(payment =>
+    payment.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    payment.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     payment.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     payment.customer_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     payment.event_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -295,7 +313,7 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
         <div className="flex items-center gap-2">
           <Search className="w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search by customer name, email, event, or order ID..."
+            placeholder="Search by name, email, event, or order ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="max-w-md"
@@ -317,41 +335,54 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Order ID</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>First Name</TableHead>
+                  <TableHead>Last Name</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Event</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Amount</TableHead>
+                  <TableHead>Total Paid</TableHead>
+                  <TableHead>Ticket Price</TableHead>
                   <TableHead>Platform Fee</TableHead>
                   <TableHead>Stripe Fee</TableHead>
                   <TableHead>Provider</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredPayments.map((payment) => (
                   <TableRow key={payment.id}>
-                    <TableCell className="font-mono text-sm">
-                      {payment.order_id.slice(0, 8)}...
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-3 h-3" />
+                        <span className="text-sm">
+                          {format(new Date(payment.payment_date), 'MMM dd, yyyy')}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(new Date(payment.payment_date), 'HH:mm')}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {payment.first_name}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {payment.last_name}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {payment.customer_email}
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate">
                       {payment.event_name}
                     </TableCell>
                     <TableCell>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <User className="w-3 h-3" />
-                          <span className="font-medium">{payment.customer_name}</span>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {payment.customer_email}
-                        </div>
+                      <div className="font-bold">
+                        ${payment.total_amount.toFixed(2)}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="font-medium">
-                        ${payment.total_amount.toFixed(2)}
+                        ${payment.ticket_price.toFixed(2)}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -371,17 +402,6 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
                       {getStatusBadge(payment.status)}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-3 h-3" />
-                        <span className="text-sm">
-                          {format(new Date(payment.payment_date), 'MMM dd, yyyy')}
-                        </span>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {format(new Date(payment.payment_date), 'HH:mm')}
-                      </div>
-                    </TableCell>
-                    <TableCell>
                       <div className="flex gap-2">
                         <Button
                           size="sm"
@@ -398,7 +418,7 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
                             </>
                           )}
                         </Button>
-                        
+
                         {payment.payment_provider === 'stripe' && payment.status !== 'refunded' && (
                           <Button
                             size="sm"

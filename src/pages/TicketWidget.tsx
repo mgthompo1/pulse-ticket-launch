@@ -1718,33 +1718,35 @@ const TicketWidget = () => {
 
             {/* Logo Container - Centered */}
             <div className="max-w-4xl mx-auto">
-              <div className="text-center mb-8">
-                {(eventData as any).logo_url ? (
-                  <img 
-                    src={(eventData as any).logo_url} 
-                    alt={`${eventData.name} Logo`}
-                    className="mx-auto max-h-64 w-auto object-contain rounded-lg shadow-lg"
-                  />
-                ) : (
-                  /* Fallback with event icon if no logo */
-                  <div className="w-32 h-32 mx-auto bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center">
-                    <Ticket className="h-16 w-16" style={{ color: primaryColor }} />
-                  </div>
-                )}
-
-                {/* Organization Logo (if enabled and different from main logo) */}
-                {eventData.widget_customization?.branding?.showOrgLogo && 
-                 (eventData.organizations as any)?.logo_url && 
-                 (eventData.organizations as any).logo_url !== (eventData as any).logo_url && (
-                  <div className="mt-6">
-                    <img 
-                      src={(eventData.organizations as any).logo_url} 
-                      alt={`${eventData.organizations?.name || 'Organization'} Logo`}
-                      className="h-12 mx-auto object-contain"
+              {eventData.widget_customization?.layout?.showEventImage !== false && (
+                <div className="text-center mb-8">
+                  {(eventData as any).logo_url ? (
+                    <img
+                      src={(eventData as any).logo_url}
+                      alt={`${eventData.name} Logo`}
+                      className="mx-auto max-h-64 w-auto object-contain rounded-lg shadow-lg"
                     />
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    /* Fallback with event icon if no logo */
+                    <div className="w-32 h-32 mx-auto bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center">
+                      <Ticket className="h-16 w-16" style={{ color: primaryColor }} />
+                    </div>
+                  )}
+
+                  {/* Organization Logo (if enabled and different from main logo) */}
+                  {eventData.widget_customization?.branding?.showOrgLogo &&
+                   (eventData.organizations as any)?.logo_url &&
+                   (eventData.organizations as any).logo_url !== (eventData as any).logo_url && (
+                    <div className="mt-6">
+                      <img
+                        src={(eventData.organizations as any).logo_url}
+                        alt={`${eventData.organizations?.name || 'Organization'} Logo`}
+                        className="h-12 mx-auto object-contain"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Text Container - Left Aligned */}
@@ -1774,7 +1776,7 @@ const TicketWidget = () => {
                 </div>
 
                 {/* Venue */}
-                {eventData.venue && (
+                {eventData.widget_customization?.layout?.showVenue !== false && eventData.venue && (
                   <>
                     <div className="hidden sm:block w-px h-3 bg-gray-300"></div>
                     <div className="flex items-center gap-1.5">
@@ -1825,12 +1827,12 @@ const TicketWidget = () => {
               </div>
 
               {/* Event Description Section - Moved closer */}
-              {eventData.description && (
+              {eventData.widget_customization?.layout?.showDescription !== false && eventData.description && (
                 <div className="mt-6">
                   <h2 className="text-2xl font-bold mb-4" style={{ color: headerTextColor }}>
-                    Event description
+                    {eventData?.widget_customization?.textCustomization?.eventDescriptionTitle ?? "Event description"}
                   </h2>
-                  <div 
+                  <div
                     className="text-base leading-relaxed prose max-w-none [&>p]:mb-3 [&>p]:leading-relaxed [&>h1]:text-xl [&>h2]:text-lg [&>h3]:text-base [&>ul]:ml-4 [&>ol]:ml-4 [&>li]:mb-1"
                     style={{ color: bodyTextColor }}
                     dangerouslySetInnerHTML={{ __html: eventData.description }}
@@ -2083,9 +2085,9 @@ const TicketWidget = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-2xl font-bold" style={{ color: headerTextColor }}>
                     <Ticket className="h-6 w-6" />
-                    Select Your Tickets
+                    {eventData?.widget_customization?.textCustomization?.ticketSelectionTitle ?? "Select Your Tickets"}
                   </CardTitle>
-                  <p className="text-gray-600 mt-2">Choose the tickets you'd like to purchase</p>
+                  <p className="text-gray-600 mt-2">{eventData?.widget_customization?.textCustomization?.ticketSelectionSubtitle ?? "Choose the tickets you'd like to purchase"}</p>
                 </CardHeader>
                 <CardContent>
                   {ticketTypes.length === 0 ? (
@@ -2103,9 +2105,11 @@ const TicketWidget = () => {
                                 <h3 className="font-bold text-lg text-gray-900 leading-tight">{ticketType.name}</h3>
                                 <div className="text-right">
                                   <div className="text-xl font-bold text-gray-900">${ticketType.price}</div>
-                                  <div className="text-sm text-gray-500 font-medium">
-                                    {getAvailableQuantity(ticketType)} available
-                                  </div>
+                                  {eventData.widget_customization?.layout?.showCapacity !== false && (
+                                    <div className="text-sm text-gray-500 font-medium">
+                                      {getAvailableQuantity(ticketType)} available
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                               {ticketType.description && (

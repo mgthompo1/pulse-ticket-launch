@@ -24,26 +24,38 @@ export const AddOnsSelection: React.FC<AddOnsSelectionProps> = ({
 }) => {
   const [hasMerchandise, setHasMerchandise] = useState(false);
 
-  // If no merchandise available, return null to hide entire section
-  if (!hasMerchandise) {
-    return null;
-  }
-
   return (
-    <div className="border-t pt-8 space-y-6" style={{ borderColor: theme.primaryColor ? (theme.borderEnabled ? theme.borderColor : '#e5e7eb') : '#e5e7eb' }}>
-      <div>
-        <h2 className="text-2xl font-bold mb-2" style={{ color: theme.headerTextColor }}>Add-ons & Merchandise</h2>
-        <p style={{ color: theme.bodyTextColor }}>Enhance your experience with additional items</p>
-      </div>
+    <div className="space-y-6">
+      {/* Only show merchandise section if available */}
+      {hasMerchandise && (
+        <div className="border-t pt-8 space-y-6" style={{ borderColor: theme.primaryColor ? (theme.borderEnabled ? theme.borderColor : '#e5e7eb') : '#e5e7eb' }}>
+          <div>
+            <h2 className="text-2xl font-bold mb-2" style={{ color: theme.headerTextColor }}>Add-ons & Merchandise</h2>
+            <p style={{ color: theme.bodyTextColor }}>Enhance your experience with additional items</p>
+          </div>
 
-      <MerchandiseSelector
-        eventId={eventId}
-        onCartUpdate={onMerchandiseCartUpdate}
-        theme={theme}
-        onHasMerchandise={setHasMerchandise}
-      />
+          <MerchandiseSelector
+            eventId={eventId}
+            onCartUpdate={onMerchandiseCartUpdate}
+            theme={theme}
+            onHasMerchandise={setHasMerchandise}
+          />
+        </div>
+      )}
 
-      {/* Navigation Buttons Below Content */}
+      {/* Always show merchandise selector invisibly to detect if merchandise exists */}
+      {!hasMerchandise && (
+        <div style={{ display: 'none' }}>
+          <MerchandiseSelector
+            eventId={eventId}
+            onCartUpdate={onMerchandiseCartUpdate}
+            theme={theme}
+            onHasMerchandise={setHasMerchandise}
+          />
+        </div>
+      )}
+
+      {/* Navigation Buttons Always Visible */}
       <div className="flex justify-between pt-6">
         <Button
           variant="outline"

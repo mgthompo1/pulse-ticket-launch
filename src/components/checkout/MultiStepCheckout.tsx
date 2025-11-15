@@ -270,33 +270,35 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
       <div className="bg-white py-8 px-4">
         {/* Logo Container - Centered */}
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
-            {(eventData as any).logo_url ? (
-              <img 
-                src={(eventData as any).logo_url} 
-                alt={`${eventData.name} Logo`}
-                className="mx-auto max-h-64 w-auto object-contain rounded-lg shadow-lg"
-              />
-            ) : (
-              /* Fallback with event icon if no logo */
-              <div className="w-32 h-32 mx-auto bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center">
-                <Ticket className="h-16 w-16" style={{ color: theme.primaryColor }} />
-              </div>
-            )}
-
-            {/* Organization Logo (if enabled and different from main logo) */}
-            {eventData.widget_customization?.branding?.showOrgLogo && 
-             (eventData.organizations as any)?.logo_url && 
-             (eventData.organizations as any).logo_url !== (eventData as any).logo_url && (
-              <div className="mt-6">
-                <img 
-                  src={(eventData.organizations as any).logo_url} 
-                  alt={`${(eventData.organizations as any)?.name || 'Organization'} Logo`}
-                  className="h-12 mx-auto object-contain"
+          {eventData.widget_customization?.layout?.showEventImage !== false && (
+            <div className="text-center mb-8">
+              {(eventData as any).logo_url ? (
+                <img
+                  src={(eventData as any).logo_url}
+                  alt={`${eventData.name} Logo`}
+                  className="mx-auto max-h-64 w-auto object-contain rounded-lg shadow-lg"
                 />
-              </div>
-            )}
-          </div>
+              ) : (
+                /* Fallback with event icon if no logo */
+                <div className="w-32 h-32 mx-auto bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center">
+                  <Ticket className="h-16 w-16" style={{ color: theme.primaryColor }} />
+                </div>
+              )}
+
+              {/* Organization Logo (if enabled and different from main logo) */}
+              {eventData.widget_customization?.branding?.showOrgLogo &&
+               (eventData.organizations as any)?.logo_url &&
+               (eventData.organizations as any).logo_url !== (eventData as any).logo_url && (
+                <div className="mt-6">
+                  <img
+                    src={(eventData.organizations as any).logo_url}
+                    alt={`${(eventData.organizations as any)?.name || 'Organization'} Logo`}
+                    className="h-12 mx-auto object-contain"
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Text Container with Button - Using container width to match main content */}
@@ -349,7 +351,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
             </div>
 
                       {/* Venue */}
-          {((eventData as any).venue_address || eventData.venue) && (
+          {eventData.widget_customization?.layout?.showVenue !== false && ((eventData as any).venue_address || eventData.venue) && (
             <div className="flex items-center gap-3 text-lg" style={{ color: theme.bodyTextColor }}>
               <MapPin className="h-6 w-6" style={{ color: theme.primaryColor }} />
               <div>
@@ -457,8 +459,8 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {eventData.description && (
-                    <div 
+                  {eventData.widget_customization?.layout?.showDescription !== false && eventData.description && (
+                    <div
                       className="prose prose-lg max-w-none"
                       style={{ color: theme.bodyTextColor }}
                       dangerouslySetInnerHTML={{ __html: eventData.description }}
@@ -491,6 +493,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                       buttonText={eventData.widget_customization?.branding?.buttonText || "Add to Cart"}
                       groupId={groupId}
                       allocationId={allocationId}
+                      showCapacity={eventData.widget_customization?.layout?.showCapacity !== false}
                     />
 
                     {/* Add-ons Section - Only show if merchandise exists */}

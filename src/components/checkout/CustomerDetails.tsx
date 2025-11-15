@@ -151,7 +151,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 <FormControl>
                   <Input
                     type={question.type === 'email' ? 'email' : question.type === 'phone' ? 'tel' : 'text'}
-                    placeholder={questionLabel}
+                    placeholder=""
                     {...field}
                     style={{ backgroundColor: theme.inputBackgroundColor }}
                   />
@@ -177,7 +177,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 </FormLabel>
                 <FormControl>
                   <Textarea
-                    placeholder={questionLabel}
+                    placeholder=""
                     {...field}
                     style={{ backgroundColor: theme.inputBackgroundColor }}
                   />
@@ -204,7 +204,7 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger style={{ backgroundColor: theme.inputBackgroundColor }}>
-                      <SelectValue placeholder={questionLabel} />
+                      <SelectValue placeholder="Select an option" />
                     </SelectTrigger>
                   </FormControl>
                    <SelectContent>

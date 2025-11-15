@@ -19,6 +19,7 @@ interface TicketSelectionProps {
   buttonText?: string;
   groupId?: string | null;
   allocationId?: string | null;
+  showCapacity?: boolean;
 }
 
 export const TicketSelection: React.FC<TicketSelectionProps> = ({
@@ -31,7 +32,8 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
   hideContinueButton = false,
   buttonText = "Add to Cart",
   groupId,
-  allocationId
+  allocationId,
+  showCapacity = true
 }) => {
   const [showSeatSelection, setShowSeatSelection] = useState(false);
   const [pendingSeatSelection, setPendingSeatSelection] = useState<TicketType | null>(null);
@@ -184,12 +186,14 @@ export const TicketSelection: React.FC<TicketSelectionProps> = ({
                   </div>
                   <div className="text-right">
                     <div className="text-xl font-bold" style={{ color: theme.headerTextColor }}>${ticketType.price}</div>
-                    <Badge variant={isAvailable ? "secondary" : "secondary"}>
-                      {isAvailable
-                        ? `${availableQuantity} available`
-                        : 'Sold out'
-                      }
-                    </Badge>
+                    {showCapacity && (
+                      <Badge variant={isAvailable ? "secondary" : "secondary"}>
+                        {isAvailable
+                          ? `${availableQuantity} available`
+                          : 'Sold out'
+                        }
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </CardHeader>

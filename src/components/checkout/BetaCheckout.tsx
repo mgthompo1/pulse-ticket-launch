@@ -33,6 +33,31 @@ import { StripePaymentModal } from './StripePaymentModal';
 import { AttendeeDetailsForm, AttendeeInfo } from './AttendeeDetailsForm';
 import { useTaxCalculation, formatTaxForOrder } from '@/hooks/useTaxCalculation';
 
+// Helper function to get button text based on branding configuration
+const getButtonText = (branding?: { buttonTextType?: string; buttonText?: string }): string => {
+  if (!branding) return 'Get Tickets';
+
+  if (branding.buttonTextType === 'custom' && branding.buttonText) {
+    return branding.buttonText;
+  }
+
+  switch (branding.buttonTextType) {
+    case 'register':
+      return 'Register';
+    case 'buy':
+      return 'Buy Tickets';
+    case 'donate':
+      return 'Donate';
+    case 'buynow':
+      return 'Buy Now';
+    case 'rsvp':
+      return 'RSVP';
+    case 'default':
+    default:
+      return 'Get Tickets';
+  }
+};
+
 interface PromoCodeHooks {
   promoCode: string;
   setPromoCode: (code: string) => void;
@@ -81,36 +106,38 @@ const EventHero: React.FC<{
     <div className="max-w-7xl mx-auto">
       <Card className="overflow-hidden" style={{ backgroundColor: theme.cardBackgroundColor }}>
       {/* Hero Image */}
-      <div className="h-48 md:h-64 relative overflow-hidden bg-white">
-        {(eventData as any).logo_url || (eventData as any).featured_image_url ? (
-          <div className="w-full h-full relative">
-            <img 
-              src={(eventData as any).logo_url || (eventData as any).featured_image_url} 
-              alt={eventData.name}
-              className="w-full h-full object-contain object-center"
-              onError={(e) => {
-                // Hide broken image and show fallback
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-                const fallback = target.nextElementSibling as HTMLDivElement;
-                if (fallback) {
-                  fallback.style.display = 'flex';
-                }
-              }}
-            />
-            <div 
-              className="w-full h-full bg-white items-center justify-center absolute inset-0"
-              style={{ display: 'none' }}
-            >
+      {eventData.widget_customization?.layout?.showEventImage !== false && (
+        <div className="h-48 md:h-64 relative overflow-hidden bg-white">
+          {(eventData as any).logo_url || (eventData as any).featured_image_url ? (
+            <div className="w-full h-full relative">
+              <img
+                src={(eventData as any).logo_url || (eventData as any).featured_image_url}
+                alt={eventData.name}
+                className="w-full h-full object-contain object-center"
+                onError={(e) => {
+                  // Hide broken image and show fallback
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const fallback = target.nextElementSibling as HTMLDivElement;
+                  if (fallback) {
+                    fallback.style.display = 'flex';
+                  }
+                }}
+              />
+              <div
+                className="w-full h-full bg-white items-center justify-center absolute inset-0"
+                style={{ display: 'none' }}
+              >
+                <Ticket className="h-16 w-16" style={{ color: theme.primaryColor }} />
+              </div>
+            </div>
+          ) : (
+            <div className="w-full h-full bg-white flex items-center justify-center">
               <Ticket className="h-16 w-16" style={{ color: theme.primaryColor }} />
             </div>
-          </div>
-        ) : (
-          <div className="w-full h-full bg-white flex items-center justify-center">
-            <Ticket className="h-16 w-16" style={{ color: theme.primaryColor }} />
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
       
       {/* Event Details */}
       <div className="p-6">
@@ -129,14 +156,14 @@ const EventHero: React.FC<{
                   day: 'numeric'
                 })}
               </span>
-              
-              {eventData.venue && (
+
+              {eventData.widget_customization?.layout?.showVenue !== false && eventData.venue && (
                 <span className="flex items-center gap-1 px-3 py-1 rounded-full border" style={{ borderColor: theme.borderColor, backgroundColor: theme.backgroundColor }}>
                   <MapPin className="h-4 w-4" style={{ color: theme.primaryColor }} />
                   {eventData.venue}
                 </span>
               )}
-              
+
               <span className="px-3 py-1 rounded-full border" style={{ borderColor: theme.borderColor, backgroundColor: theme.backgroundColor }}>
                 {eventData.widget_customization?.branding?.instantTicketsText || 'Instant mobile tickets'}
               </span>
@@ -444,6 +471,11 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
     };
   }, [cartItems, merchandiseCart, promoDiscount, eventData.organizations?.credit_card_processing_fee_percentage, eventData.organizations?.currency]);
 
+  // Calculate total number of attendee forms needed (accounting for attendees_per_ticket multiplier)
+  const totalAttendees = useMemo(() => {
+    return cartItems.reduce((sum, item) => sum + (item.quantity * (item.attendees_per_ticket || 1)), 0);
+  }, [cartItems]);
+
   // Get booking fees setting
   const bookingFeesEnabled = eventData.organizations?.stripe_booking_fee_enabled || false;
 
@@ -658,7 +690,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                   <Card style={{ backgroundColor: theme.cardBackgroundColor }}>
                     <CardHeader>
                       <CardTitle style={{ color: theme.headerTextColor }}>
-                        {hasTicketsInCart ? 'Your Details' : 'Event Information'}
+                        {hasTicketsInCart ? 'Your Details' : (eventData?.widget_customization?.textCustomization?.eventDescriptionTitle ?? 'Event Information')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -671,6 +703,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                             id="name"
                             value={customerInfo.name}
                             onChange={(e) => handleCustomerInfoChange('name', e.target.value)}
+                            placeholder="Enter your name"
                             style={{ backgroundColor: theme.inputBackgroundColor }}
                             className={errors.name ? 'border-red-500' : ''}
                           />
@@ -681,7 +714,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                             </p>
                           )}
                         </div>
-                        
+
                         <div className="space-y-2">
                           <Label htmlFor="email" style={{ color: theme.headerTextColor }}>
                             Email *
@@ -691,6 +724,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                             type="email"
                             value={customerInfo.email}
                             onChange={(e) => handleCustomerInfoChange('email', e.target.value)}
+                            placeholder="Enter your email"
                             style={{ backgroundColor: theme.inputBackgroundColor }}
                             className={errors.email ? 'border-red-500' : ''}
                           />
@@ -712,6 +746,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                           type="tel"
                           value={customerInfo.phone}
                           onChange={(e) => handleCustomerInfoChange('phone', e.target.value)}
+                          placeholder="Enter your phone number"
                           style={{ backgroundColor: theme.inputBackgroundColor }}
                         />
                       </div>
@@ -740,7 +775,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                                   style={{ backgroundColor: theme.inputBackgroundColor }}
                                   className={errors[question.id] ? 'border-red-500' : ''}
                                 >
-                                  <SelectValue placeholder={`Select ${question.label.toLowerCase()}`} />
+                                  <SelectValue placeholder="Select an option" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {questionOptions.map((option, index) => (
@@ -756,7 +791,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                                 style={{ backgroundColor: theme.inputBackgroundColor }}
                                 value={customerInfo.customAnswers[question.id] || ''}
                                 onChange={(e) => handleCustomAnswerChange(question.id, e.target.value)}
-                                placeholder={question.label}
+                                placeholder=""
                               />
                             ) : (
                               <Input
@@ -765,7 +800,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                                 onChange={(e) => handleCustomAnswerChange(question.id, e.target.value)}
                                 style={{ backgroundColor: theme.inputBackgroundColor }}
                                 className={errors[question.id] ? 'border-red-500' : ''}
-                                placeholder={question.label}
+                                placeholder=""
                               />
                             )}
 
@@ -852,24 +887,13 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                   </Card>
                 )}
 
-                {/* Attendee Details Section - only shown when purchasing multiple tickets */}
-                {hasTicketsInCart && cartTotals.ticketCount > 1 && (
-                  <AttendeeDetailsForm
-                    ticketCount={cartTotals.ticketCount}
-                    buyerName={customerInfo.name}
-                    buyerEmail={customerInfo.email}
-                    attendees={attendees}
-                    onChange={setAttendees}
-                  />
-                )}
-
                 {/* Ticket Selection Section */}
                 <div id="beta-tickets-section">
                   <Card style={{ backgroundColor: theme.cardBackgroundColor }}>
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <CardTitle style={{ color: theme.headerTextColor }}>
-                          Select Tickets
+                          {eventData?.widget_customization?.textCustomization?.ticketSelectionTitle ?? 'Select Tickets'}
                         </CardTitle>
                         {/* Improvement #6: Smart state indicators */}
                         {hasTicketsInCart && (
@@ -908,17 +932,19 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                                   {ticketType.description}
                                 </p>
                               )}
-                              <div className="flex items-center gap-3 text-xs" style={{ color: theme.bodyTextColor }}>
-                                <span>{remainingQuantity} available</span>
-                                {isSoldOut ? (
-                                  <Badge variant="destructive" className="text-xs">Sold Out</Badge>
-                                ) : remainingQuantity <= 10 && (
-                                  <Badge variant="outline" className="text-orange-600 border-orange-200 text-xs">
-                                    <Clock className="h-3 w-3 mr-1" />
-                                    Only {remainingQuantity} left
-                                  </Badge>
-                                )}
-                              </div>
+                              {eventData.widget_customization?.layout?.showCapacity !== false && (
+                                <div className="flex items-center gap-3 text-xs" style={{ color: theme.bodyTextColor }}>
+                                  <span>{remainingQuantity} available</span>
+                                  {isSoldOut ? (
+                                    <Badge variant="destructive" className="text-xs">Sold Out</Badge>
+                                  ) : remainingQuantity <= 10 && (
+                                    <Badge variant="outline" className="text-orange-600 border-orange-200 text-xs">
+                                      <Clock className="h-3 w-3 mr-1" />
+                                      Only {remainingQuantity} left
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
                             </div>
 
                             {/* Right: Price & Quantity */}
@@ -986,6 +1012,32 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                     </CardContent>
                   </Card>
                 </div>
+
+                {/* Attendee Details Section */}
+                {totalAttendees > 0 && (
+                  <Card style={{ backgroundColor: theme.cardBackgroundColor }} className="mt-6">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2" style={{ color: theme.headerTextColor }}>
+                        <Users className="h-5 w-5" />
+                        {eventData?.widget_customization?.textCustomization?.attendeeInfoTitle ?? 'Attendee Information'}
+                      </CardTitle>
+                      <p className="text-sm" style={{ color: theme.bodyTextColor }}>
+                        {eventData?.widget_customization?.textCustomization?.attendeeInfoDescription ?? `Please provide information for ${totalAttendees} attendee${totalAttendees === 1 ? '' : 's'}`}
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <AttendeeDetailsForm
+                        ticketCount={totalAttendees}
+                        buyerName={customerInfo.name}
+                        buyerEmail={customerInfo.email}
+                        customQuestions={safeCustomQuestions}
+                        textCustomization={eventData?.widget_customization?.textCustomization}
+                        attendees={attendees}
+                        onChange={setAttendees}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
 
               </div>
 
@@ -1145,7 +1197,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle style={{ color: theme.headerTextColor }}>
-              Event Information
+              {eventData?.widget_customization?.textCustomization?.eventDescriptionTitle ?? 'Event Information'}
             </DialogTitle>
           </DialogHeader>
           
@@ -1218,12 +1270,12 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
             </div>
             
             {/* Event Description */}
-            {eventData.description && (
+            {eventData.widget_customization?.layout?.showDescription !== false && eventData.description && (
               <div className="space-y-3">
                 <h4 className="text-lg font-semibold" style={{ color: theme.headerTextColor }}>
                   About This Event
                 </h4>
-                <div 
+                <div
                   className="prose prose-sm max-w-none"
                   style={{ color: theme.bodyTextColor }}
                   dangerouslySetInnerHTML={{ __html: eventData.description }}
@@ -1271,12 +1323,12 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                   ticketsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }}
                 className="flex-1"
-                style={{ 
-                  backgroundColor: theme.primaryColor, 
-                  color: theme.buttonTextColor 
+                style={{
+                  backgroundColor: theme.primaryColor,
+                  color: theme.buttonTextColor
                 }}
               >
-                Get Tickets
+                {getButtonText(eventData?.widget_customization?.branding)}
               </Button>
               <Button
                 variant="outline"

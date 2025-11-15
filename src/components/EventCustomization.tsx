@@ -1547,7 +1547,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       <Label htmlFor="eventDescriptionTitle">Event Description Title</Label>
                       <Input
                         id="eventDescriptionTitle"
-                        value={widgetCustomization.textCustomization?.eventDescriptionTitle || "Event description"}
+                        value={widgetCustomization.textCustomization?.eventDescriptionTitle ?? "Event description"}
                         onChange={(e) => updateWidgetCustomization(['textCustomization', 'eventDescriptionTitle'], e.target.value)}
                         placeholder="Event description"
                       />
@@ -1566,7 +1566,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       <Label htmlFor="ticketSelectionTitle">Ticket Selection Title</Label>
                       <Input
                         id="ticketSelectionTitle"
-                        value={widgetCustomization.textCustomization?.ticketSelectionTitle || "Select Your Tickets"}
+                        value={widgetCustomization.textCustomization?.ticketSelectionTitle ?? "Select Your Tickets"}
                         onChange={(e) => updateWidgetCustomization(['textCustomization', 'ticketSelectionTitle'], e.target.value)}
                         placeholder="Select Your Tickets"
                       />
@@ -1576,7 +1576,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       <Label htmlFor="ticketSelectionSubtitle">Ticket Selection Subtitle</Label>
                       <Input
                         id="ticketSelectionSubtitle"
-                        value={widgetCustomization.textCustomization?.ticketSelectionSubtitle || "Choose your tickets and any additional items"}
+                        value={widgetCustomization.textCustomization?.ticketSelectionSubtitle ?? "Choose your tickets and any additional items"}
                         onChange={(e) => updateWidgetCustomization(['textCustomization', 'ticketSelectionSubtitle'], e.target.value)}
                         placeholder="Choose your tickets and any additional items"
                       />
@@ -1595,7 +1595,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       <Label htmlFor="ticketLabelPrefix">Ticket Label Prefix</Label>
                       <Input
                         id="ticketLabelPrefix"
-                        value={widgetCustomization.textCustomization?.ticketLabelPrefix || "Ticket"}
+                        value={widgetCustomization.textCustomization?.ticketLabelPrefix ?? "Ticket"}
                         onChange={(e) => updateWidgetCustomization(['textCustomization', 'ticketLabelPrefix'], e.target.value)}
                         placeholder="Ticket"
                       />
@@ -1605,7 +1605,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       <Label htmlFor="primaryTicketLabel">Primary Ticket Holder Label</Label>
                       <Input
                         id="primaryTicketLabel"
-                        value={widgetCustomization.textCustomization?.primaryTicketLabel || "(Primary Ticket Holder)"}
+                        value={widgetCustomization.textCustomization?.primaryTicketLabel ?? "(Primary Ticket Holder)"}
                         onChange={(e) => updateWidgetCustomization(['textCustomization', 'primaryTicketLabel'], e.target.value)}
                         placeholder="(Primary Ticket Holder)"
                       />
@@ -1624,7 +1624,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       <Label htmlFor="attendeeInfoTitle">Attendee Information Title</Label>
                       <Input
                         id="attendeeInfoTitle"
-                        value={widgetCustomization.textCustomization?.attendeeInfoTitle || "Attendee Information"}
+                        value={widgetCustomization.textCustomization?.attendeeInfoTitle ?? "Attendee Information"}
                         onChange={(e) => updateWidgetCustomization(['textCustomization', 'attendeeInfoTitle'], e.target.value)}
                         placeholder="Attendee Information"
                       />
@@ -1634,7 +1634,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       <Label htmlFor="attendeeInfoDescription">Attendee Information Description</Label>
                       <Textarea
                         id="attendeeInfoDescription"
-                        value={widgetCustomization.textCustomization?.attendeeInfoDescription || "Please provide the name and email for each ticket holder. This helps us identify attendees at check-in."}
+                        value={widgetCustomization.textCustomization?.attendeeInfoDescription ?? "Please provide the name and email for each ticket holder. This helps us identify attendees at check-in."}
                         onChange={(e) => updateWidgetCustomization(['textCustomization', 'attendeeInfoDescription'], e.target.value)}
                         placeholder="Please provide the name and email for each ticket holder..."
                         rows={3}
