@@ -343,20 +343,38 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
                           </RadioGroup>
                         )}
 
-                        {/* Checkbox */}
-                        {question.type === 'checkbox' && (
-                          <div className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`attendee-${index}-${questionId}`}
-                              checked={currentValue === 'true'}
-                              onCheckedChange={(checked) =>
-                                handleCustomAnswerChange(index, questionId, checked ? 'true' : 'false')
-                              }
-                              required={question.required}
-                            />
-                            <Label htmlFor={`attendee-${index}-${questionId}`} className="font-normal cursor-pointer">
-                              {question.label || question.question}
-                            </Label>
+                        {/* Checkbox - Multiple Selection */}
+                        {question.type === 'checkbox' && questionOptions.length > 0 && (
+                          <div className="space-y-2">
+                            {questionOptions.map((option, optIdx) => {
+                              // Parse current value as array of selected options
+                              const selectedOptions = currentValue ? currentValue.split(',').map(v => v.trim()) : [];
+                              const isChecked = selectedOptions.includes(option);
+
+                              return (
+                                <div key={optIdx} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`attendee-${index}-${questionId}-${optIdx}`}
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) => {
+                                      let newSelectedOptions;
+                                      if (checked) {
+                                        // Add option to selected
+                                        newSelectedOptions = [...selectedOptions, option];
+                                      } else {
+                                        // Remove option from selected
+                                        newSelectedOptions = selectedOptions.filter(v => v !== option);
+                                      }
+                                      // Store as comma-separated string
+                                      handleCustomAnswerChange(index, questionId, newSelectedOptions.join(', '));
+                                    }}
+                                  />
+                                  <Label htmlFor={`attendee-${index}-${questionId}-${optIdx}`} className="font-normal cursor-pointer">
+                                    {option}
+                                  </Label>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -365,9 +383,9 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
                 </div>
               )}
             </div>
-            </div>
-          );
-        })}
+          </div>
+        );
+      })}
       </CardContent>
     </Card>
   );

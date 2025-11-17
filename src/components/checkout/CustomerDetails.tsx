@@ -266,18 +266,40 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
             control={form.control}
             name={`customAnswers.${question.id}`}
             render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value === 'true'}
-                    onCheckedChange={(checked) => field.onChange(checked ? 'true' : 'false')}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel style={{ color: theme.bodyTextColor }}>
-                    {questionLabel}
-                    {question.required && <span className="text-destructive ml-1">*</span>}
-                  </FormLabel>
+              <FormItem>
+                <FormLabel style={{ color: theme.bodyTextColor }}>
+                  {questionLabel}
+                  {question.required && <span className="text-destructive ml-1">*</span>}
+                </FormLabel>
+                <div className="space-y-2">
+                  {safeOptions.map((option) => {
+                    // Parse current value as array of selected options
+                    const selectedOptions = field.value ? String(field.value).split(',').map((v: string) => v.trim()) : [];
+                    const isChecked = selectedOptions.includes(option);
+
+                    return (
+                      <div key={option} className="flex items-center space-x-2">
+                        <Checkbox
+                          checked={isChecked}
+                          onCheckedChange={(checked) => {
+                            let newSelectedOptions;
+                            if (checked) {
+                              // Add option to selected
+                              newSelectedOptions = [...selectedOptions, option];
+                            } else {
+                              // Remove option from selected
+                              newSelectedOptions = selectedOptions.filter((v: string) => v !== option);
+                            }
+                            // Store as comma-separated string
+                            field.onChange(newSelectedOptions.join(', '));
+                          }}
+                        />
+                        <label htmlFor={option} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" style={{ color: theme.bodyTextColor }}>
+                          {option}
+                        </label>
+                      </div>
+                    );
+                  })}
                 </div>
                 <FormMessage />
               </FormItem>

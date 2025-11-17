@@ -1332,11 +1332,11 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                           <div className="flex items-center space-x-2">
                             <Switch
                               id={`required-${question.id}`}
-                              checked={question.required}
+                              checked={question.required || false}
                               onCheckedChange={(checked) => {
                                 const currentQuestions = widgetCustomization.customQuestions?.questions || [];
                                 const updatedQuestions = currentQuestions.map((q: any) =>
-                                  q.id === question.id ? { ...q, required: checked } : q
+                                  q.id === question.id ? { ...q, required: checked === true } : q
                                 );
                                 updateWidgetCustomization(['customQuestions', 'questions'], updatedQuestions);
                               }}
