@@ -1218,10 +1218,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       <Button
                         onClick={() => {
                           const currentQuestions = widgetCustomization.customQuestions?.questions || [];
-                          if (currentQuestions.length >= 5) {
+                          if (currentQuestions.length >= 7) {
                             toast({
                               title: "Maximum Questions Reached",
-                              description: "You can only add up to 5 custom questions.",
+                              description: "You can only add up to 7 custom questions.",
                               variant: "destructive"
                             });
                             return;
@@ -1237,7 +1237,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                           updateWidgetCustomization(['customQuestions', 'questions'], [...currentQuestions, newQuestion]);
                         }}
                         size="sm"
-                        disabled={(widgetCustomization.customQuestions?.questions || []).length >= 5}
+                        disabled={(widgetCustomization.customQuestions?.questions || []).length >= 7}
                       >
                         <Plus className="w-4 h-4 mr-2" />
                         Add Question

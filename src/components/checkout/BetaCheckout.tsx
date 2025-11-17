@@ -881,6 +881,11 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                           </Badge>
                         )}
                       </div>
+                      {eventData?.widget_customization?.textCustomization?.ticketSelectionSubtitle && (
+                        <p className="text-sm mt-1" style={{ color: theme.bodyTextColor }}>
+                          {eventData?.widget_customization?.textCustomization?.ticketSelectionSubtitle}
+                        </p>
+                      )}
                     </CardHeader>
                     <CardContent>
 
