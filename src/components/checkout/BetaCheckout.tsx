@@ -26,6 +26,8 @@ import {
   Heart
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { TicketType, CartItem, MerchandiseCartItem, CustomerInfo, EventData, CustomQuestion } from '@/types/widget';
 import { Theme } from '@/types/theme';
@@ -631,7 +633,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
       />
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8" style={{ overflow: 'visible' }}>
         {isLoading ? (
           <div className="max-w-4xl mx-auto space-y-8">
             {/* Loading Progress */}
@@ -659,17 +661,153 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
             </div>
           </div>
         ) : (
-          <div className="max-w-7xl mx-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
-              {/* Left Column - Customer Details and Ticket Selection */}
+          <div className="max-w-7xl mx-auto" style={{ overflow: 'visible' }}>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start" style={{ overflow: 'visible' }}>
+              {/* Left Column - Ticket Selection and Customer Details */}
               <div className="lg:col-span-8 space-y-6">
-                {/* Customer Details Section - Show first if tickets are selected */}
-                {(hasTicketsInCart || safeCustomQuestions.length > 0) && (
+                {/* Ticket Selection Section */}
+                <div id="beta-tickets-section">
+                  <Card style={{ backgroundColor: theme.cardBackgroundColor }}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle style={{ color: theme.headerTextColor }}>
+                          {eventData?.widget_customization?.textCustomization?.ticketSelectionTitle ?? 'Select Tickets'}
+                        </CardTitle>
+                        {/* Improvement #6: Smart state indicators */}
+                        {hasTicketsInCart && (
+                          <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+                            <CheckCircle className="h-3 w-3" />
+                            {totalTickets} ticket{totalTickets === 1 ? '' : 's'} selected
+                          </Badge>
+                        )}
+                      </div>
+                      {eventData?.widget_customization?.textCustomization?.ticketSelectionSubtitle && (
+                        <p className="text-sm mt-1" style={{ color: theme.bodyTextColor }}>
+                          {eventData?.widget_customization?.textCustomization?.ticketSelectionSubtitle}
+                        </p>
+                      )}
+                    </CardHeader>
+                    <CardContent>
+
+                      <div className="space-y-3">
+                        {ticketTypes.map((ticketType) => {
+                      const cartItem = cartItems.find(item => item.id === ticketType.id);
+                      const remainingQuantity = ticketType.quantity_available - ticketType.quantity_sold;
+                      const isSoldOut = remainingQuantity <= 0;
+
+                      return (
+                        <div
+                          key={ticketType.id}
+                          className="p-4 border rounded-xl transition-all duration-200 hover:shadow-sm"
+                          style={{
+                            backgroundColor: theme.backgroundColor,
+                            borderColor: theme.borderColor
+                          }}
+                        >
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-center">
+                            {/* Left: Ticket Info */}
+                            <div className="space-y-2">
+                              <h3 className="text-lg font-semibold" style={{ color: theme.headerTextColor }}>
+                                {ticketType.name}
+                              </h3>
+                              {ticketType.description && (
+                                <p className="text-sm" style={{ color: theme.bodyTextColor }}>
+                                  {ticketType.description}
+                                </p>
+                              )}
+                              {eventData.widget_customization?.layout?.showCapacity !== false && (
+                                <div className="flex items-center gap-3 text-xs" style={{ color: theme.bodyTextColor }}>
+                                  <span>{remainingQuantity} available</span>
+                                  {isSoldOut ? (
+                                    <Badge variant="destructive" className="text-xs">Sold Out</Badge>
+                                  ) : remainingQuantity <= 10 && (
+                                    <Badge variant="outline" className="text-orange-600 border-orange-200 text-xs">
+                                      <Clock className="h-3 w-3 mr-1" />
+                                      Only {remainingQuantity} left
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Right: Price & Quantity */}
+                            <div className="flex items-center justify-between lg:justify-end lg:gap-6">
+                              <div className="text-right">
+                                <div className="font-bold text-lg" style={{ color: theme.headerTextColor }}>
+                                  {new Intl.NumberFormat('en-US', {
+                                    style: 'currency',
+                                    currency: cartTotals.currency,
+                                  }).format(ticketType.price)}
+                                </div>
+                                <div className="text-xs" style={{ color: theme.bodyTextColor }}>
+                                  + fees
+                                </div>
+                              </div>
+
+                              {isSoldOut ? (
+                                <Button disabled variant="outline" className="text-sm">
+                                  Sold Out
+                                </Button>
+                              ) : cartItem ? (
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-8 h-8 p-0 rounded-lg"
+                                    onClick={() => updateQuantity(ticketType.id, cartItem.quantity - 1)}
+                                    disabled={cartItem.quantity <= 0}
+                                  >
+                                    <Minus className="h-3 w-3" />
+                                  </Button>
+                                  <span className="w-8 text-center font-bold text-sm" style={{ color: theme.headerTextColor }}>
+                                    {cartItem.quantity}
+                                  </span>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-8 h-8 p-0 rounded-lg"
+                                    onClick={() => updateQuantity(ticketType.id, cartItem.quantity + 1)}
+                                    disabled={cartItem.quantity >= remainingQuantity}
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <Button
+                                  onClick={() => addToCart(ticketType)}
+                                  size="sm"
+                                  className="px-4 font-semibold"
+                                  style={{
+                                    backgroundColor: theme.primaryColor,
+                                    color: theme.buttonTextColor
+                                  }}
+                                >
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Add
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Customer Details Section - Show only if tickets are selected */}
+                {hasTicketsInCart && (
                   <Card style={{ backgroundColor: theme.cardBackgroundColor }}>
                     <CardHeader>
                       <CardTitle style={{ color: theme.headerTextColor }}>
-                        {hasTicketsInCart ? 'Your Details' : (eventData?.widget_customization?.textCustomization?.eventDescriptionTitle ?? 'Event Information')}
+                        {totalAttendees > 1 ? 'Primary Contact Information' : 'Your Details'}
                       </CardTitle>
+                      {totalAttendees > 1 && (
+                        <p className="text-sm mt-1" style={{ color: theme.bodyTextColor }}>
+                          This information will be used for order confirmation and communication.
+                        </p>
+                      )}
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -729,8 +867,8 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                         />
                       </div>
 
-                      {/* Custom Questions */}
-                      {safeCustomQuestions.map((question) => {
+                      {/* Custom Questions - Only show if single attendee */}
+                      {totalAttendees <= 1 && safeCustomQuestions.map((question) => {
                         const questionOptions = Array.isArray(question.options)
                           ? question.options
                           : typeof question.options === 'string'
@@ -771,6 +909,50 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                                 onChange={(e) => handleCustomAnswerChange(question.id, e.target.value)}
                                 placeholder="Type your response..."
                               />
+                            ) : question.type === 'radio' ? (
+                              <RadioGroup
+                                value={customerInfo.customAnswers[question.id] || ''}
+                                onValueChange={(value) => handleCustomAnswerChange(question.id, value)}
+                              >
+                                {questionOptions.map((option, index) => (
+                                  <div key={index} className="flex items-center space-x-2">
+                                    <RadioGroupItem value={option} id={`${question.id}-${index}`} />
+                                    <Label htmlFor={`${question.id}-${index}`} className="font-normal cursor-pointer" style={{ color: theme.bodyTextColor }}>
+                                      {option}
+                                    </Label>
+                                  </div>
+                                ))}
+                              </RadioGroup>
+                            ) : question.type === 'checkbox' ? (
+                              <div className="space-y-2">
+                                {questionOptions.map((option, index) => {
+                                  const selectedOptions = customerInfo.customAnswers[question.id]
+                                    ? String(customerInfo.customAnswers[question.id]).split(',').map((v: string) => v.trim())
+                                    : [];
+                                  const isChecked = selectedOptions.includes(option);
+
+                                  return (
+                                    <div key={index} className="flex items-center space-x-2">
+                                      <Checkbox
+                                        id={`${question.id}-${index}`}
+                                        checked={isChecked}
+                                        onCheckedChange={(checked) => {
+                                          let newSelectedOptions;
+                                          if (checked) {
+                                            newSelectedOptions = [...selectedOptions, option];
+                                          } else {
+                                            newSelectedOptions = selectedOptions.filter((v: string) => v !== option);
+                                          }
+                                          handleCustomAnswerChange(question.id, newSelectedOptions.join(', '));
+                                        }}
+                                      />
+                                      <Label htmlFor={`${question.id}-${index}`} className="font-normal cursor-pointer" style={{ color: theme.bodyTextColor }}>
+                                        {option}
+                                      </Label>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             ) : (
                               <Input
                                 type={question.type === 'email' ? 'email' : question.type === 'phone' ? 'tel' : 'text'}
@@ -865,137 +1047,6 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                   </Card>
                 )}
 
-                {/* Ticket Selection Section */}
-                <div id="beta-tickets-section">
-                  <Card style={{ backgroundColor: theme.cardBackgroundColor }}>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle style={{ color: theme.headerTextColor }}>
-                          {eventData?.widget_customization?.textCustomization?.ticketSelectionTitle ?? 'Select Tickets'}
-                        </CardTitle>
-                        {/* Improvement #6: Smart state indicators */}
-                        {hasTicketsInCart && (
-                          <Badge variant="secondary" className="flex items-center gap-1 text-xs">
-                            <CheckCircle className="h-3 w-3" />
-                            {totalTickets} ticket{totalTickets === 1 ? '' : 's'} selected
-                          </Badge>
-                        )}
-                      </div>
-                      {eventData?.widget_customization?.textCustomization?.ticketSelectionSubtitle && (
-                        <p className="text-sm mt-1" style={{ color: theme.bodyTextColor }}>
-                          {eventData?.widget_customization?.textCustomization?.ticketSelectionSubtitle}
-                        </p>
-                      )}
-                    </CardHeader>
-                    <CardContent>
-
-                      <div className="space-y-3">
-                        {ticketTypes.map((ticketType) => {
-                      const cartItem = cartItems.find(item => item.id === ticketType.id);
-                      const remainingQuantity = ticketType.quantity_available - ticketType.quantity_sold;
-                      const isSoldOut = remainingQuantity <= 0;
-                      
-                      return (
-                        <div 
-                          key={ticketType.id} 
-                          className="p-4 border rounded-xl transition-all duration-200 hover:shadow-sm"
-                          style={{ 
-                            backgroundColor: theme.backgroundColor,
-                            borderColor: theme.borderColor
-                          }}
-                        >
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-center">
-                            {/* Left: Ticket Info */}
-                            <div className="space-y-2">
-                              <h3 className="text-lg font-semibold" style={{ color: theme.headerTextColor }}>
-                                {ticketType.name}
-                              </h3>
-                              {ticketType.description && (
-                                <p className="text-sm" style={{ color: theme.bodyTextColor }}>
-                                  {ticketType.description}
-                                </p>
-                              )}
-                              {eventData.widget_customization?.layout?.showCapacity !== false && (
-                                <div className="flex items-center gap-3 text-xs" style={{ color: theme.bodyTextColor }}>
-                                  <span>{remainingQuantity} available</span>
-                                  {isSoldOut ? (
-                                    <Badge variant="destructive" className="text-xs">Sold Out</Badge>
-                                  ) : remainingQuantity <= 10 && (
-                                    <Badge variant="outline" className="text-orange-600 border-orange-200 text-xs">
-                                      <Clock className="h-3 w-3 mr-1" />
-                                      Only {remainingQuantity} left
-                                    </Badge>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Right: Price & Quantity */}
-                            <div className="flex items-center justify-between lg:justify-end lg:gap-6">
-                              <div className="text-right">
-                                <div className="font-bold text-lg" style={{ color: theme.headerTextColor }}>
-                                  {new Intl.NumberFormat('en-US', {
-                                    style: 'currency',
-                                    currency: cartTotals.currency,
-                                  }).format(ticketType.price)}
-                                </div>
-                                <div className="text-xs" style={{ color: theme.bodyTextColor }}>
-                                  + fees
-                                </div>
-                              </div>
-                              
-                              {isSoldOut ? (
-                                <Button disabled variant="outline" className="text-sm">
-                                  Sold Out
-                                </Button>
-                              ) : cartItem ? (
-                                <div className="flex items-center gap-1">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-8 h-8 p-0 rounded-lg"
-                                    onClick={() => updateQuantity(ticketType.id, cartItem.quantity - 1)}
-                                    disabled={cartItem.quantity <= 0}
-                                  >
-                                    <Minus className="h-3 w-3" />
-                                  </Button>
-                                  <span className="w-8 text-center font-bold text-sm" style={{ color: theme.headerTextColor }}>
-                                    {cartItem.quantity}
-                                  </span>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-8 h-8 p-0 rounded-lg"
-                                    onClick={() => updateQuantity(ticketType.id, cartItem.quantity + 1)}
-                                    disabled={cartItem.quantity >= remainingQuantity}
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <Button
-                                  onClick={() => addToCart(ticketType)}
-                                  size="sm"
-                                  className="px-4 font-semibold"
-                                  style={{ 
-                                    backgroundColor: theme.primaryColor, 
-                                    color: theme.buttonTextColor 
-                                  }}
-                                >
-                                  <Plus className="h-3 w-3 mr-1" />
-                                  Add
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
                 {/* Attendee Details Section */}
                 {totalAttendees > 0 && (
                   <Card style={{ backgroundColor: theme.cardBackgroundColor }} className="mt-6">
@@ -1025,9 +1076,11 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
               </div>
 
               {/* Right Column - Order Summary (Sticky) */}
-              <div className="lg:col-span-4">
-                {/* Improvement #4: Sticky mobile selector for better UX */}
-                <div className="lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
+              <div className="lg:col-span-4 relative">
+                <div className="lg:sticky lg:top-6" style={{
+                  position: 'sticky',
+                  top: '1.5rem'
+                }}>
                   <Card style={{ backgroundColor: theme.cardBackgroundColor }}>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2" style={{ color: theme.headerTextColor }}>
