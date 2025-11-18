@@ -40,6 +40,12 @@ interface OrderDetails {
   status: string;
   created_at: string;
   custom_answers: any;
+  attendees?: Array<{
+    attendee_name: string;
+    attendee_email: string;
+    attendee_phone?: string;
+    custom_answers?: Record<string, string>;
+  }> | null;
   group_name: string | null;
   order_items: Array<{
     id: string;
@@ -312,14 +318,28 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
       headers.join(','),
       ...filteredOrders.flatMap(order => {
         const { firstName, lastName } = splitName(order.customer_name);
-        const customAnswers = customQuestions.map(question => `"${getAnswerForQuestion(order, question.id)}"`);
+
+        // Track ticket index for attendee mapping
+        let ticketIndex = 0;
 
         return order.order_items.flatMap(item =>
           item.tickets.map(ticket => {
+            // Get custom answers for this specific attendee, or fall back to order-level answers
+            const attendee = order.attendees?.[ticketIndex];
+            const customAnswersSource = attendee?.custom_answers || order.custom_answers;
+            const customAnswers = customQuestions.map(question =>
+              `"${customAnswersSource?.[question.id] || '-'}"`
+            );
+
+            // Use attendee name if available, otherwise use order customer name
+            const attendeeName = attendee?.attendee_name || order.customer_name;
+            const attendeeEmail = attendee?.attendee_email || order.customer_email;
+            const { firstName: attFirstName, lastName: attLastName } = splitName(attendeeName);
+
             const baseRow = [
-              `"${firstName}"`,
-              `"${lastName}"`,
-              `"${order.customer_email}"`,
+              `"${attFirstName}"`,
+              `"${attLastName}"`,
+              `"${attendeeEmail}"`,
               `"${order.customer_phone || ''}"`,
               `"${format(new Date(order.created_at), 'yyyy-MM-dd HH:mm')}"`,
               order.total_amount
@@ -339,6 +359,8 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
               ticket.used_at ? `"${format(new Date(ticket.used_at), 'yyyy-MM-dd HH:mm')}"` : '',
               ...customAnswers
             );
+
+            ticketIndex++; // Increment for next ticket
 
             return baseRow.join(',');
           })

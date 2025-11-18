@@ -45,6 +45,12 @@ interface OrderWithDetails {
   total_amount: number;
   status: string;
   custom_answers: any;
+  attendees?: Array<{
+    attendee_name: string;
+    attendee_email: string;
+    attendee_phone?: string;
+    custom_answers?: Record<string, string>;
+  }> | null;
   created_at: string;
   order_items: Array<{
     quantity: number;
@@ -405,12 +411,12 @@ const EventReporting: React.FC<EventReportingProps> = ({ eventId }) => {
 
                             {Object.keys(selectedOrder.custom_answers || {}).length > 0 && (
                               <div>
-                                <Label>Custom Question Answers</Label>
+                                <Label>Primary Contact Custom Answers</Label>
                                 <div className="space-y-3 mt-2">
                                   {getCustomQuestions().map((question: any) => {
                                     const answer = selectedOrder.custom_answers[question.id];
                                     if (!answer) return null;
-                                    
+
                                     return (
                                       <div key={question.id} className="p-3 bg-muted rounded">
                                         <div className="font-medium text-sm mb-1">
@@ -423,6 +429,43 @@ const EventReporting: React.FC<EventReportingProps> = ({ eventId }) => {
                                       </div>
                                     );
                                   })}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Attendee Custom Answers */}
+                            {selectedOrder.attendees && selectedOrder.attendees.length > 0 && (
+                              <div className="mt-4">
+                                <Label>Attendee Custom Answers</Label>
+                                <div className="space-y-4 mt-2">
+                                  {selectedOrder.attendees.map((attendee, index) => (
+                                    <div key={index} className="border rounded-lg p-3">
+                                      <div className="font-medium text-sm mb-2">
+                                        Attendee {index + 1}: {attendee.attendee_name}
+                                      </div>
+                                      {attendee.custom_answers && Object.keys(attendee.custom_answers).length > 0 ? (
+                                        <div className="space-y-2">
+                                          {getCustomQuestions().map((question: any) => {
+                                            const answer = attendee.custom_answers?.[question.id];
+                                            if (!answer) return null;
+
+                                            return (
+                                              <div key={question.id} className="p-2 bg-muted/50 rounded">
+                                                <div className="font-medium text-xs mb-1">
+                                                  {question.label || question.text}
+                                                </div>
+                                                <div className="text-xs">
+                                                  {getAnswerDisplay(answer)}
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      ) : (
+                                        <div className="text-xs text-muted-foreground">No custom answers</div>
+                                      )}
+                                    </div>
+                                  ))}
                                 </div>
                               </div>
                             )}
