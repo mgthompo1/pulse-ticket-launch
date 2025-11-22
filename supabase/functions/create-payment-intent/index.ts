@@ -473,6 +473,9 @@ serve(async (req) => {
       console.log("Using PLATFORM Stripe key for Connect payment");
     } else {
       // Use organization's Stripe account for direct payments
+      if (!stripeSecretKey) {
+        throw new Error("Stripe API credentials not configured for this organization");
+      }
       stripeKey = stripeSecretKey;
       console.log("Using ORGANIZATION Stripe key for direct payment");
     }
