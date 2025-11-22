@@ -70,7 +70,7 @@ serve(async (req) => {
 
     console.log("=== NO CACHED INTENT FOUND, PROCEEDING WITH NEW PAYMENT ===");
 
-    let stripeSecretKey: string;
+    let stripeSecretKey: string | undefined;
     let currency: string;
     let amountInCents: number;
     let metadata: any = {};
