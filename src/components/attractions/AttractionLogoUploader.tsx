@@ -51,13 +51,18 @@ export const AttractionLogoUploader = ({ attractionId, currentLogoUrl, onLogoCha
       const logoUrl = data.publicUrl;
 
       // Update attraction record
+      console.log('🖼️ Updating attraction logo in database:', { attractionId, logoUrl });
       const { error: updateError } = await supabase
         .from('attractions')
         .update({ logo_url: logoUrl })
         .eq('id', attractionId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('❌ Failed to update logo_url in database:', updateError);
+        throw updateError;
+      }
 
+      console.log('✅ Logo URL saved to database successfully');
       onLogoChange(logoUrl);
       toast({
         title: "Success",

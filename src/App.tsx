@@ -40,6 +40,7 @@ import DemoLanding from "./pages/DemoLanding";
 import { InvitationPasswordSetup } from "./components/InvitationPasswordSetup";
 import { InvitationAcceptance } from "./components/InvitationAcceptance";
 import TopUpPage from "./pages/TopUpPage";
+import QATestingDashboard from "./pages/QATestingDashboard";
 
 const queryClient = new QueryClient();
 
@@ -110,6 +111,13 @@ const App = () => (
               <ThemeProvider>
                 <ProtectedAdminRoute>
                   <MasterAdmin />
+                </ProtectedAdminRoute>
+              </ThemeProvider>
+            } />
+            <Route path="/qa-testing" element={
+              <ThemeProvider>
+                <ProtectedAdminRoute>
+                  <QATestingDashboard />
                 </ProtectedAdminRoute>
               </ThemeProvider>
             } />

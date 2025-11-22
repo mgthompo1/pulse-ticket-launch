@@ -189,6 +189,17 @@ export default function BookingWidget({
   return (
     <div className="mx-auto max-w-6xl px-4 lg:px-6 grid lg:grid-cols-[1fr_360px] gap-6 lg:gap-10">
       <main className="space-y-6">
+        {/* Cover Image */}
+        {exp.coverImage && (
+          <div className="w-full rounded-2xl overflow-hidden shadow-lg">
+            <img
+              src={exp.coverImage}
+              alt={exp.title}
+              className="w-full h-auto max-h-96 object-cover"
+            />
+          </div>
+        )}
+
         {/* Title & meta */}
         <header className="space-y-3">
           <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">{exp.title}</h1>

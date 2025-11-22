@@ -5,6 +5,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Star } from "lucide-react";
 import BookingWidget, { type Experience, type BookingState } from "@/components/BookingWidget";
 import { SEOHead } from "@/components/SEOHead";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AttractionStripePayment } from "@/components/payment/AttractionStripePayment";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface AttractionData {
   id: string;
@@ -34,11 +38,17 @@ const AttractionWidget = () => {
   const [attractionData, setAttractionData] = useState<AttractionData | null>(null);
   const [organizationData, setOrganizationData] = useState<OrganizationData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [bookingState, setBookingState] = useState<BookingState | null>(null);
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [showCustomerForm, setShowCustomerForm] = useState(true);
 
   // Map attraction data to Experience format for BookingWidget
   const experienceData = useMemo<Experience | undefined>(() => {
     if (!attractionData) return undefined;
-    return {
+
+    const experience = {
       title: attractionData.name,
       durationMin: attractionData.duration_minutes,
       venue: attractionData.venue || "Main Venue",
@@ -55,14 +65,23 @@ const AttractionWidget = () => {
       ],
       coverImage: attractionData.logo_url || undefined
     };
+
+    console.log('📦 Experience data prepared for BookingWidget:', {
+      title: experience.title,
+      coverImage: experience.coverImage,
+      hasCoverImage: !!experience.coverImage,
+      rawLogoUrl: attractionData.logo_url
+    });
+
+    return experience;
   }, [attractionData, organizationData]);
 
   const loadAttractionData = async () => {
     if (!attractionId) return;
-    
+
     try {
       setLoading(true);
-      
+
       // Load attraction details
       const { data: attraction, error: attractionError } = await supabase
         .from("attractions")
@@ -80,6 +99,13 @@ const AttractionWidget = () => {
         throw new Error("Attraction not found or not active");
       }
 
+      console.log('🎯 Attraction loaded from database:', {
+        id: attraction.id,
+        name: attraction.name,
+        logo_url: attraction.logo_url,
+        hasLogo: !!attraction.logo_url
+      });
+
       setAttractionData(attraction);
 
       // Load organization details
@@ -94,7 +120,7 @@ const AttractionWidget = () => {
           setOrganizationData(organization);
         }
       }
-      
+
     } catch (error) {
       console.error("Error loading attraction data:", error);
       toast({
@@ -113,9 +139,6 @@ const AttractionWidget = () => {
     }
   }, [attractionId]);
 
-
-
-
   // Fetch available slots for the booking widget
   const fetchAttractionSlots = async ({ dateISO, partySize }: { dateISO: string; partySize: number }) => {
     if (!attractionId) return [];
@@ -131,12 +154,45 @@ const AttractionWidget = () => {
     }
   };
 
-  const handleContinue = (bookingState: BookingState) => {
-    console.log("📋 Booking state:", bookingState);
+  const handleContinue = (state: BookingState) => {
+    console.log("📋 Booking state:", state);
+    setBookingState(state);
+    setShowPaymentModal(true);
+    setShowCustomerForm(true);
+  };
 
-    // TODO: Navigate to checkout/payment page with booking details
-    // Or create order in Supabase
-    alert(`Great! Proceeding to checkout...\n\nDetails:\n${JSON.stringify(bookingState, null, 2)}`);
+  const handlePaymentSuccess = async () => {
+    try {
+      toast({
+        title: "Booking Confirmed!",
+        description: `Payment successful! Confirmation email will be sent to ${customerEmail}.`,
+      });
+
+      setShowPaymentModal(false);
+
+    } catch (error) {
+      console.error('Error in payment success handler:', error);
+      toast({
+        title: "Booking Confirmed",
+        description: "Payment was successful! You should receive a confirmation email shortly.",
+      });
+      setShowPaymentModal(false);
+    }
+  };
+
+  const handlePaymentError = (error: Error) => {
+    toast({
+      title: "Payment Failed",
+      description: error.message,
+      variant: "destructive",
+    });
+  };
+
+  const handleCustomerFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (customerEmail && customerName) {
+      setShowCustomerForm(false);
+    }
   };
 
   if (loading) {
@@ -178,8 +234,6 @@ const AttractionWidget = () => {
     );
   }
 
-
-
   return (
     <>
       <SEOHead
@@ -197,6 +251,104 @@ const AttractionWidget = () => {
           onContinue={handleContinue}
         />
       </div>
+
+      {/* Payment Modal */}
+      <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Complete Your Booking</DialogTitle>
+            <DialogDescription>
+              {attractionData?.name} - {bookingState?.partySize} {bookingState?.partySize === 1 ? 'guest' : 'guests'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-4">
+            {/* Booking Summary */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-semibold mb-2">Booking Details</h3>
+              <div className="space-y-1 text-sm">
+                <p><span className="font-medium">Date:</span> {bookingState?.date ? new Date(bookingState.date).toLocaleDateString() : 'N/A'}</p>
+                <p><span className="font-medium">Time:</span> {bookingState?.slotLabel || 'N/A'}</p>
+                <p><span className="font-medium">Party Size:</span> {bookingState?.partySize || 0}</p>
+                <p className="text-lg font-bold mt-2">Total: ${((bookingState?.partySize || 0) * (attractionData?.base_price || 0)).toFixed(2)}</p>
+              </div>
+            </div>
+
+            {/* Customer Information Form */}
+            {showCustomerForm ? (
+              <form onSubmit={handleCustomerFormSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="customerName">Full Name *</Label>
+                  <Input
+                    id="customerName"
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="John Doe"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="customerEmail">Email Address *</Label>
+                  <Input
+                    id="customerEmail"
+                    type="email"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    placeholder="john@example.com"
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
+                >
+                  Continue to Payment
+                </button>
+              </form>
+            ) : (
+              <>
+                {/* Customer Info Display */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-semibold mb-2">Contact Information</h3>
+                  <p className="text-sm">{customerName}</p>
+                  <p className="text-sm text-gray-600">{customerEmail}</p>
+                  <button
+                    onClick={() => setShowCustomerForm(true)}
+                    className="text-sm text-primary mt-2 hover:underline"
+                  >
+                    Edit
+                  </button>
+                </div>
+
+                {/* Payment Form */}
+                <div>
+                  <h3 className="font-semibold mb-4">Payment Information</h3>
+                  <AttractionStripePayment
+                    amount={(bookingState?.partySize || 0) * (attractionData?.base_price || 0)}
+                    currency="USD"
+                    description={`${attractionData?.name} - ${bookingState?.partySize} guests`}
+                    customerEmail={customerEmail}
+                    customerName={customerName}
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                    metadata={{
+                      organization_id: attractionData?.organization_id || '',
+                      attraction_id: attractionData?.id || '',
+                      booking_date: bookingState?.date || '',
+                      booking_time: bookingState?.slotLabel || '',
+                      party_size: String(bookingState?.partySize || 0),
+                    }}
+                    theme={{
+                      primary: attractionData?.widget_customization?.primaryColor || '#3b82f6',
+                    }}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

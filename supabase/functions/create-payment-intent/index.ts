@@ -83,17 +83,38 @@ serve(async (req) => {
     if (isAttractionPayment) {
       // Handle attraction payment (simple format)
       console.log("=== PROCESSING ATTRACTION PAYMENT ===");
-      
+
       // Get organization ID from metadata
       const organizationId = requestBody.metadata?.organization_id;
       if (!organizationId) {
         throw new Error("Organization ID is required for attraction payments");
       }
 
-      // Get payment credentials for the organization
+      // Get organization info (including Stripe Connect account) - same as events
+      const { data: orgData, error: orgError } = await supabaseClient
+        .from("organizations")
+        .select(`
+          id,
+          name,
+          currency,
+          stripe_account_id,
+          stripe_booking_fee_enabled
+        `)
+        .eq("id", organizationId)
+        .single();
+
+      if (orgError || !orgData) {
+        console.error("Organization error:", orgError);
+        throw new Error("Organization not found");
+      }
+
+      console.log("=== ORGANIZATION FOUND ===", orgData.name);
+      console.log("Has Stripe Connect:", orgData.stripe_account_id ? 'YES' : 'NO');
+
+      // Get payment credentials for the organization (for direct API or fallback)
       const { data: credentials, error: credError } = await supabaseClient
-        .rpc('get_payment_credentials_for_processing', { 
-          p_organization_id: organizationId 
+        .rpc('get_payment_credentials_for_processing', {
+          p_organization_id: organizationId
         });
 
       console.log("=== PAYMENT CREDENTIALS DEBUG ===");
@@ -101,17 +122,21 @@ serve(async (req) => {
       console.log("Credentials found:", credentials?.length || 0);
       console.log("Has stripe secret:", credentials?.[0]?.stripe_secret_key ? 'YES' : 'NO');
 
-      if (credError || !credentials || credentials.length === 0) {
-        console.error("Credentials error:", credError);
-        throw new Error("Payment credentials not found for organization");
+      // Check if we have either Stripe Connect OR direct API credentials
+      const hasStripeConnect = !!orgData.stripe_account_id;
+      const hasDirectAPI = !!(credentials?.[0]?.stripe_secret_key);
+
+      if (!hasStripeConnect && !hasDirectAPI) {
+        throw new Error("No Stripe payment method configured. Please connect Stripe or add API keys.");
       }
 
-      const creds = credentials[0];
-      if (!creds.stripe_secret_key) {
-        throw new Error("Stripe secret key not configured for this organization");
+      // Use secret key if available (for direct API or platform API for Connect)
+      if (credentials?.[0]?.stripe_secret_key) {
+        stripeSecretKey = credentials[0].stripe_secret_key;
       }
 
-      stripeSecretKey = creds.stripe_secret_key;
+      // Store organization for later use (reuse event variable for consistency with later code)
+      event = { organizations: orgData };
       currency = requestBody.currency.toLowerCase();
       amountInCents = requestBody.amount; // Already in cents from frontend
       metadata = {

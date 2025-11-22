@@ -193,6 +193,8 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
       if (error) throw error;
 
       if (data) {
+        console.log('📥 Loaded attraction from database. Logo URL:', data.logo_url);
+
         setAttractionData({
           id: attractionId,
           name: data.name,
@@ -213,6 +215,7 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
           booking_customization: data.booking_customization as Record<string, unknown>
         });
         setCurrentLogoUrl(data?.logo_url || null);
+        console.log('🎯 Current logo URL state set to:', data?.logo_url || null);
 
         // Load organization data for email preview
         if (data.organization_id) {
@@ -275,6 +278,9 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
 
     setSaving(true);
     try {
+      console.log('💾 Saving attraction customizations...');
+      console.log('📸 Logo URL being saved:', attractionData.logo_url);
+
       const { error } = await supabase
         .from("attractions")
         .update({
@@ -286,6 +292,7 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
           base_price: attractionData.base_price,
           max_concurrent_bookings: attractionData.max_concurrent_bookings,
           advance_booking_days: attractionData.advance_booking_days,
+          logo_url: attractionData.logo_url, // Include logo_url in save
           widget_customization: widgetCustomization,
           email_customization: emailCustomization,
           booking_customization: {} // Add booking-specific customizations later
@@ -293,6 +300,11 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
         .eq("id", attractionData.id);
 
       if (error) throw error;
+
+      console.log('✅ Save successful! Reloading attraction data...');
+
+      // Reload attraction data to confirm save
+      await loadCustomizations();
 
       toast({
         title: "Success",
@@ -520,8 +532,13 @@ const AttractionCustomization: React.FC<AttractionCustomizationProps> = ({
               attractionId={attractionId}
               currentLogoUrl={currentLogoUrl || undefined}
               onLogoChange={(logoUrl) => {
+                console.log('🎨 Logo changed callback received:', logoUrl);
                 setCurrentLogoUrl(logoUrl);
-                setAttractionData(prev => prev ? { ...prev, logo_url: logoUrl } : null);
+                setAttractionData(prev => {
+                  const updated = prev ? { ...prev, logo_url: logoUrl } : null;
+                  console.log('📦 Updated attractionData state:', updated?.logo_url);
+                  return updated;
+                });
               }}
             />
 
