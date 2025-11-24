@@ -96,10 +96,13 @@ const OrganizationOnboarding: React.FC<OrganizationOnboardingProps> = ({ onCompl
 
       toast({
         title: "Success!",
-        description: "Organization created successfully. You can now start creating events.",
+        description: "Organization created successfully. Redirecting to dashboard...",
       });
 
-      onComplete();
+      // Small delay to ensure database transaction is committed before reloading
+      setTimeout(() => {
+        onComplete();
+      }, 500);
     } catch (error: any) {
       console.error("Error creating organization:", error);
       toast({

@@ -11,6 +11,7 @@ import { HelmetProvider } from "react-helmet-async";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import { AuthConfirm } from "./pages/AuthConfirm";
+import EmailConfirmation from "./pages/EmailConfirmation";
 import OrgDashboard from "./pages/OrgDashboard";
 import TicketWidget from "./pages/TicketWidget";
 import GroupPortal from "./pages/GroupPortal";
@@ -56,6 +57,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/auth/confirm" element={<AuthConfirm />} />
+            <Route path="/auth/check-email" element={<EmailConfirmation />} />
             <Route path="/widget/:eventId" element={<TicketWidget />} />
             <Route path="/group/:slug/widget" element={<GroupPublicWidget />} />
             <Route path="/attraction/:attractionId" element={<AttractionWidget />} />

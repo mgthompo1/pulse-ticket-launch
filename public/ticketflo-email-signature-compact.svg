@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="60" viewBox="0 0 300 60" fill="none">
+  <!-- Transparent background -->
+
+  <!-- Icon -->
+  <g transform="translate(5, 7)">
+    <rect width="46" height="46" rx="8" fill="#ff4d00"/>
+    <path d="M8 11h30v24H8z" fill="white"/>
+    <path d="M8 11v24M38 11v24" stroke="#ff4d00" stroke-width="1"/>
+    <circle cx="16" cy="23" r="1" fill="#ff4d00"/>
+    <circle cx="30" cy="23" r="1" fill="#ff4d00"/>
+  </g>
+
+  <!-- TicketFlo text -->
+  <text x="65" y="36" font-family="DM Sans, -apple-system, BlinkMacSystemFont, Segoe UI, Arial, sans-serif" font-size="24" font-weight="600" fill="#000000" letter-spacing="-0.5">
+    TicketFlo
+  </text>
+</svg>

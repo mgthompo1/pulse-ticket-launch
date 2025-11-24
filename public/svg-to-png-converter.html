@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TicketFlo Email Signature - SVG to PNG Converter</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      background: #f5f5f5;
+      padding: 40px 20px;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #000;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+    h2 {
+      color: #ff4d00;
+      margin: 30px 0 15px;
+      font-size: 20px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    .preview-box {
+      background: #f9f9f9;
+      border: 2px dashed #ddd;
+      border-radius: 8px;
+      padding: 30px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .preview-box img {
+      max-width: 100%;
+      height: auto;
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin: 15px 0;
+    }
+    button {
+      background: #ff4d00;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #e64400;
+      transform: translateY(-1px);
+    }
+    button.secondary {
+      background: #666;
+    }
+    button.secondary:hover {
+      background: #555;
+    }
+    .info-box {
+      background: #fff8f0;
+      border-left: 4px solid #ff4d00;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .info-box h3 {
+      color: #ff4d00;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    .info-box ol, .info-box ul {
+      margin-left: 20px;
+      color: #333;
+    }
+    .info-box li {
+      margin: 8px 0;
+    }
+    select {
+      padding: 10px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 15px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .signature-option {
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 15px 0;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .signature-option:hover {
+      border-color: #ff4d00;
+      background: #fff8f0;
+    }
+    .signature-option.active {
+      border-color: #ff4d00;
+      background: #fff8f0;
+    }
+    .signature-option h3 {
+      margin-bottom: 10px;
+      color: #000;
+    }
+    .signature-option p {
+      color: #666;
+      font-size: 14px;
+    }
+    canvas {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>TicketFlo Email Signature Generator</h1>
+    <p class="subtitle">Convert your TicketFlo logo to PNG format for Office 365 email signatures</p>
+
+    <h2>Step 1: Choose Your Style</h2>
+
+    <div class="signature-option" onclick="selectSignature('light')" id="opt-light">
+      <h3>📧 Light Background (Recommended)</h3>
+      <p>White background with orange logo - works best in most email clients</p>
+      <div class="preview-box">
+        <img src="/ticketflo-email-signature-light.svg" alt="Light signature" id="preview-light">
+      </div>
+    </div>
+
+    <div class="signature-option" onclick="selectSignature('dark')" id="opt-dark">
+      <h3>🌙 Dark Background</h3>
+      <p>Black background with white text - for dark mode emails</p>
+      <div class="preview-box" style="background: #1a1a1a;">
+        <img src="/ticketflo-email-signature.svg" alt="Dark signature" id="preview-dark">
+      </div>
+    </div>
+
+    <div class="signature-option" onclick="selectSignature('compact')" id="opt-compact">
+      <h3>💼 Compact (Most Versatile)</h3>
+      <p>Minimal design with transparent background - fits anywhere</p>
+      <div class="preview-box">
+        <img src="/ticketflo-email-signature-compact.svg" alt="Compact signature" id="preview-compact">
+      </div>
+    </div>
+
+    <h2>Step 2: Download as PNG</h2>
+    <div class="button-group">
+      <button onclick="downloadAsPNG(1)">Download 1x (Standard)</button>
+      <button onclick="downloadAsPNG(2)">Download 2x (Retina)</button>
+      <button onclick="downloadAsPNG(3)">Download 3x (High-DPI)</button>
+    </div>
+
+    <h2>Step 3: Add to Office 365</h2>
+    <div class="info-box">
+      <h3>How to add this signature to Office 365:</h3>
+      <ol>
+        <li>Download your preferred PNG image above</li>
+        <li>Open Outlook (web or desktop)</li>
+        <li>Go to <strong>Settings</strong> (gear icon) → <strong>View all Outlook settings</strong></li>
+        <li>Select <strong>Mail</strong> → <strong>Compose and reply</strong></li>
+        <li>Under <strong>Email signature</strong>, click the image icon to insert</li>
+        <li>Upload your downloaded PNG file</li>
+        <li>Adjust size if needed (recommended: keep original size)</li>
+        <li>Add any additional text (name, title, contact info) below the logo</li>
+        <li>Click <strong>Save</strong></li>
+      </ol>
+    </div>
+
+    <div class="info-box">
+      <h3>💡 Pro Tips:</h3>
+      <ul>
+        <li>Use the <strong>Light Background</strong> version for best compatibility</li>
+        <li>Download <strong>2x (Retina)</strong> for crisp display on all devices</li>
+        <li>Keep your signature under 600px wide for mobile compatibility</li>
+        <li>Add a link to your website by selecting the image and clicking the link icon</li>
+        <li>Test your signature by sending yourself an email first</li>
+      </ul>
+    </div>
+  </div>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    let selectedSignature = 'light';
+    const signatures = {
+      light: '/ticketflo-email-signature-light.svg',
+      dark: '/ticketflo-email-signature.svg',
+      compact: '/ticketflo-email-signature-compact.svg'
+    };
+
+    function selectSignature(type) {
+      selectedSignature = type;
+      document.querySelectorAll('.signature-option').forEach(opt => {
+        opt.classList.remove('active');
+      });
+      document.getElementById('opt-' + type).classList.add('active');
+    }
+
+    function downloadAsPNG(scale = 1) {
+      const img = new Image();
+      const svgPath = signatures[selectedSignature];
+
+      img.onload = function() {
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0);
+
+        canvas.toBlob(function(blob) {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `ticketflo-email-signature-${selectedSignature}-${scale}x.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 'image/png');
+      };
+
+      img.src = svgPath;
+    }
+
+    // Select light by default
+    selectSignature('light');
+  </script>
+</body>
+</html>

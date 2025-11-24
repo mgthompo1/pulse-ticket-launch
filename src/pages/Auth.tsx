@@ -176,10 +176,8 @@ const Auth = () => {
           }
         }
 
-        toast({
-          title: "Account Created!",
-          description: "Please check your email for verification link. Check your spam folder if you don't see it.",
-        });
+        // Redirect to email confirmation page
+        navigate(`/auth/check-email?email=${encodeURIComponent(email)}`);
       } else if (data.user && data.user.email_confirmed_at) {
         // User is already confirmed, redirect to dashboard
         toast({

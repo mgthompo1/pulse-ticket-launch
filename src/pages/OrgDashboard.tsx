@@ -851,9 +851,12 @@ const OrgDashboard = () => {
     console.log("Analytics data set successfully");
   }, []);
 
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = async () => {
     // Reload organizations to include the newly created one
-    reloadOrganizations();
+    await reloadOrganizations();
+
+    // Force a page refresh to ensure the dashboard loads with the new organization
+    window.location.reload();
   };
 
 

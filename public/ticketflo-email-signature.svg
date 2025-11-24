@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="120" viewBox="0 0 600 120" fill="none">
+  <!-- Background with subtle gradient -->
+  <rect width="600" height="120" fill="#000000"/>
+
+  <!-- Icon container with border - positioned left -->
+  <rect x="20" y="25" width="70" height="70" rx="12" fill="#000000" stroke="#4a4a4a" stroke-width="1.5"/>
+
+  <!-- Ticket icon inside container -->
+  <g transform="translate(38, 43)">
+    <rect width="34" height="34" rx="4" fill="#ff4d00"/>
+    <path d="M4 5h26v24H4z" fill="white"/>
+    <path d="M4 5v24M30 5v24" stroke="#ff4d00" stroke-width="0.8"/>
+    <circle cx="12" cy="17" r="0.8" fill="#ff4d00"/>
+    <circle cx="22" cy="17" r="0.8" fill="#ff4d00"/>
+  </g>
+
+  <!-- TicketFlo text -->
+  <text x="110" y="72" font-family="DM Sans, Arial, sans-serif" font-size="42" font-weight="600" fill="#ffffff" letter-spacing="-1">
+    TicketFlo
+  </text>
+
+  <!-- Tagline -->
+  <text x="110" y="92" font-family="Manrope, Arial, sans-serif" font-size="14" font-weight="400" fill="#9ca3af" letter-spacing="0.5">
+    Professional Event Ticketing Platform
+  </text>
+
+  <!-- Accent line -->
+  <rect x="110" y="50" width="40" height="3" rx="1.5" fill="#ff4d00"/>
+</svg>

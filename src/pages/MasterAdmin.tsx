@@ -35,7 +35,8 @@ import {
   AlertCircle,
   XCircle,
   Activity,
-  RefreshCw
+  RefreshCw,
+  ClipboardCheck
 } from "lucide-react";
 import { format } from "date-fns";
 import { OrganizationDetailModal } from "@/components/OrganizationDetailModal";
@@ -710,6 +711,13 @@ const MasterAdmin = () => {
           >
             <Database className="w-4 h-4" />
             Settings
+          </button>
+          <button
+            onClick={() => navigate("/qa-testing")}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors hover:bg-accent text-foreground"
+          >
+            <ClipboardCheck className="w-4 h-4" />
+            QA Testing
           </button>
         </nav>
 
