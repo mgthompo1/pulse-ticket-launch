@@ -158,6 +158,22 @@ const Auth = () => {
         throw error;
       }
 
+      // Detect if user already exists (Supabase doesn't always return an error for existing users)
+      // Check if user was created more than 5 seconds ago, indicating this isn't a new signup
+      if (data.user && !data.session) {
+        const userCreatedAt = new Date(data.user.created_at).getTime();
+        const now = Date.now();
+        const timeSinceCreation = now - userCreatedAt;
+
+        // If user was created more than 5 seconds ago, it's an existing user
+        if (timeSinceCreation > 5000) {
+          console.log("User already exists:", data.user.email);
+          setError("This email is already registered. Please sign in instead or use the 'Forgot Password' option if you can't remember your password.");
+          setLoading(false);
+          return;
+        }
+      }
+
       // Check if email confirmation is required
       if (data.user && !data.user.email_confirmed_at) {
         console.log("Email confirmation required for:", data.user.email);
