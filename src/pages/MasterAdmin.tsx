@@ -4,14 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-
-
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
-import { useLandingPageContent } from "@/hooks/useLandingPageContent";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { supabase } from "@/integrations/supabase/client";
 import {
   Users,
@@ -25,10 +23,7 @@ import {
   CheckCircle,
   Server,
   Globe,
-  Edit,
   Save,
-  Type,
-  FileText,
   Mail,
   Copy,
   UserPlus,
@@ -36,7 +31,10 @@ import {
   XCircle,
   Activity,
   RefreshCw,
-  ClipboardCheck
+  ClipboardCheck,
+  TrendingUp,
+  Ticket,
+  CreditCard
 } from "lucide-react";
 import { format } from "date-fns";
 import { OrganizationDetailModal } from "@/components/OrganizationDetailModal";
@@ -45,12 +43,9 @@ import { EnquiryDetailModal } from "@/components/EnquiryDetailModal";
 const MasterAdmin = () => {
   // All hooks must be at the top, before any return
   const { isAdminAuthenticated, adminUser, loading: authLoading, logout } = useAdminAuth();
-  const { content, loading: contentLoading, updateContent, refreshContent } = useLandingPageContent();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
-  const [editingContent, setEditingContent] = useState<{[key: string]: string}>({});
-  const [savingContent, setSavingContent] = useState<{[key: string]: boolean}>({});
   // Sign-up link state
   const [signUpEmail, setSignUpEmail] = useState("");
   const [signUpLink, setSignUpLink] = useState("");
@@ -74,7 +69,15 @@ const MasterAdmin = () => {
     storage: { status: 'operational' as 'operational' | 'degraded' | 'down', responseTime: 0 },
     functions: { status: 'operational' as 'operational' | 'degraded' | 'down', responseTime: 0 },
   });
-  const [analytics, setAnalytics] = useState({
+  const [analytics, setAnalytics] = useState<{
+    loading: boolean;
+    transactionFees: number;
+    dailyActiveUsers: number;
+    ticketsSold: number;
+    platformRevenue: number;
+    activeEvents: number;
+    chartData?: Array<{ date: string; revenue: number; fees: number; tickets: number }>;
+  }>({
     loading: true,
     transactionFees: 0,
     dailyActiveUsers: 0,
@@ -83,6 +86,14 @@ const MasterAdmin = () => {
     activeEvents: 0
   });
   const [contactEnquiries, setContactEnquiries] = useState<any[]>([]);
+  const [authUsers, setAuthUsers] = useState<any[]>([]);
+  const [authUsersLoading, setAuthUsersLoading] = useState(true);
+  const [stripeRevenue, setStripeRevenue] = useState({
+    available: 0,
+    pending: 0,
+    totalApplicationFees: 0,
+    loading: true
+  });
   const [platformConfig, setPlatformConfig] = useState({
     platform_fee_percentage: 1.0,
     platform_fee_fixed: 0.50,
@@ -327,6 +338,78 @@ const MasterAdmin = () => {
     fetchPlatformConfig();
   }, []);
 
+  // Fetch auth users
+  useEffect(() => {
+    const fetchAuthUsers = async () => {
+      const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+      console.log('fetchAuthUsers called, token exists:', !!adminToken);
+      if (!adminToken) return;
+
+      setAuthUsersLoading(true);
+      try {
+        console.log('Calling admin-data for users...');
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: {
+            token: adminToken,
+            dataType: 'users'
+          }
+        });
+
+        console.log('Users response:', { data, error });
+
+        if (error) throw error;
+
+        if (data?.success) {
+          setAuthUsers(data.data || []);
+        } else {
+          console.log('Users fetch returned success:false', data?.error);
+        }
+      } catch (error) {
+        console.error("Error loading auth users:", error);
+      } finally {
+        setAuthUsersLoading(false);
+      }
+    };
+    fetchAuthUsers();
+  }, []);
+
+  // Fetch Stripe revenue
+  useEffect(() => {
+    const fetchStripeRevenue = async () => {
+      const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+      console.log('fetchStripeRevenue called, token exists:', !!adminToken);
+      if (!adminToken) return;
+
+      try {
+        console.log('Calling admin-data for stripe_revenue...');
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: {
+            token: adminToken,
+            dataType: 'stripe_revenue'
+          }
+        });
+
+        console.log('Stripe revenue response:', { data, error });
+
+        if (error) throw error;
+
+        if (data?.success) {
+          setStripeRevenue({
+            ...data.data,
+            loading: false
+          });
+        } else {
+          console.log('Stripe revenue fetch returned success:false', data?.error);
+          setStripeRevenue(prev => ({ ...prev, loading: false }));
+        }
+      } catch (error) {
+        console.error("Error loading Stripe revenue:", error);
+        setStripeRevenue(prev => ({ ...prev, loading: false }));
+      }
+    };
+    fetchStripeRevenue();
+  }, []);
+
   // Show loading while checking auth
   if (authLoading) {
     return (
@@ -351,66 +434,6 @@ const MasterAdmin = () => {
       description: "You have been successfully logged out of the master admin panel",
     });
     navigate("/");
-  };
-
-  const handleContentEdit = (id: string, currentValue: string) => {
-    setEditingContent(prev => ({ ...prev, [id]: currentValue }));
-  };
-
-  const handleContentSave = async (id: string) => {
-    const newValue = editingContent[id];
-    if (!newValue || newValue.trim() === "") return;
-
-    setSavingContent(prev => ({ ...prev, [id]: true }));
-    
-    try {
-      const result = await updateContent(id, newValue.trim());
-      
-      if (result.success) {
-        toast({
-          title: "Content Updated",
-          description: "Landing page content has been successfully updated",
-        });
-        setEditingContent(prev => {
-          const newState = { ...prev };
-          delete newState[id];
-          return newState;
-        });
-      } else {
-        toast({
-          title: "Update Failed",
-          description: "Failed to update content. Please try again.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "An error occurred while updating content",
-        variant: "destructive"
-      });
-    } finally {
-      setSavingContent(prev => ({ ...prev, [id]: false }));
-    }
-  };
-
-  const handleContentCancel = (id: string) => {
-    setEditingContent(prev => {
-      const newState = { ...prev };
-      delete newState[id];
-      return newState;
-    });
-  };
-
-  const groupContentBySection = () => {
-    const grouped: {[key: string]: typeof content} = {};
-    content.forEach(item => {
-      if (!grouped[item.section]) {
-        grouped[item.section] = [];
-      }
-      grouped[item.section].push(item);
-    });
-    return grouped;
   };
 
   // Only generate a new link if one does not already exist for the current email
@@ -669,17 +692,6 @@ const MasterAdmin = () => {
             Contact Enquiries
           </button>
           <button
-            onClick={() => setActiveTab("content")}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === "content"
-                ? "bg-primary text-primary-foreground"
-                : "hover:bg-accent text-foreground"
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            Content
-          </button>
-          <button
             onClick={() => setActiveTab("analytics")}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
               activeTab === "analytics"
@@ -725,7 +737,7 @@ const MasterAdmin = () => {
         <div className="p-4 border-t">
           <div className="flex items-center justify-between mb-3">
             <div className="text-sm">
-              <p className="font-medium">{adminUser}</p>
+              <p className="font-medium">{adminUser ? JSON.parse(adminUser).email : 'Admin'}</p>
               <p className="text-xs text-muted-foreground">Administrator</p>
             </div>
           </div>
@@ -751,7 +763,6 @@ const MasterAdmin = () => {
               {activeTab === "organizations" && "Organizations"}
               {activeTab === "users" && "User Management"}
               {activeTab === "enquiries" && "Contact Enquiries"}
-              {activeTab === "content" && "Content Management"}
               {activeTab === "analytics" && "Analytics & Reports"}
               {activeTab === "system" && "System Health & Monitoring"}
               {activeTab === "settings" && "Platform Settings"}
@@ -769,44 +780,145 @@ const MasterAdmin = () => {
                   <span className="ml-2">Loading metrics...</span>
                 </div>
               ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Total Organizations</CardTitle>
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{metrics.organizations}</div>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Active Events</CardTitle>
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{metrics.events}</div>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Platform Fee Revenue</CardTitle>
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">${metrics.platformRevenue.toLocaleString()}</div>
-                    </CardContent>
-                  </Card>
-                  <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">Total Tickets Sold</CardTitle>
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">{metrics.tickets}</div>
-                    </CardContent>
-                  </Card>
-                </div>
+                <>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Organizations</CardTitle>
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{metrics.organizations}</div>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Active Events</CardTitle>
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{metrics.events}</div>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Platform Fee Revenue</CardTitle>
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">${(metrics.platformRevenue || 0).toLocaleString()}</div>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-2 border-primary/10 hover:border-primary/20 transition-colors">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Tickets Sold</CardTitle>
+                        <Ticket className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{(metrics.tickets || 0).toLocaleString()}</div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Stripe Connect Revenue */}
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <Card className="border-2 border-green-500/20 bg-green-50/50">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Stripe Available Balance</CardTitle>
+                        <CreditCard className="h-4 w-4 text-green-600" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-green-600">
+                          {stripeRevenue.loading ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                          ) : (
+                            `$${(stripeRevenue.available || 0).toLocaleString()}`
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Ready to pay out</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-2 border-yellow-500/20 bg-yellow-50/50">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Stripe Pending Balance</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-yellow-600" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-yellow-600">
+                          {stripeRevenue.loading ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                          ) : (
+                            `$${(stripeRevenue.pending || 0).toLocaleString()}`
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Processing</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-2 border-blue-500/20 bg-blue-50/50">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Application Fees</CardTitle>
+                        <DollarSign className="h-4 w-4 text-blue-600" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-blue-600">
+                          {stripeRevenue.loading ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                          ) : (
+                            `$${(stripeRevenue.totalApplicationFees || 0).toLocaleString()}`
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Platform revenue from Stripe Connect</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Revenue Chart */}
+                  {analytics.chartData && analytics.chartData.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Revenue & Sales (Last 30 Days)</CardTitle>
+                        <CardDescription>Daily revenue and ticket sales</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-[300px]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={analytics.chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis
+                                dataKey="date"
+                                tickFormatter={(value) => format(new Date(value), 'MMM d')}
+                                label={{ value: 'Date', position: 'insideBottom', offset: -5 }}
+                              />
+                              <YAxis
+                                yAxisId="left"
+                                label={{ value: 'Revenue ($)', angle: -90, position: 'insideLeft' }}
+                                tickFormatter={(value) => `$${value}`}
+                              />
+                              <YAxis
+                                yAxisId="right"
+                                orientation="right"
+                                label={{ value: 'Tickets Sold', angle: 90, position: 'insideRight' }}
+                              />
+                              <Tooltip
+                                labelFormatter={(value) => format(new Date(value), 'PPP')}
+                                formatter={(value: number, name: string) => {
+                                  if (name === 'Revenue' || name === 'Platform Fees') {
+                                    return [`$${value.toFixed(2)}`, name];
+                                  }
+                                  return [value, name];
+                                }}
+                              />
+                              <Legend />
+                              <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#ea580c" name="Revenue" strokeWidth={2} dot={false} />
+                              <Line yAxisId="left" type="monotone" dataKey="fees" stroke="#22c55e" name="Platform Fees" strokeWidth={2} dot={false} />
+                              <Line yAxisId="right" type="monotone" dataKey="tickets" stroke="#3b82f6" name="Tickets Sold" strokeWidth={2} dot={false} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
               )}
 
               {/* Recent Activity */}
@@ -1003,14 +1115,83 @@ const MasterAdmin = () => {
           {/* User Management Tab */}
           {activeTab === "users" && (
             <div className="space-y-6">
+              {/* Auth Users List */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Users className="w-5 h-5" />
-                    User Management
+                    Registered Users ({authUsers.length})
                   </CardTitle>
                   <CardDescription>
-                    Manage user accounts and reset passwords
+                    All users who have signed up through the authentication system
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {authUsersLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <span className="ml-2">Loading users...</span>
+                    </div>
+                  ) : authUsers.length === 0 ? (
+                    <div className="text-muted-foreground text-center py-8">No users found.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Provider</TableHead>
+                            <TableHead>Created</TableHead>
+                            <TableHead>Last Sign In</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {authUsers.map((user) => (
+                            <TableRow key={user.id}>
+                              <TableCell className="font-medium">{user.email}</TableCell>
+                              <TableCell>
+                                {user.confirmed ? (
+                                  <Badge variant="default" className="bg-green-100 text-green-800">
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    Verified
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                    <AlertCircle className="w-3 h-3 mr-1" />
+                                    Pending
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline">
+                                  {user.provider}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {user.created_at ? format(new Date(user.created_at), 'MMM d, yyyy') : 'N/A'}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {user.last_sign_in_at ? format(new Date(user.last_sign_in_at), 'MMM d, yyyy HH:mm') : 'Never'}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Password Reset */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="w-5 h-5" />
+                    Reset User Password
+                  </CardTitle>
+                  <CardDescription>
+                    Reset a user's password (use with caution)
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -1145,145 +1326,6 @@ const MasterAdmin = () => {
               </Card>
             </div>
           )}
-
-          {/* Content Management Tab */}
-          {activeTab === "content" && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Type className="w-5 h-5" />
-                    Landing Page Content Management
-                  </CardTitle>
-                  <CardDescription>
-                    Edit all text content that appears on the customer-facing landing page
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {contentLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                      <span className="ml-2">Loading content...</span>
-                    </div>
-                  ) : (
-                    <div className="space-y-8">
-                      {Object.entries(groupContentBySection()).map(([section, items]) => (
-                        <div key={section} className="space-y-4">
-                          <div className="border-b pb-2">
-                            <h3 className="text-lg font-semibold capitalize flex items-center gap-2">
-                              <FileText className="w-4 h-4" />
-                              {section.replace('_', ' ')} Section
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              {section === 'hero' && 'Main banner section at the top of the page'}
-                              {section === 'hero_stats' && 'Statistics displayed in the hero section'}
-                              {section === 'features' && 'Features section content'}
-                              {section === 'pricing' && 'Pricing section content'}
-                              {section === 'pricing_bottom' && 'Additional pricing information'}
-                            </p>
-                          </div>
-
-                          <div className="grid gap-4">
-                            {items.map((item) => (
-                              <div key={item.id} className="border rounded-lg p-4 space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <label className="font-medium text-sm">
-                                      {item.key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                                    </label>
-                                    {item.description && (
-                                      <p className="text-xs text-muted-foreground">{item.description}</p>
-                                    )}
-                                  </div>
-                                  <div className="flex gap-2">
-                                    {editingContent[item.id] !== undefined ? (
-                                      <>
-                                        <Button
-                                          size="sm"
-                                          onClick={() => handleContentSave(item.id)}
-                                          disabled={savingContent[item.id]}
-                                          className="h-8"
-                                        >
-                                          {savingContent[item.id] ? (
-                                            <Loader2 className="h-3 w-3 animate-spin" />
-                                          ) : (
-                                            <Save className="h-3 w-3" />
-                                          )}
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => handleContentCancel(item.id)}
-                                          disabled={savingContent[item.id]}
-                                          className="h-8"
-                                        >
-                                          Cancel
-                                        </Button>
-                                      </>
-                                    ) : (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => handleContentEdit(item.id, item.value)}
-                                        className="h-8"
-                                      >
-                                        <Edit className="h-3 w-3" />
-                                      </Button>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {editingContent[item.id] !== undefined ? (
-                                  <div className="space-y-2">
-                                    {item.content_type === 'text' && item.value.length > 100 ? (
-                                      <Textarea
-                                        value={editingContent[item.id]}
-                                        onChange={(e) => setEditingContent(prev => ({
-                                          ...prev,
-                                          [item.id]: e.target.value
-                                        }))}
-                                        className="min-h-[100px]"
-                                        placeholder="Enter content..."
-                                      />
-                                    ) : (
-                                      <Input
-                                        value={editingContent[item.id]}
-                                        onChange={(e) => setEditingContent(prev => ({
-                                          ...prev,
-                                          [item.id]: e.target.value
-                                        }))}
-                                        placeholder="Enter content..."
-                                      />
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="bg-muted/50 p-3 rounded text-sm">
-                                    {item.value}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-
-                      <div className="flex justify-center pt-4">
-                        <Button
-                          variant="outline"
-                          onClick={refreshContent}
-                          disabled={contentLoading}
-                        >
-                          <Database className="h-4 w-4 mr-2" />
-                          Refresh Content
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
           {/* Analytics Tab */}
           {activeTab === "analytics" && (
             <div className="space-y-6">
@@ -1303,11 +1345,11 @@ const MasterAdmin = () => {
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <span>Transaction Fees</span>
-                          <span className="font-medium">${analytics.transactionFees.toLocaleString()}</span>
+                          <span className="font-medium">${(analytics.transactionFees || 0).toLocaleString()}</span>
                         </div>
                         <div className="flex items-center justify-between">
                           <span>Platform Revenue</span>
-                          <span className="font-medium">${analytics.platformRevenue.toLocaleString()}</span>
+                          <span className="font-medium">${(analytics.platformRevenue || 0).toLocaleString()}</span>
                         </div>
                       </div>
                     </CardContent>

@@ -8,7 +8,7 @@ const corsHeaders = {
 
 interface AdminDataRequest {
   token: string;
-  dataType: 'organizations' | 'events' | 'orders' | 'metrics' | 'analytics' | 'contact_enquiries' | 'platform_config' | 'update_platform_config';
+  dataType: 'organizations' | 'events' | 'orders' | 'metrics' | 'analytics' | 'contact_enquiries' | 'platform_config' | 'update_platform_config' | 'users' | 'stripe_revenue';
   configData?: {
     platform_fee_percentage: number;
     platform_fee_fixed: number;
@@ -108,56 +108,109 @@ serve(async (req) => {
         const { count: orgCount } = await supabaseClient
           .from("organizations")
           .select("*", { count: "exact", head: true });
-          
+
         // Fetch active events count
         const { count: eventCount } = await supabaseClient
           .from("events")
           .select("*", { count: "exact", head: true })
           .eq("status", "published");
-          
-        // Fetch total tickets sold
-        const { data: ticketTypes } = await supabaseClient
-          .from("ticket_types")
-          .select("quantity_sold");
-        const totalTickets = ticketTypes?.reduce((sum, t) => sum + (t.quantity_sold || 0), 0) || 0;
-        
-        // Fetch platform revenue
+
+        // Fetch total tickets sold from the tickets table (actual tickets issued)
+        const { count: ticketCount } = await supabaseClient
+          .from("tickets")
+          .select("*", { count: "exact", head: true });
+
+        // Also get count from completed orders as backup
+        const { data: completedOrders } = await supabaseClient
+          .from("orders")
+          .select("id")
+          .eq("status", "completed");
+
+        // Use the greater of the two counts (tickets table or completed orders)
+        const totalTickets = ticketCount || completedOrders?.length || 0;
+
+        // Fetch platform revenue from usage_records
         const { data: usageRecords } = await supabaseClient
           .from("usage_records")
           .select("total_platform_fee");
         const platformRevenue = usageRecords?.reduce((sum, u) => sum + (u.total_platform_fee || 0), 0) || 0;
-        
+
+        // Also fetch from orders to get total revenue if usage_records is empty
+        const { data: orderRevenue } = await supabaseClient
+          .from("orders")
+          .select("total_amount, processing_fee_amount")
+          .eq("status", "completed");
+        const totalOrderRevenue = orderRevenue?.reduce((sum, o) => sum + (o.processing_fee_amount || 0), 0) || 0;
+
         data = {
           organizations: orgCount || 0,
           events: eventCount || 0,
           tickets: totalTickets,
-          platformRevenue
+          platformRevenue: platformRevenue || totalOrderRevenue
         };
         break;
         
       case 'analytics':
-        // Similar to metrics but more detailed
-        const { data: usageData } = await supabaseClient
-          .from("usage_records")
-          .select("total_platform_fee");
-        const transactionFees = usageData?.reduce((sum, u) => sum + (u.total_platform_fee || 0), 0) || 0;
-        
-        const { data: ticketData } = await supabaseClient
-          .from("ticket_types")
-          .select("quantity_sold");
-        const ticketsSold = ticketData?.reduce((sum, t) => sum + (t.quantity_sold || 0), 0) || 0;
-        
+        // Fetch actual tickets from tickets table
+        const { count: analyticsTicketCount } = await supabaseClient
+          .from("tickets")
+          .select("*", { count: "exact", head: true });
+
+        // Get revenue from orders
+        const { data: analyticsOrders } = await supabaseClient
+          .from("orders")
+          .select("total_amount, processing_fee_amount, created_at")
+          .eq("status", "completed");
+
+        const transactionFees = analyticsOrders?.reduce((sum, o) => sum + (o.processing_fee_amount || 0), 0) || 0;
+        const ticketsSold = analyticsTicketCount || 0;
+
         const { count: activeEventsCount } = await supabaseClient
           .from("events")
           .select("*", { count: "exact", head: true })
           .eq("status", "published");
-        
+
+        // Get user count from auth
+        const { data: authUsers } = await supabaseClient.auth.admin.listUsers();
+        const totalUsers = authUsers?.users?.length || 0;
+
+        // Calculate revenue over time for charts (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const { data: recentOrders } = await supabaseClient
+          .from("orders")
+          .select("total_amount, processing_fee_amount, created_at")
+          .eq("status", "completed")
+          .gte("created_at", thirtyDaysAgo.toISOString())
+          .order("created_at", { ascending: true });
+
+        // Group by day for chart data
+        const revenueByDay: { [key: string]: { revenue: number; fees: number; tickets: number } } = {};
+        recentOrders?.forEach(order => {
+          const day = order.created_at.split('T')[0];
+          if (!revenueByDay[day]) {
+            revenueByDay[day] = { revenue: 0, fees: 0, tickets: 0 };
+          }
+          revenueByDay[day].revenue += order.total_amount || 0;
+          revenueByDay[day].fees += order.processing_fee_amount || 0;
+          revenueByDay[day].tickets += 1;
+        });
+
+        const chartData = Object.entries(revenueByDay).map(([date, values]) => ({
+          date,
+          revenue: values.revenue,
+          fees: values.fees,
+          tickets: values.tickets
+        }));
+
         data = {
           transactionFees,
-          dailyActiveUsers: 0, // Would need user activity tracking
+          dailyActiveUsers: totalUsers,
           ticketsSold,
           platformRevenue: transactionFees,
-          activeEvents: activeEventsCount || 0
+          activeEvents: activeEventsCount || 0,
+          chartData
         };
         break;
         
@@ -222,7 +275,93 @@ serve(async (req) => {
         console.log('Platform config updated successfully');
         data = updatedConfig;
         break;
-        
+
+      case 'users':
+        console.log('Fetching auth users...');
+
+        const { data: allUsers, error: usersError } = await supabaseClient.auth.admin.listUsers();
+
+        if (usersError) {
+          console.error('Users fetch error:', usersError);
+          throw usersError;
+        }
+
+        // Map users to a cleaner format with relevant info
+        const usersList = allUsers?.users?.map(user => ({
+          id: user.id,
+          email: user.email,
+          created_at: user.created_at,
+          last_sign_in_at: user.last_sign_in_at,
+          email_confirmed_at: user.email_confirmed_at,
+          phone: user.phone,
+          confirmed: !!user.email_confirmed_at,
+          provider: user.app_metadata?.provider || 'email',
+          providers: user.app_metadata?.providers || ['email']
+        })) || [];
+
+        console.log('Users fetched:', usersList.length);
+        data = usersList;
+        break;
+
+      case 'stripe_revenue':
+        console.log('Fetching Stripe Connect revenue...');
+
+        // Get Stripe secret key from environment variable
+        const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+
+        if (!stripeSecretKey) {
+          console.log('STRIPE_SECRET_KEY not found in environment');
+          data = {
+            available: 0,
+            pending: 0,
+            totalApplicationFees: 0,
+            message: 'Stripe not configured'
+          };
+          break;
+        }
+
+        try {
+          // Fetch balance from Stripe
+          const balanceResponse = await fetch('https://api.stripe.com/v1/balance', {
+            headers: {
+              'Authorization': `Bearer ${stripeSecretKey}`,
+            }
+          });
+
+          const balance = await balanceResponse.json();
+          console.log('Stripe balance response:', balance);
+
+          // Fetch recent charges/application fees
+          const feesResponse = await fetch('https://api.stripe.com/v1/application_fees?limit=100', {
+            headers: {
+              'Authorization': `Bearer ${stripeSecretKey}`,
+            }
+          });
+
+          const fees = await feesResponse.json();
+          const totalFees = fees.data?.reduce((sum: number, fee: any) => sum + (fee.amount || 0), 0) || 0;
+
+          data = {
+            available: balance.available?.reduce((sum: number, b: any) => sum + b.amount, 0) / 100 || 0,
+            pending: balance.pending?.reduce((sum: number, b: any) => sum + b.amount, 0) / 100 || 0,
+            totalApplicationFees: totalFees / 100,
+            recentFees: fees.data?.slice(0, 10).map((fee: any) => ({
+              id: fee.id,
+              amount: fee.amount / 100,
+              created: new Date(fee.created * 1000).toISOString()
+            })) || []
+          };
+        } catch (stripeError) {
+          console.error('Stripe API error:', stripeError);
+          data = {
+            available: 0,
+            pending: 0,
+            totalApplicationFees: 0,
+            error: 'Failed to fetch Stripe data'
+          };
+        }
+        break;
+
       default:
         throw new Error("Invalid data type");
     }
@@ -239,13 +378,17 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("Admin data fetch error:", error);
-    
+
+    // Return 200 with success: false so frontend can handle gracefully
+    // Only use 401 for actual auth failures
+    const isAuthError = error.message?.includes('admin session') || error.message?.includes('token');
+
     return new Response(JSON.stringify({
       success: false,
       error: error.message || "Failed to fetch data"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 401,
+      status: isAuthError ? 401 : 200,
     });
   }
 });

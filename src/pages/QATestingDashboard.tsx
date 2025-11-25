@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { CheckCircle2, XCircle, MinusCircle, Download, RotateCcw, FileText } from "lucide-react";
+import { CheckCircle2, XCircle, MinusCircle, Download, RotateCcw, FileText, ArrowLeft } from "lucide-react";
 
 type TestStatus = "pass" | "fail" | "skip" | "pending";
 
@@ -30,6 +31,7 @@ interface TestCategory {
 }
 
 const QATestingDashboard = () => {
+  const navigate = useNavigate();
   const [testResults, setTestResults] = useState<Record<string, TestResult>>({});
   const [globalNotes, setGlobalNotes] = useState({
     testerName: "",
@@ -412,6 +414,14 @@ const QATestingDashboard = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/master-admin")}
+            className="mb-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Admin
+          </Button>
           <h1 className="text-3xl font-bold mb-2">QA Testing Dashboard</h1>
           <p className="text-gray-600">Interactive manual testing checklist and progress tracker</p>
         </div>

@@ -55,6 +55,138 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Organization not found or access denied');
     }
 
+    // Check if user already exists in auth.users
+    const { data: existingUsers, error: userLookupError } = await supabase.auth.admin.listUsers();
+
+    let existingUser = null;
+    if (!userLookupError && existingUsers?.users) {
+      existingUser = existingUsers.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    }
+
+    if (existingUser) {
+      console.log('User already exists in system:', existingUser.id);
+
+      // Check if user is already a member of this organization
+      const { data: existingMember, error: memberError } = await supabase
+        .from('organization_users')
+        .select('id, role')
+        .eq('organization_id', organizationId)
+        .eq('user_id', existingUser.id)
+        .maybeSingle();
+
+      if (existingMember) {
+        console.log('User is already a member of this organization');
+        return new Response(
+          JSON.stringify({
+            success: false,
+            userExists: true,
+            alreadyMember: true,
+            existingRole: existingMember.role,
+            message: `This user is already a member of your organization with the role: ${existingMember.role}`
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          }
+        );
+      }
+
+      // User exists but not a member - we can add them directly
+      // First create the invitation record (for audit trail)
+      const invitationToken = crypto.randomUUID();
+      const { data: invitation, error: invitationError } = await supabase
+        .from('organization_invitations')
+        .insert({
+          organization_id: organizationId,
+          email,
+          role,
+          permissions,
+          invited_by: organization.user_id,
+          invitation_token: invitationToken,
+          status: 'accepted' // Mark as accepted since we'll add them directly
+        })
+        .select()
+        .single();
+
+      if (invitationError) {
+        console.error('Error creating invitation record:', invitationError);
+        throw new Error('Failed to create invitation record');
+      }
+
+      // Add the existing user directly to the organization
+      const { error: addUserError } = await supabase
+        .from('organization_users')
+        .insert({
+          organization_id: organizationId,
+          user_id: existingUser.id,
+          role,
+          permissions
+        });
+
+      if (addUserError) {
+        console.error('Error adding user to organization:', addUserError);
+        throw new Error('Failed to add user to organization');
+      }
+
+      // Send a notification email to the user
+      const appDomain = req.headers.get('origin') || 'https://96d67e39-36de-4452-b1c7-f463124ceb0b.sandbox.lovable.dev';
+      const dashboardUrl = `${appDomain}/dashboard`;
+
+      const emailResponse = await resend.emails.send({
+        from: 'TicketFlo <onboarding@resend.dev>',
+        to: [email],
+        subject: `You've been added to ${organization.name} on TicketFlo`,
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #1f2937; margin: 0;">You've been added to ${organization.name}</h1>
+            </div>
+
+            <div style="background: #f9fafb; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+              <p style="margin: 0 0 16px 0; color: #374151;">
+                Great news! You've been added to <strong>${organization.name}</strong> on TicketFlo as a <strong>${role}</strong>.
+              </p>
+
+              <p style="margin: 0 0 16px 0; color: #6b7280;">
+                Since you already have a TicketFlo account, you can access the organization right away.
+              </p>
+
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${dashboardUrl}"
+                   style="background: #ea580c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 500;">
+                  Go to Dashboard
+                </a>
+              </div>
+            </div>
+
+            <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; color: #6b7280; font-size: 14px;">
+              <p style="margin: 0;">
+                Best regards,<br>
+                The TicketFlo Team
+              </p>
+            </div>
+          </div>
+        `,
+      });
+
+      console.log('User added directly and notification sent:', emailResponse);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          userExists: true,
+          addedDirectly: true,
+          message: `${email} already has a TicketFlo account and has been added directly to your organization.`,
+          emailId: emailResponse.data?.id
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        }
+      );
+    }
+
+    // User doesn't exist - proceed with normal invitation flow
     // Generate invitation token
     const invitationToken = crypto.randomUUID();
 

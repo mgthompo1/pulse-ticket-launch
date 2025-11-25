@@ -37,6 +37,8 @@ export const InvitationPasswordSetup = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [useExistingAccount, setUseExistingAccount] = useState(false);
   const [tempPassword, setTempPassword] = useState('');
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const inviteToken = searchParams.get('invite');
 
@@ -123,7 +125,8 @@ export const InvitationPasswordSetup = () => {
           });
 
           if (signInError) {
-            setError('An account with this email already exists but the password is incorrect. Please check your password or contact support.');
+            setError('An account with this email already exists. If you forgot your password, use the password reset option below.');
+            setShowPasswordReset(true);
             return;
           }
 
@@ -312,6 +315,32 @@ export const InvitationPasswordSetup = () => {
     }
   };
 
+  const handlePasswordReset = async () => {
+    if (!invitation) return;
+
+    setCreating(true);
+    setError(null);
+
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(invitation.email, {
+        redirectTo: `${window.location.origin}/invite?token=${inviteToken}&resetPassword=true`,
+      });
+
+      if (resetError) throw resetError;
+
+      setResetEmailSent(true);
+      toast({
+        title: 'Password Reset Email Sent',
+        description: 'Check your email for a link to reset your password. After resetting, you can complete your invitation.',
+      });
+    } catch (error: unknown) {
+      console.error('Password reset error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to send password reset email');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case 'admin': return 'destructive';
@@ -433,6 +462,40 @@ export const InvitationPasswordSetup = () => {
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
+              )}
+
+              {/* Password Reset Option - shown when user exists but password is wrong */}
+              {showPasswordReset && !resetEmailSent && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <p className="text-sm text-amber-800 mb-3">
+                    It looks like you already have an account. Reset your password to continue with the invitation.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handlePasswordReset}
+                    disabled={creating}
+                    className="w-full"
+                  >
+                    {creating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Sending Reset Email...
+                      </>
+                    ) : (
+                      'Send Password Reset Email'
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {resetEmailSent && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                  <p className="text-sm text-green-800">
+                    Password reset email sent! Check your inbox and follow the link to reset your password.
+                    After resetting, return to this page to complete joining the organization.
+                  </p>
+                </div>
               )}
 
               <div className="space-y-2">

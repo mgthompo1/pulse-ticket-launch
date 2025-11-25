@@ -162,6 +162,33 @@ export const OrganizationUserManagement = ({ organizationId, organizationName, c
 
       if (error) throw error;
 
+      // Handle different response scenarios
+      if (data?.alreadyMember) {
+        // User is already a member of this organization
+        toast({
+          title: 'Already a Member',
+          description: data.message || `This user is already a member of your organization.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (data?.addedDirectly) {
+        // User existed and was added directly (no invitation needed)
+        toast({
+          title: 'User Added',
+          description: data.message || `User has been added to your organization.`,
+        });
+        setInviteDialogOpen(false);
+        setInviteEmail('');
+        setInviteRole('viewer');
+        setInvitePermissions([]);
+        // Reload users since they were added directly
+        loadUsers();
+        return;
+      }
+
+      // Normal invitation sent
       toast({
         title: 'Success',
         description: `Invitation sent to ${inviteEmail}`,
