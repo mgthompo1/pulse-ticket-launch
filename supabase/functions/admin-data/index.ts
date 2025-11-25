@@ -8,7 +8,7 @@ const corsHeaders = {
 
 interface AdminDataRequest {
   token: string;
-  dataType: 'organizations' | 'events' | 'orders' | 'metrics' | 'analytics' | 'contact_enquiries' | 'platform_config' | 'update_platform_config' | 'users' | 'stripe_revenue' | 'onboarding_funnel' | 'payouts' | 'refunds' | 'audit_log' | 'announcements' | 'create_announcement' | 'toggle_announcement' | 'delete_announcement' | 'org_health_scores';
+  dataType: 'organizations' | 'events' | 'orders' | 'metrics' | 'analytics' | 'contact_enquiries' | 'platform_config' | 'update_platform_config' | 'users' | 'stripe_revenue' | 'onboarding_funnel' | 'payouts' | 'refunds' | 'audit_log' | 'announcements' | 'create_announcement' | 'toggle_announcement' | 'delete_announcement' | 'org_health_scores' | 'system_logs';
   configData?: {
     platform_fee_percentage: number;
     platform_fee_fixed: number;
@@ -656,6 +656,137 @@ serve(async (req) => {
         }
 
         data = { deleted: true };
+        break;
+
+      case 'system_logs':
+        console.log('Fetching system logs...');
+
+        // Get all auth users with their activity
+        const { data: systemLogsAuthUsers } = await supabaseClient.auth.admin.listUsers({
+          page: 1,
+          perPage: 100
+        });
+
+        // Build auth activity log from user data
+        const authActivity = systemLogsAuthUsers?.users
+          ?.filter(u => u.last_sign_in_at)
+          .sort((a, b) => new Date(b.last_sign_in_at!).getTime() - new Date(a.last_sign_in_at!).getTime())
+          .slice(0, 30)
+          .map(u => ({
+            type: 'sign_in',
+            email: u.email,
+            timestamp: u.last_sign_in_at,
+            provider: u.app_metadata?.provider || 'email',
+            confirmed: !!u.email_confirmed_at,
+            user_id: u.id
+          })) || [];
+
+        // Also get recent signups
+        const recentSignups = systemLogsAuthUsers?.users
+          ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 30)
+          .map(u => ({
+            type: 'signup',
+            email: u.email,
+            timestamp: u.created_at,
+            provider: u.app_metadata?.provider || 'email',
+            confirmed: !!u.email_confirmed_at,
+            user_id: u.id
+          })) || [];
+
+        // Get recent orders
+        const { data: recentOrderActivity } = await supabaseClient
+          .from('orders')
+          .select('id, created_at, status, total_amount, customer_email')
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        // Get recent events created
+        const { data: recentEvents } = await supabaseClient
+          .from('events')
+          .select('id, name, created_at, status, organization_id')
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        // Get recent organizations created
+        const { data: recentOrgs } = await supabaseClient
+          .from('organizations')
+          .select('id, name, created_at, user_id')
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        // Get recent tickets sold
+        const { data: recentTickets } = await supabaseClient
+          .from('tickets')
+          .select('id, created_at, ticket_type_id, order_id, status')
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        // Get database table stats
+        let tableStats: any[] = [];
+        try {
+          const { data: pgTables } = await supabaseClient.rpc('get_table_row_counts');
+          tableStats = pgTables || [];
+        } catch (_e) {
+          // Function might not exist, get counts manually
+          const tables = ['organizations', 'events', 'orders', 'tickets', 'ticket_types'];
+          for (const table of tables) {
+            try {
+              const { count } = await supabaseClient.from(table).select('*', { count: 'exact', head: true });
+              tableStats.push({ table_name: table, row_count: count || 0 });
+            } catch (_tableErr) {
+              // Skip if table doesn't exist
+            }
+          }
+        }
+
+        // Get auth stats breakdown
+        const authStats = {
+          total: systemLogsAuthUsers?.users?.length || 0,
+          confirmed: systemLogsAuthUsers?.users?.filter(u => u.email_confirmed_at)?.length || 0,
+          unconfirmed: systemLogsAuthUsers?.users?.filter(u => !u.email_confirmed_at)?.length || 0,
+          byProvider: {} as Record<string, number>,
+          last24h: systemLogsAuthUsers?.users?.filter(u =>
+            new Date(u.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+          )?.length || 0,
+          last7d: systemLogsAuthUsers?.users?.filter(u =>
+            new Date(u.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+          )?.length || 0
+        };
+
+        // Count by provider
+        systemLogsAuthUsers?.users?.forEach(u => {
+          const provider = u.app_metadata?.provider || 'email';
+          authStats.byProvider[provider] = (authStats.byProvider[provider] || 0) + 1;
+        });
+
+        // Get failed/pending invitations if table exists
+        let pendingInvites: any[] = [];
+        try {
+          const { data: invites } = await supabaseClient
+            .from('organization_invitations')
+            .select('*')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false })
+            .limit(10);
+          pendingInvites = invites || [];
+        } catch (_inviteErr) {
+          // Table might not exist
+        }
+
+        data = {
+          authActivity: [...authActivity, ...recentSignups].sort((a, b) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          ).slice(0, 50),
+          authStats,
+          recentOrders: recentOrderActivity || [],
+          recentEvents: recentEvents || [],
+          recentOrgs: recentOrgs || [],
+          recentTickets: recentTickets || [],
+          tableStats,
+          pendingInvites,
+          totalUsers: systemLogsAuthUsers?.users?.length || 0
+        };
         break;
 
       case 'org_health_scores':

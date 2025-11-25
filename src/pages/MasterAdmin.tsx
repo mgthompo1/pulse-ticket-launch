@@ -173,6 +173,36 @@ const MasterAdmin = () => {
     loading: true,
     organizations: []
   });
+  const [systemLogs, setSystemLogs] = useState<{
+    loading: boolean;
+    authActivity: Array<{ type: string; email: string; timestamp: string; provider: string; confirmed: boolean; user_id: string }>;
+    authStats: {
+      total: number;
+      confirmed: number;
+      unconfirmed: number;
+      byProvider: Record<string, number>;
+      last24h: number;
+      last7d: number;
+    };
+    recentOrders: any[];
+    recentEvents: any[];
+    recentOrgs: any[];
+    recentTickets: any[];
+    tableStats: Array<{ table_name: string; row_count: number }>;
+    pendingInvites: any[];
+    totalUsers: number;
+  }>({
+    loading: true,
+    authActivity: [],
+    authStats: { total: 0, confirmed: 0, unconfirmed: 0, byProvider: {}, last24h: 0, last7d: 0 },
+    recentOrders: [],
+    recentEvents: [],
+    recentOrgs: [],
+    recentTickets: [],
+    tableStats: [],
+    pendingInvites: [],
+    totalUsers: 0
+  });
   const [platformConfig, setPlatformConfig] = useState({
     platform_fee_percentage: 1.0,
     platform_fee_fixed: 0.50,
@@ -318,9 +348,7 @@ const MasterAdmin = () => {
 
       try {
         const { data, error } = await supabase.functions.invoke('system-health', {
-          headers: {
-            Authorization: `Bearer ${adminToken}`,
-          },
+          body: { token: adminToken },
         });
 
         if (error) throw error;
@@ -637,6 +665,31 @@ const MasterAdmin = () => {
       }
     };
     fetchOrgHealthScores();
+  }, []);
+
+  // Fetch system logs
+  useEffect(() => {
+    const fetchSystemLogs = async () => {
+      const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+      if (!adminToken) return;
+
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: { token: adminToken, dataType: 'system_logs' }
+        });
+
+        if (error) throw error;
+        if (data?.success) {
+          setSystemLogs({ ...data.data, loading: false });
+        } else {
+          setSystemLogs(prev => ({ ...prev, loading: false }));
+        }
+      } catch (error) {
+        console.error("Error loading system logs:", error);
+        setSystemLogs(prev => ({ ...prev, loading: false }));
+      }
+    };
+    fetchSystemLogs();
   }, []);
 
   // Show loading while checking auth
@@ -2703,6 +2756,263 @@ const MasterAdmin = () => {
                           </span>
                         </div>
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* System Logs Section */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <ScrollText className="h-5 w-5" />
+                        System Activity Logs
+                      </CardTitle>
+                      <CardDescription>
+                        Real-time activity from auth, database, and platform
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {systemLogs.loading ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                          <span className="ml-2">Loading system logs...</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-6">
+                          {/* Auth Stats Overview */}
+                          <div>
+                            <h4 className="font-semibold mb-3 flex items-center gap-2">
+                              <Shield className="w-4 h-4" />
+                              Auth Statistics
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                              <div className="p-3 border rounded-lg text-center">
+                                <div className="text-2xl font-bold">{systemLogs.authStats.total}</div>
+                                <div className="text-xs text-muted-foreground">Total Users</div>
+                              </div>
+                              <div className="p-3 border rounded-lg text-center bg-green-50">
+                                <div className="text-2xl font-bold text-green-600">{systemLogs.authStats.confirmed}</div>
+                                <div className="text-xs text-muted-foreground">Confirmed</div>
+                              </div>
+                              <div className="p-3 border rounded-lg text-center bg-yellow-50">
+                                <div className="text-2xl font-bold text-yellow-600">{systemLogs.authStats.unconfirmed}</div>
+                                <div className="text-xs text-muted-foreground">Unconfirmed</div>
+                              </div>
+                              <div className="p-3 border rounded-lg text-center bg-blue-50">
+                                <div className="text-2xl font-bold text-blue-600">{systemLogs.authStats.last24h}</div>
+                                <div className="text-xs text-muted-foreground">Last 24h</div>
+                              </div>
+                              <div className="p-3 border rounded-lg text-center bg-purple-50">
+                                <div className="text-2xl font-bold text-purple-600">{systemLogs.authStats.last7d}</div>
+                                <div className="text-xs text-muted-foreground">Last 7 days</div>
+                              </div>
+                              <div className="p-3 border rounded-lg text-center">
+                                <div className="text-sm font-medium">By Provider</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {Object.entries(systemLogs.authStats.byProvider).map(([provider, count]) => (
+                                    <span key={provider} className="block">{provider}: {count}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Auth Activity */}
+                          <div>
+                            <h4 className="font-semibold mb-3 flex items-center gap-2">
+                              <Users className="w-4 h-4" />
+                              Recent Auth Activity
+                            </h4>
+                            {systemLogs.authActivity.length === 0 ? (
+                              <p className="text-sm text-muted-foreground">No recent auth activity</p>
+                            ) : (
+                              <div className="max-h-64 overflow-y-auto border rounded-lg">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Type</TableHead>
+                                      <TableHead>Email</TableHead>
+                                      <TableHead>Provider</TableHead>
+                                      <TableHead>Status</TableHead>
+                                      <TableHead>Time</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {systemLogs.authActivity.map((event, idx) => (
+                                      <TableRow key={idx}>
+                                        <TableCell>
+                                          <Badge variant={event.type === 'signup' ? 'default' : 'secondary'}>
+                                            {event.type === 'signup' ? 'Sign Up' : 'Sign In'}
+                                          </Badge>
+                                        </TableCell>
+                                        <TableCell className="font-mono text-sm">{event.email}</TableCell>
+                                        <TableCell>
+                                          <Badge variant="outline">{event.provider}</Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                          {event.confirmed ? (
+                                            <span className="text-green-600 flex items-center gap-1">
+                                              <CheckCircle className="w-3 h-3" /> Confirmed
+                                            </span>
+                                          ) : (
+                                            <span className="text-yellow-600 flex items-center gap-1">
+                                              <AlertCircle className="w-3 h-3" /> Pending
+                                            </span>
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground text-sm">
+                                          {format(new Date(event.timestamp), 'MMM d, HH:mm:ss')}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Database Stats */}
+                          {systemLogs.tableStats.length > 0 && (
+                            <div>
+                              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                <Database className="w-4 h-4" />
+                                Database Table Stats
+                              </h4>
+                              <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                                {systemLogs.tableStats.map((stat) => (
+                                  <div key={stat.table_name} className="p-2 border rounded text-center">
+                                    <div className="text-lg font-bold">{stat.row_count.toLocaleString()}</div>
+                                    <div className="text-xs text-muted-foreground truncate">{stat.table_name}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Recent Platform Activity */}
+                          <div className="grid md:grid-cols-4 gap-4">
+                            {/* Recent Orders */}
+                            <div>
+                              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                <DollarSign className="w-4 h-4" />
+                                Recent Orders
+                              </h4>
+                              <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {systemLogs.recentOrders.length === 0 ? (
+                                  <p className="text-sm text-muted-foreground">No recent orders</p>
+                                ) : (
+                                  systemLogs.recentOrders.slice(0, 5).map((order: any) => (
+                                    <div key={order.id} className="p-2 border rounded text-sm">
+                                      <div className="flex justify-between">
+                                        <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
+                                          {order.status}
+                                        </Badge>
+                                        <span className="font-medium">${(order.total_amount || 0).toFixed(2)}</span>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground mt-1 truncate">
+                                        {order.customer_email || 'N/A'}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {format(new Date(order.created_at), 'MMM d, HH:mm')}
+                                      </p>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Recent Tickets */}
+                            <div>
+                              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                <Ticket className="w-4 h-4" />
+                                Recent Tickets
+                              </h4>
+                              <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {systemLogs.recentTickets.length === 0 ? (
+                                  <p className="text-sm text-muted-foreground">No recent tickets</p>
+                                ) : (
+                                  systemLogs.recentTickets.slice(0, 5).map((ticket: any) => (
+                                    <div key={ticket.id} className="p-2 border rounded text-sm">
+                                      <Badge variant={ticket.status === 'valid' ? 'default' : 'secondary'}>
+                                        {ticket.status}
+                                      </Badge>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        {format(new Date(ticket.created_at), 'MMM d, HH:mm')}
+                                      </p>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Recent Events Created */}
+                            <div>
+                              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                <Calendar className="w-4 h-4" />
+                                Recent Events
+                              </h4>
+                              <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {systemLogs.recentEvents.length === 0 ? (
+                                  <p className="text-sm text-muted-foreground">No recent events</p>
+                                ) : (
+                                  systemLogs.recentEvents.slice(0, 5).map((event: any) => (
+                                    <div key={event.id} className="p-2 border rounded text-sm">
+                                      <p className="font-medium truncate">{event.name}</p>
+                                      <div className="flex justify-between mt-1">
+                                        <Badge variant="outline">{event.status}</Badge>
+                                        <span className="text-xs text-muted-foreground">
+                                          {format(new Date(event.created_at), 'MMM d')}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Recent Orgs Created */}
+                            <div>
+                              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                <Building2 className="w-4 h-4" />
+                                Recent Organizations
+                              </h4>
+                              <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {systemLogs.recentOrgs.length === 0 ? (
+                                  <p className="text-sm text-muted-foreground">No recent orgs</p>
+                                ) : (
+                                  systemLogs.recentOrgs.slice(0, 5).map((org: any) => (
+                                    <div key={org.id} className="p-2 border rounded text-sm">
+                                      <p className="font-medium truncate">{org.name}</p>
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        {format(new Date(org.created_at), 'MMM d, HH:mm')}
+                                      </p>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Pending Invitations */}
+                          {systemLogs.pendingInvites.length > 0 && (
+                            <div className="border-t pt-4">
+                              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                                <Mail className="w-4 h-4" />
+                                Pending Invitations ({systemLogs.pendingInvites.length})
+                              </h4>
+                              <div className="space-y-2">
+                                {systemLogs.pendingInvites.map((invite: any) => (
+                                  <div key={invite.id} className="p-2 border rounded text-sm flex justify-between items-center">
+                                    <span className="font-mono">{invite.email}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {format(new Date(invite.created_at), 'MMM d, yyyy')}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </>
