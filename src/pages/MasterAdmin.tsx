@@ -34,7 +34,19 @@ import {
   ClipboardCheck,
   TrendingUp,
   Ticket,
-  CreditCard
+  CreditCard,
+  Filter,
+  ArrowDownToLine,
+  RotateCcw,
+  FileText,
+  Banknote,
+  ScrollText,
+  Megaphone,
+  HeartPulse,
+  Trash2,
+  Plus,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { format } from "date-fns";
 import { OrganizationDetailModal } from "@/components/OrganizationDetailModal";
@@ -93,6 +105,73 @@ const MasterAdmin = () => {
     pending: 0,
     totalApplicationFees: 0,
     loading: true
+  });
+  const [onboardingFunnel, setOnboardingFunnel] = useState<{
+    loading: boolean;
+    stages: Array<{ name: string; count: number; percentage: number }>;
+    dropoffs: { signupToVerified: number; verifiedToOrg: number; orgToEvent: number; eventToSale: number };
+    stuckUsers: Array<{ id: string; email: string; created_at: string; provider: string }>;
+  }>({
+    loading: true,
+    stages: [],
+    dropoffs: { signupToVerified: 0, verifiedToOrg: 0, orgToEvent: 0, eventToSale: 0 },
+    stuckUsers: []
+  });
+  const [payoutsData, setPayoutsData] = useState<{
+    loading: boolean;
+    platformPayouts: any[];
+    connectedAccounts: any[];
+    recentTransfers: any[];
+  }>({
+    loading: true,
+    platformPayouts: [],
+    connectedAccounts: [],
+    recentTransfers: []
+  });
+  const [refundsData, setRefundsData] = useState<{
+    loading: boolean;
+    refunds: any[];
+    stats: { totalRefunded: number; refundCount: number; byStatus: Record<string, number> };
+  }>({
+    loading: true,
+    refunds: [],
+    stats: { totalRefunded: 0, refundCount: 0, byStatus: {} }
+  });
+  const [auditLog, setAuditLog] = useState<{
+    loading: boolean;
+    entries: Array<{ id: string; action: string; actor_email: string; details: any; created_at: string }>;
+  }>({
+    loading: true,
+    entries: []
+  });
+  const [announcements, setAnnouncements] = useState<{
+    loading: boolean;
+    banners: Array<{ id: string; message: string; type: 'info' | 'warning' | 'success' | 'error'; active: boolean; created_at: string }>;
+  }>({
+    loading: true,
+    banners: []
+  });
+  const [newAnnouncement, setNewAnnouncement] = useState({
+    message: '',
+    type: 'info' as 'info' | 'warning' | 'success' | 'error'
+  });
+  const [orgHealthScores, setOrgHealthScores] = useState<{
+    loading: boolean;
+    organizations: Array<{
+      id: string;
+      name: string;
+      score: number;
+      metrics: {
+        hasEvents: boolean;
+        hasTicketsSold: boolean;
+        hasStripeConnected: boolean;
+        isActive: boolean;
+        lastActivity: string | null;
+      };
+    }>;
+  }>({
+    loading: true,
+    organizations: []
   });
   const [platformConfig, setPlatformConfig] = useState({
     platform_fee_percentage: 1.0,
@@ -410,6 +489,156 @@ const MasterAdmin = () => {
     fetchStripeRevenue();
   }, []);
 
+  // Fetch onboarding funnel data
+  useEffect(() => {
+    const fetchOnboardingFunnel = async () => {
+      const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+      if (!adminToken) return;
+
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: { token: adminToken, dataType: 'onboarding_funnel' }
+        });
+
+        if (error) throw error;
+        if (data?.success) {
+          setOnboardingFunnel({ ...data.data, loading: false });
+        } else {
+          setOnboardingFunnel(prev => ({ ...prev, loading: false }));
+        }
+      } catch (error) {
+        console.error("Error loading onboarding funnel:", error);
+        setOnboardingFunnel(prev => ({ ...prev, loading: false }));
+      }
+    };
+    fetchOnboardingFunnel();
+  }, []);
+
+  // Fetch payouts data
+  useEffect(() => {
+    const fetchPayouts = async () => {
+      const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+      if (!adminToken) return;
+
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: { token: adminToken, dataType: 'payouts' }
+        });
+
+        if (error) throw error;
+        if (data?.success) {
+          setPayoutsData({ ...data.data, loading: false });
+        } else {
+          setPayoutsData(prev => ({ ...prev, loading: false }));
+        }
+      } catch (error) {
+        console.error("Error loading payouts:", error);
+        setPayoutsData(prev => ({ ...prev, loading: false }));
+      }
+    };
+    fetchPayouts();
+  }, []);
+
+  // Fetch refunds data
+  useEffect(() => {
+    const fetchRefunds = async () => {
+      const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+      if (!adminToken) return;
+
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: { token: adminToken, dataType: 'refunds' }
+        });
+
+        if (error) throw error;
+        if (data?.success) {
+          setRefundsData({ ...data.data, loading: false });
+        } else {
+          setRefundsData(prev => ({ ...prev, loading: false }));
+        }
+      } catch (error) {
+        console.error("Error loading refunds:", error);
+        setRefundsData(prev => ({ ...prev, loading: false }));
+      }
+    };
+    fetchRefunds();
+  }, []);
+
+  // Fetch audit log
+  useEffect(() => {
+    const fetchAuditLog = async () => {
+      const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+      if (!adminToken) return;
+
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: { token: adminToken, dataType: 'audit_log' }
+        });
+
+        if (error) throw error;
+        if (data?.success) {
+          setAuditLog({ entries: data.data || [], loading: false });
+        } else {
+          setAuditLog(prev => ({ ...prev, loading: false }));
+        }
+      } catch (error) {
+        console.error("Error loading audit log:", error);
+        setAuditLog(prev => ({ ...prev, loading: false }));
+      }
+    };
+    fetchAuditLog();
+  }, []);
+
+  // Fetch announcements
+  useEffect(() => {
+    const fetchAnnouncements = async () => {
+      const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+      if (!adminToken) return;
+
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: { token: adminToken, dataType: 'announcements' }
+        });
+
+        if (error) throw error;
+        if (data?.success) {
+          setAnnouncements({ banners: data.data || [], loading: false });
+        } else {
+          setAnnouncements(prev => ({ ...prev, loading: false }));
+        }
+      } catch (error) {
+        console.error("Error loading announcements:", error);
+        setAnnouncements(prev => ({ ...prev, loading: false }));
+      }
+    };
+    fetchAnnouncements();
+  }, []);
+
+  // Fetch org health scores
+  useEffect(() => {
+    const fetchOrgHealthScores = async () => {
+      const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+      if (!adminToken) return;
+
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: { token: adminToken, dataType: 'org_health_scores' }
+        });
+
+        if (error) throw error;
+        if (data?.success) {
+          setOrgHealthScores({ organizations: data.data || [], loading: false });
+        } else {
+          setOrgHealthScores(prev => ({ ...prev, loading: false }));
+        }
+      } catch (error) {
+        console.error("Error loading org health scores:", error);
+        setOrgHealthScores(prev => ({ ...prev, loading: false }));
+      }
+    };
+    fetchOrgHealthScores();
+  }, []);
+
   // Show loading while checking auth
   if (authLoading) {
     return (
@@ -703,6 +932,72 @@ const MasterAdmin = () => {
             Analytics
           </button>
           <button
+            onClick={() => setActiveTab("funnel")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "funnel"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <Filter className="w-4 h-4" />
+            Onboarding Funnel
+          </button>
+          <button
+            onClick={() => setActiveTab("payouts")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "payouts"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <Banknote className="w-4 h-4" />
+            Payouts
+          </button>
+          <button
+            onClick={() => setActiveTab("refunds")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "refunds"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <RotateCcw className="w-4 h-4" />
+            Refunds
+          </button>
+          <button
+            onClick={() => setActiveTab("audit")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "audit"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <ScrollText className="w-4 h-4" />
+            Audit Log
+          </button>
+          <button
+            onClick={() => setActiveTab("announcements")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "announcements"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <Megaphone className="w-4 h-4" />
+            Announcements
+          </button>
+          <button
+            onClick={() => setActiveTab("health")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "health"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <HeartPulse className="w-4 h-4" />
+            Org Health
+          </button>
+          <button
             onClick={() => setActiveTab("system")}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
               activeTab === "system"
@@ -764,6 +1059,12 @@ const MasterAdmin = () => {
               {activeTab === "users" && "User Management"}
               {activeTab === "enquiries" && "Contact Enquiries"}
               {activeTab === "analytics" && "Analytics & Reports"}
+              {activeTab === "funnel" && "Onboarding Funnel"}
+              {activeTab === "payouts" && "Payout Management"}
+              {activeTab === "refunds" && "Refund Dashboard"}
+              {activeTab === "audit" && "Audit Log"}
+              {activeTab === "announcements" && "Announcement Banners"}
+              {activeTab === "health" && "Organization Health Scores"}
               {activeTab === "system" && "System Health & Monitoring"}
               {activeTab === "settings" && "Platform Settings"}
             </h2>
@@ -1378,6 +1679,854 @@ const MasterAdmin = () => {
                     </CardContent>
                   </Card>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Onboarding Funnel Tab */}
+          {activeTab === "funnel" && (
+            <div className="space-y-6">
+              {onboardingFunnel.loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="ml-3 text-lg">Loading funnel data...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Funnel Visualization */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Filter className="w-5 h-5" />
+                        User Onboarding Funnel
+                      </CardTitle>
+                      <CardDescription>Track where users drop off in the signup process</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {onboardingFunnel.stages.map((stage, index) => (
+                          <div key={stage.name} className="relative">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium">{stage.name}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {stage.count} ({stage.percentage}%)
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-8 overflow-hidden">
+                              <div
+                                className="h-8 rounded-full flex items-center justify-end pr-3 text-white text-sm font-medium transition-all duration-500"
+                                style={{
+                                  width: `${stage.percentage}%`,
+                                  backgroundColor: index === 0 ? '#3b82f6' : index === 1 ? '#22c55e' : index === 2 ? '#eab308' : index === 3 ? '#f97316' : '#ef4444',
+                                  minWidth: stage.count > 0 ? '60px' : '0'
+                                }}
+                              >
+                                {stage.count > 0 && stage.count}
+                              </div>
+                            </div>
+                            {index < onboardingFunnel.stages.length - 1 && (
+                              <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
+                                <ArrowDownToLine className="w-4 h-4 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Drop-off Stats */}
+                  <div className="grid gap-4 md:grid-cols-4">
+                    <Card className="border-red-200 bg-red-50">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-red-800">Signup → Verified</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-red-600">{onboardingFunnel.dropoffs.signupToVerified}</div>
+                        <p className="text-xs text-red-600">dropped off</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-orange-200 bg-orange-50">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-orange-800">Verified → Org Created</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-orange-600">{onboardingFunnel.dropoffs.verifiedToOrg}</div>
+                        <p className="text-xs text-orange-600">dropped off</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-yellow-200 bg-yellow-50">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-yellow-800">Org → Event Created</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-yellow-600">{onboardingFunnel.dropoffs.orgToEvent}</div>
+                        <p className="text-xs text-yellow-600">dropped off</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-blue-200 bg-blue-50">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-blue-800">Event → First Sale</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-blue-600">{onboardingFunnel.dropoffs.eventToSale}</div>
+                        <p className="text-xs text-blue-600">no sales yet</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Stuck Users */}
+                  {onboardingFunnel.stuckUsers.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <AlertCircle className="w-5 h-5 text-orange-500" />
+                          Users Stuck at Verification (No Org Created)
+                        </CardTitle>
+                        <CardDescription>These users verified their email but never created an organization</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Email</TableHead>
+                              <TableHead>Provider</TableHead>
+                              <TableHead>Signed Up</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {onboardingFunnel.stuckUsers.map((user) => (
+                              <TableRow key={user.id}>
+                                <TableCell className="font-medium">{user.email}</TableCell>
+                                <TableCell>
+                                  <Badge variant="outline">{user.provider}</Badge>
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {format(new Date(user.created_at), 'MMM d, yyyy')}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Payouts Tab */}
+          {activeTab === "payouts" && (
+            <div className="space-y-6">
+              {payoutsData.loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="ml-3 text-lg">Loading payouts data...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Connected Accounts */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Building2 className="w-5 h-5" />
+                        Connected Stripe Accounts ({payoutsData.connectedAccounts.length})
+                      </CardTitle>
+                      <CardDescription>Organizations with Stripe Connect enabled</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {payoutsData.connectedAccounts.length === 0 ? (
+                        <p className="text-muted-foreground">No connected accounts found.</p>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Business Name</TableHead>
+                              <TableHead>Email</TableHead>
+                              <TableHead>Payouts</TableHead>
+                              <TableHead>Charges</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {payoutsData.connectedAccounts.map((account: any) => (
+                              <TableRow key={account.id}>
+                                <TableCell className="font-medium">{account.business_name || 'N/A'}</TableCell>
+                                <TableCell>{account.email || 'N/A'}</TableCell>
+                                <TableCell>
+                                  <Badge variant={account.payouts_enabled ? 'default' : 'destructive'}>
+                                    {account.payouts_enabled ? 'Enabled' : 'Disabled'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={account.charges_enabled ? 'default' : 'destructive'}>
+                                    {account.charges_enabled ? 'Enabled' : 'Disabled'}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Recent Transfers */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Banknote className="w-5 h-5" />
+                        Recent Transfers to Connected Accounts
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {payoutsData.recentTransfers.length === 0 ? (
+                        <p className="text-muted-foreground">No recent transfers found.</p>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Amount</TableHead>
+                              <TableHead>Destination</TableHead>
+                              <TableHead>Date</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {payoutsData.recentTransfers.map((transfer: any) => (
+                              <TableRow key={transfer.id}>
+                                <TableCell className="font-medium">
+                                  ${transfer.amount.toFixed(2)} {transfer.currency.toUpperCase()}
+                                </TableCell>
+                                <TableCell className="font-mono text-sm">{transfer.destination}</TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {format(new Date(transfer.created), 'MMM d, yyyy HH:mm')}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Platform Payouts */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <CreditCard className="w-5 h-5" />
+                        Platform Payouts (Your Account)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {payoutsData.platformPayouts.length === 0 ? (
+                        <p className="text-muted-foreground">No platform payouts found.</p>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Amount</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Arrival Date</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {payoutsData.platformPayouts.map((payout: any) => (
+                              <TableRow key={payout.id}>
+                                <TableCell className="font-medium">
+                                  ${payout.amount.toFixed(2)} {payout.currency.toUpperCase()}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={payout.status === 'paid' ? 'default' : 'secondary'}>
+                                    {payout.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {format(new Date(payout.arrival_date), 'MMM d, yyyy')}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Refunds Tab */}
+          {activeTab === "refunds" && (
+            <div className="space-y-6">
+              {refundsData.loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="ml-3 text-lg">Loading refunds data...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Refund Stats */}
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <Card className="border-red-200">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Total Refunded</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-red-600">
+                          ${(refundsData.stats.totalRefunded || 0).toLocaleString()}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Refund Count</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{refundsData.stats.refundCount}</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">By Status</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex gap-2 flex-wrap">
+                          {Object.entries(refundsData.stats.byStatus || {}).map(([status, count]) => (
+                            <Badge key={status} variant="outline">
+                              {status}: {count as number}
+                            </Badge>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Refunds List */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <RotateCcw className="w-5 h-5" />
+                        Recent Refunds
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {refundsData.refunds.length === 0 ? (
+                        <p className="text-muted-foreground">No refunds found.</p>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Amount</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Reason</TableHead>
+                              <TableHead>Date</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {refundsData.refunds.map((refund: any) => (
+                              <TableRow key={refund.id}>
+                                <TableCell className="font-medium text-red-600">
+                                  -${refund.amount.toFixed(2)} {refund.currency.toUpperCase()}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={refund.status === 'succeeded' ? 'default' : 'secondary'}>
+                                    {refund.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {refund.reason || 'N/A'}
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">
+                                  {format(new Date(refund.created), 'MMM d, yyyy HH:mm')}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Audit Log Tab */}
+          {activeTab === "audit" && (
+            <div className="space-y-6">
+              {auditLog.loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="ml-3 text-lg">Loading audit log...</span>
+                </div>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ScrollText className="w-5 h-5" />
+                      Platform Audit Log
+                    </CardTitle>
+                    <CardDescription>Track all administrative actions and system events</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {auditLog.entries.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <ScrollText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <p>No audit log entries yet.</p>
+                        <p className="text-sm">Administrative actions will be recorded here.</p>
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Action</TableHead>
+                            <TableHead>Actor</TableHead>
+                            <TableHead>Details</TableHead>
+                            <TableHead>Timestamp</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {auditLog.entries.map((entry) => (
+                            <TableRow key={entry.id}>
+                              <TableCell>
+                                <Badge variant="outline" className="font-mono">
+                                  {entry.action}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-medium">{entry.actor_email}</TableCell>
+                              <TableCell className="max-w-xs truncate text-muted-foreground">
+                                {typeof entry.details === 'object' ? JSON.stringify(entry.details) : entry.details}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {format(new Date(entry.created_at), 'MMM d, yyyy HH:mm:ss')}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* Announcements Tab */}
+          {activeTab === "announcements" && (
+            <div className="space-y-6">
+              {announcements.loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="ml-3 text-lg">Loading announcements...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Create New Announcement */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Plus className="w-5 h-5" />
+                        Create Announcement Banner
+                      </CardTitle>
+                      <CardDescription>Display platform-wide announcements to all users</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Message</Label>
+                        <Input
+                          placeholder="Enter announcement message..."
+                          value={newAnnouncement.message}
+                          onChange={(e) => setNewAnnouncement(prev => ({ ...prev, message: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Type</Label>
+                        <div className="flex gap-2">
+                          {(['info', 'warning', 'success', 'error'] as const).map((type) => (
+                            <Button
+                              key={type}
+                              variant={newAnnouncement.type === type ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setNewAnnouncement(prev => ({ ...prev, type }))}
+                              className={
+                                type === 'info' ? 'bg-blue-500 hover:bg-blue-600' :
+                                type === 'warning' ? 'bg-yellow-500 hover:bg-yellow-600' :
+                                type === 'success' ? 'bg-green-500 hover:bg-green-600' :
+                                'bg-red-500 hover:bg-red-600'
+                              }
+                            >
+                              {type.charAt(0).toUpperCase() + type.slice(1)}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                      <Button
+                        className="w-full"
+                        disabled={!newAnnouncement.message.trim()}
+                        onClick={async () => {
+                          const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+                          if (!adminToken) return;
+                          try {
+                            const { data, error } = await supabase.functions.invoke('admin-data', {
+                              body: {
+                                token: adminToken,
+                                dataType: 'create_announcement',
+                                message: newAnnouncement.message,
+                                type: newAnnouncement.type
+                              }
+                            });
+                            if (error) throw error;
+                            if (data?.success) {
+                              toast({ title: "Announcement Created", description: "The announcement is now live." });
+                              setNewAnnouncement({ message: '', type: 'info' });
+                              setAnnouncements(prev => ({
+                                ...prev,
+                                banners: [data.data, ...prev.banners]
+                              }));
+                            }
+                          } catch (error) {
+                            console.error("Error creating announcement:", error);
+                            toast({ title: "Error", description: "Failed to create announcement", variant: "destructive" });
+                          }
+                        }}
+                      >
+                        <Megaphone className="w-4 h-4 mr-2" />
+                        Publish Announcement
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* Active Announcements */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Megaphone className="w-5 h-5" />
+                        Active Announcements ({announcements.banners.filter(b => b.active).length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {announcements.banners.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Megaphone className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                          <p>No announcements yet.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {announcements.banners.map((banner) => (
+                            <div
+                              key={banner.id}
+                              className={`p-4 rounded-lg border-2 flex items-center justify-between ${
+                                banner.type === 'info' ? 'border-blue-200 bg-blue-50' :
+                                banner.type === 'warning' ? 'border-yellow-200 bg-yellow-50' :
+                                banner.type === 'success' ? 'border-green-200 bg-green-50' :
+                                'border-red-200 bg-red-50'
+                              } ${!banner.active ? 'opacity-50' : ''}`}
+                            >
+                              <div className="flex-1">
+                                <p className="font-medium">{banner.message}</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Created: {format(new Date(banner.created_at), 'MMM d, yyyy HH:mm')}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 ml-4">
+                                <Badge variant={banner.active ? 'default' : 'secondary'}>
+                                  {banner.active ? 'Active' : 'Inactive'}
+                                </Badge>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={async () => {
+                                    const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+                                    if (!adminToken) return;
+                                    try {
+                                      const { data, error } = await supabase.functions.invoke('admin-data', {
+                                        body: {
+                                          token: adminToken,
+                                          dataType: 'toggle_announcement',
+                                          announcementId: banner.id,
+                                          active: !banner.active
+                                        }
+                                      });
+                                      if (error) throw error;
+                                      if (data?.success) {
+                                        setAnnouncements(prev => ({
+                                          ...prev,
+                                          banners: prev.banners.map(b =>
+                                            b.id === banner.id ? { ...b, active: !b.active } : b
+                                          )
+                                        }));
+                                      }
+                                    } catch (error) {
+                                      console.error("Error toggling announcement:", error);
+                                    }
+                                  }}
+                                >
+                                  {banner.active ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-red-600 hover:text-red-700"
+                                  onClick={async () => {
+                                    const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+                                    if (!adminToken) return;
+                                    try {
+                                      const { data, error } = await supabase.functions.invoke('admin-data', {
+                                        body: {
+                                          token: adminToken,
+                                          dataType: 'delete_announcement',
+                                          announcementId: banner.id
+                                        }
+                                      });
+                                      if (error) throw error;
+                                      if (data?.success) {
+                                        setAnnouncements(prev => ({
+                                          ...prev,
+                                          banners: prev.banners.filter(b => b.id !== banner.id)
+                                        }));
+                                        toast({ title: "Deleted", description: "Announcement has been removed." });
+                                      }
+                                    } catch (error) {
+                                      console.error("Error deleting announcement:", error);
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Org Health Scores Tab */}
+          {activeTab === "health" && (
+            <div className="space-y-6">
+              {orgHealthScores.loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="ml-3 text-lg">Calculating health scores...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Score Breakdown Explanation */}
+                  <Card className="border-2 border-primary/20">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <HeartPulse className="w-5 h-5" />
+                        How Health Scores Are Calculated
+                      </CardTitle>
+                      <CardDescription>Each organization is scored out of 100 points based on 4 key metrics</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <CreditCard className="w-5 h-5 text-blue-600" />
+                            <span className="font-semibold text-blue-800">Stripe Connected</span>
+                          </div>
+                          <div className="text-2xl font-bold text-blue-600">+25 pts</div>
+                          <p className="text-xs text-blue-600 mt-1">Has linked Stripe account for payments</p>
+                        </div>
+                        <div className="p-4 rounded-lg bg-purple-50 border border-purple-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Calendar className="w-5 h-5 text-purple-600" />
+                            <span className="font-semibold text-purple-800">Events Created</span>
+                          </div>
+                          <div className="text-2xl font-bold text-purple-600">+25 pts</div>
+                          <p className="text-xs text-purple-600 mt-1">Has at least 1 event created</p>
+                        </div>
+                        <div className="p-4 rounded-lg bg-green-50 border border-green-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Ticket className="w-5 h-5 text-green-600" />
+                            <span className="font-semibold text-green-800">Tickets Sold</span>
+                          </div>
+                          <div className="text-2xl font-bold text-green-600">+25 pts</div>
+                          <p className="text-xs text-green-600 mt-1">Has sold at least 1 ticket</p>
+                        </div>
+                        <div className="p-4 rounded-lg bg-orange-50 border border-orange-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Activity className="w-5 h-5 text-orange-600" />
+                            <span className="font-semibold text-orange-800">Recent Activity</span>
+                          </div>
+                          <div className="text-2xl font-bold text-orange-600">+25 pts</div>
+                          <p className="text-xs text-orange-600 mt-1">Activity within last 30 days</p>
+                        </div>
+                      </div>
+
+                      {/* Status Legend */}
+                      <div className="flex flex-wrap gap-4 mt-6 pt-4 border-t">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                          <span className="text-sm font-medium">Healthy (75-100)</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
+                          <span className="text-sm font-medium">Needs Attention (50-74)</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-full bg-orange-500"></div>
+                          <span className="text-sm font-medium">At Risk (25-49)</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                          <span className="text-sm font-medium">Critical (0-24)</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Organizations Table */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Organization Health Details</CardTitle>
+                      <CardDescription>Sorted by health score (lowest first to identify at-risk organizations)</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {orgHealthScores.organizations.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <HeartPulse className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                          <p>No organizations to analyze.</p>
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Organization</TableHead>
+                              <TableHead>Total Score</TableHead>
+                              <TableHead className="text-center">
+                                <div className="flex flex-col items-center">
+                                  <CreditCard className="w-4 h-4 mb-1" />
+                                  <span>Stripe</span>
+                                  <span className="text-xs text-muted-foreground">+25</span>
+                                </div>
+                              </TableHead>
+                              <TableHead className="text-center">
+                                <div className="flex flex-col items-center">
+                                  <Calendar className="w-4 h-4 mb-1" />
+                                  <span>Events</span>
+                                  <span className="text-xs text-muted-foreground">+25</span>
+                                </div>
+                              </TableHead>
+                              <TableHead className="text-center">
+                                <div className="flex flex-col items-center">
+                                  <Ticket className="w-4 h-4 mb-1" />
+                                  <span>Sales</span>
+                                  <span className="text-xs text-muted-foreground">+25</span>
+                                </div>
+                              </TableHead>
+                              <TableHead className="text-center">
+                                <div className="flex flex-col items-center">
+                                  <Activity className="w-4 h-4 mb-1" />
+                                  <span>Active</span>
+                                  <span className="text-xs text-muted-foreground">+25</span>
+                                </div>
+                              </TableHead>
+                              <TableHead>Last Activity</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {orgHealthScores.organizations
+                              .sort((a, b) => a.score - b.score)
+                              .map((org) => (
+                                <TableRow key={org.id} className={
+                                  org.score < 25 ? 'bg-red-50' :
+                                  org.score < 50 ? 'bg-orange-50' :
+                                  org.score < 75 ? 'bg-yellow-50' : ''
+                                }>
+                                  <TableCell className="font-medium">{org.name}</TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className={`w-3 h-3 rounded-full ${
+                                          org.score >= 75 ? 'bg-green-500' :
+                                          org.score >= 50 ? 'bg-yellow-500' :
+                                          org.score >= 25 ? 'bg-orange-500' :
+                                          'bg-red-500'
+                                        }`}
+                                      ></div>
+                                      <Progress value={org.score} className="w-20" />
+                                      <span className={`text-sm font-bold ${
+                                        org.score >= 75 ? 'text-green-600' :
+                                        org.score >= 50 ? 'text-yellow-600' :
+                                        org.score >= 25 ? 'text-orange-600' :
+                                        'text-red-600'
+                                      }`}>
+                                        {org.score}/100
+                                      </span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    {org.metrics.hasStripeConnected ? (
+                                      <div className="flex flex-col items-center">
+                                        <CheckCircle className="w-5 h-5 text-green-500" />
+                                        <span className="text-xs text-green-600 font-medium">+25</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex flex-col items-center">
+                                        <XCircle className="w-5 h-5 text-red-400" />
+                                        <span className="text-xs text-red-400">+0</span>
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    {org.metrics.hasEvents ? (
+                                      <div className="flex flex-col items-center">
+                                        <CheckCircle className="w-5 h-5 text-green-500" />
+                                        <span className="text-xs text-green-600 font-medium">+25</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex flex-col items-center">
+                                        <XCircle className="w-5 h-5 text-red-400" />
+                                        <span className="text-xs text-red-400">+0</span>
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    {org.metrics.hasTicketsSold ? (
+                                      <div className="flex flex-col items-center">
+                                        <CheckCircle className="w-5 h-5 text-green-500" />
+                                        <span className="text-xs text-green-600 font-medium">+25</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex flex-col items-center">
+                                        <XCircle className="w-5 h-5 text-red-400" />
+                                        <span className="text-xs text-red-400">+0</span>
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    {org.metrics.isActive ? (
+                                      <div className="flex flex-col items-center">
+                                        <CheckCircle className="w-5 h-5 text-green-500" />
+                                        <span className="text-xs text-green-600 font-medium">+25</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex flex-col items-center">
+                                        <XCircle className="w-5 h-5 text-red-400" />
+                                        <span className="text-xs text-red-400">+0</span>
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-muted-foreground text-sm">
+                                    {org.metrics.lastActivity
+                                      ? format(new Date(org.metrics.lastActivity), 'MMM d, yyyy')
+                                      : 'Never'}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CardContent>
+                  </Card>
+                </>
               )}
             </div>
           )}
