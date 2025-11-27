@@ -578,7 +578,7 @@ const OrganizationSettings: React.FC = () => {
             {/* Theme Mode Selection */}
             <div className="space-y-3">
               <Label className="text-sm font-medium">Color Mode</Label>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <button
                   onClick={() => setTheme('light')}
                   className={cn(
@@ -639,48 +639,6 @@ const OrganizationSettings: React.FC = () => {
               </div>
             </div>
 
-            {/* Preview */}
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Preview</Label>
-              <div className={cn(
-                "p-6 rounded-xl border",
-                theme === 'dark' ? "bg-zinc-900 border-zinc-800" : "bg-white border-gray-200"
-              )}>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "w-10 h-10 rounded-lg flex items-center justify-center",
-                      theme === 'dark' ? "bg-zinc-800" : "bg-gray-100"
-                    )}>
-                      <Building2 className={cn(
-                        "h-5 w-5",
-                        theme === 'dark' ? "text-zinc-400" : "text-gray-500"
-                      )} />
-                    </div>
-                    <div>
-                      <div className={cn(
-                        "font-semibold",
-                        theme === 'dark' ? "text-white" : "text-gray-900"
-                      )}>Dashboard Preview</div>
-                      <div className={cn(
-                        "text-sm",
-                        theme === 'dark' ? "text-zinc-400" : "text-gray-500"
-                      )}>This is how your dashboard will look</div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <div className={cn(
-                      "px-3 py-1.5 rounded-lg text-sm font-medium",
-                      theme === 'dark' ? "bg-blue-600 text-white" : "bg-blue-500 text-white"
-                    )}>Primary Button</div>
-                    <div className={cn(
-                      "px-3 py-1.5 rounded-lg text-sm font-medium border",
-                      theme === 'dark' ? "border-zinc-700 text-zinc-300" : "border-gray-300 text-gray-700"
-                    )}>Secondary</div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -709,23 +667,48 @@ const OrganizationSettings: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">Settings</h2>
           <p className="text-muted-foreground">
             Manage your organization and preferences
           </p>
         </div>
-        <Button onClick={handleSaveOrganization} disabled={loading}>
+        <Button onClick={handleSaveOrganization} disabled={loading} className="w-full sm:w-auto">
           <Save className="mr-2 h-4 w-4" />
           {loading ? "Saving..." : "Save Changes"}
         </Button>
       </div>
 
+      {/* Mobile Navigation - Horizontal scroll tabs */}
+      <div className="lg:hidden">
+        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+          {settingsSections.map((section) => {
+            const Icon = section.icon;
+            const isActive = activeSection === section.id;
+            return (
+              <button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2.5 rounded-lg whitespace-nowrap transition-all shrink-0",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                <span className="font-medium text-sm">{section.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Settings Layout */}
       <div className="flex gap-6">
-        {/* Sidebar Navigation */}
-        <div className="w-64 shrink-0">
+        {/* Sidebar Navigation - Desktop only */}
+        <div className="hidden lg:block w-64 shrink-0">
           <nav className="space-y-1">
             {settingsSections.map((section) => {
               const Icon = section.icon;
