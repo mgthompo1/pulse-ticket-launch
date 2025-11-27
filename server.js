@@ -30,6 +30,102 @@ app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
 
+// Dynamic sitemap generation
+app.get('/sitemap.xml', async (req, res) => {
+  const supabaseUrl = SUPABASE_URL || 'https://yoxsewbpoqxscsutqlcb.supabase.co';
+  const supabaseKey = SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlveHNld2Jwb3F4c2NzdXRxbGNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0MzU4NDgsImV4cCI6MjA2ODAxMTg0OH0.CrW53mnoXiatBWePensSroh0yfmVALpcWxX2dXYde5k';
+
+  const baseUrl = 'https://www.ticketflo.org';
+  const today = new Date().toISOString().split('T')[0];
+
+  // Static pages
+  const staticPages = [
+    { loc: '/', priority: '1.0', changefreq: 'weekly' },
+    { loc: '/contact', priority: '0.8', changefreq: 'monthly' },
+    { loc: '/privacy-policy', priority: '0.6', changefreq: 'yearly' },
+    { loc: '/auth', priority: '0.7', changefreq: 'monthly' },
+    { loc: '/support', priority: '0.7', changefreq: 'monthly' },
+  ];
+
+  let dynamicUrls = [];
+
+  try {
+    // Fetch published events
+    const eventsResp = await fetch(
+      `${supabaseUrl}/rest/v1/events?status=eq.published&select=id,updated_at,event_date`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (eventsResp.ok) {
+      const events = await eventsResp.json();
+      dynamicUrls = dynamicUrls.concat(
+        events.map(event => ({
+          loc: `/widget/${event.id}`,
+          lastmod: event.updated_at ? event.updated_at.split('T')[0] : today,
+          priority: '0.9',
+          changefreq: 'daily'
+        }))
+      );
+    }
+
+    // Fetch active attractions
+    const attractionsResp = await fetch(
+      `${supabaseUrl}/rest/v1/attractions?status=eq.active&select=id,updated_at`,
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (attractionsResp.ok) {
+      const attractions = await attractionsResp.json();
+      dynamicUrls = dynamicUrls.concat(
+        attractions.map(attraction => ({
+          loc: `/attraction/${attraction.id}`,
+          lastmod: attraction.updated_at ? attraction.updated_at.split('T')[0] : today,
+          priority: '0.8',
+          changefreq: 'weekly'
+        }))
+      );
+    }
+  } catch (error) {
+    console.error('Error fetching dynamic sitemap data:', error);
+  }
+
+  // Generate XML
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+${staticPages.map(page => `  <url>
+    <loc>${baseUrl}${page.loc}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>${page.changefreq}</changefreq>
+    <priority>${page.priority}</priority>
+  </url>`).join('\n')}
+${dynamicUrls.map(page => `  <url>
+    <loc>${baseUrl}${page.loc}</loc>
+    <lastmod>${page.lastmod}</lastmod>
+    <changefreq>${page.changefreq}</changefreq>
+    <priority>${page.priority}</priority>
+  </url>`).join('\n')}
+</urlset>`;
+
+  res.set('Content-Type', 'application/xml');
+  res.set('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+  res.send(xml);
+});
+
 // Serve static files
 if (isProduction) {
   app.use('/', sirv(path.resolve(__dirname, 'dist/client'), {

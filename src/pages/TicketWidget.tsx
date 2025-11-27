@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { createClient } from '@supabase/supabase-js';
+import { trackEventView, trackBeginCheckout, trackPurchase } from "@/lib/analytics";
 import { StripePaymentForm } from "@/components/payment/StripePaymentForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -438,6 +439,9 @@ const TicketWidget = () => {
       console.log("Widget customization theme keys:", widgetCustomization?.theme ? Object.keys(widgetCustomization.theme) : 'none');
 
       setEventData(event as any);
+
+      // Track event view in GA4
+      trackEventView(event.id, event.name);
 
       // Get safe payment configuration from organization data
       if (event.organizations) {
@@ -2385,8 +2389,12 @@ const TicketWidget = () => {
                         )}
                       </div>
                        
-                      <Button 
+                      <Button
                         onClick={() => {
+                          // Track checkout start in GA4
+                          if (eventData) {
+                            trackBeginCheckout(eventData.id, eventData.name, getTotalAmount(), eventData.organizations?.currency || 'USD');
+                          }
                           if (paymentProvider === "windcave") {
                             handleCheckout();
                           } else {
@@ -2540,6 +2548,19 @@ const TicketWidget = () => {
                         currency={eventData?.organizations?.currency || 'USD'}
                         promoCodeId={promoCodeId}
                         onSuccess={async (orderId: string) => {
+                          // Track successful purchase in GA4
+                          if (eventData) {
+                            const ticketCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+                            trackPurchase(
+                              orderId,
+                              eventData.id,
+                              eventData.name,
+                              getTotalAmount(),
+                              eventData.organizations?.currency || 'USD',
+                              ticketCount
+                            );
+                          }
+
                           // Determine if this is a group sale (either from group URL or group discount code)
                           let finalGroupId = groupId;
                           let finalAllocationId = allocationId;

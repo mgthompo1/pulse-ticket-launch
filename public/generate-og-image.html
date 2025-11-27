@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate OG Image for TicketFlo</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    canvas { border: 1px solid #ddd; margin: 20px 0; display: block; }
+    button { background: #ff4d00; color: white; border: none; padding: 12px 24px; font-size: 16px; cursor: pointer; border-radius: 6px; }
+    button:hover { background: #e64500; }
+    h1 { color: #1a1a1a; }
+    p { color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>OG Image Generator</h1>
+    <p>This generates a 1200x630px social sharing image for TicketFlo.</p>
+    <canvas id="canvas" width="1200" height="630"></canvas>
+    <button onclick="downloadImage()">Download og-image.jpg</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Background gradient
+    const gradient = ctx.createLinearGradient(0, 0, 1200, 630);
+    gradient.addColorStop(0, '#1a1a1a');
+    gradient.addColorStop(1, '#2d2d2d');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 1200, 630);
+
+    // Orange accent bar at top
+    ctx.fillStyle = '#ff4d00';
+    ctx.fillRect(0, 0, 1200, 8);
+
+    // Draw ticket icon (scaled up from favicon)
+    ctx.save();
+    ctx.translate(100, 200);
+    ctx.scale(8, 8);
+
+    // Orange circle background for icon
+    ctx.fillStyle = '#ff4d00';
+    ctx.beginPath();
+    ctx.arc(16, 16, 20, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ticket shape
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.fillStyle = 'white';
+
+    ctx.beginPath();
+    ctx.moveTo(7, 11);
+    ctx.bezierCurveTo(7, 9.9, 7.9, 9, 9, 9);
+    ctx.lineTo(23, 9);
+    ctx.bezierCurveTo(24.1, 9, 25, 9.9, 25, 11);
+    ctx.lineTo(25, 14);
+    ctx.bezierCurveTo(23.9, 14, 23, 14.9, 23, 16);
+    ctx.bezierCurveTo(23, 17.1, 23.9, 18, 25, 18);
+    ctx.lineTo(25, 21);
+    ctx.bezierCurveTo(25, 22.1, 24.1, 23, 23, 23);
+    ctx.lineTo(9, 23);
+    ctx.bezierCurveTo(7.9, 23, 7, 22.1, 7, 21);
+    ctx.lineTo(7, 18);
+    ctx.bezierCurveTo(8.1, 18, 9, 17.1, 9, 16);
+    ctx.bezierCurveTo(9, 14.9, 8.1, 14, 7, 14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.restore();
+
+    // Main title
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 72px system-ui, -apple-system, sans-serif';
+    ctx.fillText('TicketFlo', 380, 280);
+
+    // Tagline
+    ctx.fillStyle = '#ff4d00';
+    ctx.font = '36px system-ui, -apple-system, sans-serif';
+    ctx.fillText('Professional Event Ticketing Platform', 380, 340);
+
+    // Features
+    ctx.fillStyle = '#888';
+    ctx.font = '24px system-ui, -apple-system, sans-serif';
+    ctx.fillText('Sell Tickets  |  Manage Events  |  Real-Time Analytics', 380, 420);
+
+    // Website URL
+    ctx.fillStyle = '#666';
+    ctx.font = '20px system-ui, -apple-system, sans-serif';
+    ctx.fillText('www.ticketflo.org', 380, 520);
+
+    function downloadImage() {
+      const link = document.createElement('a');
+      link.download = 'og-image.jpg';
+      link.href = canvas.toDataURL('image/jpeg', 0.95);
+      link.click();
+    }
+  </script>
+</body>
+</html>
