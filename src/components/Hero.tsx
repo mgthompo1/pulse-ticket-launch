@@ -88,42 +88,42 @@ export const Hero = () => {
               </div>
 
               {/* Dashboard content mockup */}
-              <div className="p-6 bg-zinc-950">
+              <div className="p-3 sm:p-6 bg-zinc-950">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-[#ff4d00]" />
-                    <div className="h-4 w-32 bg-zinc-800 rounded" />
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-[#ff4d00]" />
+                    <div className="h-3 sm:h-4 w-20 sm:w-32 bg-zinc-800 rounded" />
                   </div>
                   <div className="flex gap-2">
-                    <div className="h-9 w-24 bg-zinc-800 rounded-lg" />
-                    <div className="h-9 w-32 bg-[#ff4d00] rounded-lg" />
+                    <div className="hidden sm:block h-9 w-24 bg-zinc-800 rounded-lg" />
+                    <div className="h-7 sm:h-9 w-20 sm:w-32 bg-[#ff4d00] rounded-lg" />
                   </div>
                 </div>
 
                 {/* Stats cards */}
-                <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
                   {[
                     { label: 'Total Events', value: '12', icon: Ticket },
                     { label: 'Tickets Sold', value: '847', icon: UserCheck },
                     { label: 'Revenue', value: '$24,580', icon: BarChart3 },
                     { label: 'Customers', value: '623', icon: Users },
                   ].map((stat, i) => (
-                    <div key={i} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-gray-500 font-manrope">{stat.label}</span>
-                        <stat.icon className="h-4 w-4 text-[#ff4d00]" />
+                    <div key={i} className="p-2 sm:p-4 rounded-lg sm:rounded-xl bg-zinc-900 border border-zinc-800">
+                      <div className="flex items-center justify-between mb-1 sm:mb-2">
+                        <span className="text-[10px] sm:text-xs text-gray-500 font-manrope">{stat.label}</span>
+                        <stat.icon className="h-3 w-3 sm:h-4 sm:w-4 text-[#ff4d00]" />
                       </div>
-                      <div className="text-xl font-bold text-white font-dm-sans">{stat.value}</div>
+                      <div className="text-sm sm:text-xl font-bold text-white font-dm-sans">{stat.value}</div>
                     </div>
                   ))}
                 </div>
 
                 {/* Chart placeholder */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="col-span-2 h-40 rounded-xl bg-zinc-900 border border-zinc-800 p-4">
-                    <div className="h-3 w-24 bg-zinc-800 rounded mb-4" />
-                    <div className="flex items-end gap-2 h-24">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+                  <div className="sm:col-span-2 h-24 sm:h-40 rounded-lg sm:rounded-xl bg-zinc-900 border border-zinc-800 p-2 sm:p-4">
+                    <div className="h-2 sm:h-3 w-16 sm:w-24 bg-zinc-800 rounded mb-2 sm:mb-4" />
+                    <div className="flex items-end gap-1 sm:gap-2 h-14 sm:h-24">
                       {[40, 65, 45, 80, 55, 90, 70, 85, 60, 75, 95, 80].map((h, i) => (
                         <div
                           key={i}
@@ -133,7 +133,7 @@ export const Hero = () => {
                       ))}
                     </div>
                   </div>
-                  <div className="h-40 rounded-xl bg-zinc-900 border border-zinc-800 p-4">
+                  <div className="hidden sm:block h-40 rounded-xl bg-zinc-900 border border-zinc-800 p-4">
                     <div className="h-3 w-20 bg-zinc-800 rounded mb-4" />
                     <div className="space-y-3">
                       {['General Admission', 'VIP Pass', 'Early Bird'].map((label, i) => (
