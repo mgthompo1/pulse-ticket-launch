@@ -54,7 +54,7 @@ const PrivacyPolicy = () => {
                 </p>
 
                 <p className="mb-6">
-                  We provide ticketing services through the internet to businesses of all sizes who use our technology and services to sell tickets to consumers online. Ticketflo Inc. wants to be clear about our use of the Personal Data that is entrusted to us.
+                  We provide ticketing services through the internet to businesses of all sizes who use our technology and services to sell tickets to consumers online. TicketFlo Limited wants to be clear about our use of the Personal Data that is entrusted to us.
                 </p>
 
                 <p className="mb-6">
@@ -65,7 +65,7 @@ const PrivacyPolicy = () => {
               <section className="mb-8">
                 <h2 className="text-2xl font-semibold mb-4">Who We Are</h2>
                 <p className="mb-6">
-                  "Ticketflo, "we", "our" or "us" means Ticketflo inc which is the entity responsible for the collection and use of Personal Data under this Privacy Policy. This Privacy Policy applies to the collection and use of Personal Data on the purchase of tickets and items for events hosted in the United States, meaning that it could apply to residents of the United States or other countries who purchase tickets to events hosted in the United States.
+                  "TicketFlo", "we", "our" or "us" means TicketFlo Limited which is the entity responsible for the collection and use of Personal Data under this Privacy Policy. This Privacy Policy applies to the collection and use of Personal Data on the purchase of tickets and items for events hosted in New Zealand, meaning that it could apply to residents of New Zealand or other countries who purchase tickets to events hosted in New Zealand.
                 </p>
               </section>
 

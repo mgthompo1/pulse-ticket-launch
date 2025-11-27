@@ -16,12 +16,12 @@ import { Receipt, TrendingUp } from "lucide-react";
 const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white p-4 rounded-xl border-2 border-blue-500 shadow-lg">
-        <p className="font-manrope font-semibold text-sm text-slate-900 mb-2">{label}</p>
+      <div className="bg-white dark:bg-zinc-800 p-4 rounded-xl border-2 border-blue-500 shadow-lg">
+        <p className="font-manrope font-semibold text-sm text-slate-900 dark:text-white mb-2">{label}</p>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-blue-500" />
-          <p className="font-manrope text-sm text-slate-700">
-            Revenue: <span className="font-bold text-blue-600">${Number(payload[0].value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <p className="font-manrope text-sm text-slate-700 dark:text-zinc-300">
+            Revenue: <span className="font-bold text-blue-600 dark:text-blue-400">${Number(payload[0].value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </p>
         </div>
       </div>
@@ -61,10 +61,10 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
   return (
     <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 ${className}`}>
       {/* Monthly Revenue by Event Chart */}
-      <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
+      <Card className="border-slate-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
         <CardHeader className="pb-4">
-          <CardTitle className="font-manrope font-bold text-xl text-slate-900">Monthly Revenue by Event</CardTitle>
-          <CardDescription className="font-manrope text-base text-slate-600">Monthly revenue by event (last 30 days)</CardDescription>
+          <CardTitle className="font-manrope font-bold text-xl text-slate-900 dark:text-white">Monthly Revenue by Event</CardTitle>
+          <CardDescription className="font-manrope text-base text-slate-600 dark:text-zinc-400">Monthly revenue by event (last 30 days)</CardDescription>
         </CardHeader>
         <CardContent>
           <div style={{ width: '100%', height: 300 }}>
@@ -99,10 +99,10 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
       </Card>
 
       {/* Total Revenue by Event */}
-      <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
+      <Card className="border-slate-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
         <CardHeader className="pb-4">
-          <CardTitle className="font-manrope font-bold text-xl text-slate-900">Total Revenue by Event</CardTitle>
-          <CardDescription className="font-manrope text-base text-slate-600">All-time revenue for each event</CardDescription>
+          <CardTitle className="font-manrope font-bold text-xl text-slate-900 dark:text-white">Total Revenue by Event</CardTitle>
+          <CardDescription className="font-manrope text-base text-slate-600 dark:text-zinc-400">All-time revenue for each event</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -116,16 +116,16 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
               </div>
             ) : (
               eventTypeData.map((event, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border border-gray-200/60 rounded-lg hover:bg-gray-50/50 transition-colors">
+                <div key={index} className="flex items-center justify-between p-4 border border-gray-200/60 dark:border-zinc-700 rounded-lg hover:bg-gray-50/50 dark:hover:bg-zinc-800/50 transition-colors">
                   <div>
-                    <h4 className="font-manrope font-semibold text-base text-gray-900">{event.name}</h4>
-                    <p className="font-manrope text-sm text-gray-600 mt-0.5">Total Revenue</p>
+                    <h4 className="font-manrope font-semibold text-base text-gray-900 dark:text-white">{event.name}</h4>
+                    <p className="font-manrope text-sm text-gray-600 dark:text-zinc-400 mt-0.5">Total Revenue</p>
                   </div>
                   <div className="text-right">
                     <div className="font-bold text-lg" style={{ color: '#ff4d00' }}>
                       ${(event.value / 1000).toFixed(1)}k
                     </div>
-                    <div className="font-manrope text-sm text-gray-600">
+                    <div className="font-manrope text-sm text-gray-600 dark:text-zinc-400">
                       ${event.value.toLocaleString()}
                     </div>
                   </div>
@@ -137,10 +137,10 @@ export const AnalyticsCharts = ({ className, salesData, eventTypeData, revenueDa
       </Card>
 
       {/* Weekly Revenue by Event */}
-      <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
+      <Card className="border-slate-200 dark:border-zinc-700 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
         <CardHeader className="pb-4">
-          <CardTitle className="font-manrope font-bold text-xl text-slate-900">Weekly Revenue by Event</CardTitle>
-          <CardDescription className="font-manrope text-base text-slate-600">Revenue by event for the last 7 days</CardDescription>
+          <CardTitle className="font-manrope font-bold text-xl text-slate-900 dark:text-white">Weekly Revenue by Event</CardTitle>
+          <CardDescription className="font-manrope text-base text-slate-600 dark:text-zinc-400">Revenue by event for the last 7 days</CardDescription>
         </CardHeader>
         <CardContent>
           <div style={{ width: '100%', height: 300 }}>

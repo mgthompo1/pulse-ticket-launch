@@ -1,4 +1,4 @@
-import { Ticket, Twitter, Facebook, Instagram, Linkedin, Mail, Phone } from "lucide-react";
+import { Ticket, Twitter, Facebook, Instagram, Linkedin, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
@@ -38,11 +38,7 @@ export const Footer = () => {
                 <span>hello@ticketflo.com</span>
               </div>
               <div className="flex items-center space-x-2">
-                <Phone className="h-4 w-4" />
-                <span>+1 (555) 123-4567</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span>San Francisco, CA</span>
+                <span>130 Saint Georges Bay Road, Parnell, Auckland 1052</span>
               </div>
             </div>
 

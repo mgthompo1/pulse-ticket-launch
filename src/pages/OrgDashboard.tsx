@@ -962,7 +962,7 @@ const OrgDashboard = () => {
     <SidebarProvider>
       <div className="h-screen bg-background flex flex-col w-full" style={{ width: '100%', maxWidth: 'none' }}>
         {/* Full-width Header with backdrop blur */}
-        <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-slate-200 flex-shrink-0 h-[52px]" style={{ width: '100%', maxWidth: 'none' }}>
+        <header className="sticky top-0 z-40 bg-background/80 backdrop-blur border-b border-border flex-shrink-0 h-[52px]" style={{ width: '100%', maxWidth: 'none' }}>
           <div className="px-4 h-full w-full flex items-center justify-between" style={{ width: '100%', maxWidth: 'none' }}>
             {/* Left side - Organization switcher */}
             <div className="flex items-center gap-3">
@@ -983,11 +983,11 @@ const OrgDashboard = () => {
 
             {/* Right side - Actions */}
             <div className="flex items-center gap-2">
-              {/* Create New Event CTA - Black button */}
+              {/* Create New Event CTA - Black in light mode, blue in dark mode */}
               {isEventsMode() && (
                 <Button
                   onClick={() => setActiveTab("events")}
-                  className="bg-black text-white hover:bg-black/90 font-manrope font-semibold text-sm px-3 sm:px-4 py-2 h-9"
+                  className="bg-black dark:bg-primary text-white dark:text-primary-foreground hover:bg-black/90 dark:hover:bg-primary/90 font-manrope font-semibold text-sm px-3 sm:px-4 py-2 h-9"
                 >
                   <Calendar className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Create New Event</span>
@@ -997,14 +997,14 @@ const OrgDashboard = () => {
 
               <button
                 onClick={() => setShowHelp(true)}
-                className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 font-manrope"
+                className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-border hover:bg-muted font-manrope text-foreground"
               >
-                <HelpCircle className="h-4 w-4 text-slate-500" />
+                <HelpCircle className="h-4 w-4 text-muted-foreground" />
                 <span className="hidden md:inline">Help</span>
               </button>
               <button
                 onClick={() => navigate("/")}
-                className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 font-manrope"
+                className="inline-flex items-center gap-2 text-sm px-3 py-2 rounded-lg border border-border hover:bg-muted font-manrope text-foreground"
               >
                 Exit
               </button>
@@ -1026,7 +1026,7 @@ const OrgDashboard = () => {
           {/* Main content */}
           <div className="flex-1 flex flex-col min-w-0">
           
-          <main className="flex-1 min-w-0 flex-shrink-0 p-4 md:p-6 overflow-y-auto overflow-x-hidden bg-slate-50">
+          <main className="flex-1 min-w-0 flex-shrink-0 p-4 md:p-6 overflow-y-auto overflow-x-hidden bg-muted/30">
             <div className="w-full" style={{ maxWidth: 'none', margin: '0', padding: '0', width: '100%', minWidth: '100%' }}>
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8" style={{ width: '100%', maxWidth: 'none', minWidth: '100%' }}>
                 <TabsContent value="overview" className="space-y-6">
@@ -1053,31 +1053,31 @@ const OrgDashboard = () => {
                         </CardHeader>
                         <CardContent>
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 w-full">
-                            <Card className="gradient-card hover-scale animate-in fade-in-0 border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
+                            <Card className="gradient-card hover-scale animate-in fade-in-0 border-border shadow-sm hover:shadow-md transition-shadow rounded-2xl">
                               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                                <CardTitle className="font-manrope font-semibold text-sm text-slate-700">Total Events</CardTitle>
+                                <CardTitle className="font-manrope font-semibold text-sm text-foreground">Total Events</CardTitle>
                                 <Calendar className="h-5 w-5 text-blue-600" />
                               </CardHeader>
                               <CardContent>
                                 <div>
-                                  <div className="font-manrope font-bold text-3xl text-slate-900 tabular-nums mb-1">{events.length}</div>
-                                  <p className="font-manrope text-xs text-slate-500">Active events</p>
+                                  <div className="font-manrope font-bold text-3xl text-foreground tabular-nums mb-1">{events.length}</div>
+                                  <p className="font-manrope text-xs text-muted-foreground">Active events</p>
                                 </div>
                               </CardContent>
                             </Card>
 
                             {canAccessAnalytics() && (
                               <>
-                                <Card className="gradient-card hover-scale animate-in fade-in-0 border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '100ms' }}>
+                                <Card className="gradient-card hover-scale animate-in fade-in-0 border-border shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '100ms' }}>
                                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                                    <CardTitle className="font-manrope font-semibold text-sm text-slate-700">Tickets Sold</CardTitle>
+                                    <CardTitle className="font-manrope font-semibold text-sm text-foreground">Tickets Sold</CardTitle>
                                     <Ticket className="h-5 w-5 text-blue-600" />
                                   </CardHeader>
                                   <CardContent>
                                     <div className="flex items-start justify-between">
                                       <div>
-                                        <div className="font-manrope font-bold text-3xl text-slate-900 tabular-nums mb-1">{analytics.totalOrders}</div>
-                                        <p className="font-manrope text-xs text-slate-500">Total orders</p>
+                                        <div className="font-manrope font-bold text-3xl text-foreground tabular-nums mb-1">{analytics.totalOrders}</div>
+                                        <p className="font-manrope text-xs text-muted-foreground">Total orders</p>
                                         <TrendIndicator value={analytics.trends.orders} period={`vs prev ${timeRange}`} />
                                       </div>
                                       <MiniSparkline data={[{value: 45}, {value: 52}, {value: 48}, {value: 65}, {value: 58}, {value: 70}, {value: analytics.totalOrders}]} color="#3b82f6" />
@@ -1085,16 +1085,16 @@ const OrgDashboard = () => {
                                   </CardContent>
                                 </Card>
 
-                                <Card className="gradient-card hover-scale animate-in fade-in-0 border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '200ms' }}>
+                                <Card className="gradient-card hover-scale animate-in fade-in-0 border-border shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '200ms' }}>
                                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                                    <CardTitle className="font-manrope font-semibold text-sm text-slate-700">Revenue</CardTitle>
+                                    <CardTitle className="font-manrope font-semibold text-sm text-foreground">Revenue</CardTitle>
                                     <DollarSign className="h-5 w-5 text-green-600" />
                                   </CardHeader>
                                   <CardContent>
                                     <div className="flex items-start justify-between">
                                       <div>
-                                        <div className="font-manrope font-bold text-3xl text-slate-900 tabular-nums mb-1">${analytics.totalRevenue.toFixed(2)}</div>
-                                        <p className="font-manrope text-xs text-slate-500">Total revenue</p>
+                                        <div className="font-manrope font-bold text-3xl text-foreground tabular-nums mb-1">${analytics.totalRevenue.toFixed(2)}</div>
+                                        <p className="font-manrope text-xs text-muted-foreground">Total revenue</p>
                                         <TrendIndicator value={analytics.trends.revenue} period={`vs prev ${timeRange}`} />
                                       </div>
                                       <MiniSparkline data={[{value: analytics.totalRevenue * 0.7}, {value: analytics.totalRevenue * 0.75}, {value: analytics.totalRevenue * 0.8}, {value: analytics.totalRevenue * 0.85}, {value: analytics.totalRevenue * 0.9}, {value: analytics.totalRevenue * 0.95}, {value: analytics.totalRevenue}]} color="#10b981" />
@@ -1102,15 +1102,15 @@ const OrgDashboard = () => {
                                   </CardContent>
                                 </Card>
 
-                                <Card className="gradient-card hover-scale animate-in fade-in-0 border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '300ms' }}>
+                                <Card className="gradient-card hover-scale animate-in fade-in-0 border-border shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '300ms' }}>
                                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                                    <CardTitle className="font-manrope font-semibold text-sm text-slate-700">Platform Fees</CardTitle>
-                                    <Users className="h-5 w-5 text-slate-600" />
+                                    <CardTitle className="font-manrope font-semibold text-sm text-foreground">Platform Fees</CardTitle>
+                                    <Users className="h-5 w-5 text-muted-foreground" />
                                   </CardHeader>
                                   <CardContent>
                                     <div>
-                                      <div className="font-manrope font-bold text-3xl text-slate-900 tabular-nums mb-1">${analytics.estimatedPlatformFees.toFixed(2)}</div>
-                                      <p className="font-manrope text-xs text-slate-500">Estimated fees</p>
+                                      <div className="font-manrope font-bold text-3xl text-foreground tabular-nums mb-1">${analytics.estimatedPlatformFees.toFixed(2)}</div>
+                                      <p className="font-manrope text-xs text-muted-foreground">Estimated fees</p>
                                     </div>
                                   </CardContent>
                                 </Card>
@@ -1161,31 +1161,31 @@ const OrgDashboard = () => {
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 w-full">
-                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
+                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-border shadow-sm hover:shadow-md transition-shadow rounded-2xl">
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                        <CardTitle className="font-manrope font-semibold text-sm text-slate-700">Total Attractions</CardTitle>
+                        <CardTitle className="font-manrope font-semibold text-sm text-foreground">Total Attractions</CardTitle>
                         <Calendar className="h-5 w-5 text-blue-600" />
                       </CardHeader>
                       <CardContent>
                         <div>
-                          <div className="font-manrope font-bold text-3xl text-slate-900 tabular-nums mb-1">{attractions.length}</div>
-                          <p className="font-manrope text-xs text-slate-500">Active attractions</p>
+                          <div className="font-manrope font-bold text-3xl text-foreground tabular-nums mb-1">{attractions.length}</div>
+                          <p className="font-manrope text-xs text-muted-foreground">Active attractions</p>
                         </div>
                       </CardContent>
                     </Card>
 
                     {canAccessAnalytics() && (
                       <>
-                        <Card className="gradient-card hover-scale animate-in fade-in-0 border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '100ms' }}>
+                        <Card className="gradient-card hover-scale animate-in fade-in-0 border-border shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '100ms' }}>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                        <CardTitle className="font-manrope font-semibold text-sm text-slate-700">Bookings</CardTitle>
+                        <CardTitle className="font-manrope font-semibold text-sm text-foreground">Bookings</CardTitle>
                         <Ticket className="h-5 w-5 text-blue-600" />
                       </CardHeader>
                       <CardContent>
                         <div className="flex items-start justify-between">
                           <div>
-                            <div className="font-manrope font-bold text-3xl text-slate-900 tabular-nums mb-1">{analytics.totalOrders}</div>
-                            <p className="font-manrope text-xs text-slate-500">Total bookings</p>
+                            <div className="font-manrope font-bold text-3xl text-foreground tabular-nums mb-1">{analytics.totalOrders}</div>
+                            <p className="font-manrope text-xs text-muted-foreground">Total bookings</p>
                             <TrendIndicator value={analytics.trends.orders} period={`vs prev ${timeRange}`} />
                           </div>
                           <MiniSparkline data={[{value: 30}, {value: 35}, {value: 32}, {value: 42}, {value: 38}, {value: 45}, {value: analytics.totalOrders}]} color="#3b82f6" />
@@ -1193,16 +1193,16 @@ const OrgDashboard = () => {
                       </CardContent>
                     </Card>
 
-                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '200ms' }}>
+                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-border shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '200ms' }}>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                        <CardTitle className="font-manrope font-semibold text-sm text-slate-700">Revenue</CardTitle>
+                        <CardTitle className="font-manrope font-semibold text-sm text-foreground">Revenue</CardTitle>
                         <DollarSign className="h-5 w-5 text-green-600" />
                       </CardHeader>
                       <CardContent>
                         <div className="flex items-start justify-between">
                           <div>
-                            <div className="font-manrope font-bold text-3xl text-slate-900 tabular-nums mb-1">${analytics.totalRevenue.toFixed(2)}</div>
-                            <p className="font-manrope text-xs text-slate-500">Total revenue</p>
+                            <div className="font-manrope font-bold text-3xl text-foreground tabular-nums mb-1">${analytics.totalRevenue.toFixed(2)}</div>
+                            <p className="font-manrope text-xs text-muted-foreground">Total revenue</p>
                             <TrendIndicator value={analytics.trends.revenue} period={`vs prev ${timeRange}`} />
                           </div>
                           <MiniSparkline data={[{value: analytics.totalRevenue * 0.65}, {value: analytics.totalRevenue * 0.72}, {value: analytics.totalRevenue * 0.78}, {value: analytics.totalRevenue * 0.85}, {value: analytics.totalRevenue * 0.91}, {value: analytics.totalRevenue * 0.96}, {value: analytics.totalRevenue}]} color="#10b981" />
@@ -1210,15 +1210,15 @@ const OrgDashboard = () => {
                       </CardContent>
                     </Card>
 
-                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '300ms' }}>
+                    <Card className="gradient-card hover-scale animate-in fade-in-0 border-border shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '300ms' }}>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                        <CardTitle className="font-manrope font-semibold text-sm text-slate-700">Platform Fees</CardTitle>
-                        <Users className="h-5 w-5 text-slate-600" />
+                        <CardTitle className="font-manrope font-semibold text-sm text-foreground">Platform Fees</CardTitle>
+                        <Users className="h-5 w-5 text-muted-foreground" />
                       </CardHeader>
                       <CardContent>
                         <div>
-                          <div className="font-manrope font-bold text-3xl text-slate-900 tabular-nums mb-1">${analytics.estimatedPlatformFees.toFixed(2)}</div>
-                          <p className="font-manrope text-xs text-slate-500">Estimated fees</p>
+                          <div className="font-manrope font-bold text-3xl text-foreground tabular-nums mb-1">${analytics.estimatedPlatformFees.toFixed(2)}</div>
+                          <p className="font-manrope text-xs text-muted-foreground">Estimated fees</p>
                         </div>
                       </CardContent>
                     </Card>
@@ -1229,26 +1229,26 @@ const OrgDashboard = () => {
 
 
 
-                  <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
+                  <Card className="border-border shadow-sm hover:shadow-md transition-shadow rounded-2xl">
                     <CardHeader className="pb-3">
-                      <CardTitle className="font-manrope font-semibold text-lg text-slate-900">Recent Events</CardTitle>
-                      <CardDescription className="font-manrope text-sm text-slate-600">Your latest event performance</CardDescription>
+                      <CardTitle className="font-manrope font-semibold text-lg text-foreground">Recent Events</CardTitle>
+                      <CardDescription className="font-manrope text-sm text-muted-foreground">Your latest event performance</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
                         {events.map((event) => (
-                          <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border border-slate-200 rounded-xl hover:bg-slate-50/50 transition-colors gap-3">
+                          <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border border-border rounded-xl hover:bg-muted/50 transition-colors gap-3">
                             <div className="space-y-1 flex-1">
-                              <h3 className="font-manrope font-medium text-sm text-slate-900">{event.name}</h3>
-                              <p className="font-manrope text-xs text-slate-600">
+                              <h3 className="font-manrope font-medium text-sm text-foreground">{event.name}</h3>
+                              <p className="font-manrope text-xs text-muted-foreground">
                                 {formatEventDateRange(event.event_date, event.event_end_date, { dateStyle: 'medium' })}
                                 {event.venue ? ` • ${event.venue}` : ''}
                               </p>
                             </div>
                             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
                               <div className="text-left sm:text-right">
-                                <p className="font-manrope font-medium text-xs text-slate-900 tabular-nums">{event.tickets_sold}/{event.capacity} tickets</p>
-                                <p className="font-manrope text-xs text-slate-600 tabular-nums">${event.revenue}</p>
+                                <p className="font-manrope font-medium text-xs text-foreground tabular-nums">{event.tickets_sold}/{event.capacity} tickets</p>
+                                <p className="font-manrope text-xs text-muted-foreground tabular-nums">${event.revenue}</p>
                               </div>
                               <Badge variant={event.status === "published" ? "default" : "secondary"} className="w-fit font-manrope font-medium text-xs">
                                 {event.status}
@@ -1293,10 +1293,10 @@ const OrgDashboard = () => {
                 {isEventsMode() ? (
                   <TabsContent value="events" className="space-y-6">
                     {/* Events List - Now at the top */}
-                    <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
+                    <Card className="border-border shadow-sm hover:shadow-md transition-shadow rounded-2xl">
                       <CardHeader className="pb-3">
-                        <CardTitle className="font-manrope font-semibold text-lg text-slate-900">Your Events</CardTitle>
-                        <CardDescription className="font-manrope text-sm text-slate-600">Manage your existing events</CardDescription>
+                        <CardTitle className="font-manrope font-semibold text-lg text-foreground">Your Events</CardTitle>
+                        <CardDescription className="font-manrope text-sm text-muted-foreground">Manage your existing events</CardDescription>
                       </CardHeader>
                       <CardContent>
                         {events.length === 0 ? (
@@ -1304,10 +1304,10 @@ const OrgDashboard = () => {
                         ) : (
                           <div className="space-y-3 w-full">
                             {events.map((event) => (
-                              <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-slate-200 rounded-xl hover:bg-slate-50/50 transition-colors gap-4 w-full" style={{ width: '100%' }}>
+                              <div key={event.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-border rounded-xl hover:bg-muted/50 transition-colors gap-4 w-full" style={{ width: '100%' }}>
                                 <div className="space-y-2 flex-1">
-                                  <h3 className="font-manrope font-semibold text-base text-slate-900">{event.name}</h3>
-                                  <p className="font-manrope text-sm text-slate-600">
+                                  <h3 className="font-manrope font-semibold text-base text-foreground">{event.name}</h3>
+                                  <p className="font-manrope text-sm text-muted-foreground">
                                     {formatEventDateRange(event.event_date, event.event_end_date, { dateStyle: 'medium' })}
                                     {event.venue ? ` • ${event.venue}` : ''}
                                   </p>
@@ -1359,15 +1359,15 @@ const OrgDashboard = () => {
                       </CardContent>
                     </Card>
 
-                    <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow rounded-2xl">
+                    <Card className="border-border shadow-sm hover:shadow-md transition-shadow rounded-2xl">
                       <CardHeader className="pb-3">
-                        <CardTitle className="font-manrope font-semibold text-lg text-slate-900">Create New Event</CardTitle>
-                        <CardDescription className="font-manrope text-sm text-slate-600">Start selling tickets for your next event</CardDescription>
+                        <CardTitle className="font-manrope font-semibold text-lg text-foreground">Create New Event</CardTitle>
+                        <CardDescription className="font-manrope text-sm text-muted-foreground">Start selling tickets for your next event</CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 w-full">
                           <div className="space-y-2">
-                            <Label htmlFor="event-name" className="font-manrope font-medium text-sm text-slate-700">Event Name *</Label>
+                            <Label htmlFor="event-name" className="font-manrope font-medium text-sm text-foreground">Event Name *</Label>
                             <Input
                               id="event-name"
                               value={eventForm.name}
@@ -1395,7 +1395,7 @@ const OrgDashboard = () => {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="event-venue" className="font-manrope font-medium text-sm text-slate-700">Venue *</Label>
+                            <Label htmlFor="event-venue" className="font-manrope font-medium text-sm text-foreground">Venue *</Label>
                             <Input
                               id="event-venue"
                               value={eventForm.venue}
@@ -1405,7 +1405,7 @@ const OrgDashboard = () => {
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="event-capacity" className="font-manrope font-medium text-sm text-slate-700">Capacity *</Label>
+                            <Label htmlFor="event-capacity" className="font-manrope font-medium text-sm text-foreground">Capacity *</Label>
                             <Input
                               id="event-capacity"
                               type="number"
@@ -1417,7 +1417,7 @@ const OrgDashboard = () => {
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="event-description" className="font-manrope font-medium text-sm text-slate-700">Description</Label>
+                          <Label htmlFor="event-description" className="font-manrope font-medium text-sm text-foreground">Description</Label>
                           <Textarea
                             id="event-description"
                             value={eventForm.description}
@@ -1563,7 +1563,7 @@ const OrgDashboard = () => {
                             <CardHeader>
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-12 h-12 rounded-lg border border-gray-200 bg-white flex items-center justify-center p-1">
+                                  <div className="w-12 h-12 rounded-lg border border-border bg-background flex items-center justify-center p-1">
                                     <img src="/xero-logo.png" alt="Xero" className="w-full h-full object-contain" />
                                   </div>
                                   <div>
@@ -1627,7 +1627,7 @@ const OrgDashboard = () => {
                             <CardHeader>
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-12 h-12 rounded-lg border border-gray-200 bg-white flex items-center justify-center p-1">
+                                  <div className="w-12 h-12 rounded-lg border border-border bg-background flex items-center justify-center p-1">
                                     <img src="/zapier-logo.svg" alt="Zapier" className="w-full h-full object-contain" />
                                   </div>
                                   <div>
@@ -1658,7 +1658,7 @@ const OrgDashboard = () => {
                             <CardHeader>
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-12 h-12 rounded-lg border border-gray-200 bg-white flex items-center justify-center p-1">
+                                  <div className="w-12 h-12 rounded-lg border border-border bg-background flex items-center justify-center p-1">
                                     <img src="/quickbooks-logo.png" alt="QuickBooks" className="w-full h-full object-contain" />
                                   </div>
                                   <div>
@@ -1689,7 +1689,7 @@ const OrgDashboard = () => {
                             <CardHeader>
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-12 h-12 rounded-lg border border-gray-200 bg-white flex items-center justify-center p-1">
+                                  <div className="w-12 h-12 rounded-lg border border-border bg-background flex items-center justify-center p-1">
                                     <img src="/netsuite-logo.png" alt="NetSuite" className="w-full h-full object-contain" />
                                   </div>
                                   <div>
@@ -1720,7 +1720,7 @@ const OrgDashboard = () => {
                             <CardHeader>
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-12 h-12 rounded-lg border border-gray-200 bg-white flex items-center justify-center p-1">
+                                  <div className="w-12 h-12 rounded-lg border border-border bg-background flex items-center justify-center p-1">
                                     <img src="/windcave-logo.png" alt="Windcave" className="w-full h-full object-contain" />
                                   </div>
                                   <div>

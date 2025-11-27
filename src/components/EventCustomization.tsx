@@ -853,7 +853,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       )}
 
       <Tabs defaultValue="widget" className="space-y-4">
-        <TabsList className="flex-wrap md:flex-nowrap overflow-x-auto bg-white">
+        <TabsList className="flex-wrap md:flex-nowrap overflow-x-auto bg-background">
           <TabsTrigger value="widget" className="flex items-center gap-2">
             <Monitor className="h-4 w-4" />
             Widget
@@ -1729,7 +1729,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
               {/* Desktop Preview */}
               {previewMode === 'desktop' && (
-                <div className="border rounded-lg overflow-hidden bg-white" style={{ height: "800px" }}>
+                <div className="border rounded-lg overflow-hidden bg-background" style={{ height: "800px" }}>
                   <iframe
                     src={`/widget/${eventId}`}
                     className="w-full h-full"
@@ -1750,7 +1750,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-40 h-7 bg-gray-900 rounded-b-3xl z-10"></div>
 
                     {/* Phone screen */}
-                    <div className="relative h-full w-full bg-white rounded-[2.5rem] overflow-hidden">
+                    <div className="relative h-full w-full bg-background rounded-[2.5rem] overflow-hidden">
                       <iframe
                         src={`/widget/${eventId}`}
                         className="w-full h-full"

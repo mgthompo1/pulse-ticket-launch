@@ -4,15 +4,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganizations } from "@/hooks/useOrganizations";
-import { Building2, Mail, Globe, Phone, MapPin, Upload, Save, Settings, Calendar, MapPin as Attraction, Users, UserCog, Calculator, CreditCard } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
+import {
+  Building2, Mail, Globe, Phone, MapPin, Upload, Save, Settings,
+  Calendar, MapPin as Attraction, Users, UserCog, Calculator,
+  CreditCard, Palette, Moon, Sun, Monitor, ChevronRight
+} from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { TaxSettings } from "@/components/TaxSettings";
+import { cn } from "@/lib/utils";
 
 interface OrganizationData {
   id: string;
@@ -32,10 +36,21 @@ interface OrganizationData {
   stripe_account_id: string | null;
 }
 
+type SettingsSection = 'organization' | 'system' | 'appearance' | 'tax';
+
+const settingsSections = [
+  { id: 'organization' as const, label: 'Organization', icon: Building2, description: 'Company profile & details' },
+  { id: 'system' as const, label: 'System', icon: Settings, description: 'Mode & feature toggles' },
+  { id: 'appearance' as const, label: 'Appearance', icon: Palette, description: 'Theme & display' },
+  { id: 'tax' as const, label: 'Tax Settings', icon: Calculator, description: 'Tax configuration' },
+];
+
 const OrganizationSettings: React.FC = () => {
   const { toast } = useToast();
-  const { currentOrganization, loading: orgLoading, reloadOrganizations } = useOrganizations();
+  const { currentOrganization, reloadOrganizations } = useOrganizations();
+  const { theme, setTheme } = useTheme();
 
+  const [activeSection, setActiveSection] = useState<SettingsSection>('organization');
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [organizationData, setOrganizationData] = useState<OrganizationData>({
@@ -58,7 +73,6 @@ const OrganizationSettings: React.FC = () => {
 
   useEffect(() => {
     if (currentOrganization) {
-      console.log("⚙️ OrganizationSettings: Loading settings for organization:", currentOrganization.name, currentOrganization.id);
       loadOrganization();
     }
   }, [currentOrganization]);
@@ -67,7 +81,6 @@ const OrganizationSettings: React.FC = () => {
     if (!currentOrganization) return;
 
     try {
-      // Load full organization data for the current organization
       const { data: orgData, error } = await supabase
         .from("organizations")
         .select("*")
@@ -110,18 +123,10 @@ const OrganizationSettings: React.FC = () => {
     }));
   };
 
-  const handleSystemTypeChange = (value: string) => {
-    setOrganizationData(prev => ({
-      ...prev,
-      system_type: value
-    }));
-  };
-
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !organizationData.id) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       toast({
         title: "Error",
@@ -131,7 +136,6 @@ const OrganizationSettings: React.FC = () => {
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "Error",
@@ -147,38 +151,26 @@ const OrganizationSettings: React.FC = () => {
       const fileName = `${organizationData.id}-logo.${fileExt}`;
       const filePath = `org-logos/${fileName}`;
 
-      // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('event-logos')
-        .upload(filePath, file, {
-          upsert: true
-        });
+        .upload(filePath, file, { upsert: true });
 
-      if (uploadError) {
-        throw uploadError;
-      }
+      if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data } = supabase.storage
         .from('event-logos')
         .getPublicUrl(filePath);
 
       const logoUrl = data.publicUrl;
 
-      // Update organization with new logo URL
       const { error: updateError } = await supabase
         .from("organizations")
         .update({ logo_url: logoUrl })
         .eq("id", organizationData.id);
 
-      if (updateError) {
-        throw updateError;
-      }
+      if (updateError) throw updateError;
 
-      setOrganizationData(prev => ({
-        ...prev,
-        logo_url: logoUrl
-      }));
+      setOrganizationData(prev => ({ ...prev, logo_url: logoUrl }));
 
       toast({
         title: "Success",
@@ -201,10 +193,7 @@ const OrganizationSettings: React.FC = () => {
     if (!organizationData.id) return;
 
     setLoading(true);
-    
-    // Store the current system_type to check if it changed
-    
-    
+
     try {
       const { error } = await supabase
         .from("organizations")
@@ -224,20 +213,15 @@ const OrganizationSettings: React.FC = () => {
         })
         .eq("id", organizationData.id);
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       toast({
         title: "Success",
-        description: "Organization settings saved successfully!"
+        description: "Settings saved successfully!"
       });
 
-      // Reload organizations to update the switcher and current organization state
       await reloadOrganizations();
 
-      // If system_type or feature flags changed, refresh the page to update the UI
-      // We need to refresh because the OrgDashboard component needs to reload with the new system type
       setTimeout(() => {
         window.location.reload();
       }, 1000);
@@ -246,7 +230,7 @@ const OrganizationSettings: React.FC = () => {
       console.error("Error saving organization:", error);
       toast({
         title: "Error",
-        description: "Failed to save organization settings",
+        description: "Failed to save settings",
         variant: "destructive"
       });
     } finally {
@@ -254,109 +238,77 @@ const OrganizationSettings: React.FC = () => {
     }
   };
 
-  return (
+  const renderOrganizationSection = () => (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Organization Settings</h2>
-          <p className="text-muted-foreground">
-            Manage your organization's profile and system configuration
-          </p>
-        </div>
-        <Button onClick={handleSaveOrganization} disabled={loading}>
-          <Save className="mr-2 h-4 w-4" />
-          {loading ? "Saving..." : "Save Changes"}
-        </Button>
-      </div>
-
-      <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="general" className="flex items-center gap-2">
-            <Building2 className="h-4 w-4" />
-            General Settings
-          </TabsTrigger>
-          <TabsTrigger value="system" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            System Configuration
-          </TabsTrigger>
-          <TabsTrigger value="tax" className="flex items-center gap-2">
-            <Calculator className="h-4 w-4" />
-            Tax Settings
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="general" className="space-y-6">
-
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Company Logo */}
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Company Logo
-            </CardTitle>
-            <CardDescription>
-              Upload your company logo. This will appear on tickets.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              {organizationData.logo_url && (
-                <div className="w-20 h-20 border rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-                  <img
-                    src={organizationData.logo_url}
-                    alt="Organization logo"
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-              )}
-              <div className="flex-1">
-                <Label htmlFor="logo-upload" className="cursor-pointer">
-                  <div className="flex items-center gap-2 p-3 border border-dashed rounded-lg hover:bg-muted/50 transition-colors">
-                    <Upload className="h-4 w-4" />
-                    <span>{uploading ? "Uploading..." : "Upload Logo"}</span>
-                  </div>
-                </Label>
-                <input
-                  id="logo-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoUpload}
-                  disabled={uploading}
-                  className="hidden"
+      {/* Logo Upload */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg">Company Logo</CardTitle>
+          <CardDescription>
+            Your logo appears on tickets and customer communications
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-6">
+            <div className={cn(
+              "w-24 h-24 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden",
+              "bg-muted/50 transition-colors",
+              organizationData.logo_url ? "border-border" : "border-muted-foreground/25"
+            )}>
+              {organizationData.logo_url ? (
+                <img
+                  src={organizationData.logo_url}
+                  alt="Organization logo"
+                  className="w-full h-full object-contain"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  PNG, JPG or SVG. Max 5MB.
-                </p>
-              </div>
+              ) : (
+                <Building2 className="h-8 w-8 text-muted-foreground/50" />
+              )}
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex-1">
+              <Label htmlFor="logo-upload" className="cursor-pointer">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border bg-background hover:bg-muted transition-colors">
+                  <Upload className="h-4 w-4" />
+                  <span>{uploading ? "Uploading..." : "Upload Logo"}</span>
+                </div>
+              </Label>
+              <input
+                id="logo-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleLogoUpload}
+                disabled={uploading}
+                className="hidden"
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                PNG, JPG or SVG. Max 5MB.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Basic Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Basic Information
-            </CardTitle>
-            <CardDescription>
-              Your company's basic details
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      {/* Basic Information */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg">Basic Information</CardTitle>
+          <CardDescription>
+            Your company's contact details
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="company-name">Company Name *</Label>
+              <Label htmlFor="company-name">Company Name</Label>
               <Input
                 id="company-name"
                 value={organizationData.name}
                 onChange={(e) => handleInputChange("name", e.target.value)}
                 placeholder="Your Company Name"
-                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="company-email">Email Address *</Label>
+              <Label htmlFor="company-email">Email Address</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -366,7 +318,6 @@ const OrganizationSettings: React.FC = () => {
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   placeholder="contact@company.com"
                   className="pl-10"
-                  required
                 />
               </div>
             </div>
@@ -398,50 +349,47 @@ const OrganizationSettings: React.FC = () => {
                 />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Address Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
-              Address
-            </CardTitle>
-            <CardDescription>
-              Your company's physical address
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      {/* Address */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg">Address</CardTitle>
+          <CardDescription>
+            Your company's physical location
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="address">Street Address</Label>
+            <Textarea
+              id="address"
+              value={organizationData.address || ""}
+              onChange={(e) => handleInputChange("address", e.target.value)}
+              placeholder="123 Main Street"
+              rows={2}
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
-              <Label htmlFor="address">Street Address</Label>
-              <Textarea
-                id="address"
-                value={organizationData.address || ""}
-                onChange={(e) => handleInputChange("address", e.target.value)}
-                placeholder="123 Main Street"
-                rows={2}
+              <Label htmlFor="city">City</Label>
+              <Input
+                id="city"
+                value={organizationData.city || ""}
+                onChange={(e) => handleInputChange("city", e.target.value)}
+                placeholder="Auckland"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  value={organizationData.city || ""}
-                  onChange={(e) => handleInputChange("city", e.target.value)}
-                  placeholder="Auckland"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="postal-code">Postal Code</Label>
-                <Input
-                  id="postal-code"
-                  value={organizationData.postal_code || ""}
-                  onChange={(e) => handleInputChange("postal_code", e.target.value)}
-                  placeholder="1010"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="postal-code">Postal Code</Label>
+              <Input
+                id="postal-code"
+                value={organizationData.postal_code || ""}
+                onChange={(e) => handleInputChange("postal_code", e.target.value)}
+                placeholder="1010"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="country">Country</Label>
@@ -452,177 +400,371 @@ const OrganizationSettings: React.FC = () => {
                 placeholder="New Zealand"
               />
             </div>
-          </CardContent>
-        </Card>
-        </div>
-        </TabsContent>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
-        <TabsContent value="system" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                System Configuration
-              </CardTitle>
-              <CardDescription>
-                Choose between Events or Attractions mode for your organization
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <Label htmlFor="system-type" className="text-base font-medium">
-                  System Type
-                </Label>
-                <Select
-                  value={organizationData.system_type || "EVENTS"}
-                  onValueChange={handleSystemTypeChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select system type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="EVENTS">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <div>
-                          <div className="font-medium">Events</div>
-                          <div className="text-sm text-muted-foreground">Ticketing for specific date events</div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="ATTRACTIONS">
-                      <div className="flex items-center gap-2">
-                        <Attraction className="h-4 w-4" />
-                        <div>
-                          <div className="font-medium">Attractions</div>
-                          <div className="text-sm text-muted-foreground">Booking system for ongoing attractions</div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="text-sm text-muted-foreground space-y-2">
-                  <p><strong>Events Mode:</strong> Perfect for concerts, conferences, and time-specific events with fixed dates.</p>
-                  <p><strong>Attractions Mode:</strong> Ideal for golf simulators, karaoke rooms, tours, and bookable experiences.</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Group Ticketing
-              </CardTitle>
-              <CardDescription>
-                Enable multi-tenant group ticketing for organizations with multiple sub-groups
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between space-x-4">
-                <div className="flex-1 space-y-1">
-                  <Label htmlFor="groups-enabled" className="text-base font-medium cursor-pointer">
-                    Enable Group Sales
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Allow groups (youth groups, churches, teams) to sell allocated ticket inventory with custom pricing and discounts
-                  </p>
-                </div>
-                <Switch
-                  id="groups-enabled"
-                  checked={organizationData.groups_enabled}
-                  onCheckedChange={(checked) =>
-                    setOrganizationData(prev => ({ ...prev, groups_enabled: checked }))
-                  }
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <UserCog className="h-5 w-5" />
-                Customer Relationship Management (CRM)
-              </CardTitle>
-              <CardDescription>
-                Track customers, donations, and event attendance for donor management and patron engagement
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between space-x-4">
-                <div className="flex-1 space-y-1">
-                  <Label htmlFor="crm-enabled" className="text-base font-medium cursor-pointer">
-                    Enable CRM & Donations
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Unified customer tracking, donation management, and patron engagement tools
-                  </p>
-                </div>
-                <Switch
-                  id="crm-enabled"
-                  checked={organizationData.crm_enabled}
-                  onCheckedChange={(checked) =>
-                    setOrganizationData(prev => ({ ...prev, crm_enabled: checked }))
-                  }
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                Virtual Card Issuing
-              </CardTitle>
-              <CardDescription>
-                Issue virtual prepaid cards to coordinators and parents via Stripe Issuing with spending controls and interchange tracking
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {!organizationData.stripe_account_id ? (
-                <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg space-y-3">
-                  <p className="text-sm font-medium text-amber-900">
-                    Stripe Connect Required
-                  </p>
-                  <p className="text-sm text-amber-800">
-                    Virtual card issuing requires a connected Stripe account. Please connect your Stripe account first to enable this feature.
-                  </p>
-                  <p className="text-xs text-amber-700 mt-2">
-                    Navigate to <strong>Settings → Payments → Stripe Connect</strong> to connect your account.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between space-x-4">
-                    <div className="flex-1 space-y-1">
-                      <Label htmlFor="issuing-enabled" className="text-base font-medium cursor-pointer">
-                        Enable Virtual Card Issuing
-                      </Label>
-                      <p className="text-sm text-muted-foreground">
-                        Issue virtual prepaid cards with spending controls and earn interchange revenue from transactions
-                      </p>
-                    </div>
-                    <Switch
-                      id="issuing-enabled"
-                      checked={organizationData.issuing_enabled}
-                      onCheckedChange={(checked) =>
-                        setOrganizationData(prev => ({ ...prev, issuing_enabled: checked }))
-                      }
-                    />
-                  </div>
-                </>
+  const renderSystemSection = () => (
+    <div className="space-y-6">
+      {/* System Type */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg">System Mode</CardTitle>
+          <CardDescription>
+            Choose how you want to use TicketFlo
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <button
+              onClick={() => setOrganizationData(prev => ({ ...prev, system_type: "EVENTS" }))}
+              className={cn(
+                "relative p-4 rounded-xl border-2 text-left transition-all",
+                organizationData.system_type === "EVENTS"
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-muted-foreground/50"
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+            >
+              <div className="flex items-start gap-3">
+                <div className={cn(
+                  "p-2 rounded-lg",
+                  organizationData.system_type === "EVENTS" ? "bg-primary/10" : "bg-muted"
+                )}>
+                  <Calendar className={cn(
+                    "h-5 w-5",
+                    organizationData.system_type === "EVENTS" ? "text-primary" : "text-muted-foreground"
+                  )} />
+                </div>
+                <div>
+                  <div className="font-semibold">Events Mode</div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    For concerts, conferences, and time-specific events
+                  </p>
+                </div>
+              </div>
+              {organizationData.system_type === "EVENTS" && (
+                <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-primary" />
+              )}
+            </button>
+            <button
+              onClick={() => setOrganizationData(prev => ({ ...prev, system_type: "ATTRACTIONS" }))}
+              className={cn(
+                "relative p-4 rounded-xl border-2 text-left transition-all",
+                organizationData.system_type === "ATTRACTIONS"
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-muted-foreground/50"
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <div className={cn(
+                  "p-2 rounded-lg",
+                  organizationData.system_type === "ATTRACTIONS" ? "bg-primary/10" : "bg-muted"
+                )}>
+                  <Attraction className={cn(
+                    "h-5 w-5",
+                    organizationData.system_type === "ATTRACTIONS" ? "text-primary" : "text-muted-foreground"
+                  )} />
+                </div>
+                <div>
+                  <div className="font-semibold">Attractions Mode</div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    For tours, experiences, and bookable activities
+                  </p>
+                </div>
+              </div>
+              {organizationData.system_type === "ATTRACTIONS" && (
+                <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-primary" />
+              )}
+            </button>
+          </div>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="tax">
-          <TaxSettings organizationId={organizationData.id} />
-        </TabsContent>
-      </Tabs>
+      {/* Feature Toggles */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg">Features</CardTitle>
+          <CardDescription>
+            Enable or disable platform features
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-1">
+          {/* Group Sales */}
+          <div className="flex items-center justify-between py-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Users className="h-5 w-5 text-blue-500" />
+              </div>
+              <div>
+                <div className="font-medium">Group Sales</div>
+                <p className="text-sm text-muted-foreground">
+                  Allow groups to sell allocated inventory with custom pricing
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={organizationData.groups_enabled}
+              onCheckedChange={(checked) =>
+                setOrganizationData(prev => ({ ...prev, groups_enabled: checked }))
+              }
+            />
+          </div>
+
+          {/* CRM */}
+          <div className="flex items-center justify-between py-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <UserCog className="h-5 w-5 text-green-500" />
+              </div>
+              <div>
+                <div className="font-medium">CRM & Donations</div>
+                <p className="text-sm text-muted-foreground">
+                  Customer tracking, donations, and patron engagement
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={organizationData.crm_enabled}
+              onCheckedChange={(checked) =>
+                setOrganizationData(prev => ({ ...prev, crm_enabled: checked }))
+              }
+            />
+          </div>
+
+          {/* Virtual Cards */}
+          <div className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-purple-500/10">
+                <CreditCard className="h-5 w-5 text-purple-500" />
+              </div>
+              <div>
+                <div className="font-medium">Virtual Card Issuing</div>
+                <p className="text-sm text-muted-foreground">
+                  Issue prepaid cards via Stripe Issuing
+                </p>
+                {!organizationData.stripe_account_id && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    Requires Stripe Connect
+                  </p>
+                )}
+              </div>
+            </div>
+            <Switch
+              checked={organizationData.issuing_enabled}
+              onCheckedChange={(checked) =>
+                setOrganizationData(prev => ({ ...prev, issuing_enabled: checked }))
+              }
+              disabled={!organizationData.stripe_account_id}
+            />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderAppearanceSection = () => (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg">Theme</CardTitle>
+          <CardDescription>
+            Customize the look and feel of your dashboard
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {/* Theme Mode Selection */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Color Mode</Label>
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  onClick={() => setTheme('light')}
+                  className={cn(
+                    "flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all",
+                    theme === 'light'
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-muted-foreground/50"
+                  )}
+                >
+                  <div className={cn(
+                    "p-3 rounded-full",
+                    theme === 'light' ? "bg-primary/10" : "bg-muted"
+                  )}>
+                    <Sun className={cn(
+                      "h-6 w-6",
+                      theme === 'light' ? "text-primary" : "text-muted-foreground"
+                    )} />
+                  </div>
+                  <span className="font-medium text-sm">Light</span>
+                </button>
+
+                <button
+                  onClick={() => setTheme('dark')}
+                  className={cn(
+                    "flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all",
+                    theme === 'dark'
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-muted-foreground/50"
+                  )}
+                >
+                  <div className={cn(
+                    "p-3 rounded-full",
+                    theme === 'dark' ? "bg-primary/10" : "bg-muted"
+                  )}>
+                    <Moon className={cn(
+                      "h-6 w-6",
+                      theme === 'dark' ? "text-primary" : "text-muted-foreground"
+                    )} />
+                  </div>
+                  <span className="font-medium text-sm">Dark</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                    setTheme(systemTheme);
+                  }}
+                  className={cn(
+                    "flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all",
+                    "border-border hover:border-muted-foreground/50"
+                  )}
+                >
+                  <div className="p-3 rounded-full bg-muted">
+                    <Monitor className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <span className="font-medium text-sm">System</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Preview */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Preview</Label>
+              <div className={cn(
+                "p-6 rounded-xl border",
+                theme === 'dark' ? "bg-zinc-900 border-zinc-800" : "bg-white border-gray-200"
+              )}>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-lg flex items-center justify-center",
+                      theme === 'dark' ? "bg-zinc-800" : "bg-gray-100"
+                    )}>
+                      <Building2 className={cn(
+                        "h-5 w-5",
+                        theme === 'dark' ? "text-zinc-400" : "text-gray-500"
+                      )} />
+                    </div>
+                    <div>
+                      <div className={cn(
+                        "font-semibold",
+                        theme === 'dark' ? "text-white" : "text-gray-900"
+                      )}>Dashboard Preview</div>
+                      <div className={cn(
+                        "text-sm",
+                        theme === 'dark' ? "text-zinc-400" : "text-gray-500"
+                      )}>This is how your dashboard will look</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className={cn(
+                      "px-3 py-1.5 rounded-lg text-sm font-medium",
+                      theme === 'dark' ? "bg-blue-600 text-white" : "bg-blue-500 text-white"
+                    )}>Primary Button</div>
+                    <div className={cn(
+                      "px-3 py-1.5 rounded-lg text-sm font-medium border",
+                      theme === 'dark' ? "border-zinc-700 text-zinc-300" : "border-gray-300 text-gray-700"
+                    )}>Secondary</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const renderTaxSection = () => (
+    <TaxSettings organizationId={organizationData.id} />
+  );
+
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'organization':
+        return renderOrganizationSection();
+      case 'system':
+        return renderSystemSection();
+      case 'appearance':
+        return renderAppearanceSection();
+      case 'tax':
+        return renderTaxSection();
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Settings</h2>
+          <p className="text-muted-foreground">
+            Manage your organization and preferences
+          </p>
+        </div>
+        <Button onClick={handleSaveOrganization} disabled={loading}>
+          <Save className="mr-2 h-4 w-4" />
+          {loading ? "Saving..." : "Save Changes"}
+        </Button>
+      </div>
+
+      {/* Settings Layout */}
+      <div className="flex gap-6">
+        {/* Sidebar Navigation */}
+        <div className="w-64 shrink-0">
+          <nav className="space-y-1">
+            {settingsSections.map((section) => {
+              const Icon = section.icon;
+              const isActive = activeSection === section.id;
+              return (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveSection(section.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Icon className={cn("h-5 w-5", isActive && "text-primary")} />
+                  <div className="flex-1 min-w-0">
+                    <div className={cn("font-medium text-sm", isActive && "text-primary")}>
+                      {section.label}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {section.description}
+                    </div>
+                  </div>
+                  <ChevronRight className={cn(
+                    "h-4 w-4 transition-transform",
+                    isActive ? "text-primary rotate-90" : "text-muted-foreground/50"
+                  )} />
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 min-w-0">
+          {renderContent()}
+        </div>
+      </div>
     </div>
   );
 };

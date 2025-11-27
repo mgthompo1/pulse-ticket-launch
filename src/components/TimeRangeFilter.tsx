@@ -23,7 +23,7 @@ interface TimeRangeFilterProps {
 
 export const TimeRangeFilter = ({ value, onChange }: TimeRangeFilterProps) => {
   return (
-    <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
+    <div className="flex gap-1 p-1 bg-slate-100 dark:bg-zinc-800 rounded-lg">
       {TIME_RANGES.map(range => (
         <button
           key={range.value}
@@ -31,8 +31,8 @@ export const TimeRangeFilter = ({ value, onChange }: TimeRangeFilterProps) => {
           className={cn(
             "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
             value === range.value
-              ? "bg-white shadow-sm text-slate-900"
-              : "text-slate-600 hover:text-slate-900"
+              ? "bg-white dark:bg-zinc-700 shadow-sm text-slate-900 dark:text-white"
+              : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
           )}
         >
           {range.label}

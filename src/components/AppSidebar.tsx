@@ -156,9 +156,9 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
   return (
     <Sidebar
       collapsible="icon"
-      className="border border-slate-200 w-64 flex-shrink-0 bg-white !top-[80px] !h-[calc(100vh-92px)] !rounded-2xl !left-3 !overflow-hidden"
+      className="border border-border w-64 flex-shrink-0 bg-background !top-[80px] !h-[calc(100vh-92px)] !rounded-2xl !left-3 !overflow-hidden"
     >
-      <SidebarContent className="flex flex-col bg-white h-full overflow-y-auto gap-0 rounded-2xl">
+      <SidebarContent className="flex flex-col bg-background h-full overflow-y-auto gap-0 rounded-2xl">
         {/* Navigation Menu */}
         <SidebarGroup className="px-3 !pt-3 pb-4">
           <SidebarGroupContent>
@@ -166,7 +166,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
               {getSidebarItems(systemType, groupsEnabled, crmEnabled, issuingEnabled).map((item) => {
                 const isDisabled = item.requiresEvent && !selectedEvent;
                 const isActive = activeTab === item.id;
-                
+
                 return (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
@@ -177,9 +177,9 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
                       }}
                       data-active={isActive}
                       className={`
-                        w-full text-left px-3 py-2 rounded-xl text-sm flex items-center gap-3 hover:bg-slate-50
-                        font-manrope font-medium transition-colors
-                        ${isActive ? 'border border-slate-200' : ''}
+                        w-full text-left px-3 py-2 rounded-xl text-sm flex items-center gap-3 hover:bg-muted
+                        font-manrope font-medium transition-colors text-foreground
+                        ${isActive ? 'border border-border bg-muted' : ''}
                         ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
                       `}
                       disabled={isDisabled}
@@ -200,13 +200,13 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
 
         {/* Bottom Section - User Info */}
         {!isCollapsed && (
-          <div className="mt-auto p-3 border-t border-slate-200 bg-slate-50 rounded-b-2xl">
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-white border border-slate-200">
-              <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-manrope font-semibold">
+          <div className="mt-auto p-3 border-t border-border bg-muted/50 rounded-b-2xl">
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-background border border-border">
+              <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-manrope font-semibold">
                 {user?.email?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-manrope font-medium text-xs text-slate-900 truncate">
+                <p className="font-manrope font-medium text-xs text-foreground truncate">
                   {user?.email || 'User'}
                 </p>
               </div>

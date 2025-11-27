@@ -67,7 +67,7 @@ export const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({
     return (
       <div className="flex items-center gap-3">
         {org.logo_url && (
-          <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
             <img
               src={org.logo_url}
               alt={`${org.name} logo`}
@@ -75,7 +75,7 @@ export const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({
             />
           </div>
         )}
-        <span className="text-sm font-semibold text-slate-900">{org.name}</span>
+        <span className="text-sm font-semibold text-foreground">{org.name}</span>
       </div>
     );
   }
@@ -86,10 +86,10 @@ export const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({
         <button
           role="combobox"
           aria-expanded={open}
-          className="flex items-center gap-3 hover:bg-slate-50 p-2 rounded-lg transition-colors"
+          className="flex items-center gap-3 hover:bg-muted p-2 rounded-lg transition-colors"
         >
           {currentOrganization?.logo_url && (
-            <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted flex items-center justify-center flex-shrink-0">
               <img
                 src={currentOrganization.logo_url}
                 alt={`${currentOrganization.name} logo`}
@@ -97,10 +97,10 @@ export const OrganizationSwitcher: React.FC<OrganizationSwitcherProps> = ({
               />
             </div>
           )}
-          <span className="text-sm font-semibold text-slate-900">
+          <span className="text-sm font-semibold text-foreground">
             {currentOrganization?.name || "Select organization..."}
           </span>
-          <ChevronsUpDown className="h-4 w-4 shrink-0 text-slate-400" />
+          <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[300px] p-0">

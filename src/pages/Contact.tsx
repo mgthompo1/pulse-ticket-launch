@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail, Phone, MapPin, MessageSquare, Users, Headphones, ArrowLeft } from "lucide-react";
+import { Mail, MapPin, MessageSquare, Users, Headphones, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Contact = () => {
@@ -131,12 +131,8 @@ const Contact = () => {
                       <span className="text-sm">hello@ticketflo.com</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">+1 (555) 123-4567</span>
-                    </div>
-                    <div className="flex items-center gap-3">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">San Francisco, CA</span>
+                      <span className="text-sm">130 Saint Georges Bay Road, Parnell, Auckland 1052</span>
                     </div>
                   </CardContent>
                 </Card>
