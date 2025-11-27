@@ -61,7 +61,7 @@ export const PasskeyButton = ({
   // Don't show the button if passkeys are not supported
   if (isChecking) {
     return (
-      <Button disabled variant="outline" className="w-full">
+      <Button disabled variant="outline" className="w-full bg-white/5 border-white/10 text-gray-400 font-manrope">
         <Loader2 className="w-4 h-4 animate-spin mr-2" />
         Checking passkey support...
       </Button>
@@ -70,7 +70,7 @@ export const PasskeyButton = ({
 
   if (!isSupported) {
     return (
-      <Button disabled variant="outline" className="w-full">
+      <Button disabled variant="outline" className="w-full bg-white/5 border-white/10 text-gray-400 font-manrope">
         <ShieldCheck className="w-4 h-4 mr-2" />
         Passkeys not supported
       </Button>
@@ -101,6 +101,9 @@ export const PasskeyButton = ({
     return 'Sign in with passkey';
   };
 
+  // Default dark theme styling for auth page
+  const darkThemeStyles = "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10 hover:text-white hover:border-white/20 font-manrope transition-all";
+
   return (
     <Button
       type="button"
@@ -108,7 +111,7 @@ export const PasskeyButton = ({
       size={size}
       onClick={handlePasskeySignIn}
       disabled={disabled || isLoading || !email.trim()}
-      className={`w-full ${className}`}
+      className={`w-full ${darkThemeStyles} ${className}`}
     >
       {getButtonIcon()}
       <span className="ml-2">{getButtonText()}</span>

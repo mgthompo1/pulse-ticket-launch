@@ -350,49 +350,61 @@ const Auth = () => {
 
   if (authLoading || invitationLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-subtle">
+      <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading...</p>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#ff4d00]" />
+          <p className="text-gray-400 font-manrope">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="mb-6">
-          <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background gradient effects */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#ff4d00]/5 via-transparent to-transparent" />
+      <div className="absolute top-0 right-0 w-96 h-96 bg-[#ff4d00]/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#ff4d00]/5 rounded-full blur-3xl" />
+
+      <div className="w-full max-w-md relative z-10">
+        <div className="mb-8">
+          <Link to="/" className="inline-flex items-center text-sm text-gray-400 hover:text-white transition-colors font-manrope">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to home
           </Link>
         </div>
 
-        <Card className="gradient-card">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-foreground">
-              Welcome to TicketFlo
+        {/* Logo/Brand */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-white font-dm-sans">
+            Ticket<span className="text-[#ff4d00]">Flo</span>
+          </h1>
+        </div>
+
+        <Card className="bg-white/[0.03] backdrop-blur-xl border border-white/10 shadow-2xl">
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-xl font-semibold text-white font-dm-sans">
+              {activeTab === 'signin' ? 'Welcome back' : 'Create your account'}
             </CardTitle>
-            <CardDescription>
-              Sign in to your account or create a new one
+            <CardDescription className="text-gray-400 font-manrope">
+              {activeTab === 'signin' ? 'Sign in to manage your events' : 'Start selling tickets in minutes'}
             </CardDescription>
             {invitationValid && (
-              <div className="flex items-center justify-center gap-2 mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                <span className="text-sm text-green-700">You've been invited to join!</span>
+              <div className="flex items-center justify-center gap-2 mt-3 p-2.5 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <CheckCircle className="w-4 h-4 text-green-400" />
+                <span className="text-sm text-green-400 font-manrope">You've been invited to join!</span>
               </div>
             )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-2">
             <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign In</TabsTrigger>
-                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 bg-white/5 border border-white/10 p-1">
+                <TabsTrigger value="signin" className="data-[state=active]:bg-[#ff4d00] data-[state=active]:text-white text-gray-400 font-manrope font-medium transition-all">Sign In</TabsTrigger>
+                <TabsTrigger value="signup" className="data-[state=active]:bg-[#ff4d00] data-[state=active]:text-white text-gray-400 font-manrope font-medium transition-all">Sign Up</TabsTrigger>
               </TabsList>
 
               {error && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" className="bg-red-500/10 border-red-500/20 text-red-400">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
@@ -401,7 +413,7 @@ const Auth = () => {
                 {!showForgotPassword ? (
                   <form onSubmit={handleSignIn} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email" className="text-gray-300 font-manrope">Email</Label>
                       <Input
                         id="email"
                         type="email"
@@ -409,10 +421,11 @@ const Auth = () => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
+                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#ff4d00] focus:ring-[#ff4d00]/20"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
+                      <Label htmlFor="password" className="text-gray-300 font-manrope">Password</Label>
                       <Input
                         id="password"
                         type="password"
@@ -420,11 +433,12 @@ const Auth = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#ff4d00] focus:ring-[#ff4d00]/20"
                       />
                     </div>
-                    <Button 
-                      type="submit" 
-                      className="w-full gradient-primary" 
+                    <Button
+                      type="submit"
+                      className="w-full bg-[#ff4d00] hover:bg-[#e64400] text-white font-manrope font-medium transition-all shadow-lg shadow-[#ff4d00]/20"
                       disabled={loading}
                     >
                       {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -434,10 +448,10 @@ const Auth = () => {
                     {/* OAuth & Passkey Sign In Options */}
                     <div className="relative my-6">
                       <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
+                        <span className="w-full border-t border-white/10" />
                       </div>
                       <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">
+                        <span className="bg-transparent px-2 text-gray-500 font-manrope">
                           Or continue with
                         </span>
                       </div>
@@ -449,10 +463,10 @@ const Auth = () => {
                       <>
                         <div className="relative my-4">
                           <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t" />
+                            <span className="w-full border-t border-white/10" />
                           </div>
                           <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-background px-2 text-muted-foreground">
+                            <span className="bg-transparent px-2 text-gray-500 font-manrope">
                               Or use passkey
                             </span>
                           </div>
@@ -466,13 +480,13 @@ const Auth = () => {
                         />
                       </>
                     )}
-                    
+
                     <div className="text-center">
                       <Button
                         type="button"
                         variant="link"
                         onClick={() => setShowForgotPassword(true)}
-                        className="text-sm text-muted-foreground hover:text-primary"
+                        className="text-sm text-gray-400 hover:text-[#ff4d00] font-manrope"
                       >
                         Forgot your password?
                       </Button>
@@ -481,16 +495,16 @@ const Auth = () => {
                 ) : (
                   <div className="space-y-4">
                     <div className="text-center">
-                      <h3 className="text-lg font-medium">Reset Password</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <h3 className="text-lg font-medium text-white font-dm-sans">Reset Password</h3>
+                      <p className="text-sm text-gray-400 mt-1 font-manrope">
                         Enter your email address and we'll send you a password reset link.
                       </p>
                     </div>
-                    
+
                     {!resetEmailSent ? (
                       <form onSubmit={handleForgotPassword} className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="reset-email">Email</Label>
+                          <Label htmlFor="reset-email" className="text-gray-300 font-manrope">Email</Label>
                           <Input
                             id="reset-email"
                             type="email"
@@ -498,11 +512,12 @@ const Auth = () => {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
+                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#ff4d00] focus:ring-[#ff4d00]/20"
                           />
                         </div>
-                        <Button 
-                          type="submit" 
-                          className="w-full gradient-primary" 
+                        <Button
+                          type="submit"
+                          className="w-full bg-[#ff4d00] hover:bg-[#e64400] text-white font-manrope font-medium transition-all shadow-lg shadow-[#ff4d00]/20"
                           disabled={loading}
                         >
                           {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -510,14 +525,14 @@ const Auth = () => {
                         </Button>
                       </form>
                     ) : (
-                      <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                        <p className="text-sm text-green-700">
+                      <div className="text-center p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                        <CheckCircle className="w-8 h-8 text-green-400 mx-auto mb-2" />
+                        <p className="text-sm text-green-400 font-manrope">
                           Password reset email sent! Check your inbox (and spam folder) for the reset link.
                         </p>
                       </div>
                     )}
-                    
+
                     <div className="text-center">
                       <Button
                         type="button"
@@ -527,7 +542,7 @@ const Auth = () => {
                           setResetEmailSent(false);
                           setError("");
                         }}
-                        className="text-sm text-muted-foreground hover:text-primary"
+                        className="text-sm text-gray-400 hover:text-[#ff4d00] font-manrope"
                       >
                         Back to sign in
                       </Button>
@@ -546,10 +561,10 @@ const Auth = () => {
 
                   <div className="relative my-6">
                     <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t" />
+                      <span className="w-full border-t border-white/10" />
                     </div>
                     <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">
+                      <span className="bg-transparent px-2 text-gray-500 font-manrope">
                         Or sign up with email
                       </span>
                     </div>
@@ -558,7 +573,7 @@ const Auth = () => {
 
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
+                    <Label htmlFor="signup-email" className="text-gray-300 font-manrope">Email</Label>
                     <Input
                       id="signup-email"
                       type="email"
@@ -566,10 +581,11 @@ const Auth = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
+                      className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#ff4d00] focus:ring-[#ff4d00]/20"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
+                    <Label htmlFor="signup-password" className="text-gray-300 font-manrope">Password</Label>
                     <Input
                       id="signup-password"
                       type="password"
@@ -577,6 +593,7 @@ const Auth = () => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
+                      className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#ff4d00] focus:ring-[#ff4d00]/20"
                     />
                     {/* Password Strength Indicator */}
                     {password && (
@@ -584,7 +601,7 @@ const Auth = () => {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirm Password</Label>
+                    <Label htmlFor="confirm-password" className="text-gray-300 font-manrope">Confirm Password</Label>
                     <Input
                       id="confirm-password"
                       type="password"
@@ -592,24 +609,25 @@ const Auth = () => {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
+                      className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#ff4d00] focus:ring-[#ff4d00]/20"
                     />
                   </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full gradient-primary" 
+                  <Button
+                    type="submit"
+                    className="w-full bg-[#ff4d00] hover:bg-[#e64400] text-white font-manrope font-medium transition-all shadow-lg shadow-[#ff4d00]/20"
                     disabled={loading}
                   >
                     {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     Create Account
                   </Button>
-                  
+
                   {/* Resend verification email button */}
-                  <Button 
+                  <Button
                     type="button"
                     variant="outline"
                     onClick={resendVerificationEmail}
                     disabled={loading || !email}
-                    className="w-full"
+                    className="w-full bg-white/5 border-white/10 text-gray-300 hover:bg-white/10 hover:text-white font-manrope"
                   >
                     {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     Resend Verification Email
