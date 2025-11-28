@@ -24,6 +24,7 @@ import AIChatbot from "@/components/AIChatbot";
 import BillingDashboard from "@/components/BillingDashboard";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import EventCustomization from "@/components/EventCustomization";
+import { EventTemplatesManager } from "@/components/EventTemplatesManager";
 import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import { PayoutsAndFees } from "@/components/PayoutsAndFees";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -1752,6 +1753,10 @@ const OrgDashboard = () => {
                     />
                   </TabsContent>
                 )}
+
+                <TabsContent value="templates" className="space-y-6">
+                  <EventTemplatesManager organizationId={currentOrganization?.id || ''} />
+                </TabsContent>
 
                 <TabsContent value="event-details" className="space-y-6">
                   {isEventsMode() ? (

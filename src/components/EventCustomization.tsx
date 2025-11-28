@@ -14,7 +14,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound, Heart, Share2, FileText, Calendar, Send } from "lucide-react";
+import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound, Heart, Share2, FileText, Calendar, Send, ShoppingCart, ClipboardList } from "lucide-react";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import MerchandiseManager from "@/components/MerchandiseManager";
@@ -24,6 +24,8 @@ import { EmailTemplatePreview } from "@/components/EmailTemplatePreview";
 import PromoCodesManager from "@/pages/PromoCodesManager";
 import GroupDiscountsManager from "@/pages/GroupDiscountsManager";
 import { VenueLocationPicker } from "@/components/VenueLocationPicker";
+import { AbandonedCartSettings } from "@/components/AbandonedCartSettings";
+import { PostEventSurveySettings } from "@/components/PostEventSurveySettings";
 
 // Type definitions for better type safety
 interface EmailBlock {
@@ -87,6 +89,13 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     ticket_customization?: Record<string, unknown>;
     email_customization?: Record<string, unknown>;
     ticket_delivery_method?: string;
+    abandoned_cart_enabled?: boolean;
+    abandoned_cart_delay_minutes?: number;
+    abandoned_cart_email_subject?: string;
+    abandoned_cart_email_content?: string | null;
+    abandoned_cart_discount_enabled?: boolean;
+    abandoned_cart_discount_code?: string | null;
+    abandoned_cart_discount_percent?: number;
   } | null>(null);
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
   const [eventVenue, setEventVenue] = useState<string>("");
@@ -270,7 +279,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       
       const { data, error} = await supabase
         .from("events")
-        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, venue_address, venue_lat, venue_lng, venue_place_id, organization_id, description, event_date, event_end_date, capacity, requires_approval, ticket_delivery_method, donations_enabled, donation_title, donation_description, donation_suggested_amounts")
+        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, venue_address, venue_lat, venue_lng, venue_place_id, organization_id, description, event_date, event_end_date, capacity, requires_approval, ticket_delivery_method, donations_enabled, donation_title, donation_description, donation_suggested_amounts, abandoned_cart_enabled, abandoned_cart_delay_minutes, abandoned_cart_email_subject, abandoned_cart_email_content, abandoned_cart_discount_enabled, abandoned_cart_discount_code, abandoned_cart_discount_percent")
         .eq("id", eventId)
         .single();
 
@@ -316,7 +325,14 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           } : {})
         },
         ticket_customization: data.ticket_customization as Record<string, unknown>,
-        email_customization: data.email_customization as Record<string, unknown>
+        email_customization: data.email_customization as Record<string, unknown>,
+        abandoned_cart_enabled: data.abandoned_cart_enabled || false,
+        abandoned_cart_delay_minutes: data.abandoned_cart_delay_minutes || 60,
+        abandoned_cart_email_subject: data.abandoned_cart_email_subject || "You left something behind!",
+        abandoned_cart_email_content: data.abandoned_cart_email_content,
+        abandoned_cart_discount_enabled: data.abandoned_cart_discount_enabled || false,
+        abandoned_cart_discount_code: data.abandoned_cart_discount_code,
+        abandoned_cart_discount_percent: data.abandoned_cart_discount_percent || 10
       });
       setCurrentLogoUrl(data?.logo_url || null);
 
@@ -853,46 +869,50 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       )}
 
       <Tabs defaultValue="widget" className="space-y-6">
-        {/* Modern navigation bar with black active indicator */}
+        {/* Compact navigation bar */}
         <div className="overflow-x-auto -mx-4 px-4 pb-2">
-          <TabsList className="inline-flex h-12 p-1.5 gap-1 bg-muted/40 border rounded-xl min-w-max">
-            <TabsTrigger value="widget" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
-              <Monitor className="h-4 w-4" />
+          <TabsList className="inline-flex h-10 p-1 gap-0.5 bg-muted/40 border rounded-xl min-w-max">
+            <TabsTrigger value="widget" className="relative flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Monitor className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Widget</span>
             </TabsTrigger>
-            <TabsTrigger value="seats" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
-              <MapPin className="h-4 w-4" />
-              <span className="hidden sm:inline">Seats</span>
-            </TabsTrigger>
-            <TabsTrigger value="tickets" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
-              <Ticket className="h-4 w-4" />
+            <TabsTrigger value="tickets" className="relative flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Ticket className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Tickets</span>
             </TabsTrigger>
-            <TabsTrigger value="emails" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
-              <Mail className="h-4 w-4" />
+            <TabsTrigger value="emails" className="relative flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Mail className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Emails</span>
             </TabsTrigger>
-            <div className="w-px h-6 bg-border mx-1 self-center" />
-            <TabsTrigger value="merchandise" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
-              <Package className="h-4 w-4" />
+            <div className="w-px h-4 bg-border mx-0.5 self-center" />
+            <TabsTrigger value="merchandise" className="relative flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Package className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Merch</span>
             </TabsTrigger>
-            <TabsTrigger value="attendees" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
-              <Users className="h-4 w-4" />
+            <TabsTrigger value="attendees" className="relative flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Users className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Attendees</span>
             </TabsTrigger>
-            <div className="w-px h-6 bg-border mx-1 self-center" />
-            <TabsTrigger value="promo-codes" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
-              <Tag className="h-4 w-4" />
+            <div className="w-px h-4 bg-border mx-0.5 self-center" />
+            <TabsTrigger value="promo-codes" className="relative flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Tag className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Promos</span>
             </TabsTrigger>
-            <TabsTrigger value="group-discounts" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
-              <UsersRound className="h-4 w-4" />
+            <TabsTrigger value="group-discounts" className="relative flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <UsersRound className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Groups</span>
             </TabsTrigger>
-            <div className="w-px h-6 bg-border mx-1 self-center" />
-            <TabsTrigger value="settings" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
-              <Cog className="h-4 w-4" />
+            <TabsTrigger value="cart-recovery" className="relative flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <ShoppingCart className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Recovery</span>
+            </TabsTrigger>
+            <TabsTrigger value="survey" className="relative flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <ClipboardList className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Survey</span>
+            </TabsTrigger>
+            <div className="w-px h-4 bg-border mx-0.5 self-center" />
+            <TabsTrigger value="settings" className="relative flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Cog className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Settings</span>
             </TabsTrigger>
           </TabsList>
@@ -1755,6 +1775,118 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
             </CardContent>
           </Card>
 
+          {/* Checkout Experience */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Monitor className="h-5 w-5" />
+                Checkout Experience
+              </CardTitle>
+              <CardDescription>
+                How customers complete their purchase
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Select
+                value={(eventData?.widget_customization as any)?.checkoutMode || 'onepage'}
+                onValueChange={async (value: 'onepage' | 'multistep' | 'beta') => {
+                  try {
+                    const currentCustomization = (eventData?.widget_customization as any) || {};
+                    const updatedCustomization = {
+                      ...currentCustomization,
+                      checkoutMode: value
+                    };
+
+                    const { error } = await supabase
+                      .from("events")
+                      .update({ widget_customization: updatedCustomization })
+                      .eq("id", eventId);
+
+                    if (error) throw error;
+
+                    setEventData(prev => prev ? ({
+                      ...prev,
+                      widget_customization: updatedCustomization as any
+                    }) : null);
+
+                    setWidgetCustomization(updatedCustomization);
+
+                    toast({
+                      title: "Success",
+                      description: `Checkout mode updated to ${value === 'onepage' ? 'One Page' : value === 'multistep' ? 'Multi-Step' : 'Beta'}.`
+                    });
+                  } catch (error) {
+                    console.error("Error updating checkout mode:", error);
+                    toast({
+                      title: "Error",
+                      description: "Failed to update checkout mode",
+                      variant: "destructive"
+                    });
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="onepage">One Page Checkout</SelectItem>
+                  <SelectItem value="multistep">Multi-Step Checkout</SelectItem>
+                  <SelectItem value="beta">Beta Checkout (New UX)</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="mt-3 p-3 rounded-md bg-muted/50 text-xs text-muted-foreground space-y-1">
+                <p><strong>One Page:</strong> Traditional single-page layout</p>
+                <p><strong>Multi-Step:</strong> Progressive flow with sidebar</p>
+                <p><strong>Beta:</strong> Mobile optimized with progressive loading</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Seat Map Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Seat Map
+              </CardTitle>
+              <CardDescription>
+                Configure seating options for your event
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Enable/Disable Seat Maps */}
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-green-500/10">
+                    <MapPin className="h-4 w-4 text-green-500" />
+                  </div>
+                  <div>
+                    <span className="font-medium text-sm">Enable Seat Selection</span>
+                    <p className="text-xs text-muted-foreground">
+                      Let guests select specific seats
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={widgetCustomization.seatMaps?.enabled || false}
+                  onCheckedChange={(checked) => updateWidgetCustomization(['seatMaps', 'enabled'], checked)}
+                />
+              </div>
+
+              {/* Seat Map Designer - Only show when enabled */}
+              {widgetCustomization.seatMaps?.enabled && (
+                <Button
+                  onClick={() => setShowSeatMapDesigner(true)}
+                  className="w-full"
+                  variant="outline"
+                >
+                  <MapPin className="mr-2 h-4 w-4" />
+                  Open Seat Map Designer
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Widget Preview */}
           <Card>
             <CardHeader>
@@ -1828,88 +1960,6 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 <HelpCircle className="h-4 w-4" />
                 <span>Changes to widget customization may take a moment to appear in the preview. Refresh the page if needed.</span>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="seats" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" />
-                Seat Map Management
-              </CardTitle>
-              <CardDescription>
-                Configure seating options for your event
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Enable/Disable Seat Maps */}
-              <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-green-500/10">
-                    <MapPin className="h-4 w-4 text-green-500" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">Seat Maps</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-5 w-5 p-0"
-                        onClick={() => {
-                          window.dispatchEvent(new CustomEvent('openDashboardHelp', { detail: { tab: 'event-details' } }));
-                        }}
-                      >
-                        <HelpCircle className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Let guests select specific seats
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={widgetCustomization.seatMaps?.enabled || false}
-                  onCheckedChange={(checked) => updateWidgetCustomization(['seatMaps', 'enabled'], checked)}
-                />
-              </div>
-
-              {/* Seat Map Designer - Only show when enabled */}
-              {widgetCustomization.seatMaps?.enabled && (
-                <div className="space-y-4">
-                  <div className="border-t pt-4">
-                    <h4 className="font-medium mb-2">Seating Layout Design</h4>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Create custom seating layouts to allow guests to select their preferred seats during ticket purchase.
-                    </p>
-                    <Button 
-                      onClick={() => {
-                        console.log("=== SEAT MAP BUTTON CLICKED ===");
-                        console.log("Event ID:", eventId);
-                        console.log("Event Data:", eventData);
-                        console.log("Current showSeatMapDesigner state:", showSeatMapDesigner);
-                        setShowSeatMapDesigner(true);
-                        console.log("Set showSeatMapDesigner to true");
-                      }}
-                      className="w-full"
-                    >
-                      <MapPin className="mr-2 h-4 w-4" />
-                      Open Seat Map Designer
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Information when disabled */}
-              {!widgetCustomization.seatMaps?.enabled && (
-                <div className="text-center p-6 border rounded-lg bg-muted/30">
-                  <MapPin className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Enable seat maps above to create custom seating layouts for your event
-                  </p>
-                </div>
-              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -2961,116 +3011,6 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 </div>
               </div>
 
-              {/* Checkout Mode */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Checkout Experience</h4>
-                <div className="p-4 rounded-lg border bg-background">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 rounded-lg bg-purple-500/10">
-                      <Monitor className="h-4 w-4 text-purple-500" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">Checkout Flow</div>
-                      <p className="text-xs text-muted-foreground">How customers complete their purchase</p>
-                    </div>
-                  </div>
-                  <Select
-                    value={(eventData?.widget_customization as any)?.checkoutMode || 'onepage'}
-                    onValueChange={async (value: 'onepage' | 'multistep' | 'beta') => {
-                      try {
-                        const currentCustomization = (eventData?.widget_customization as any) || {};
-                        console.log("Saving checkout mode:", value);
-                        console.log("Current customization:", currentCustomization);
-                        console.log("Current customization keys:", Object.keys(currentCustomization));
-                        
-                        const updatedCustomization = {
-                          ...currentCustomization,
-                          checkoutMode: value
-                        };
-                        console.log("Updated customization:", updatedCustomization);
-                        console.log("Updated customization keys:", Object.keys(updatedCustomization));
-                        console.log("Checkout mode value being saved:", updatedCustomization.checkoutMode);
-                        
-                        console.log("🔍 Attempting to update database...");
-                        console.log("🔍 Event ID:", eventId);
-                        console.log("🔍 Updated customization:", updatedCustomization);
-                        
-                        const { data, error } = await supabase
-                          .from("events")
-                          .update({ 
-                            widget_customization: updatedCustomization
-                          })
-                          .eq("id", eventId)
-                          .select("widget_customization");
-
-                        if (error) {
-                          console.error("❌ Database error:", error);
-                          console.error("❌ Error details:", {
-                            code: error.code,
-                            message: error.message,
-                            details: error.details,
-                            hint: error.hint
-                          });
-                          throw error;
-                        }
-
-                                                console.log("✅ Database update successful");
-                        console.log("✅ Returned data:", data);
-                        console.log("✅ Checkout mode in returned data:", (data?.[0]?.widget_customization as any)?.checkoutMode);
-                        
-                        // Verify the data was actually saved by fetching it back
-                        const { data: verifyData, error: verifyError } = await supabase
-                          .from("events")
-                          .select("widget_customization")
-                          .eq("id", eventId)
-                          .single();
-                        
-                        if (verifyError) {
-                          console.error("❌ Error verifying saved data:", verifyError);
-                        } else {
-                          console.log("✅ Verification - saved widget_customization:", verifyData.widget_customization);
-                          console.log("✅ Verification - checkout mode:", (verifyData.widget_customization as any)?.checkoutMode);
-                        }
-                        // Update local state immediately to prevent it from being overwritten
-                        setEventData(prev => prev ? ({
-                          ...prev,
-                          widget_customization: updatedCustomization as any
-                        }) : null);
-                        
-                        // Also update the widgetCustomization state to keep it in sync
-                        setWidgetCustomization(updatedCustomization);
-                        
-                        toast({
-                          title: "Success",
-                          description: `Checkout mode updated to ${value === 'onepage' ? 'One Page' : 'Multi-Step'}. Open your widget to see changes.`
-                        });
-                      } catch (error) {
-                        console.error("Error updating checkout mode:", error);
-                        toast({
-                          title: "Error",
-                          description: "Failed to update checkout mode",
-                          variant: "destructive"
-                        });
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="h-11">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="onepage">One Page Checkout</SelectItem>
-                      <SelectItem value="multistep">Multi-Step Checkout</SelectItem>
-                      <SelectItem value="beta">Beta Checkout (New UX)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div className="mt-3 p-3 rounded-md bg-muted/50 text-xs text-muted-foreground space-y-1">
-                    <p><strong>One Page:</strong> Traditional single-page layout</p>
-                    <p><strong>Multi-Step:</strong> Progressive flow with sidebar</p>
-                    <p><strong>Beta:</strong> Mobile optimized with progressive loading</p>
-                  </div>
-                </div>
-              </div>
-
               {/* Publish Event */}
               <div className="flex items-center justify-between p-4 border rounded-lg bg-background">
                 <div className="flex items-center gap-3">
@@ -3210,6 +3150,55 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
         <TabsContent value="group-discounts" className="space-y-6">
           <GroupDiscountsManager eventId={eventId} />
+        </TabsContent>
+
+        <TabsContent value="cart-recovery" className="space-y-6">
+          <AbandonedCartSettings
+            eventId={eventId}
+            enabled={eventData?.abandoned_cart_enabled || false}
+            delayMinutes={eventData?.abandoned_cart_delay_minutes || 60}
+            emailSubject={eventData?.abandoned_cart_email_subject || "You left something behind!"}
+            emailContent={eventData?.abandoned_cart_email_content || null}
+            discountEnabled={eventData?.abandoned_cart_discount_enabled || false}
+            discountCode={eventData?.abandoned_cart_discount_code || null}
+            discountPercent={eventData?.abandoned_cart_discount_percent || 10}
+            onSave={async (settings) => {
+              try {
+                const { error } = await supabase
+                  .from("events")
+                  .update({
+                    abandoned_cart_enabled: settings.abandoned_cart_enabled,
+                    abandoned_cart_delay_minutes: settings.abandoned_cart_delay_minutes,
+                    abandoned_cart_email_subject: settings.abandoned_cart_email_subject,
+                    abandoned_cart_email_content: settings.abandoned_cart_email_content,
+                    abandoned_cart_discount_enabled: settings.abandoned_cart_discount_enabled,
+                    abandoned_cart_discount_code: settings.abandoned_cart_discount_code,
+                    abandoned_cart_discount_percent: settings.abandoned_cart_discount_percent,
+                  })
+                  .eq("id", eventId);
+
+                if (error) throw error;
+
+                setEventData((prev) => prev ? {
+                  ...prev,
+                  ...settings
+                } : null);
+              } catch (error: any) {
+                toast({
+                  title: "Error",
+                  description: error.message || "Failed to save cart recovery settings",
+                  variant: "destructive",
+                });
+              }
+            }}
+          />
+        </TabsContent>
+
+        <TabsContent value="survey" className="space-y-6">
+          <PostEventSurveySettings
+            eventId={eventId}
+            organizationId={organizationId}
+          />
         </TabsContent>
       </Tabs>
       

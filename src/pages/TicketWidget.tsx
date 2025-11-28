@@ -287,6 +287,99 @@ const TicketWidget = () => {
     prevCartLength.current = cart.length;
   }, [cart, trackTicketSelected]);
 
+  // Abandoned cart tracking
+  const abandonedCartSaved = useRef(false);
+  const sessionId = useRef<string>("");
+
+  // Generate session ID on mount
+  useEffect(() => {
+    sessionId.current = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }, []);
+
+  // Save abandoned cart when user has email and cart items
+  const saveAbandonedCart = useCallback(async () => {
+    if (!eventId || !eventData?.organization_id) return;
+    if (!customerInfo.email || cart.length === 0) return;
+    if (abandonedCartSaved.current) return;
+
+    // Check if abandoned cart recovery is enabled for this event
+    if (!eventData?.abandoned_cart_enabled) return;
+
+    try {
+      const cartItems = cart.map(item => ({
+        ticket_type_id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+      }));
+      const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+      // Detect device type
+      const userAgent = navigator.userAgent.toLowerCase();
+      const deviceType = /mobile|android|iphone|ipad/.test(userAgent)
+        ? (/ipad|tablet/.test(userAgent) ? 'tablet' : 'mobile')
+        : 'desktop';
+
+      const { error } = await supabase
+        .from("abandoned_carts")
+        .upsert({
+          event_id: eventId,
+          organization_id: eventData.organization_id,
+          customer_email: customerInfo.email,
+          customer_name: customerInfo.name || null,
+          customer_phone: customerInfo.phone || null,
+          cart_items: cartItems,
+          cart_total: cartTotal,
+          session_id: sessionId.current,
+          source_url: window.location.href,
+          device_type: deviceType,
+          status: 'pending',
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'event_id,customer_email,session_id'
+        });
+
+      if (error) {
+        console.error("Error saving abandoned cart:", error);
+      } else {
+        abandonedCartSaved.current = true;
+        console.log("Abandoned cart saved for recovery");
+      }
+    } catch (err) {
+      console.error("Error in saveAbandonedCart:", err);
+    }
+  }, [eventId, eventData?.organization_id, eventData?.abandoned_cart_enabled, customerInfo, cart]);
+
+  // Save abandoned cart when user enters email with items in cart
+  useEffect(() => {
+    if (customerInfo.email && cart.length > 0 && !abandonedCartSaved.current) {
+      // Debounce the save to avoid too many calls
+      const timer = setTimeout(() => {
+        saveAbandonedCart();
+      }, 2000); // Wait 2 seconds after email entry
+
+      return () => clearTimeout(timer);
+    }
+  }, [customerInfo.email, cart, saveAbandonedCart]);
+
+  // Track page unload to update abandoned cart
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (customerInfo.email && cart.length > 0 && !abandonedCartSaved.current) {
+        // Use sendBeacon for reliability on page unload
+        const payload = JSON.stringify({
+          event_id: eventId,
+          customer_email: customerInfo.email,
+          session_id: sessionId.current,
+        });
+        navigator.sendBeacon?.('/api/abandoned-cart-beacon', payload);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [eventId, customerInfo.email, cart]);
+
   // Apple Pay / Google Pay removed
   
   // Debug effect to monitor Stripe key changes

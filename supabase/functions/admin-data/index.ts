@@ -776,7 +776,7 @@ serve(async (req) => {
 
         data = {
           authActivity: [...authActivity, ...recentSignups].sort((a, b) =>
-            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime()
           ).slice(0, 50),
           authStats,
           recentOrders: recentOrderActivity || [],
