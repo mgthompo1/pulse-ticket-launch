@@ -292,19 +292,19 @@ const CustomersCRM: React.FC = () => {
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <UserCog className="h-8 w-8" />
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+            <UserCog className="h-6 w-6 md:h-8 md:w-8" />
             Customers & CRM
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">
             Manage customer relationships, donations, and patron engagement
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           {selectedContacts.size > 0 ? (
             <>
               <Badge variant="secondary" className="text-sm px-3 py-1">
@@ -315,14 +315,15 @@ const CustomersCRM: React.FC = () => {
                 size="sm"
               >
                 <Mail className="h-4 w-4 mr-2" />
-                Send Email to Selected
+                <span className="hidden sm:inline">Send Email to Selected</span>
+                <span className="sm:hidden">Email</span>
               </Button>
               <Button
                 onClick={() => setSelectedContacts(new Set())}
                 variant="outline"
                 size="sm"
               >
-                Clear Selection
+                Clear
               </Button>
             </>
           ) : (
@@ -331,14 +332,15 @@ const CustomersCRM: React.FC = () => {
               className="bg-black text-white hover:bg-black/90"
             >
               <UserPlus className="h-4 w-4 mr-2" />
-              Add Customer
+              <span className="hidden sm:inline">Add Customer</span>
+              <span className="sm:hidden">Add</span>
             </Button>
           )}
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Customers</CardDescription>
@@ -376,23 +378,22 @@ const CustomersCRM: React.FC = () => {
         </Card>
       </div>
 
-      {/* Search */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            <Input
-              placeholder="Search customers by name or email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-md"
-            />
-          </div>
-        </CardHeader>
-      </Card>
-
       {/* Contacts Table */}
       <Card>
+        <CardHeader className="pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <CardTitle className="text-lg">All Customers</CardTitle>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 w-full sm:w-64"
+              />
+            </div>
+          </div>
+        </CardHeader>
         <CardContent className="p-0">
           {filteredContacts.length === 0 ? (
             <div className="py-12 text-center">
@@ -403,8 +404,101 @@ const CustomersCRM: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <>
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-3 p-4">
+                {filteredContacts.map(contact => (
+                  <div
+                    key={contact.id}
+                    className="border rounded-lg p-4 bg-card hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                        <Checkbox
+                          checked={selectedContacts.has(contact.id)}
+                          onCheckedChange={() => toggleContactSelection(contact.id)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1 min-w-0" onClick={() => handleContactClick(contact)}>
+                          <p className="font-medium text-blue-600 truncate">
+                            {contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || contact.email}
+                          </p>
+                          <p className="text-sm text-muted-foreground truncate">{contact.email}</p>
+                          {contact.groups && contact.groups.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {contact.groups.slice(0, 2).map((group, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs">
+                                  {group.name}
+                                </Badge>
+                              ))}
+                              {contact.groups.length > 2 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{contact.groups.length - 2}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuLabel>Phone Sales</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => {
+                            setPhoneSalesContact(contact);
+                            setSendEventLinkOpen(true);
+                          }}>
+                            <LinkIcon className="h-4 w-4 mr-2" />
+                            Send Event Link
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setPhoneSalesContact(contact);
+                            setCreateOrderOpen(true);
+                          }}>
+                            <FileText className="h-4 w-4 mr-2" />
+                            Create Custom Order
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setPhoneSalesContact(contact);
+                            setCreateInvoiceOpen(true);
+                          }}>
+                            <Send className="h-4 w-4 mr-2" />
+                            Create & Send Invoice
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleContactClick(contact)}>
+                            <Mail className="h-4 w-4 mr-2" />
+                            Send Email
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t" onClick={() => handleContactClick(contact)}>
+                      <div>
+                        <p className="text-xs text-muted-foreground">LTV</p>
+                        <p className="font-semibold text-sm">{formatCurrency(contact.lifetime_value)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Orders</p>
+                        <p className="font-semibold text-sm">{contact.total_orders}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Events</p>
+                        <p className="font-semibold text-sm">{contact.events_attended}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
                 <thead className="bg-slate-50 border-b">
                   <tr>
                     <th className="text-left py-3 px-2 font-medium text-sm w-12">
@@ -536,7 +630,8 @@ const CustomersCRM: React.FC = () => {
                   ))}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

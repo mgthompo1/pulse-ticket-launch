@@ -487,18 +487,18 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Event Name</p>
-                  <p className="font-medium">{eventDetails.name}</p>
+                  <p className="font-medium text-sm sm:text-base truncate">{eventDetails.name}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Date & Time</p>
-                  <p className="font-medium">{format(new Date(eventDetails.event_date), 'MMM d, yyyy HH:mm')}</p>
+                  <p className="font-medium text-sm sm:text-base">{format(new Date(eventDetails.event_date), 'MMM d, yyyy HH:mm')}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Venue</p>
-                  <p className="font-medium">{eventDetails.venue || 'Not specified'}</p>
+                  <p className="font-medium text-sm sm:text-base truncate">{eventDetails.venue || 'Not specified'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Status</p>
@@ -511,7 +511,7 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
           </Card>
 
           {/* Analytics Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -579,25 +579,27 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
 
           {/* Orders Table */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Order Details</CardTitle>
-                <CardDescription>Complete list of orders and attendee information</CardDescription>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search orders..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 w-64"
-                  />
+            <CardHeader className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <CardTitle>Order Details</CardTitle>
+                  <CardDescription>Complete list of orders and attendee information</CardDescription>
                 </div>
-                <Button onClick={exportToCSV} variant="outline" size="sm">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export CSV
-                </Button>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search orders..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-8 w-full sm:w-64"
+                    />
+                  </div>
+                  <Button onClick={exportToCSV} variant="outline" size="sm" className="w-full sm:w-auto">
+                    <Download className="h-4 w-4 mr-2" />
+                    Export CSV
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>

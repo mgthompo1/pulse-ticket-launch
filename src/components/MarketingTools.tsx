@@ -261,20 +261,20 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold">Marketing Tools</h2>
-          <p className="text-muted-foreground">Promote {selectedEvent.name}</p>
+          <h2 className="text-xl sm:text-2xl font-bold">Marketing Tools</h2>
+          <p className="text-muted-foreground text-sm sm:text-base truncate max-w-xs sm:max-w-none">Promote {selectedEvent.name}</p>
         </div>
-        <Badge variant="outline">{selectedEvent.status}</Badge>
+        <Badge variant="outline" className="w-fit">{selectedEvent.status}</Badge>
       </div>
 
       <Tabs defaultValue="sharing" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="sharing">Sharing</TabsTrigger>
-          <TabsTrigger value="email">Email</TabsTrigger>
-          <TabsTrigger value="social">Social Media</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto gap-1 p-1">
+          <TabsTrigger value="sharing" className="text-xs sm:text-sm py-2">Sharing</TabsTrigger>
+          <TabsTrigger value="email" className="text-xs sm:text-sm py-2">Email</TabsTrigger>
+          <TabsTrigger value="social" className="text-xs sm:text-sm py-2">Social Media</TabsTrigger>
+          <TabsTrigger value="analytics" className="text-xs sm:text-sm py-2">Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="sharing" className="space-y-4">
@@ -339,9 +339,9 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
 
         <TabsContent value="email" className="space-y-4">
           <Tabs defaultValue="reminder-campaigns" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="reminder-campaigns">Reminder Campaigns</TabsTrigger>
-              <TabsTrigger value="promotional">Promotional Emails</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 h-auto gap-1 p-1">
+              <TabsTrigger value="reminder-campaigns" className="text-xs sm:text-sm py-2">Reminder Campaigns</TabsTrigger>
+              <TabsTrigger value="promotional" className="text-xs sm:text-sm py-2">Promotional Emails</TabsTrigger>
             </TabsList>
 
             <TabsContent value="reminder-campaigns">
@@ -415,7 +415,7 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium">Page Views</CardTitle>
