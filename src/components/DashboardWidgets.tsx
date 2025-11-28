@@ -333,6 +333,39 @@ export const DashboardWidgets = ({
           </ChartCard>
         );
 
+      case "revenue_by_event_list":
+        return (
+          <ChartCard
+            key={widgetConfig.widgetId}
+            title="Total Revenue by Event"
+            description="All-time revenue for each event"
+            className={sizeClass}
+          >
+            <div className="space-y-3">
+              {revenueByEvent.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No revenue data available</p>
+              ) : (
+                revenueByEvent.slice(0, 6).map((event, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div>
+                      <h4 className="font-semibold text-sm">{event.name}</h4>
+                      <p className="text-xs text-muted-foreground">Total Revenue</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-lg" style={{ color: '#ff4d00' }}>
+                        ${event.revenue >= 1000 ? `${(event.revenue / 1000).toFixed(1)}k` : event.revenue.toFixed(0)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        ${event.revenue.toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </ChartCard>
+        );
+
       case "revenue_weekly":
         return (
           <ChartCard

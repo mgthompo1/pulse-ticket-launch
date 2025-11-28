@@ -63,6 +63,16 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     defaultEnabled: true,
   },
   {
+    id: "revenue_by_event_list",
+    name: "Total Revenue by Event",
+    description: "All-time revenue for each event",
+    category: "revenue",
+    supportedChartTypes: ["list"],
+    defaultChartType: "list",
+    defaultSize: "medium",
+    defaultEnabled: true,
+  },
+  {
     id: "revenue_weekly",
     name: "Weekly Revenue",
     description: "Revenue for the past 7 days",
