@@ -241,76 +241,123 @@ export const BillingManagement: React.FC<BillingManagementProps> = ({ organizati
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-xl font-semibold mb-2">Billing Management</h3>
-        <p className="text-muted-foreground">
-          Manage your payment methods and billing preferences.
-        </p>
-      </div>
-
-      {/* Billing Status */}
+      {/* Payment Methods - Primary Focus */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              Billing Status
-              {billingData.billing_status === 'active' ? (
-                <Badge variant="default" className="bg-green-500">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Active
-                </Badge>
-              ) : billingData.billing_status === 'cancelled' ? (
-                <Badge variant="destructive">
-                  <XCircle className="h-3 w-3 mr-1" />
-                  Cancelled
-                </Badge>
-              ) : (
-                <Badge variant="secondary">
-                  {billingData.billing_status}
-                </Badge>
-              )}
-            </span>
-          </CardTitle>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Payment Methods
+            </CardTitle>
+            <Button onClick={loadPaymentMethods} variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium">Customer ID</p>
-              <p className="text-sm text-muted-foreground">{billingData.stripe_customer_id}</p>
+          {paymentMethods.length === 0 ? (
+            <div className="text-center py-6">
+              <CreditCard className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
+              <p className="text-sm text-muted-foreground">No payment methods on file</p>
             </div>
-            <div>
-              <p className="text-sm font-medium">Last Updated</p>
-              <p className="text-sm text-muted-foreground">
-                {new Date(billingData.updated_at).toLocaleDateString()}
-              </p>
+          ) : (
+            <div className="space-y-2">
+              {paymentMethods.map(pm => (
+                <div key={pm.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-white text-xs font-bold">
+                      {pm.brand?.slice(0, 2).toUpperCase() || 'CC'}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{pm.brand?.toUpperCase()} •••• {pm.last4}</p>
+                      <p className="text-xs text-muted-foreground">Expires {pm.exp_month}/{pm.exp_year}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {defaultPaymentMethod === pm.id ? (
+                      <Badge variant="default" className="bg-green-600 text-xs">Default</Badge>
+                    ) : (
+                      <Button variant="ghost" size="sm" onClick={() => setDefault(pm.id)} className="text-xs">
+                        Set Default
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <Button onClick={handleManagePaymentMethods} variant="outline" className="w-full">
+            <CreditCard className="h-4 w-4 mr-2" />
+            Add or Manage Cards via Stripe
+            <ExternalLink className="h-3 w-3 ml-2" />
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Account Details */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Account Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Billing Status</p>
+              <div className="flex items-center gap-2">
+                {billingData.billing_status === 'active' ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <span className="font-medium text-sm">Active</span>
+                  </>
+                ) : billingData.billing_status === 'cancelled' ? (
+                  <>
+                    <XCircle className="h-4 w-4 text-red-600" />
+                    <span className="font-medium text-sm">Cancelled</span>
+                  </>
+                ) : (
+                  <span className="font-medium text-sm capitalize">{billingData.billing_status}</span>
+                )}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Billing Email</p>
+              <p className="font-medium text-sm truncate">{billingData.billing_email || '—'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Customer ID</p>
+              <p className="font-mono text-xs text-muted-foreground">{billingData.stripe_customer_id}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Last Updated</p>
+              <p className="text-sm">{new Date(billingData.updated_at).toLocaleDateString()}</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3 pt-4">
-            <Button onClick={loadUpcomingCharges} variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row gap-2 pt-4 mt-4 border-t">
+            <Button onClick={handleViewInvoices} variant="outline" size="sm" className="flex-1">
+              <Receipt className="h-4 w-4 mr-2" />
+              View All Invoices
+              <ExternalLink className="h-3 w-3 ml-2" />
             </Button>
-
             {billingData.billing_status === 'active' && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm">
+                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
                     <XCircle className="h-4 w-4 mr-2" />
                     Cancel Billing
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Cancel Billing</AlertDialogTitle>
+                    <AlertDialogTitle>Cancel Billing?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to cancel billing? You'll still be able to process payments 
-                      until the end of the current billing period, but no new charges will be processed 
-                      after that.
+                      You'll still be able to process payments until the end of the current billing period.
+                      After that, no new charges will be processed.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Keep Billing Active</AlertDialogCancel>
+                    <AlertDialogCancel>Keep Active</AlertDialogCancel>
                     <AlertDialogAction onClick={handleCancelBilling} className="bg-destructive hover:bg-destructive/90">
                       Cancel Billing
                     </AlertDialogAction>
@@ -322,100 +369,25 @@ export const BillingManagement: React.FC<BillingManagementProps> = ({ organizati
         </CardContent>
       </Card>
 
-      {/* Payment Methods */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment Methods</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {paymentMethods.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No payment methods on file.</p>
-          ) : (
-            <div className="space-y-2">
-              {paymentMethods.map(pm => (
-                <div key={pm.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <div className="font-medium">{pm.brand?.toUpperCase()} •••• {pm.last4}</div>
-                    <div className="text-xs text-muted-foreground">Exp {pm.exp_month}/{pm.exp_year}</div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {defaultPaymentMethod === pm.id ? (
-                      <Badge>Default</Badge>
-                    ) : (
-                      <Button variant="outline" size="sm" onClick={() => setDefault(pm.id)}>Set Default</Button>
-                    )}
-                    <Button variant="outline" size="sm" onClick={() => removePm(pm.id)} disabled>
-                      Remove
-                    </Button>
-                  </div>
-                </div>
-              ))}
+      {/* Fee Structure Info */}
+      <Card className="bg-muted/30">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-3">
+            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <DollarSign className="h-4 w-4 text-primary" />
             </div>
-          )}
-          <div className="flex gap-2 pt-2">
-            <Button onClick={handleManagePaymentMethods} className="flex-1">
-              <CreditCard className="h-4 w-4 mr-2" />
-              Manage Cards via Stripe
-              <ExternalLink className="h-3 w-3 ml-1" />
-            </Button>
+            <div>
+              <p className="font-medium text-sm">Platform Fee Structure</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                1.00% of transaction volume + $0.50 per transaction
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Fees are calculated and billed automatically every {upcomingCharges ? `${Math.round((new Date(upcomingCharges.next_billing_date).getTime() - new Date(upcomingCharges.billing_period_start).getTime()) / (1000 * 60 * 60 * 24))} days` : '14 days'}.
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
-
-
-      {/* Upcoming Charges */}
-      {upcomingCharges && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Upcoming Charges
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-green-600" />
-                  <span className="text-2xl font-bold">
-                    ${Number(upcomingCharges.upcoming_amount).toFixed(2)}
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Platform fees for {upcomingCharges.transaction_count} transactions
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Next Billing Date</p>
-                <p className="text-lg font-semibold">
-                  {new Date(upcomingCharges.next_billing_date).toLocaleDateString()}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Billing period: {new Date(upcomingCharges.billing_period_start).toLocaleDateString()} - {new Date(upcomingCharges.billing_period_end).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-
-            {Number(upcomingCharges.upcoming_amount) === 0 && (
-              <Alert className="mt-4">
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  No charges scheduled for this billing period.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <div className="flex gap-2 pt-4">
-              <Button onClick={handleViewInvoices} variant="outline">
-                <Receipt className="h-4 w-4 mr-2" />
-                View Invoices & History
-                <ExternalLink className="h-3 w-3 ml-1" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };

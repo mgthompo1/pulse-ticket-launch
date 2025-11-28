@@ -347,334 +347,224 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
   }
 
   return (
-    <Tabs defaultValue="overview" className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold mb-2">Billing & Usage</h2>
-        <p className="text-muted-foreground">
-          Monitor your platform usage and manage billing information.
-        </p>
-      </div>
-
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="overview">Overview</TabsTrigger>
-        <TabsTrigger value="invoicing">Invoicing</TabsTrigger>
-        <TabsTrigger value="management">Billing Management</TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="overview" className="space-y-6">
-        {/* Billing Status */}
+    <div className="space-y-6">
+      {/* Header with Status */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold">Billing & Usage</h2>
+          <p className="text-muted-foreground text-sm">
+            Monitor your platform usage and manage billing
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           {billingData?.billing_status === 'active' ? (
-            <>
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <span className="text-green-700">Billing Active</span>
-            </>
+            <Badge variant="default" className="bg-green-600 gap-1">
+              <CheckCircle className="h-3 w-3" />
+              Active
+            </Badge>
           ) : (
-            <>
-              <Clock className="h-5 w-5 text-yellow-500" />
-              <span className="text-yellow-700">Setup Required</span>
-            </>
+            <Badge variant="secondary" className="gap-1">
+              <Clock className="h-3 w-3" />
+              Setup Required
+            </Badge>
           )}
         </div>
+      </div>
 
-        {/* Current Month Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">This Month</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{currentMonthUsage.transactions}</div>
-              <p className="text-xs text-muted-foreground">
-                Transactions processed
-              </p>
-            </CardContent>
-          </Card>
+      <Tabs defaultValue="usage" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2 h-auto gap-1 p-1">
+          <TabsTrigger value="usage" className="text-xs sm:text-sm py-2">Usage & Invoices</TabsTrigger>
+          <TabsTrigger value="settings" className="text-xs sm:text-sm py-2">Payment Settings</TabsTrigger>
+        </TabsList>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Transaction Volume</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${currentMonthUsage.volume.toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground">
-                Total volume processed
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Platform Fees</CardTitle>
-              <Receipt className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${currentMonthUsage.fees.toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground">
-                Fees this month
-              </p>
-              <div className="mt-2 text-xs text-muted-foreground">
-                <div>1.00% + $0.50 per transaction</div>
-                <div className="mt-1">
-                  {currentMonthUsage.transactions > 0 && (
-                    <>
-                      <span className="text-primary">
-                        ${(currentMonthUsage.volume * 0.01).toFixed(2)}
-                      </span> + <span className="text-primary">
-                        ${(currentMonthUsage.transactions * 0.50).toFixed(2)}
-                      </span>
-                    </>
-                  )}
+        <TabsContent value="usage" className="space-y-6">
+          {/* Current Period Summary - Compact Card */}
+          <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+            <CardContent className="pt-6">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-4 sm:gap-8 flex-1">
+                  <div className="text-center sm:text-left">
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-1">Transactions</p>
+                    <p className="text-xl sm:text-3xl font-bold">{currentMonthUsage.transactions}</p>
+                  </div>
+                  <div className="text-center sm:text-left">
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-1">Volume</p>
+                    <p className="text-xl sm:text-3xl font-bold">${currentMonthUsage.volume.toFixed(0)}</p>
+                  </div>
+                  <div className="text-center sm:text-left">
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-1">Platform Fees</p>
+                    <p className="text-xl sm:text-3xl font-bold text-primary">${currentMonthUsage.fees.toFixed(2)}</p>
+                  </div>
+                </div>
+                {/* Next Billing */}
+                <div className="bg-background/50 rounded-lg p-4 text-center lg:text-right">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Next billing</p>
+                  <p className="text-lg font-semibold">
+                    {(billingData as any)?.next_billing_at
+                      ? new Date((billingData as any).next_billing_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                      : 'Not scheduled'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Billed every {(billingData as any)?.billing_interval_days || 14} days
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
-        </div>
 
-        {/* Billing schedule info */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Billing Schedule</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 border rounded-lg">
-              <div className="text-sm text-muted-foreground">Next billing date</div>
-              <div className="text-lg font-semibold">{(billingData as any)?.next_billing_at ? new Date((billingData as any).next_billing_at).toLocaleDateString() : '—'}</div>
-            </div>
-            <div className="p-4 border rounded-lg">
-              <div className="text-sm text-muted-foreground">Last billed</div>
-              <div className="text-lg font-semibold">{(billingData as any)?.last_billed_at ? new Date((billingData as any).last_billed_at).toLocaleDateString() : '—'}</div>
-            </div>
-            <div className="p-4 border rounded-lg">
-              <div className="text-sm text-muted-foreground">Interval</div>
-              <div className="text-lg font-semibold">{(billingData as any)?.billing_interval_days || 14} days</div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Usage */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Transactions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {usageData.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                No transactions this month
-              </p>
-            ) : (
+          {/* Fee Breakdown */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Receipt className="h-4 w-4" />
+                Current Period Fee Breakdown
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
               <div className="space-y-3">
-                {usageData.slice(0, 10).map((record) => (
-                  <div key={record.id} className="flex justify-between items-center py-2 border-b">
-                    <div>
-                      <p className="font-medium">${record.transaction_amount.toFixed(2)}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(record.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium">${record.total_platform_fee.toFixed(2)}</p>
-                      <p className="text-sm text-muted-foreground">Platform fee</p>
-                    </div>
-                  </div>
-                ))}
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Percentage fee (1.00% of ${currentMonthUsage.volume.toFixed(2)})</span>
+                  <span className="font-medium">${(currentMonthUsage.volume * 0.01).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Fixed fee ({currentMonthUsage.transactions} × $0.50)</span>
+                  <span className="font-medium">${(currentMonthUsage.transactions * 0.50).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center pt-3 border-t">
+                  <span className="font-semibold">Total due at next billing</span>
+                  <span className="text-lg font-bold text-primary">${currentMonthUsage.fees.toFixed(2)}</span>
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              {currentMonthUsage.transactions > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => downloadInvoice()}
+                  className="mt-4"
+                >
+                  Download Current Statement
+                </Button>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Invoice History */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Invoice History</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {invoiceData.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                No invoices yet
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {invoiceData.map((invoice) => (
-                  <div key={invoice.id} className="flex justify-between items-center py-3 border-b">
-                    <div>
-                      <p className="font-medium">
-                        {invoice.billing_period_start} - {invoice.billing_period_end}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {invoice.total_transactions} transactions
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium">${invoice.total_platform_fees.toFixed(2)}</p>
-                      <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'}>
-                        {invoice.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="invoicing" className="space-y-6">
-        {/* Current Month Invoice Preview */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Receipt className="h-5 w-5" />
-              Current Month Invoice Preview
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Preview of your upcoming invoice for {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-3">
-                <h4 className="font-medium">Transaction Summary</h4>
+          {/* Recent Transactions */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Recent Transactions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {usageData.length === 0 ? (
+                <div className="text-center py-8">
+                  <TrendingUp className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
+                  <p className="text-muted-foreground text-sm">No transactions this period</p>
+                </div>
+              ) : (
                 <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Total Transactions:</span>
-                    <span className="font-medium">{currentMonthUsage.transactions}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Transaction Volume:</span>
-                    <span className="font-medium">${currentMonthUsage.volume.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Platform Fee Rate:</span>
-                    <span className="font-medium">1.00% + $0.50 per transaction</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                <h4 className="font-medium">Fee Breakdown</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Percentage Fee (1.00%):</span>
-                    <span className="font-medium">${(currentMonthUsage.volume * 0.01).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Fixed Fee ({currentMonthUsage.transactions} × $0.50):</span>
-                    <span className="font-medium">${(currentMonthUsage.transactions * 0.50).toFixed(2)}</span>
-                  </div>
-                  <div className="border-t pt-2">
-                    <div className="flex justify-between font-semibold">
-                      <span>Total Platform Fees:</span>
-                      <span className="text-lg">${currentMonthUsage.fees.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex gap-3 pt-4">
-              <Button 
-                variant="outline"
-                onClick={() => downloadInvoice()}
-                disabled={currentMonthUsage.transactions === 0}
-              >
-                Download PDF
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Invoice History with Enhanced Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Invoice History</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              View and download previous invoices
-            </p>
-          </CardHeader>
-          <CardContent>
-            {invoiceData.length === 0 ? (
-              <div className="text-center py-8">
-                <Receipt className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                <p className="text-muted-foreground">No invoices generated yet</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Invoices are generated fortnightly (every 14 days) based on your platform usage
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {invoiceData.map((invoice) => (
-                  <div key={invoice.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h4 className="font-medium">
-                          Invoice #{invoice.id.slice(-8)}
-                        </h4>
-                        <p className="text-sm text-muted-foreground">
-                          {invoice.billing_period_start} - {invoice.billing_period_end}
-                        </p>
+                  {usageData.slice(0, 5).map((record) => (
+                    <div key={record.id} className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                          <DollarSign className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">${record.transaction_amount.toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(record.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-lg font-bold">${invoice.total_platform_fees.toFixed(2)}</div>
-                        <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'}>
-                          {invoice.status}
-                        </Badge>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          ${record.total_platform_fee.toFixed(2)} fee
+                        </p>
                       </div>
                     </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Transactions:</span>
-                        <div className="font-medium">{invoice.total_transactions}</div>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Volume:</span>
-                        <div className="font-medium">${invoice.total_transaction_volume?.toFixed(2) || '0.00'}</div>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Due Date:</span>
-                        <div className="font-medium">
-                          {new Date(invoice.billing_period_end).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Generated:</span>
-                        <div className="font-medium">
-                          {new Date(invoice.created_at).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex gap-2 mt-3 pt-3 border-t">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => downloadInvoice(invoice.id)}
-                      >
-                        Download
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => viewInvoice(invoice.id)}
-                      >
-                        View Details
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </TabsContent>
+                  ))}
+                  {usageData.length > 5 && (
+                    <p className="text-xs text-muted-foreground text-center pt-2">
+                      + {usageData.length - 5} more transactions
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-      <TabsContent value="management">
-        <BillingManagement organizationId={organizationId} />
-      </TabsContent>
-    </Tabs>
+          {/* Invoice History */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Invoice History</CardTitle>
+                {invoiceData.length > 0 && (
+                  <Badge variant="outline" className="text-xs">
+                    {invoiceData.length} invoice{invoiceData.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {invoiceData.length === 0 ? (
+                <div className="text-center py-8">
+                  <Receipt className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
+                  <p className="text-muted-foreground text-sm">No invoices yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Invoices are generated automatically every {(billingData as any)?.billing_interval_days || 14} days
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {invoiceData.map((invoice) => (
+                    <div key={invoice.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                          invoice.status === 'paid' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-yellow-100 dark:bg-yellow-900/30'
+                        }`}>
+                          {invoice.status === 'paid' ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Clock className="h-4 w-4 text-yellow-600" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">
+                            {new Date(invoice.billing_period_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(invoice.billing_period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {invoice.total_transactions} transactions • ${invoice.total_transaction_volume?.toFixed(2) || '0.00'} volume
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 ml-11 sm:ml-0">
+                        <div className="text-right">
+                          <p className="font-semibold">${invoice.total_platform_fees.toFixed(2)}</p>
+                          <Badge variant={invoice.status === 'paid' ? 'default' : 'secondary'} className="text-xs">
+                            {invoice.status}
+                          </Badge>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => downloadInvoice(invoice.id)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Receipt className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <BillingManagement organizationId={organizationId} />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 
