@@ -52,15 +52,25 @@ const AIChatbot = ({ context }: AIChatbotProps) => {
       timestamp: new Date()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInputMessage("");
     setIsLoading(true);
 
     try {
+      // Send conversation history for context (excluding welcome message)
+      const conversationHistory = updatedMessages
+        .filter(m => m.id !== "welcome")
+        .map(m => ({
+          content: m.content,
+          isBot: m.isBot
+        }));
+
       const { data, error } = await supabase.functions.invoke("ai-chatbot", {
         body: {
           message: inputMessage,
-          context
+          context,
+          conversationHistory
         }
       });
 
@@ -75,11 +85,14 @@ const AIChatbot = ({ context }: AIChatbotProps) => {
 
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to get AI response. Please try again.",
-        variant: "destructive"
-      });
+      console.error("Chatbot error:", error);
+      const botMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "I'm having trouble connecting right now. Please try again or visit our Help Center at /help for assistance.",
+        isBot: true,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, botMessage]);
     } finally {
       setIsLoading(false);
     }

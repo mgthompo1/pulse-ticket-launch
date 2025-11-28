@@ -41,9 +41,9 @@ export const HeroDemo = () => {
           {/* Dual CTAs - Highnote pattern */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             <Button
-              variant="default"
+              variant="hero"
               size="lg"
-              className="group bg-[#ff4d00] hover:bg-[#e64400] text-white border-0 font-manrope font-semibold px-8 py-6 text-base rounded-lg transition-all duration-200 hover:shadow-xl hover:shadow-[#ff4d00]/25 hover:-translate-y-0.5 w-full sm:w-auto"
+              className="group hover:bg-[#e64400] border-0 px-8 py-6 rounded-lg transition-all duration-200 hover:shadow-xl hover:shadow-[#ff4d00]/25 hover:-translate-y-0.5 w-full sm:w-auto"
               onClick={handleGetStarted}
             >
               Get Started Free

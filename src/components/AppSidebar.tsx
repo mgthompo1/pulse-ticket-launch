@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { OrganizationSwitcher } from "@/components/OrganizationSwitcher";
+import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 
 interface Event {
   id: string;
@@ -197,6 +198,11 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Onboarding Checklist - shows until first event is created */}
+        {!isCollapsed && systemType === "EVENTS" && (
+          <OnboardingChecklist onNavigate={setActiveTab} />
+        )}
 
         {/* Bottom Section - User Info */}
         {!isCollapsed && (

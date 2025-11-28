@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import XeroIntegration from "@/components/XeroIntegration";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +46,8 @@ import GroupsManagement from "@/components/GroupsManagement";
 import CustomersCRM from "@/pages/CustomersCRM";
 import IssuingPage from "@/pages/IssuingPage";
 import { useNavigate } from "react-router-dom";
+import { OnboardingWizard } from "@/components/OnboardingWizard";
+import { useOnboarding } from "@/hooks/useOnboarding";
 
 // Types
 type DashboardEvent = {
@@ -158,7 +160,18 @@ const OrgDashboard = () => {
 
 
   const [showHelp, setShowHelp] = useState(false);
+  const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
+
+  // Onboarding state
+  const { showWizard: shouldShowWizard, refreshOnboardingState } = useOnboarding();
+
+  // Show onboarding wizard when needed
+  useEffect(() => {
+    if (shouldShowWizard && currentOrganization && isEventsMode()) {
+      setShowOnboardingWizard(true);
+    }
+  }, [shouldShowWizard, currentOrganization]);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
   const [analytics, setAnalytics] = useState({
@@ -1783,6 +1796,16 @@ const OrgDashboard = () => {
 
       {/* Help Modal */}
       <DashboardHelp isOpen={showHelp} onClose={() => setShowHelp(false)} />
+
+      {/* Onboarding Wizard */}
+      <OnboardingWizard
+        isOpen={showOnboardingWizard}
+        onClose={() => setShowOnboardingWizard(false)}
+        onComplete={() => {
+          refreshOnboardingState();
+          fetchEvents();
+        }}
+      />
     </SidebarProvider>
   );
 };

@@ -438,7 +438,8 @@ const Auth = () => {
                     </div>
                     <Button
                       type="submit"
-                      className="w-full bg-[#ff4d00] hover:bg-[#e64400] text-white font-manrope font-medium transition-all shadow-lg shadow-[#ff4d00]/20"
+                      variant="hero"
+                      className="w-full hover:bg-[#e64400] transition-all shadow-lg shadow-[#ff4d00]/20"
                       disabled={loading}
                     >
                       {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -517,7 +518,8 @@ const Auth = () => {
                         </div>
                         <Button
                           type="submit"
-                          className="w-full bg-[#ff4d00] hover:bg-[#e64400] text-white font-manrope font-medium transition-all shadow-lg shadow-[#ff4d00]/20"
+                          variant="hero"
+                          className="w-full hover:bg-[#e64400] transition-all shadow-lg shadow-[#ff4d00]/20"
                           disabled={loading}
                         >
                           {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -614,7 +616,8 @@ const Auth = () => {
                   </div>
                   <Button
                     type="submit"
-                    className="w-full bg-[#ff4d00] hover:bg-[#e64400] text-white font-manrope font-medium transition-all shadow-lg shadow-[#ff4d00]/20"
+                    variant="hero"
+                    className="w-full hover:bg-[#e64400] transition-all shadow-lg shadow-[#ff4d00]/20"
                     disabled={loading}
                   >
                     {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

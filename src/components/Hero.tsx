@@ -37,7 +37,7 @@ export const Hero = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
-            <Button variant="default" size="xl" className="group bg-[#ff4d00] hover:bg-[#e64400] text-white border-0 font-manrope font-medium px-8 py-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-[#ff4d00]/25" onClick={handleStartTrial}>
+            <Button variant="hero" size="xl" className="group hover:bg-[#e64400] border-0 px-8 py-4 rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-[#ff4d00]/25" onClick={handleStartTrial}>
               {getContentByKey('hero', 'cta_primary') || 'Start for free'}
               <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
             </Button>

@@ -1,0 +1,623 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Card, CardContent } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  Rocket,
+  Calendar,
+  Ticket,
+  CreditCard,
+  CheckCircle2,
+  ArrowRight,
+  ArrowLeft,
+  Loader2,
+  Sparkles,
+  MapPin,
+  Users,
+  DollarSign,
+  PartyPopper,
+  ExternalLink,
+  Copy,
+} from "lucide-react";
+import { format } from "date-fns";
+
+interface OnboardingWizardProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onComplete: () => void;
+}
+
+type Step = "welcome" | "event-basics" | "tickets" | "payment" | "success";
+
+interface EventData {
+  name: string;
+  date: string;
+  time: string;
+  venue: string;
+  capacity: string;
+  description: string;
+}
+
+interface TicketData {
+  name: string;
+  price: string;
+  quantity: string;
+  description: string;
+}
+
+const STEPS: { id: Step; title: string; icon: React.ElementType }[] = [
+  { id: "welcome", title: "Welcome", icon: Rocket },
+  { id: "event-basics", title: "Event Details", icon: Calendar },
+  { id: "tickets", title: "Tickets", icon: Ticket },
+  { id: "payment", title: "Payments", icon: CreditCard },
+  { id: "success", title: "Complete", icon: CheckCircle2 },
+];
+
+export const OnboardingWizard = ({ isOpen, onClose, onComplete }: OnboardingWizardProps) => {
+  const [currentStep, setCurrentStep] = useState<Step>("welcome");
+  const [isLoading, setIsLoading] = useState(false);
+  const [createdEventId, setCreatedEventId] = useState<string | null>(null);
+  const [eventUrl, setEventUrl] = useState<string>("");
+  const { toast } = useToast();
+  const { organization } = useAuth();
+
+  const [eventData, setEventData] = useState<EventData>({
+    name: "",
+    date: "",
+    time: "19:00",
+    venue: "",
+    capacity: "100",
+    description: "",
+  });
+
+  const [ticketData, setTicketData] = useState<TicketData>({
+    name: "General Admission",
+    price: "25",
+    quantity: "100",
+    description: "",
+  });
+
+  const currentStepIndex = STEPS.findIndex(s => s.id === currentStep);
+
+  const goToNext = () => {
+    const nextIndex = currentStepIndex + 1;
+    if (nextIndex < STEPS.length) {
+      setCurrentStep(STEPS[nextIndex].id);
+    }
+  };
+
+  const goToPrevious = () => {
+    const prevIndex = currentStepIndex - 1;
+    if (prevIndex >= 0) {
+      setCurrentStep(STEPS[prevIndex].id);
+    }
+  };
+
+  const createEvent = async () => {
+    if (!organization?.id) {
+      toast({
+        title: "Error",
+        description: "No organization found. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Combine date and time
+      const eventDateTime = new Date(`${eventData.date}T${eventData.time}`);
+
+      // Create the event
+      const { data: event, error: eventError } = await supabase
+        .from("events")
+        .insert({
+          organization_id: organization.id,
+          name: eventData.name,
+          event_date: eventDateTime.toISOString(),
+          venue: eventData.venue,
+          capacity: parseInt(eventData.capacity) || 100,
+          description: eventData.description,
+          status: "draft",
+        })
+        .select()
+        .single();
+
+      if (eventError) throw eventError;
+
+      // Create the ticket type
+      const { error: ticketError } = await supabase
+        .from("ticket_types")
+        .insert({
+          event_id: event.id,
+          name: ticketData.name,
+          price: parseFloat(ticketData.price) || 0,
+          quantity: parseInt(ticketData.quantity) || 100,
+          description: ticketData.description || null,
+        });
+
+      if (ticketError) throw ticketError;
+
+      setCreatedEventId(event.id);
+      setEventUrl(`${window.location.origin}/widget/${event.id}`);
+
+      // Mark onboarding as complete
+      localStorage.setItem("onboarding_completed", "true");
+
+      goToNext();
+    } catch (error) {
+      console.error("Error creating event:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create event. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const publishEvent = async () => {
+    if (!createdEventId) return;
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from("events")
+        .update({ status: "published" })
+        .eq("id", createdEventId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Event Published!",
+        description: "Your event is now live and ready to sell tickets.",
+      });
+    } catch (error) {
+      console.error("Error publishing:", error);
+      toast({
+        title: "Error",
+        description: "Failed to publish event.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const copyEventUrl = () => {
+    navigator.clipboard.writeText(eventUrl);
+    toast({
+      title: "Copied!",
+      description: "Event URL copied to clipboard.",
+    });
+  };
+
+  const handleComplete = () => {
+    onComplete();
+    onClose();
+  };
+
+  const handleSkip = () => {
+    localStorage.setItem("onboarding_completed", "true");
+    onClose();
+  };
+
+  const isEventDataValid = eventData.name && eventData.date && eventData.venue;
+  const isTicketDataValid = ticketData.name && ticketData.price && ticketData.quantity;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        {/* Progress indicator */}
+        {currentStep !== "welcome" && currentStep !== "success" && (
+          <div className="flex items-center justify-center gap-2 mb-4">
+            {STEPS.filter(s => s.id !== "welcome" && s.id !== "success").map((step, index) => {
+              const stepIndex = STEPS.findIndex(s => s.id === step.id);
+              const isActive = stepIndex === currentStepIndex;
+              const isCompleted = stepIndex < currentStepIndex;
+              return (
+                <div key={step.id} className="flex items-center">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                      isActive
+                        ? "bg-indigo-600 text-white"
+                        : isCompleted
+                        ? "bg-green-500 text-white"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : index + 1}
+                  </div>
+                  {index < 2 && (
+                    <div
+                      className={`w-12 h-0.5 mx-1 ${
+                        isCompleted ? "bg-green-500" : "bg-muted"
+                      }`}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Welcome Step */}
+        {currentStep === "welcome" && (
+          <>
+            <DialogHeader className="text-center">
+              <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <DialogTitle className="text-2xl">Welcome to TicketFlo!</DialogTitle>
+              <DialogDescription className="text-base">
+                Let's create your first event in just a few minutes. We'll guide you through the essentials.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid grid-cols-2 gap-3 my-6">
+              {[
+                { icon: Calendar, label: "Event Details", desc: "Name, date & venue" },
+                { icon: Ticket, label: "Ticket Setup", desc: "Pricing & capacity" },
+                { icon: CreditCard, label: "Payments", desc: "Get paid instantly" },
+                { icon: PartyPopper, label: "Go Live", desc: "Start selling!" },
+              ].map((item, i) => (
+                <Card key={i} className="border-dashed">
+                  <CardContent className="p-4 flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-muted">
+                      <item.icon className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{item.label}</p>
+                      <p className="text-xs text-muted-foreground">{item.desc}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Button onClick={goToNext} className="w-full" size="lg">
+                Let's Get Started
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+              <Button variant="ghost" onClick={handleSkip} className="text-muted-foreground">
+                Skip for now, I'll explore on my own
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Event Basics Step */}
+        {currentStep === "event-basics" && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-indigo-600" />
+                Event Details
+              </DialogTitle>
+              <DialogDescription>
+                Tell us about your event. Don't worry, you can change these later.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 my-4">
+              <div className="space-y-2">
+                <Label htmlFor="event-name">Event Name *</Label>
+                <Input
+                  id="event-name"
+                  placeholder="e.g., Summer Music Festival 2025"
+                  value={eventData.name}
+                  onChange={(e) => setEventData({ ...eventData, name: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="event-date">Event Date *</Label>
+                  <Input
+                    id="event-date"
+                    type="date"
+                    value={eventData.date}
+                    onChange={(e) => setEventData({ ...eventData, date: e.target.value })}
+                    min={format(new Date(), "yyyy-MM-dd")}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="event-time">Start Time</Label>
+                  <Input
+                    id="event-time"
+                    type="time"
+                    value={eventData.time}
+                    onChange={(e) => setEventData({ ...eventData, time: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="venue" className="flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  Venue *
+                </Label>
+                <Input
+                  id="venue"
+                  placeholder="e.g., Central Park Amphitheater"
+                  value={eventData.venue}
+                  onChange={(e) => setEventData({ ...eventData, venue: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="capacity" className="flex items-center gap-1">
+                  <Users className="w-3 h-3" />
+                  Capacity
+                </Label>
+                <Input
+                  id="capacity"
+                  type="number"
+                  placeholder="100"
+                  value={eventData.capacity}
+                  onChange={(e) => setEventData({ ...eventData, capacity: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Description (optional)</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Tell attendees what to expect..."
+                  value={eventData.description}
+                  onChange={(e) => setEventData({ ...eventData, description: e.target.value })}
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={goToPrevious}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+              <Button onClick={goToNext} disabled={!isEventDataValid}>
+                Continue
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Tickets Step */}
+        {currentStep === "tickets" && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Ticket className="w-5 h-5 text-indigo-600" />
+                Create Your First Ticket
+              </DialogTitle>
+              <DialogDescription>
+                Set up a ticket type. You can add more ticket types later.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 my-4">
+              <div className="space-y-2">
+                <Label htmlFor="ticket-name">Ticket Name *</Label>
+                <Input
+                  id="ticket-name"
+                  placeholder="e.g., General Admission"
+                  value={ticketData.name}
+                  onChange={(e) => setTicketData({ ...ticketData, name: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="ticket-price" className="flex items-center gap-1">
+                    <DollarSign className="w-3 h-3" />
+                    Price *
+                  </Label>
+                  <Input
+                    id="ticket-price"
+                    type="number"
+                    step="0.01"
+                    placeholder="25.00"
+                    value={ticketData.price}
+                    onChange={(e) => setTicketData({ ...ticketData, price: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">Set to 0 for free tickets</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ticket-quantity">Quantity Available *</Label>
+                  <Input
+                    id="ticket-quantity"
+                    type="number"
+                    placeholder="100"
+                    value={ticketData.quantity}
+                    onChange={(e) => setTicketData({ ...ticketData, quantity: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="ticket-description">Description (optional)</Label>
+                <Textarea
+                  id="ticket-description"
+                  placeholder="What's included with this ticket..."
+                  value={ticketData.description}
+                  onChange={(e) => setTicketData({ ...ticketData, description: e.target.value })}
+                  rows={2}
+                />
+              </div>
+
+              {/* Preview Card */}
+              <Card className="bg-muted/50">
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground mb-2">Ticket Preview</p>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-medium">{ticketData.name || "Ticket Name"}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {ticketData.quantity || "0"} available
+                      </p>
+                    </div>
+                    <p className="text-lg font-bold">
+                      ${parseFloat(ticketData.price || "0").toFixed(2)}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={goToPrevious}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+              <Button onClick={goToNext} disabled={!isTicketDataValid}>
+                Continue
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Payment Step */}
+        {currentStep === "payment" && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-indigo-600" />
+                Payment Setup
+              </DialogTitle>
+              <DialogDescription>
+                Connect a payment provider to start accepting payments.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 my-4">
+              <Card className="border-dashed">
+                <CardContent className="p-6 text-center">
+                  <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                    <CreditCard className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <h3 className="font-medium mb-2">Payment Setup</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    You can set up Stripe or Windcave from the Payments tab in your dashboard.
+                    For now, let's create your event first!
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Your event will be saved as a draft until you connect payments.
+                  </p>
+                </CardContent>
+              </Card>
+
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <strong>Tip:</strong> You can create and customize your event now, then connect
+                  Stripe later when you're ready to publish and sell tickets.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={goToPrevious}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+              <Button onClick={createEvent} disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creating Event...
+                  </>
+                ) : (
+                  <>
+                    Create My Event
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Success Step */}
+        {currentStep === "success" && (
+          <>
+            <DialogHeader className="text-center">
+              <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <PartyPopper className="w-8 h-8 text-green-600 dark:text-green-400" />
+              </div>
+              <DialogTitle className="text-2xl">Your Event is Ready!</DialogTitle>
+              <DialogDescription className="text-base">
+                "{eventData.name}" has been created. Here's what to do next.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 my-6">
+              {/* Event URL */}
+              <div className="space-y-2">
+                <Label>Your Event URL</Label>
+                <div className="flex gap-2">
+                  <Input value={eventUrl} readOnly className="bg-muted" />
+                  <Button variant="outline" size="icon" onClick={copyEventUrl}>
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Next Steps */}
+              <Card>
+                <CardContent className="p-4 space-y-3">
+                  <p className="font-medium text-sm">Next Steps:</p>
+                  <div className="space-y-2">
+                    {[
+                      { label: "Connect Stripe to accept payments", link: "Payments tab" },
+                      { label: "Customize your event page design", link: "Customization" },
+                      { label: "Add more ticket types if needed", link: "Tickets tab" },
+                      { label: "Publish when ready to sell", link: "Event Details" },
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm">
+                        <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-xs font-medium text-indigo-600">
+                          {i + 1}
+                        </div>
+                        <span>{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Button onClick={handleComplete} className="w-full" size="lg">
+                Go to Dashboard
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => window.open(eventUrl, "_blank")}
+                className="w-full"
+              >
+                Preview Event Page
+                <ExternalLink className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
