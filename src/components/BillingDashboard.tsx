@@ -7,14 +7,16 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 // Stripe will be loaded dynamically when needed
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { 
-  CreditCard, 
-  Receipt, 
-  TrendingUp, 
+import {
+  CreditCard,
+  Receipt,
+  TrendingUp,
   DollarSign,
   AlertTriangle,
   CheckCircle,
-  Clock
+  Clock,
+  Sparkles,
+  Info
 } from "lucide-react";
 import { BillingManagement } from "./BillingManagement";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -162,6 +164,12 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
   }>>([]);
   const [loading, setLoading] = useState(true);
   const [needsSetup, setNeedsSetup] = useState(false);
+  const [orgPaymentConfig, setOrgPaymentConfig] = useState<{
+    stripeConnected: boolean;
+    bookingFeesEnabled: boolean;
+    paymentProvider: string | null;
+    windcaveEnabled: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (organizationId) {
@@ -172,6 +180,31 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
   const loadBillingData = async () => {
     try {
       setLoading(true);
+
+      // Load organization payment config
+      const { data: org, error: orgError } = await supabase
+        .from('organizations')
+        .select('stripe_account_id, stripe_booking_fee_enabled, payment_provider')
+        .eq('id', organizationId)
+        .single();
+
+      if (orgError) {
+        console.error('Error loading organization:', orgError);
+      }
+
+      // Load payment credentials for windcave status
+      const { data: paymentCreds } = await supabase
+        .from('payment_credentials')
+        .select('windcave_enabled')
+        .eq('organization_id', organizationId)
+        .single();
+
+      setOrgPaymentConfig({
+        stripeConnected: !!org?.stripe_account_id,
+        bookingFeesEnabled: !!org?.stripe_booking_fee_enabled,
+        paymentProvider: org?.payment_provider || null,
+        windcaveEnabled: !!paymentCreds?.windcave_enabled
+      });
 
       // Load billing customer info
       const { data: billing, error: billingError } = await supabase
@@ -371,6 +404,41 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
         </div>
       </div>
 
+      {/* Fee Status Banner */}
+      {orgPaymentConfig && (
+        orgPaymentConfig.stripeConnected && orgPaymentConfig.bookingFeesEnabled ? (
+          // Fees passed to customers - no platform billing
+          <Alert className="bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800">
+            <Sparkles className="h-4 w-4 text-emerald-600" />
+            <AlertDescription className="text-emerald-800 dark:text-emerald-200">
+              <span className="font-medium">Booking fees passed to customers</span>
+              <span className="hidden sm:inline"> — </span>
+              <br className="sm:hidden" />
+              <span className="text-emerald-700 dark:text-emerald-300 text-sm">
+                Your Stripe Connect account is set up with customer-paid fees. Platform fees (1% + $0.50) are collected directly from customers at checkout, so you won't receive platform invoices.
+              </span>
+            </AlertDescription>
+          </Alert>
+        ) : (
+          // Fees billed to organization
+          <Alert className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-800 dark:text-blue-200">
+              <span className="font-medium">Platform fees billed to you</span>
+              <span className="hidden sm:inline"> — </span>
+              <br className="sm:hidden" />
+              <span className="text-blue-700 dark:text-blue-300 text-sm">
+                {orgPaymentConfig.windcaveEnabled
+                  ? "Using Windcave for payments. Platform fees (1% + $0.50 per transaction) are invoiced to your organization."
+                  : orgPaymentConfig.stripeConnected
+                    ? "Stripe Connect is active but booking fee pass-through is disabled. Enable it in Payment Settings to have customers cover platform fees."
+                    : "Platform fees (1% + $0.50 per transaction) are invoiced to your organization. Connect Stripe & enable fee pass-through to have customers pay instead."}
+              </span>
+            </AlertDescription>
+          </Alert>
+        )
+      )}
+
       <Tabs defaultValue="usage" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 h-auto gap-1 p-1">
           <TabsTrigger value="usage" className="text-xs sm:text-sm py-2">Usage & Invoices</TabsTrigger>
@@ -379,7 +447,37 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
 
         <TabsContent value="usage" className="space-y-6">
           {/* Current Period Summary - Compact Card */}
-          <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+          {/* Show different content based on fee mode */}
+          {orgPaymentConfig?.stripeConnected && orgPaymentConfig?.bookingFeesEnabled ? (
+            // Customer pays fees - show simplified stats without fee focus
+            <Card className="bg-gradient-to-br from-emerald-500/5 to-emerald-500/10 border-emerald-500/20">
+              <CardContent className="pt-6">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="grid grid-cols-2 gap-4 sm:gap-8 flex-1">
+                    <div className="text-center sm:text-left">
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-1">Transactions</p>
+                      <p className="text-xl sm:text-3xl font-bold">{currentMonthUsage.transactions}</p>
+                    </div>
+                    <div className="text-center sm:text-left">
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-1">Volume</p>
+                      <p className="text-xl sm:text-3xl font-bold">${currentMonthUsage.volume.toFixed(0)}</p>
+                    </div>
+                  </div>
+                  <div className="bg-background/50 rounded-lg p-4 text-center lg:text-right">
+                    <div className="flex items-center justify-center lg:justify-end gap-2 text-emerald-600 dark:text-emerald-400">
+                      <Sparkles className="h-4 w-4" />
+                      <span className="text-sm font-medium">No invoice due</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Customers paid ${currentMonthUsage.fees.toFixed(2)} in fees
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            // Organization pays fees - show full stats with fee focus
+            <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
             <CardContent className="pt-6">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                 {/* Stats */}
@@ -412,8 +510,10 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
               </div>
             </CardContent>
           </Card>
+          )}
 
-          {/* Fee Breakdown */}
+          {/* Fee Breakdown - only show if org pays fees */}
+          {!(orgPaymentConfig?.stripeConnected && orgPaymentConfig?.bookingFeesEnabled) && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
@@ -448,6 +548,7 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
               )}
             </CardContent>
           </Card>
+          )}
 
           {/* Recent Transactions */}
           <Card>
