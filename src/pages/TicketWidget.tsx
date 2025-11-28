@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { usePromoCodeAndDiscounts } from "@/hooks/usePromoCodeAndDiscounts";
 import { useTicketReservation } from "@/hooks/useTicketReservation";
+import { useWidgetTracking } from "@/hooks/useWidgetTracking";
 import { PromoCodeInput } from "@/components/checkout/PromoCodeInput";
 // Stripe will be loaded dynamically when needed
 import {
@@ -133,7 +134,41 @@ const TicketWidget = () => {
       source
     });
   }, [eventId, isGroupPurchase, groupId, allocationId, source]);
-  
+
+  // Force light mode on widget - continuously enforce light mode
+  useEffect(() => {
+    const root = document.documentElement;
+    const savedTheme = localStorage.getItem('theme');
+
+    // Force light mode
+    const enforceLightMode = () => {
+      root.classList.remove('dark');
+      root.classList.add('light');
+    };
+
+    enforceLightMode();
+
+    // Watch for any changes and re-enforce light mode
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class' && root.classList.contains('dark')) {
+          enforceLightMode();
+        }
+      });
+    });
+
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+
+    return () => {
+      observer.disconnect();
+      // Restore user's theme preference when leaving widget
+      if (savedTheme === 'dark') {
+        root.classList.add('dark');
+        root.classList.remove('light');
+      }
+    };
+  }, []);
+
   const [eventData, setEventData] = useState<EventData | null>(null);
   
   // Get theme colors and apply them consistently - use useMemo to recalculate when eventData changes
@@ -226,6 +261,32 @@ const TicketWidget = () => {
   const [creditCardProcessingFee, setCreditCardProcessingFee] = useState(0);
   const [paymentProvider, setPaymentProvider] = useState('stripe');
   const [stripePublishableKey, setStripePublishableKey] = useState('');
+
+  // Widget funnel analytics tracking
+  const {
+    trackTicketSelected,
+    trackCheckoutStarted,
+    trackPaymentInitiated,
+    trackPurchaseCompleted,
+  } = useWidgetTracking({ eventId: eventId || "", enabled: !!eventId });
+
+  // Track ticket selection when cart changes
+  const prevCartLength = useRef(0);
+  useEffect(() => {
+    if (cart.length > 0 && cart.length > prevCartLength.current) {
+      // Cart grew - tickets were selected
+      const tickets = cart.map(item => ({
+        ticket_type_id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+      }));
+      const cartValue = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      trackTicketSelected(tickets, cartValue);
+    }
+    prevCartLength.current = cart.length;
+  }, [cart, trackTicketSelected]);
+
   // Apple Pay / Google Pay removed
   
   // Debug effect to monitor Stripe key changes
@@ -923,6 +984,10 @@ const TicketWidget = () => {
       return;
     }
 
+    // Track checkout started
+    const cartValue = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    trackCheckoutStarted(cartValue);
+
     try {
       // Prepare items for checkout (both tickets and merchandise)
       const allItems = [
@@ -962,7 +1027,8 @@ const TicketWidget = () => {
         if (data.links && Array.isArray(data.links)) {
           setWindcaveLinks(data.links);
           setShowPaymentForm(true);
-          
+          trackPaymentInitiated(data.totalAmount); // Track payment initiated
+
           // Initialize Windcave Drop-In after state update
           setTimeout(() => {
             initializeWindcaveDropIn(data.links, data.totalAmount);
@@ -1665,9 +1731,9 @@ const TicketWidget = () => {
         ogImage={(eventData as any)?.logo_url || "https://www.ticketflo.org/og-image.jpg"}
         structuredData={eventStructuredDataSinglePage}
       />
-      <div 
-        className="min-h-screen"
-        style={{ 
+      <div
+        className="force-light min-h-screen"
+        style={{
           backgroundColor: backgroundColor,
           fontFamily: fontFamily,
           color: headerTextColor
@@ -2653,6 +2719,10 @@ const TicketWidget = () => {
                               // Don't fail the purchase, just log the error
                             }
                           }
+
+                          // Track purchase completed
+                          const purchaseValue = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+                          trackPurchaseCompleted(purchaseValue);
 
                           setCart([]);
                           setMerchandiseCart([]);

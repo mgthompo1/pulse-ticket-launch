@@ -76,7 +76,39 @@ const TicketFloLIVE = () => {
   const [currentLanyardTemplate, setCurrentLanyardTemplate] = useState<LanyardTemplate | null>(null);
   const [eventData, setEventData] = useState<any>(null);
   const [organizationData, setOrganizationData] = useState<any>(null);
-  
+
+  // Force light mode on this page - continuously enforce light mode
+  useEffect(() => {
+    const root = document.documentElement;
+    const savedTheme = localStorage.getItem('theme');
+
+    const enforceLightMode = () => {
+      root.classList.remove('dark');
+      root.classList.add('light');
+    };
+
+    enforceLightMode();
+
+    // Watch for any changes and re-enforce light mode
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class' && root.classList.contains('dark')) {
+          enforceLightMode();
+        }
+      });
+    });
+
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+
+    return () => {
+      observer.disconnect();
+      if (savedTheme === 'dark') {
+        root.classList.add('dark');
+        root.classList.remove('light');
+      }
+    };
+  }, []);
+
   // Concession management state
   const [newItem, setNewItem] = useState({
     name: "",
@@ -1142,7 +1174,7 @@ const handleCreateConcessionItem = async () => {
   ] : [];
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="force-light flex h-screen bg-gray-50">
       {/* Vertical Sidebar */}
       <div className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} transition-all duration-300 bg-gray-900 text-white flex flex-col`}>
         {/* Sidebar Header */}

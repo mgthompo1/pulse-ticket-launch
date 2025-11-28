@@ -23,7 +23,8 @@ export const useOnboarding = (): OnboardingState => {
   const { user, organization } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
-  const [hasEvents, setHasEvents] = useState(false);
+  // Default to true to prevent flash - will be set to false if no events found
+  const [hasEvents, setHasEvents] = useState(true);
   const [hasPaymentSetup, setHasPaymentSetup] = useState(false);
   const [hasPublishedEvent, setHasPublishedEvent] = useState(false);
   const [hasSoldTicket, setHasSoldTicket] = useState(false);

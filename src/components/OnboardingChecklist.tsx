@@ -10,10 +10,10 @@ interface OnboardingChecklistProps {
 }
 
 export const OnboardingChecklist = ({ onNavigate, onDismiss }: OnboardingChecklistProps) => {
-  const { checklistItems, hasEvents } = useOnboarding();
+  const { checklistItems, hasEvents, isLoading } = useOnboarding();
 
-  // Don't show if user has events (onboarding complete)
-  if (hasEvents) {
+  // Don't show while loading or if user has events (onboarding complete)
+  if (isLoading || hasEvents) {
     return null;
   }
 
