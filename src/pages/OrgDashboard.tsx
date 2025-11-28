@@ -36,6 +36,9 @@ import { SecurityDashboard } from "@/components/SecurityDashboard";
 import { MarketingTools } from "@/components/MarketingTools";
 import { AnalyticsCharts } from "@/components/AnalyticsCharts";
 import { AttractionAnalytics } from "@/components/AttractionAnalytics";
+import { DashboardWidgets } from "@/components/DashboardWidgets";
+import { CustomizeDashboard } from "@/components/CustomizeDashboard";
+import { useDashboardConfig } from "@/hooks/useDashboardConfig";
 import { RecentSalesCard } from "@/components/RecentSalesCard";
 import Support from "@/pages/Support";
 import { DashboardHelp } from "@/components/DashboardHelp";
@@ -166,6 +169,19 @@ const OrgDashboard = () => {
   // Onboarding state
   const { showWizard: shouldShowWizard, refreshOnboardingState } = useOnboarding();
 
+  // Dashboard customization config
+  const {
+    config: dashboardConfig,
+    enabledWidgets,
+    updateWidgetEnabled,
+    updateWidgetChartType,
+    reorderWidgets,
+    resetToDefaults: resetDashboardDefaults,
+    saveConfig: saveDashboardConfig,
+    isSaving: isSavingDashboard,
+    isLoading: isLoadingDashboardConfig,
+  } = useDashboardConfig({ organizationId: currentOrganization?.id || null });
+
   // Show onboarding wizard when needed
   useEffect(() => {
     if (shouldShowWizard && currentOrganization && isEventsMode()) {
@@ -197,6 +213,14 @@ const OrgDashboard = () => {
   
   // Order data for custom answers and recent sales
   const [orderData, setOrderData] = useState<any[]>([]);
+
+  // Widget tracking analytics
+  const [widgetAnalytics, setWidgetAnalytics] = useState({
+    deviceBreakdown: { desktop: 0, mobile: 0, tablet: 0 },
+    visitorLocations: [] as Array<{ country: string; count: number }>,
+    conversionFunnel: [] as Array<{ step: string; count: number; rate: number }>,
+    ticketsByType: [] as Array<{ name: string; count: number }>,
+  });
 
   // Listen for help requests from child components
   React.useEffect(() => {
@@ -268,6 +292,7 @@ const OrgDashboard = () => {
       if (isEventsMode()) {
         loadAnalytics(currentOrganization.id, timeRange);
         loadAnalyticsData(currentOrganization.id);
+        loadWidgetAnalytics(currentOrganization.id);
       } else {
         loadAttractionAnalytics(currentOrganization.id, timeRange);
         loadAttractionAnalyticsData(currentOrganization.id);
@@ -864,6 +889,114 @@ const OrgDashboard = () => {
     console.log("Analytics data set successfully");
   }, []);
 
+  // Load widget tracking analytics (device breakdown, locations, funnel)
+  const loadWidgetAnalytics = useCallback(async (orgId: string) => {
+    console.log("Loading widget analytics for org:", orgId);
+
+    try {
+      // Get all events for this org to filter widget sessions
+      const { data: eventData } = await supabase
+        .from("events")
+        .select("id")
+        .eq("organization_id", orgId);
+
+      if (!eventData || eventData.length === 0) {
+        console.log("No events found for widget analytics");
+        return;
+      }
+
+      const eventIds = eventData.map(e => e.id);
+
+      // Get widget sessions data (same table as WidgetFunnelAnalytics uses)
+      const { data: sessions, error: sessionError } = await supabase
+        .from("widget_sessions")
+        .select("*")
+        .in("event_id", eventIds);
+
+      if (sessionError) {
+        console.error("Error loading widget sessions:", sessionError);
+        return;
+      }
+
+      if (!sessions || sessions.length === 0) {
+        console.log("No widget session data found");
+        return;
+      }
+
+      console.log("Found widget sessions:", sessions.length);
+
+      // Calculate device breakdown
+      const deviceCounts = { desktop: 0, mobile: 0, tablet: 0 };
+      sessions.forEach(session => {
+        const device = session.device_type?.toLowerCase() || 'desktop';
+        if (device === 'mobile') {
+          deviceCounts.mobile++;
+        } else if (device === 'tablet') {
+          deviceCounts.tablet++;
+        } else {
+          deviceCounts.desktop++;
+        }
+      });
+
+      // Calculate visitor locations
+      const locationCounts = new Map<string, number>();
+      sessions.forEach(session => {
+        const country = session.country || 'Unknown';
+        if (country && country !== 'Unknown') {
+          locationCounts.set(country, (locationCounts.get(country) || 0) + 1);
+        }
+      });
+      const visitorLocations = Array.from(locationCounts.entries())
+        .map(([country, count]) => ({ country, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+
+      // Calculate conversion funnel (matching WidgetFunnelAnalytics)
+      const widgetLoaded = sessions.filter(s => s.widget_loaded_at).length;
+      const ticketSelected = sessions.filter(s => s.ticket_selected_at).length;
+      const checkoutStarted = sessions.filter(s => s.checkout_started_at).length;
+      const purchaseCompleted = sessions.filter(s => s.purchase_completed_at).length;
+
+      const conversionFunnel = [
+        { step: "Widget Views", count: widgetLoaded, rate: 100 },
+        { step: "Ticket Selected", count: ticketSelected, rate: widgetLoaded > 0 ? (ticketSelected / widgetLoaded) * 100 : 0 },
+        { step: "Checkout Started", count: checkoutStarted, rate: widgetLoaded > 0 ? (checkoutStarted / widgetLoaded) * 100 : 0 },
+        { step: "Purchase Completed", count: purchaseCompleted, rate: widgetLoaded > 0 ? (purchaseCompleted / widgetLoaded) * 100 : 0 },
+      ];
+
+      // Get tickets by type from order items
+      const { data: orderItemData } = await supabase
+        .from("order_items")
+        .select(`
+          quantity,
+          ticket_types(name),
+          orders!inner(events!inner(organization_id))
+        `)
+        .eq("orders.events.organization_id", orgId)
+        .eq("item_type", "ticket");
+
+      const ticketTypeCounts = new Map<string, number>();
+      orderItemData?.forEach(item => {
+        const typeName = (item.ticket_types as any)?.name || 'General';
+        ticketTypeCounts.set(typeName, (ticketTypeCounts.get(typeName) || 0) + (item.quantity || 0));
+      });
+      const ticketsByType = Array.from(ticketTypeCounts.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+
+      setWidgetAnalytics({
+        deviceBreakdown: deviceCounts,
+        visitorLocations,
+        conversionFunnel,
+        ticketsByType,
+      });
+
+      console.log("Widget analytics loaded:", { deviceCounts, visitorLocations: visitorLocations.length, conversionFunnel, ticketsByType });
+    } catch (error) {
+      console.error("Error loading widget analytics:", error);
+    }
+  }, []);
+
   const handleOnboardingComplete = async () => {
     // Reload organizations to include the newly created one
     await reloadOrganizations();
@@ -1061,7 +1194,17 @@ const OrgDashboard = () => {
                                 Welcome to your events dashboard. Create and manage your events below.
                               </CardDescription>
                             </div>
-                            <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
+                            <div className="flex items-center gap-2">
+                              <CustomizeDashboard
+                                config={dashboardConfig}
+                                onUpdateEnabled={updateWidgetEnabled}
+                                onUpdateChartType={updateWidgetChartType}
+                                onResetDefaults={resetDashboardDefaults}
+                                onSave={saveDashboardConfig}
+                                isSaving={isSavingDashboard}
+                              />
+                              <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
+                            </div>
                           </div>
                         </CardHeader>
                         <CardContent>
@@ -1135,14 +1278,46 @@ const OrgDashboard = () => {
                         </CardContent>
                       </Card>
 
-                      {/* Analytics Charts */}
+                      {/* Customizable Dashboard Widgets */}
                       {canAccessAnalytics() && (
                         <>
-                          <AnalyticsCharts
-                            salesData={analyticsData.salesData.map(item => ({ month: item.month, revenue: item.sales }))}
-                            eventTypeData={analyticsData.eventTypesData}
-                            revenueData={analyticsData.revenueData}
-                            isLoading={false}
+                          <DashboardWidgets
+                            enabledWidgets={enabledWidgets}
+                            onReorder={(fromIndex, toIndex) => {
+                              reorderWidgets(fromIndex, toIndex);
+                              // Auto-save after reorder
+                              setTimeout(() => saveDashboardConfig(), 100);
+                            }}
+                            totalRevenue={analytics.totalRevenue}
+                            totalTickets={analytics.totalOrders}
+                            totalOrders={analytics.totalOrders}
+                            avgOrderValue={analytics.totalOrders > 0 ? analytics.totalRevenue / analytics.totalOrders : 0}
+                            checkinRate={0} // TODO: Calculate from ticket check-ins
+                            revenueByEvent={analyticsData.eventTypesData.map(e => ({ name: e.name, revenue: e.value }))}
+                            revenueOverTime={analyticsData.salesData.map(d => ({ date: d.month, revenue: d.sales }))}
+                            weeklyRevenue={analyticsData.revenueData}
+                            ticketsByType={widgetAnalytics.ticketsByType}
+                            ordersOverTime={analyticsData.salesData.map(d => ({ date: d.month, orders: d.tickets || 0 }))}
+                            deviceBreakdown={widgetAnalytics.deviceBreakdown}
+                            visitorLocations={widgetAnalytics.visitorLocations}
+                            conversionFunnel={widgetAnalytics.conversionFunnel}
+                            upcomingEvents={events
+                              .filter(e => new Date(e.event_date) > new Date())
+                              .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
+                              .slice(0, 5)
+                              .map(e => ({
+                                id: e.id,
+                                name: e.name,
+                                date: e.event_date,
+                                ticketsSold: e.tickets_sold,
+                                capacity: e.capacity
+                              }))}
+                            eventCapacity={events.slice(0, 5).map(e => ({
+                              name: e.name,
+                              sold: e.tickets_sold,
+                              capacity: e.capacity
+                            }))}
+                            isLoading={isLoadingAnalytics || isLoadingDashboardConfig}
                           />
 
                           {/* Recent Sales Card */}

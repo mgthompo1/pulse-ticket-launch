@@ -1,0 +1,222 @@
+// Dashboard Widget Types and Registry
+
+export type ChartType = "bar" | "line" | "area" | "pie" | "donut" | "stat" | "list" | "progress";
+
+export type WidgetSize = "small" | "medium" | "large" | "full";
+
+export interface WidgetDefinition {
+  id: string;
+  name: string;
+  description: string;
+  category: "revenue" | "tickets" | "orders" | "visitors" | "events";
+  supportedChartTypes: ChartType[];
+  defaultChartType: ChartType;
+  defaultSize: WidgetSize;
+  defaultEnabled: boolean;
+}
+
+export interface WidgetConfig {
+  widgetId: string;
+  enabled: boolean;
+  chartType: ChartType;
+  size: WidgetSize;
+  position: number;
+}
+
+export interface DashboardConfig {
+  widgets: WidgetConfig[];
+  layout: "grid" | "list";
+  updatedAt: string;
+}
+
+// Available widgets registry
+export const WIDGET_REGISTRY: WidgetDefinition[] = [
+  // Revenue widgets
+  {
+    id: "revenue_total",
+    name: "Total Revenue",
+    description: "Overall revenue from all events",
+    category: "revenue",
+    supportedChartTypes: ["stat"],
+    defaultChartType: "stat",
+    defaultSize: "small",
+    defaultEnabled: false, // Already shown in overview cards
+  },
+  {
+    id: "revenue_by_event",
+    name: "Revenue by Event",
+    description: "Revenue breakdown by event",
+    category: "revenue",
+    supportedChartTypes: ["bar", "list"],
+    defaultChartType: "bar",
+    defaultSize: "medium",
+    defaultEnabled: true,
+  },
+  {
+    id: "revenue_over_time",
+    name: "Revenue Over Time",
+    description: "Revenue trend over selected period",
+    category: "revenue",
+    supportedChartTypes: ["line", "bar", "area"],
+    defaultChartType: "bar",
+    defaultSize: "large",
+    defaultEnabled: true,
+  },
+  {
+    id: "revenue_weekly",
+    name: "Weekly Revenue",
+    description: "Revenue for the past 7 days",
+    category: "revenue",
+    supportedChartTypes: ["bar", "line", "area"],
+    defaultChartType: "bar",
+    defaultSize: "medium",
+    defaultEnabled: true,
+  },
+
+  // Ticket widgets
+  {
+    id: "tickets_sold",
+    name: "Tickets Sold",
+    description: "Total tickets sold count",
+    category: "tickets",
+    supportedChartTypes: ["stat"],
+    defaultChartType: "stat",
+    defaultSize: "small",
+    defaultEnabled: false, // Already shown in overview cards
+  },
+  {
+    id: "tickets_by_type",
+    name: "Tickets by Type",
+    description: "Breakdown of tickets sold by type",
+    category: "tickets",
+    supportedChartTypes: ["pie", "donut", "bar"],
+    defaultChartType: "pie",
+    defaultSize: "medium",
+    defaultEnabled: false,
+  },
+  {
+    id: "checkin_rate",
+    name: "Check-in Rate",
+    description: "Percentage of tickets checked in",
+    category: "tickets",
+    supportedChartTypes: ["stat", "progress"],
+    defaultChartType: "progress",
+    defaultSize: "small",
+    defaultEnabled: false,
+  },
+
+  // Order widgets
+  {
+    id: "orders_total",
+    name: "Total Orders",
+    description: "Total number of orders",
+    category: "orders",
+    supportedChartTypes: ["stat"],
+    defaultChartType: "stat",
+    defaultSize: "small",
+    defaultEnabled: false, // Already shown in overview cards
+  },
+  {
+    id: "orders_avg_value",
+    name: "Average Order Value",
+    description: "Average value per order",
+    category: "orders",
+    supportedChartTypes: ["stat"],
+    defaultChartType: "stat",
+    defaultSize: "small",
+    defaultEnabled: false,
+  },
+  {
+    id: "orders_over_time",
+    name: "Orders Over Time",
+    description: "Order count trend",
+    category: "orders",
+    supportedChartTypes: ["line", "bar", "area"],
+    defaultChartType: "line",
+    defaultSize: "medium",
+    defaultEnabled: false,
+  },
+
+  // Visitor widgets (from widget tracking)
+  {
+    id: "visitors_device",
+    name: "Device Breakdown",
+    description: "Visitors by device type",
+    category: "visitors",
+    supportedChartTypes: ["pie", "donut", "bar", "progress"],
+    defaultChartType: "donut",
+    defaultSize: "medium",
+    defaultEnabled: false,
+  },
+  {
+    id: "visitors_location",
+    name: "Visitor Locations",
+    description: "Where your visitors are from",
+    category: "visitors",
+    supportedChartTypes: ["bar", "list"],
+    defaultChartType: "bar",
+    defaultSize: "medium",
+    defaultEnabled: false,
+  },
+  {
+    id: "visitors_funnel",
+    name: "Conversion Funnel",
+    description: "Widget visitor conversion rates",
+    category: "visitors",
+    supportedChartTypes: ["progress", "bar"],
+    defaultChartType: "progress",
+    defaultSize: "large",
+    defaultEnabled: false,
+  },
+
+  // Event widgets
+  {
+    id: "events_upcoming",
+    name: "Upcoming Events",
+    description: "List of upcoming events",
+    category: "events",
+    supportedChartTypes: ["list"],
+    defaultChartType: "list",
+    defaultSize: "medium",
+    defaultEnabled: true,
+  },
+  {
+    id: "events_capacity",
+    name: "Capacity Utilization",
+    description: "How full your events are",
+    category: "events",
+    supportedChartTypes: ["progress", "bar"],
+    defaultChartType: "progress",
+    defaultSize: "medium",
+    defaultEnabled: false,
+  },
+];
+
+// Get default dashboard config
+export const getDefaultDashboardConfig = (): DashboardConfig => {
+  return {
+    widgets: WIDGET_REGISTRY.map((widget, index) => ({
+      widgetId: widget.id,
+      enabled: widget.defaultEnabled,
+      chartType: widget.defaultChartType,
+      size: widget.defaultSize,
+      position: index,
+    })),
+    layout: "grid",
+    updatedAt: new Date().toISOString(),
+  };
+};
+
+// Get widget definition by ID
+export const getWidgetDefinition = (widgetId: string): WidgetDefinition | undefined => {
+  return WIDGET_REGISTRY.find((w) => w.id === widgetId);
+};
+
+// Category labels for grouping
+export const CATEGORY_LABELS: Record<string, string> = {
+  revenue: "Revenue",
+  tickets: "Tickets",
+  orders: "Orders",
+  visitors: "Visitors",
+  events: "Events",
+};
