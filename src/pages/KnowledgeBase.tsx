@@ -83,14 +83,14 @@ const KnowledgeBase = () => {
           title="Help Center - TicketFlo Knowledge Base"
           description="Find answers and learn how to use TicketFlo. Browse guides on event management, ticket sales, customization, payments, marketing, and more."
         />
-        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+        <div className="min-h-screen bg-gradient-to-b from-muted/30 to-background">
           {/* Header */}
-          <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+          <header className="bg-background border-b sticky top-0 z-10">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
               <div className="flex items-center justify-between">
                 <Link to="/" className="flex items-center gap-2">
                   <BookOpen className="h-6 w-6 text-primary" />
-                  <span className="text-xl font-bold">TicketFlo Help Center</span>
+                  <span className="text-xl font-bold text-foreground">TicketFlo Help Center</span>
                 </Link>
                 <div className="flex items-center gap-2">
                   <Link to="/">
@@ -112,7 +112,7 @@ const KnowledgeBase = () => {
           {/* Hero Section */}
           <section className="py-12 px-4">
             <div className="max-w-4xl mx-auto text-center">
-              <h1 className="text-4xl font-bold mb-4">How can we help you?</h1>
+              <h1 className="text-4xl font-bold mb-4 text-foreground">How can we help you?</h1>
               <p className="text-xl text-muted-foreground mb-8">
                 Search our knowledge base or browse categories below
               </p>
@@ -134,7 +134,7 @@ const KnowledgeBase = () => {
           {/* Categories Grid */}
           <section className="py-8 px-4">
             <div className="max-w-7xl mx-auto">
-              <h2 className="text-2xl font-bold mb-6">Browse by Category</h2>
+              <h2 className="text-2xl font-bold mb-6 text-foreground">Browse by Category</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {categories.map((category) => {
                   const IconComponent = iconMap[category.icon];
@@ -168,9 +168,9 @@ const KnowledgeBase = () => {
           </section>
 
           {/* Popular Articles */}
-          <section className="py-12 px-4 bg-gray-50">
+          <section className="py-12 px-4 bg-muted/50">
             <div className="max-w-7xl mx-auto">
-              <h2 className="text-2xl font-bold mb-6">Popular Articles</h2>
+              <h2 className="text-2xl font-bold mb-6 text-foreground">Popular Articles</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {articles.slice(0, 6).map((article) => {
                 const articleCategory = categories.find(c => c.id === article.category);
@@ -202,7 +202,7 @@ const KnowledgeBase = () => {
           </section>
 
           {/* Footer */}
-          <footer className="border-t border-gray-200 py-8 px-4 mt-12">
+          <footer className="border-t py-8 px-4 mt-12">
             <div className="max-w-7xl mx-auto text-center">
               <p className="text-muted-foreground mb-4">
                 Can't find what you're looking for?
@@ -227,13 +227,13 @@ const KnowledgeBase = () => {
           title={`Search results for "${searchQuery}" - TicketFlo Help`}
           description="Search results from TicketFlo knowledge base"
         />
-        <div className="min-h-screen bg-gray-50">
-          <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="min-h-screen bg-background">
+          <header className="bg-background border-b sticky top-0 z-10">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
               <div className="flex items-center justify-between">
                 <Link to="/help" className="flex items-center gap-2">
                   <BookOpen className="h-6 w-6 text-primary" />
-                  <span className="text-xl font-bold">TicketFlo Help Center</span>
+                  <span className="text-xl font-bold text-foreground">TicketFlo Help Center</span>
                 </Link>
                 <Button variant="ghost" size="sm" onClick={handleClearSearch}>
                   <ArrowLeft className="h-4 w-4 mr-2" />
@@ -256,7 +256,7 @@ const KnowledgeBase = () => {
               />
             </div>
 
-            <h2 className="text-2xl font-bold mb-4">
+            <h2 className="text-2xl font-bold mb-4 text-foreground">
               {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{searchQuery}"
             </h2>
 
@@ -306,13 +306,13 @@ const KnowledgeBase = () => {
           title={`${currentCategory.name} - TicketFlo Help Center`}
           description={currentCategory.description}
         />
-        <div className="min-h-screen bg-gray-50">
-          <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="min-h-screen bg-background">
+          <header className="bg-background border-b sticky top-0 z-10">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
               <div className="flex items-center justify-between">
                 <Link to="/help" className="flex items-center gap-2">
                   <BookOpen className="h-6 w-6 text-primary" />
-                  <span className="text-xl font-bold">TicketFlo Help Center</span>
+                  <span className="text-xl font-bold text-foreground">TicketFlo Help Center</span>
                 </Link>
                 <Link to="/help">
                   <Button variant="ghost" size="sm">
@@ -334,7 +334,7 @@ const KnowledgeBase = () => {
                   })
                 }
                 <div>
-                  <h1 className="text-3xl font-bold">{currentCategory.name}</h1>
+                  <h1 className="text-3xl font-bold text-foreground">{currentCategory.name}</h1>
                   <p className="text-muted-foreground">{currentCategory.description}</p>
                 </div>
               </div>
@@ -377,13 +377,13 @@ const KnowledgeBase = () => {
           title={`${currentArticle.title} - TicketFlo Help`}
           description={currentArticle.content.substring(0, 160)}
         />
-        <div className="min-h-screen bg-white">
-          <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="min-h-screen bg-background">
+          <header className="bg-background border-b sticky top-0 z-10">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
               <div className="flex items-center justify-between">
                 <Link to="/help" className="flex items-center gap-2">
                   <BookOpen className="h-6 w-6 text-primary" />
-                  <span className="text-xl font-bold">TicketFlo Help Center</span>
+                  <span className="text-xl font-bold text-foreground">TicketFlo Help Center</span>
                 </Link>
                 <div className="flex items-center gap-2">
                   <Link to={`/help/${currentCategory.slug}`}>
@@ -417,7 +417,7 @@ const KnowledgeBase = () => {
             {/* Article Header */}
             <header className="mb-8">
               <Badge variant="secondary" className="mb-3">{currentCategory.name}</Badge>
-              <h1 className="text-4xl font-bold mb-4">{currentArticle.title}</h1>
+              <h1 className="text-4xl font-bold mb-4 text-foreground">{currentArticle.title}</h1>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <span>Last updated: {new Date(currentArticle.lastUpdated).toLocaleDateString()}</span>
                 <span>•</span>
@@ -432,13 +432,13 @@ const KnowledgeBase = () => {
             </header>
 
             {/* Article Content */}
-            <div className="prose prose-lg max-w-none">
+            <div className="prose prose-lg dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground">
               <ReactMarkdown>{currentArticle.content}</ReactMarkdown>
             </div>
 
             {/* Helpful Section */}
-            <div className="mt-12 p-6 bg-gray-50 rounded-lg">
-              <h3 className="font-semibold mb-4">Was this article helpful?</h3>
+            <div className="mt-12 p-6 bg-muted/50 rounded-lg">
+              <h3 className="font-semibold mb-4 text-foreground">Was this article helpful?</h3>
               <div className="flex items-center gap-4 mb-4">
                 <Button variant="outline" size="sm">👍 Yes</Button>
                 <Button variant="outline" size="sm">👎 No</Button>
@@ -453,7 +453,7 @@ const KnowledgeBase = () => {
 
             {/* Related Articles */}
             <div className="mt-12">
-              <h3 className="text-xl font-bold mb-4">Related Articles</h3>
+              <h3 className="text-xl font-bold mb-4 text-foreground">Related Articles</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {categoryArticles
                   .filter(a => a.id !== currentArticle.id)
@@ -480,9 +480,9 @@ const KnowledgeBase = () => {
 
   // Fallback - Article/Category not found
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Page Not Found</h1>
+        <h1 className="text-4xl font-bold mb-4 text-foreground">Page Not Found</h1>
         <p className="text-muted-foreground mb-6">
           The help article or category you're looking for doesn't exist.
         </p>

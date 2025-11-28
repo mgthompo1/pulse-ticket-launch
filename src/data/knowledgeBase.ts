@@ -121,41 +121,74 @@ export const articles: Article[] = [
     category: 'getting-started',
     slug: 'what-is-ticketflo',
     keywords: ['introduction', 'overview', 'platform'],
-    lastUpdated: '2025-10-12',
+    lastUpdated: '2025-11-28',
     content: `
 # What is TicketFlo?
 
-TicketFlo is a comprehensive event ticketing platform designed to help event organizers sell tickets, manage attendees, and grow their events.
+TicketFlo is a modern, all-in-one ticketing platform built for event organizers who want complete control over their ticket sales without the complexity of enterprise solutions. Whether you're running a small workshop or a large festival, TicketFlo provides the tools you need to sell tickets, manage attendees, and maximize revenue.
+
+## Why Choose TicketFlo?
+
+**Built for Real Events**: Unlike generic ticketing platforms, TicketFlo was designed by event organizers who understand the challenges of running successful events.
+
+**No Hidden Fees**: Transparent pricing with competitive transaction fees. You keep more of your ticket revenue.
+
+**White-Label Experience**: Your brand, your event. Customers see your branding, not ours.
+
+**Instant Payouts**: Get paid quickly with Stripe Connect integration - no waiting weeks for your funds.
 
 ## Key Features
 
-- **Event Management**: Create and manage multiple events from a single dashboard
-- **Customizable Ticketing**: Set up multiple ticket types with flexible pricing
-- **Payment Processing**: Integrated payment processing with Stripe and Windcave
-- **Real-time Analytics**: Track sales, revenue, and attendee data in real-time
-- **Marketing Tools**: Built-in promotional tools and social media integration
-- **Integrations**: Connect with Xero, HubSpot, Zapier, and more
-- **Mobile-Friendly**: Beautiful, responsive ticket purchasing experience
+### Ticketing & Sales
+- **Multiple Ticket Types**: General admission, VIP, early bird, group tickets, and more
+- **Dynamic Pricing**: Set different prices for different dates or automatically increase prices as you sell
+- **Discount Codes**: Create promotional codes, track usage, and limit redemptions
+- **Group Bookings**: Special handling for group sales with invoicing and allocations
 
-## Two Modes
+### Event Management
+- **Real-Time Dashboard**: See sales, revenue, and check-ins as they happen
+- **Custom Questions**: Collect any attendee information you need
+- **Attendee Management**: Search, export, and communicate with ticket holders
+- **Check-In App**: TicketFloLIVE for fast, reliable door scanning
 
-TicketFlo operates in two modes:
+### Payments
+- **Stripe Integration**: Accept cards, Apple Pay, Google Pay, and more
+- **Windcave Support**: Alternative payment gateway for specific regions
+- **Stripe Connect**: Pass booking fees to customers or absorb them yourself
+- **Automatic Refunds**: Process refunds directly from your dashboard
+
+### Customization
+- **Branded Ticket Pages**: Match your event's look and feel
+- **Custom Confirmation Emails**: Professional emails with your branding
+- **Embeddable Widget**: Sell tickets directly on your website
+- **Custom CSS**: Full design control for advanced users
+
+## Two Operating Modes
 
 ### Events Mode
-Perfect for conferences, concerts, festivals, and one-time events.
+Perfect for conferences, concerts, festivals, workshops, and one-time events. Features include:
+- Event-based ticket management
+- Date and time scheduling
+- Venue capacity tracking
+- Marketing and promotional tools
 
 ### Attractions Mode
-Ideal for museums, tours, theme parks, and ongoing attractions.
+Ideal for museums, tours, theme parks, and ongoing attractions. Features include:
+- Resource-based booking (guides, equipment, spaces)
+- Time slot management
+- Recurring availability
+- Capacity per session
 
 ## Getting Started
 
-1. Sign up for a free TicketFlo account
-2. Create your organization
-3. Set up your first event
-4. Configure your payment gateway
-5. Start selling tickets!
+Getting up and running takes just a few minutes:
 
-Need help? Check out our [Getting Started Guide](#) or [contact support](/support).
+1. **Create Your Account**: Sign up and set up your organization
+2. **Connect Payments**: Link your Stripe account to receive payments
+3. **Create an Event**: Add your event details, tickets, and branding
+4. **Publish & Share**: Go live and start selling tickets
+
+Ready to get started? [Create your first event](/help/getting-started/create-your-first-event) or [contact our support team](/support) if you need help.
     `
   },
   {
@@ -164,56 +197,109 @@ Need help? Check out our [Getting Started Guide](#) or [contact support](/suppor
     category: 'getting-started',
     slug: 'create-your-first-event',
     keywords: ['create event', 'first event', 'setup', 'new event'],
-    lastUpdated: '2025-10-12',
+    lastUpdated: '2025-11-28',
     content: `
 # Creating Your First Event
 
-Follow these steps to create your first event on TicketFlo.
+This guide walks you through creating your first event on TicketFlo, from initial setup to going live with ticket sales.
 
-## Step 1: Access the Events Tab
+## Before You Start
 
-1. Log in to your TicketFlo dashboard
-2. Click on the **Events** tab in the sidebar
-3. Click the **Create New Event** button
+Make sure you have:
+- Your event details ready (name, date, venue, description)
+- A connected payment gateway (Stripe recommended)
+- Your event logo and any images you want to use
 
-## Step 2: Enter Event Details
+## Step 1: Create the Event
 
-Fill in the required information:
+1. From your dashboard, click **Events** in the sidebar
+2. Click the **Create New Event** button (or the + icon)
+3. Fill in the basic details:
+   - **Event Name**: Choose a clear, memorable name (this appears on tickets)
+   - **Event Date & Time**: When your event starts
+   - **Venue**: The location name and address
+   - **Capacity**: Maximum number of attendees (you can adjust per ticket type later)
+4. Click **Create Event**
 
-- **Event Name**: Give your event a clear, descriptive name
-- **Event Date**: Select the date and time of your event
-- **Venue**: Enter the location where your event will take place
-- **Capacity**: Set the maximum number of attendees
-- **Description**: Add a detailed description of your event
+Your event is saved as a draft - it won't be visible to anyone until you publish it.
 
-## Step 3: Save as Draft
+## Step 2: Add Ticket Types
 
-Click **Create Event** to save your event as a draft. Don't worry - you can edit all details later before publishing.
+Navigate to the **Tickets** tab in your event to set up ticket types:
 
-## Step 4: Customize Your Event
+1. Click **Add Ticket Type**
+2. Configure each ticket:
+   - **Name**: e.g., "General Admission", "VIP", "Early Bird"
+   - **Price**: Set your ticket price (or $0 for free events)
+   - **Quantity**: How many of this ticket type to sell
+   - **Description**: What's included with this ticket
+   - **Sale Dates**: When tickets become available (optional)
+3. Add more ticket types as needed
 
-After creating your event, you'll be taken to the Event Details page where you can:
+**Pro Tip**: Create an "Early Bird" ticket with limited quantity and lower price to drive early sales.
 
-- Add ticket types and pricing
-- Customize the event page design
-- Set up confirmation emails
-- Configure custom questions
-- Add images and branding
+## Step 3: Customize Your Event Page
 
-## Step 5: Publish Your Event
+In the **Customization** tab, brand your ticket page:
 
-Once you're happy with your event setup:
+- **Logo**: Upload your event or organization logo
+- **Primary Color**: Match your brand colors
+- **Header Image**: Add a banner image (1200x600px recommended)
+- **Event Description**: Write compelling copy about your event
 
-1. Go to the Event Details tab
+Preview your changes with the **Preview** button before saving.
+
+## Step 4: Configure Confirmation Emails
+
+In the **Emails** tab, customize what attendees receive:
+
+- **Subject Line**: Use {{EVENT_NAME}} to automatically insert your event name
+- **Email Content**: Include important details like venue directions, what to bring, etc.
+- **Sender Name**: How your organization appears in their inbox
+- **Reply-To Email**: Where responses should go
+
+Send a test email to yourself before publishing.
+
+## Step 5: Add Custom Questions (Optional)
+
+Need to collect additional information? In the **Questions** tab:
+
+- Add text fields, dropdowns, checkboxes, or date pickers
+- Mark questions as required or optional
+- Questions appear during checkout
+
+Common questions: dietary requirements, company name, t-shirt size.
+
+## Step 6: Publish Your Event
+
+Before publishing, double-check:
+- [ ] All ticket types are configured correctly
+- [ ] Payment gateway is connected and tested
+- [ ] Event page looks good on mobile
+- [ ] Confirmation email is tested
+- [ ] Event date and time are correct
+
+When ready:
+1. Go to the **Event Details** tab
 2. Click **Publish Event**
-3. Share your event link with potential attendees!
+3. Confirm the publication
 
-## Next Steps
+Your event is now live!
 
-- [Set up ticket types and pricing](#)
-- [Customize your event page](#)
-- [Configure payment processing](#)
-- [Promote your event](#)
+## Sharing Your Event
+
+After publishing, you'll get:
+- **Event URL**: Direct link to your ticket page
+- **Embed Code**: Add ticket sales to your website
+- **QR Code**: For printed materials
+
+Share these on social media, email newsletters, and your website.
+
+## What's Next?
+
+- [Promote your event](/help/marketing/promote-your-event)
+- [Track sales in real-time](/help/analytics/track-sales)
+- [Set up check-in for event day](/help/events-management/checkin-setup)
     `
   },
   {
@@ -1313,132 +1399,139 @@ Need help? [View email examples](#) or [contact support](/support).
     title: 'Setting Up Stripe Payments',
     category: 'payments',
     slug: 'setup-stripe',
-    keywords: ['stripe', 'payment', 'gateway', 'setup'],
-    lastUpdated: '2025-10-12',
+    keywords: ['stripe', 'payment', 'gateway', 'setup', 'connect'],
+    lastUpdated: '2025-11-28',
     content: `
 # Setting Up Stripe Payments
 
-Connect Stripe to accept credit card payments on TicketFlo.
+TicketFlo uses Stripe Connect to process payments securely. This guide covers connecting your Stripe account and configuring payment settings.
 
-## Prerequisites
+## Two Ways to Use Stripe
 
-Before starting, you'll need:
-- A TicketFlo account
-- A Stripe account (sign up at stripe.com)
-- Business verification documents (for some countries)
+### Option 1: Stripe Connect (Recommended)
+With Stripe Connect, payments go directly to your Stripe account. You receive funds immediately (minus Stripe's fees), and TicketFlo's platform fee is collected separately.
 
-## Connecting Stripe
+**Benefits:**
+- Funds go directly to your bank account
+- You control your Stripe dashboard and payouts
+- Lower overall fees in most cases
+- Customers see your business name on their statement
 
-1. Navigate to **Payments** tab in your dashboard
-2. Find the **Stripe** card
-3. Click **Connect to Stripe**
-4. Log in to your Stripe account (or create one)
-5. Authorize TicketFlo to access your Stripe account
-6. Complete the connection process
+### Option 2: Standard Integration
+TicketFlo processes payments and pays you out. Simpler setup but longer payout times.
 
-## Stripe Account Requirements
+## Connecting Stripe Connect
 
-Stripe requires:
-- Business name and type
-- Tax identification number
-- Bank account for payouts
-- Business owner information
-- Business address
+1. Go to **Payments** in your dashboard sidebar
+2. In the Stripe section, click **Connect with Stripe**
+3. You'll be redirected to Stripe to:
+   - Log in to your existing Stripe account, OR
+   - Create a new Stripe account
+4. Authorize TicketFlo to connect to your account
+5. Complete any required verification steps
+6. You'll be redirected back to TicketFlo
 
-Stripe may request additional information for verification.
+Once connected, you'll see your Stripe account status in the Payments tab.
 
-## Payment Settings
+## Stripe Connect Settings
 
-After connecting, configure:
+After connecting, configure these options:
 
-**Currency**: Choose your default currency (USD, EUR, GBP, etc.)
+### Booking Fee Handling
+Choose how to handle TicketFlo's platform fee:
 
-**Payment Methods**: Enable:
-- Credit/debit cards
-- Apple Pay
-- Google Pay
-- Afterpay (where available)
+**Pass to Customer**: Add the booking fee on top of your ticket price. Customers pay the fee, you receive your full ticket price.
 
-**Statement Descriptor**: How charges appear on customer statements
-- Max 22 characters
-- Use recognizable name
-- Example: "TICKETFLO*EVENTNAME"
+**Absorb Fee**: Include the booking fee in your ticket price. You pay the fee out of your revenue.
 
-## Testing Payments
+### Currency
+Set your default currency. This determines how prices display and how you receive payouts.
 
-Use Stripe test mode to verify everything works:
+### Payment Methods
+Stripe automatically enables:
+- Credit and debit cards (Visa, Mastercard, Amex)
+- Apple Pay and Google Pay (on supported devices)
+- Link (Stripe's one-click checkout)
 
-1. Toggle **Test Mode** in Payment settings
-2. Use Stripe test cards:
-   - Success: 4242 4242 4242 4242
-   - Decline: 4000 0000 0000 0002
-3. Complete a test purchase
-4. Verify funds appear in Stripe dashboard
-5. Switch to Live Mode when ready
+Additional methods like Afterpay/Klarna can be enabled in your Stripe dashboard.
 
-## Fees
+## Testing Your Setup
 
-**Stripe Fees** (vary by country):
-- 2.9% + $0.30 per successful card charge (US)
-- Check stripe.com for your country's rates
+Before going live with your first event:
 
-**TicketFlo Platform Fee**:
-- 5% of ticket price + Stripe fees
-- Deducted automatically from each sale
+1. Create a test event with a low-priced ticket
+2. Complete a test purchase using a real card
+3. Verify the payment appears in your Stripe dashboard
+4. Process a test refund
+5. Check that confirmation emails are sent correctly
 
-## Payouts
+**Tip**: Use a $1 test ticket and refund it after testing.
 
-**Payout Schedule**:
-- Default: Weekly (every Monday)
-- Can be changed to daily or monthly
-- First payout: 7-14 days after first sale
+## Understanding Fees
 
-**Payout Account**:
-- Configure in Stripe dashboard
-- Can be different from TicketFlo account
-- Supports multiple currencies
+### Stripe's Fees
+Stripe charges per successful transaction. Rates vary by country:
+- **US**: 2.9% + $0.30 per transaction
+- **UK**: 1.4% + 20p for UK cards
+- **AU**: 1.75% + $0.30 for domestic cards
+- **NZ**: 2.7% + $0.30 per transaction
 
-## Security
+See [Stripe's pricing page](https://stripe.com/pricing) for your region.
 
-Stripe handles all payment processing securely:
-- PCI DSS Level 1 certified
-- 3D Secure authentication
-- Fraud detection
-- Encryption of card data
+### TicketFlo's Platform Fee
+- **1% + $0.50** per ticket transaction
+- Collected automatically on each sale
+- Can be passed to customers or absorbed
 
-TicketFlo never stores credit card information.
+## Managing Payouts
 
-## Refunds
+With Stripe Connect:
+- Funds are available in your Stripe balance immediately
+- Set your payout schedule in Stripe (daily, weekly, monthly)
+- First payout may take 7-14 days while Stripe verifies your account
+- No action needed in TicketFlo - Stripe handles payouts
 
-Process refunds directly from TicketFlo:
-1. Go to order details
-2. Click **Refund**
-3. Choose full or partial refund
-4. Confirm
+## Processing Refunds
 
-Refunds appear in customer account in 5-10 business days.
+Refund orders directly from TicketFlo:
+
+1. Find the order in **Orders** or **Event Management**
+2. Click the order to view details
+3. Click **Refund**
+4. Select full or partial refund
+5. Confirm the refund
+
+Refunds are processed through Stripe and typically appear in 5-10 business days.
+
+**Note**: Stripe's transaction fees are not refunded, but TicketFlo's platform fee is.
 
 ## Troubleshooting
 
-**Connection Failed**
-- Check Stripe account is fully activated
-- Verify you have admin access
-- Try different browser
-- Contact support
+### "Connection Failed" Error
+- Ensure you're logged into the correct Stripe account
+- Check that your Stripe account is fully activated (not in restricted mode)
+- Try using an incognito/private browser window
+- Contact support if the issue persists
 
-**Payments Declined**
-- Check Stripe dashboard for details
-- Verify test vs live mode
-- Ensure card has sufficient funds
-- Check fraud rules
+### Payments Being Declined
+- Check Stripe's dashboard for specific decline reasons
+- Common issues: insufficient funds, expired card, fraud detection
+- Ensure you're not in Stripe's test mode for live events
 
-**Payouts Not Arriving**
-- Verify bank account in Stripe
-- Check payout schedule
-- Look for holds or disputes
-- Contact Stripe support
+### Payouts Not Arriving
+- Verify your bank account is correctly linked in Stripe
+- Check for any holds or verification requirements
+- Review your payout schedule settings
+- Contact Stripe support for payout-specific issues
 
-For more help: [Stripe Documentation](https://stripe.com/docs) or [Contact TicketFlo Support](/support)
+## Security & Compliance
+
+- **PCI Compliant**: Stripe is PCI DSS Level 1 certified
+- **Card Data**: TicketFlo never sees or stores card numbers
+- **3D Secure**: Automatic authentication for suspicious transactions
+- **Fraud Protection**: Stripe Radar blocks fraudulent payments
+
+Need help? [Contact our support team](/support) or visit [Stripe's documentation](https://stripe.com/docs).
     `
   },
 
@@ -1699,177 +1792,130 @@ Need marketing help? Check out our [Marketing Tools](#) or [hire a marketer](#) 
     category: 'support',
     slug: 'contact-support',
     keywords: ['support', 'help', 'contact', 'ticket'],
-    lastUpdated: '2025-10-12',
+    lastUpdated: '2025-11-28',
     content: `
 # How to Contact Support
 
-Get help from the TicketFlo support team.
+Our support team is here to help you get the most out of TicketFlo. Here's how to reach us and get the fastest resolution.
 
-## Support Channels
+## Quick Self-Help
 
-### Help Center (You're Here!)
-- Search our knowledge base
-- Browse articles by category
-- Find answers to common questions
-- Available 24/7
+Before contacting support, try these quick fixes:
 
-### Email Support
-- Email: support@ticketflo.com
-- Include your organization name
-- Describe your issue in detail
-- Attach screenshots if relevant
-- Response time: 24 hours (business days)
+1. **Search this Help Center** - Most questions are answered here
+2. **Check the status page** - If something seems broken, we may already know
+3. **Clear your browser cache** - Fixes many display issues
+4. **Try a different browser** - Rules out browser-specific problems
+5. **Check your event settings** - Many issues come from configuration
 
-### Support Tickets
-For logged-in users:
-1. Go to **Support** tab in dashboard
-2. Click **Create Support Ticket**
-3. Describe your issue
-4. Submit ticket
-5. Track status in dashboard
+## Creating a Support Ticket
 
-### Priority Support
-Available for premium plans:
-- Phone support
-- Video calls
-- Dedicated account manager
-- Same-day response guarantee
-- 24/7 emergency line
+The fastest way to get help is through our ticket system:
 
-## Before Contacting Support
+1. Log into your TicketFlo dashboard
+2. Go to **Support** in the sidebar
+3. Click **Create Support Ticket**
+4. Describe your issue in detail
+5. Submit and track your ticket's progress
 
-Try these first:
-1. Search this help center
-2. Check the FAQ section
-3. Review your event settings
-4. Test in a different browser
-5. Clear cache and cookies
-
-## When to Contact Support
-
-Contact us for:
-- Technical issues
-- Account access problems
-- Payment/billing questions
-- Bug reports
-- Feature requests
-- Integration help
-- Security concerns
-
-## What to Include
-
-Help us help you faster by including:
+**What to include in your ticket:**
 - Your organization name
-- Event name/ID (if relevant)
+- Which event you're working with (if applicable)
 - What you were trying to do
-- What actually happened
-- Error messages (exact wording)
-- Screenshots or screen recordings
-- Browser and device information
-- Steps to reproduce the issue
+- What actually happened instead
+- Any error messages (exact wording helps!)
+- Screenshots showing the problem
+
+The more detail you provide, the faster we can help.
 
 ## Response Times
 
-**Critical Issues** (site down, payment processing failed)
-- Target response: 4 hours
-- 24/7 monitoring
+We prioritize tickets based on urgency:
 
-**High Priority** (can't create event, major feature broken)
-- Target response: 8 business hours
+| Priority | Example Issues | Target Response |
+|----------|---------------|-----------------|
+| **Critical** | Payments down during live event, site inaccessible | 2-4 hours |
+| **High** | Can't publish event, checkout not working | Same business day |
+| **Normal** | Feature questions, minor bugs | 24 hours |
+| **Low** | Feature requests, general inquiries | 48 hours |
 
-**Normal Priority** (questions, minor issues)
-- Target response: 24 business hours
+**Business hours**: Monday-Friday, 9 AM - 6 PM NZST
 
-**Low Priority** (feature requests, general questions)
-- Target response: 48 business hours
+## Common Issues We Can Help With
 
-## Emergency Support
+**Technical Problems**
+- Payment processing issues
+- Widget not displaying correctly
+- Emails not sending
+- Integration errors
 
-For urgent issues outside business hours:
-- Critical payment processing issues
-- Site downtime during event
-- Security incidents
+**Account & Access**
+- Can't log in
+- Team member permissions
+- Organization settings
+- Password resets
 
-Email: emergency@ticketflo.com
-(Premium plans only)
+**Billing Questions**
+- Understanding invoices
+- Updating payment methods
+- Fee explanations
+- Refund processing
 
-## Community Forum
+**Getting Started**
+- Setting up your first event
+- Connecting payment gateways
+- Customizing your ticket page
+- Understanding features
 
-Coming soon: Join our community
-- Ask questions
-- Share tips
-- Connect with other organizers
-- Vote on feature requests
-- Beta testing opportunities
+## Tips for Faster Resolution
+
+**Be Specific**: "The checkout button doesn't work" is better than "it's broken"
+
+**Include Screenshots**: A picture saves a thousand back-and-forth messages
+
+**Share the URL**: If something looks wrong, send us the page URL
+
+**List Your Steps**: Tell us exactly what you clicked to get to the problem
+
+**Check Recently**: "This stopped working yesterday" helps us check recent changes
 
 ## Feature Requests
 
-Have an idea? We want to hear it!
-1. Search if it's already requested
-2. Submit via support ticket
-3. Tag as "Feature Request"
-4. Community votes help prioritize
+Have an idea for TicketFlo? We'd love to hear it!
 
-## Bug Reports
+1. Go to **Support** in your dashboard
+2. Create a ticket with "Feature Request" in the subject
+3. Describe the feature and why it would help you
+4. We review all requests and prioritize based on demand
 
-Found a bug?
-1. Note exactly how to reproduce it
-2. Include screenshots/video
-3. Submit detailed report
-4. We'll investigate and follow up
+Popular requests get built faster - so tell us what you need!
 
-## Account & Billing
+## Reporting Bugs
 
-For account-related questions:
-- Billing inquiries
-- Plan upgrades/downgrades
-- Account access issues
-- Organization settings
+Found something that isn't working right?
 
-Email: accounts@ticketflo.com
+1. Try to reproduce the issue consistently
+2. Note the exact steps that cause the problem
+3. Take screenshots or record a video
+4. Submit a support ticket with all details
+5. We'll investigate and keep you updated
 
-## Training & Onboarding
+## Emergency Contact
 
-Need help getting started?
-- Schedule onboarding call
-- Watch tutorial videos
-- Request live training
-- Get implementation support
+For critical issues outside business hours:
+- Event currently taking place with payment issues
+- Security concerns
+- Complete system outage
 
-Available for premium plans or à la carte.
+Email: **support@ticketflo.com** with "URGENT" in the subject line
 
-## Feedback
+## Stay Updated
 
-We love feedback!
-- Feature suggestions
-- User experience improvements
-- Bug reports
-- Success stories
+- Check our status page for known issues
+- Follow release notes for new features
+- Subscribe to our newsletter for tips and updates
 
-Email: feedback@ticketflo.com
-
-## Social Media
-
-Follow us for updates:
-- Twitter: @TicketFlo
-- Facebook: /TicketFlo
-- Instagram: @TicketFlo
-- LinkedIn: /company/ticketflo
-
-## Business Hours
-
-Support team available:
-- Monday-Friday: 9 AM - 6 PM PST
-- Weekends: Emergency support only
-- Holidays: Reduced hours
-
-## Resources
-
-- [Video Tutorials](#)
-- [API Documentation](#)
-- [Developer Docs](#)
-- [Status Page](#)
-- [Changelog](#)
+We're constantly improving TicketFlo based on your feedback. Thank you for helping us build a better platform!
     `
   }
 ];
