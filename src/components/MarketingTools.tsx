@@ -16,7 +16,9 @@ import {
   Copy,
   Download,
   ExternalLink,
-  Calendar
+  Calendar,
+  BarChart3,
+  Globe
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -269,13 +271,39 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
         <Badge variant="outline" className="w-fit">{selectedEvent.status}</Badge>
       </div>
 
-      <Tabs defaultValue="sharing" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto gap-1 p-1">
-          <TabsTrigger value="sharing" className="text-xs sm:text-sm py-2">Sharing</TabsTrigger>
-          <TabsTrigger value="email" className="text-xs sm:text-sm py-2">Email</TabsTrigger>
-          <TabsTrigger value="social" className="text-xs sm:text-sm py-2">Social Media</TabsTrigger>
-          <TabsTrigger value="analytics" className="text-xs sm:text-sm py-2">Analytics</TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="sharing" className="space-y-6">
+        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <TabsList className="inline-flex h-12 p-1.5 gap-1 bg-muted/40 border rounded-xl min-w-max">
+            <TabsTrigger
+              value="sharing"
+              className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300"
+            >
+              <Share2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Sharing</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="email"
+              className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300"
+            >
+              <Mail className="h-4 w-4" />
+              <span className="hidden sm:inline">Email</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="social"
+              className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300"
+            >
+              <Globe className="h-4 w-4" />
+              <span className="hidden sm:inline">Social Media</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="analytics"
+              className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300"
+            >
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Analytics</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="sharing" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -337,11 +365,21 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
           </div>
         </TabsContent>
 
-        <TabsContent value="email" className="space-y-4">
-          <Tabs defaultValue="reminder-campaigns" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 h-auto gap-1 p-1">
-              <TabsTrigger value="reminder-campaigns" className="text-xs sm:text-sm py-2">Reminder Campaigns</TabsTrigger>
-              <TabsTrigger value="promotional" className="text-xs sm:text-sm py-2">Promotional Emails</TabsTrigger>
+        <TabsContent value="email" className="space-y-6">
+          <Tabs defaultValue="reminder-campaigns" className="space-y-6">
+            <TabsList className="inline-flex h-10 p-1 gap-1 bg-muted/40 border rounded-lg">
+              <TabsTrigger
+                value="reminder-campaigns"
+                className="px-3 py-1.5 text-sm rounded-md transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground hover:text-foreground dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300"
+              >
+                Reminder Campaigns
+              </TabsTrigger>
+              <TabsTrigger
+                value="promotional"
+                className="px-3 py-1.5 text-sm rounded-md transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground hover:text-foreground dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300"
+              >
+                Promotional Emails
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="reminder-campaigns">
@@ -458,7 +496,10 @@ export const MarketingTools = ({ selectedEvent: initialSelectedEvent }: Marketin
 
           <Card>
             <CardHeader>
-              <CardTitle>Traffic Sources</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Traffic Sources
+              </CardTitle>
               <CardDescription>Where your visitors are coming from</CardDescription>
             </CardHeader>
             <CardContent>

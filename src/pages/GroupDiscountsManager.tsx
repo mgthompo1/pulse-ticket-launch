@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Users, Eye, EyeOff } from "lucide-react";
+import { Plus, Edit, Trash2, Users, Eye, EyeOff, Lightbulb, UsersRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -471,7 +471,10 @@ const GroupDiscountsManager = ({ eventId: propEventId }: GroupDiscountsManagerPr
       {getSuggestedTiers() && (
         <Card className="border-blue-200 bg-blue-50">
           <CardHeader>
-            <CardTitle className="text-lg">Suggested Starter Tiers</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Lightbulb className="h-5 w-5" />
+              Suggested Starter Tiers
+            </CardTitle>
             <CardDescription>
               Quick setup for common group discount structures
             </CardDescription>
@@ -520,7 +523,10 @@ const GroupDiscountsManager = ({ eventId: propEventId }: GroupDiscountsManagerPr
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Active Discount Tiers</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <UsersRound className="h-5 w-5" />
+              Active Discount Tiers
+            </CardTitle>
             <CardDescription>
               Discounts automatically apply at checkout based on quantity
             </CardDescription>

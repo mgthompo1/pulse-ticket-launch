@@ -962,7 +962,7 @@ const OrgDashboard = () => {
     <SidebarProvider>
       <div className="h-screen bg-background flex flex-col w-full" style={{ width: '100%', maxWidth: 'none' }}>
         {/* Full-width Header with backdrop blur */}
-        <header className="sticky top-0 z-40 bg-background/80 backdrop-blur border-b border-border flex-shrink-0 h-[52px]" style={{ width: '100%', maxWidth: 'none' }}>
+        <header className="sticky top-0 z-40 bg-background border-b border-border flex-shrink-0 h-[52px]" style={{ width: '100%', maxWidth: 'none' }}>
           <div className="px-4 h-full w-full flex items-center justify-between" style={{ width: '100%', maxWidth: 'none' }}>
             {/* Left side - Organization switcher */}
             <div className="flex items-center gap-3">
@@ -983,11 +983,11 @@ const OrgDashboard = () => {
 
             {/* Right side - Actions */}
             <div className="flex items-center gap-2">
-              {/* Create New Event CTA - Black in light mode, blue in dark mode */}
+              {/* Create New Event CTA */}
               {isEventsMode() && (
                 <Button
                   onClick={() => setActiveTab("events")}
-                  className="bg-black dark:bg-primary text-white dark:text-primary-foreground hover:bg-black/90 dark:hover:bg-primary/90 font-manrope font-semibold text-sm px-3 sm:px-4 py-2 h-9"
+                  className="bg-indigo-600 dark:bg-indigo-500 text-white hover:bg-indigo-700 dark:hover:bg-indigo-400 font-manrope font-semibold text-sm px-3 sm:px-4 py-2 h-9"
                 >
                   <Calendar className="h-4 w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Create New Event</span>
@@ -1026,7 +1026,7 @@ const OrgDashboard = () => {
           {/* Main content */}
           <div className="flex-1 flex flex-col min-w-0">
           
-          <main className="flex-1 min-w-0 flex-shrink-0 p-4 md:p-6 overflow-y-auto overflow-x-hidden bg-muted/30">
+          <main className="flex-1 min-w-0 flex-shrink-0 p-4 md:p-6 overflow-y-auto overflow-x-hidden bg-muted/20 dark:bg-background">
             <div className="w-full" style={{ maxWidth: 'none', margin: '0', padding: '0', width: '100%', minWidth: '100%' }}>
               <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-8" style={{ width: '100%', maxWidth: 'none', minWidth: '100%' }}>
                 <TabsContent value="overview" className="space-y-6">

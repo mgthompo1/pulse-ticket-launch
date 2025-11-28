@@ -50,87 +50,79 @@ const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-      <TooltipProvider>
-        <ClientOnlyToaster />
-          <Routes>
-            {/* Public routes - NO theme context, consistent appearance */}
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/auth/confirm" element={<AuthConfirm />} />
-            <Route path="/auth/check-email" element={<EmailConfirmation />} />
-            <Route path="/widget/:eventId" element={<TicketWidget />} />
-            <Route path="/group/:slug/widget" element={<GroupPublicWidget />} />
-            <Route path="/attraction/:attractionId" element={<AttractionWidget />} />
-            <Route path="/booking-demo" element={<AttractionBookingDemo />} />
-            <Route path="/topup/:token" element={<TopUpPage />} />
-            {/* DEPRECATED: /admin-auth has been removed due to hardcoded credentials security vulnerability */}
-            {/* Use /secure-admin instead which has database-backed authentication with TOTP support */}
-            <Route path="/secure-admin" element={<SecureAdminAuth />} />
-            <Route path="/secure-admin-auth" element={<SecureAdminAuth />} />
-            <Route path="/ticketflolive/:eventId" element={<TicketFloLIVE />} />
-            <Route path="/payment-success" element={<PaymentSuccess />} />
-            <Route path="/payment-failed" element={<PaymentFailed />} />
-            <Route path="/payment-cancelled" element={<PaymentCancelled />} />
-            <Route path="/xero-callback" element={<XeroCallback />} />
-            <Route path="/dashboard/auth/linkedin/callback" element={<LinkedInCallback />} />
-            <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
-            <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
-            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/tickets" element={<Tickets />} />
-            <Route path="/help" element={<KnowledgeBase />} />
-            <Route path="/help/:categorySlug" element={<KnowledgeBase />} />
-            <Route path="/help/:categorySlug/:articleSlug" element={<KnowledgeBase />} />
-            <Route path="/dashboard-mockup" element={<DashboardMockup />} />
-            <Route path="/invite" element={<InvitationAcceptance />} />
-            <Route path="/invitation-setup" element={<InvitationPasswordSetup />} />
-            <Route path="/sentry-test" element={<SentryTest />} />
-            <Route path="/demo-landing" element={<DemoLanding />} />
-            <Route path="/error-monitoring" element={
-              <ThemeProvider>
-                <ProtectedRoute>
-                  <ErrorMonitoring />
-                </ProtectedRoute>
-              </ThemeProvider>
-            } />
+        <ThemeProvider>
+          <TooltipProvider>
+            <ClientOnlyToaster />
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/auth/confirm" element={<AuthConfirm />} />
+                <Route path="/auth/check-email" element={<EmailConfirmation />} />
+                <Route path="/widget/:eventId" element={<TicketWidget />} />
+                <Route path="/group/:slug/widget" element={<GroupPublicWidget />} />
+                <Route path="/attraction/:attractionId" element={<AttractionWidget />} />
+                <Route path="/booking-demo" element={<AttractionBookingDemo />} />
+                <Route path="/topup/:token" element={<TopUpPage />} />
+                {/* DEPRECATED: /admin-auth has been removed due to hardcoded credentials security vulnerability */}
+                {/* Use /secure-admin instead which has database-backed authentication with TOTP support */}
+                <Route path="/secure-admin" element={<SecureAdminAuth />} />
+                <Route path="/secure-admin-auth" element={<SecureAdminAuth />} />
+                <Route path="/ticketflolive/:eventId" element={<TicketFloLIVE />} />
+                <Route path="/payment-success" element={<PaymentSuccess />} />
+                <Route path="/payment-failed" element={<PaymentFailed />} />
+                <Route path="/payment-cancelled" element={<PaymentCancelled />} />
+                <Route path="/xero-callback" element={<XeroCallback />} />
+                <Route path="/dashboard/auth/linkedin/callback" element={<LinkedInCallback />} />
+                <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
+                <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/tickets" element={<Tickets />} />
+                <Route path="/help" element={<KnowledgeBase />} />
+                <Route path="/help/:categorySlug" element={<KnowledgeBase />} />
+                <Route path="/help/:categorySlug/:articleSlug" element={<KnowledgeBase />} />
+                <Route path="/dashboard-mockup" element={<DashboardMockup />} />
+                <Route path="/invite" element={<InvitationAcceptance />} />
+                <Route path="/invitation-setup" element={<InvitationPasswordSetup />} />
+                <Route path="/sentry-test" element={<SentryTest />} />
+                <Route path="/demo-landing" element={<DemoLanding />} />
 
-            {/* Authenticated routes - WITH theme context */}
-            <Route path="/support" element={
-              <ThemeProvider>
-                <ProtectedRoute>
-                  <Support />
-                </ProtectedRoute>
-              </ThemeProvider>
-            } />
-            <Route path="/dashboard" element={
-              <ThemeProvider>
-                <ProtectedRoute>
-                  <OrgDashboard />
-                </ProtectedRoute>
-              </ThemeProvider>
-            } />
-            <Route path="/master-admin" element={
-              <ThemeProvider>
-                <ProtectedAdminRoute>
-                  <MasterAdmin />
-                </ProtectedAdminRoute>
-              </ThemeProvider>
-            } />
-            <Route path="/qa-testing" element={
-              <ThemeProvider>
-                <ProtectedAdminRoute>
-                  <QATestingDashboard />
-                </ProtectedAdminRoute>
-              </ThemeProvider>
-            } />
-            <Route path="/group/:slug" element={<GroupPortal />} />
+                {/* Protected routes */}
+                <Route path="/error-monitoring" element={
+                  <ProtectedRoute>
+                    <ErrorMonitoring />
+                  </ProtectedRoute>
+                } />
+                <Route path="/support" element={
+                  <ProtectedRoute>
+                    <Support />
+                  </ProtectedRoute>
+                } />
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <OrgDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/master-admin" element={
+                  <ProtectedAdminRoute>
+                    <MasterAdmin />
+                  </ProtectedAdminRoute>
+                } />
+                <Route path="/qa-testing" element={
+                  <ProtectedAdminRoute>
+                    <QATestingDashboard />
+                  </ProtectedAdminRoute>
+                } />
+                <Route path="/group/:slug" element={<GroupPortal />} />
 
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-      </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+          </TooltipProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   </HelmetProvider>
 );
 

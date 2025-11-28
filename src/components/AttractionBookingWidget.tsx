@@ -1571,7 +1571,7 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
                 <Button 
                   onClick={createPendingBooking}
                   disabled={!bookingForm.customerName || !bookingForm.customerEmail || loading}
-                  className="flex-1 bg-black hover:bg-gray-800 text-white font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-500 dark:hover:bg-indigo-400 font-semibold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                 >
                   {loading ? (
                     <div className="flex items-center gap-2">

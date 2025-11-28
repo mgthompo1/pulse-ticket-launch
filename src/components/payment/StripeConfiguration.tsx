@@ -1,10 +1,9 @@
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CreditCard, DollarSign, Info } from "lucide-react";
+import { CreditCard, DollarSign, Info, Coins } from "lucide-react";
 import { StripeConnectButton } from "@/components/StripeConnectButton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -175,17 +174,26 @@ export const StripeConfiguration = ({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="enableBookingFees"
+          {/* Modern Switch Toggle */}
+          <div className="flex items-center justify-between py-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-500/10">
+                <Coins className="h-5 w-5 text-green-500" />
+              </div>
+              <div>
+                <div className="font-medium">Pass Booking Fees to Customers</div>
+                <p className="text-sm text-muted-foreground">
+                  Customers pay 1% + $0.50 on top of ticket price
+                </p>
+              </div>
+            </div>
+            <Switch
               checked={enableBookingFees}
               onCheckedChange={handleBookingFeeToggle}
               disabled={!stripeConnectedAccountId && !enableBookingFees}
             />
-            <Label htmlFor="enableBookingFees" className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${!stripeConnectedAccountId && !enableBookingFees ? 'text-muted-foreground' : ''}`}>
-              Pass booking fees to customers
-            </Label>
           </div>
+
           {!stripeConnectedAccountId && !enableBookingFees && (
             <Alert>
               <Info className="h-4 w-4" />
@@ -198,36 +206,22 @@ export const StripeConfiguration = ({
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
-                <strong>Connect Required:</strong> To pass booking fees to customers, you must connect your existing Stripe account using OAuth. 
+                <strong>Connect Required:</strong> To pass booking fees to customers, you must connect your existing Stripe account using OAuth.
                 This enables automatic fee splitting where customers pay the platform directly, and funds are transferred to your account minus booking fees.
               </AlertDescription>
             </Alert>
           )}
 
-          <div className="text-sm text-muted-foreground pl-6">
-            <p className="mb-2">
-              When enabled, customers will pay a booking fee of <strong>1% + $0.50</strong> on top of the ticket price.
-            </p>
-            {enableBookingFees ? (
-              <>
-                <p className="mb-2 text-blue-600">
-                  ✅ <strong>With Connect:</strong> Booking fees are automatically split - customers pay once, platform keeps fees, you get ticket revenue.
-                </p>
-                <p className="text-green-600 font-medium">
-                  💡 This creates the cleanest customer experience with automatic fee collection.
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="mb-2">
-                  <strong>Without booking fees:</strong> Customers only pay ticket prices directly to your Stripe account.
-                </p>
-                <p className="text-gray-600">
-                  💡 Platform fees will be invoiced to you separately on a monthly basis.
-                </p>
-              </>
-            )}
-          </div>
+          {!enableBookingFees && (
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>
+                <strong>Without booking fees:</strong> Customers only pay ticket prices directly to your Stripe account.
+              </p>
+              <p className="text-muted-foreground">
+                Platform fees will be invoiced to you separately on a monthly basis.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -223,28 +223,41 @@ const MerchandiseManager: React.FC<MerchandiseManagerProps> = ({ eventId }) => {
     : merchandise.filter(item => item.is_active);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-bold">Event Merchandise</h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowInactive(!showInactive)}
-          >
-            {showInactive ? 'Hide' : 'Show'} Archived
-          </Button>
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Event Merchandise
+            </CardTitle>
+            <CardDescription>
+              Sell merchandise and add-ons with your event tickets
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowInactive(!showInactive)}
+            >
+              {showInactive ? 'Hide' : 'Show'} Archived
+            </Button>
+            <Button onClick={() => setShowForm(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Merchandise
+            </Button>
+          </div>
         </div>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Merchandise
-        </Button>
-      </div>
-
+      </CardHeader>
+      <CardContent className="space-y-6">
       {showForm && (
         <Card>
           <CardHeader>
-            <CardTitle>{editingItem ? 'Edit' : 'Add'} Merchandise Item</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              {editingItem ? 'Edit' : 'Add'} Merchandise Item
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -433,21 +446,20 @@ const MerchandiseManager: React.FC<MerchandiseManagerProps> = ({ eventId }) => {
       </div>
 
       {displayedMerchandise.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-8">
-            <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">
-              {merchandise.length === 0 ? 'No merchandise items yet' : 'No active merchandise items'}
-            </h3>
-            <p className="text-muted-foreground">
-              {merchandise.length === 0
-                ? 'Add merchandise items to sell alongside tickets.'
-                : 'Click "Show Archived" to view inactive items.'}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="text-center py-8">
+          <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-medium mb-2">
+            {merchandise.length === 0 ? 'No merchandise items yet' : 'No active merchandise items'}
+          </h3>
+          <p className="text-muted-foreground">
+            {merchandise.length === 0
+              ? 'Add merchandise items to sell alongside tickets.'
+              : 'Click "Show Archived" to view inactive items.'}
+          </p>
+        </div>
       )}
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

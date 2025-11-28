@@ -644,7 +644,7 @@ const PaymentSuccess = () => {
             )}
             <Button 
               variant="outline"
-              className="w-full bg-black text-white border-black hover:bg-gray-800 hover:text-white hover:border-gray-800" 
+              className="w-full bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 hover:border-indigo-700" 
               onClick={() => {
                 if (orderDetails?.events?.widget_customization?.payment?.successUrl) {
                   const successUrl = orderDetails.events.widget_customization.payment.successUrl;

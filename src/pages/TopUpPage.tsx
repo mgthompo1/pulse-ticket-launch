@@ -367,7 +367,10 @@ const PaymentForm: React.FC<PaymentFormProps> = ({ topUpData }) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Select Amount</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <DollarSign className="h-5 w-5" />
+          Select Amount
+        </CardTitle>
         <CardDescription>Choose how much to load onto the card</CardDescription>
       </CardHeader>
       <CardContent>

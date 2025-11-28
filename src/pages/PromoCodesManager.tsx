@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Edit, Trash2, Copy, TrendingUp, Eye, EyeOff } from "lucide-react";
+import { Plus, Edit, Trash2, Copy, TrendingUp, Eye, EyeOff, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -588,7 +588,10 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Active Promo Codes</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Tag className="h-5 w-5" />
+              Active Promo Codes
+            </CardTitle>
             <CardDescription>
               Manage your discount codes and track usage
             </CardDescription>

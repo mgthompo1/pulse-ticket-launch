@@ -11,12 +11,14 @@ import { WindcaveConfiguration } from './payment/WindcaveConfiguration';
 import { PaymentLog } from './PaymentLog';
 import { PayoutsAndFees } from './PayoutsAndFees';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Settings, Receipt, DollarSign, CreditCard, Save, Landmark } from "lucide-react";
 
 interface PaymentConfigurationProps {
   organizationId: string;
 }
 
 export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationProps) => {
+  const [activeTab, setActiveTab] = useState('configuration');
   const [paymentProvider, setPaymentProvider] = useState('stripe');
   const [stripeAccountId, setStripeAccountId] = useState('');
   const [stripePublishableKey, setStripePublishableKey] = useState('');
@@ -97,7 +99,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
 
   const handleSave = async () => {
     setLoading(true);
-    
+
     try {
       // Update organization (no manual Stripe credentials with Connect)
       const { error: orgError } = await supabase
@@ -159,109 +161,163 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
   };
 
   return (
-    <Tabs defaultValue="configuration" className="space-y-6">
-      <TabsList>
-        <TabsTrigger value="configuration">Configuration</TabsTrigger>
-        <TabsTrigger value="payment-log">Payment Log</TabsTrigger>
-        <TabsTrigger value="payouts-fees">Payouts/Fees</TabsTrigger>
-      </TabsList>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">Payments</h2>
+          <p className="text-muted-foreground">
+            Configure payment providers and track transactions
+          </p>
+        </div>
+        {activeTab === 'configuration' && (
+          <Button onClick={handleSave} disabled={loading} className="w-full sm:w-auto">
+            <Save className="mr-2 h-4 w-4" />
+            {loading ? "Saving..." : "Save Changes"}
+          </Button>
+        )}
+      </div>
 
-      <TabsContent value="configuration">
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment Configuration</CardTitle>
-            <CardDescription>
-              Configure your payment providers and settings
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <PaymentProviderSelector
-              paymentProvider={paymentProvider}
-              onProviderChange={setPaymentProvider}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <TabsList className="inline-flex h-12 p-1.5 gap-1 bg-muted/40 border rounded-xl min-w-max">
+            <TabsTrigger
+              value="configuration"
+              className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300"
+            >
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Configuration</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="payment-log"
+              className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300"
+            >
+              <Receipt className="h-4 w-4" />
+              <span className="hidden sm:inline">Payment Log</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="payouts-fees"
+              className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300"
+            >
+              <DollarSign className="h-4 w-4" />
+              <span className="hidden sm:inline">Payouts & Fees</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="configuration" className="space-y-6">
+          {/* Payment Provider Selection */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Payment Provider</CardTitle>
+              <CardDescription>
+                Choose your primary payment processor
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PaymentProviderSelector
+                paymentProvider={paymentProvider}
+                onProviderChange={setPaymentProvider}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Provider Configuration */}
+          {paymentProvider === 'stripe' && (
+            <StripeConfiguration
+                  stripeAccountId={stripeAccountId}
+                  stripePublishableKey={stripePublishableKey}
+                  stripeSecretKey={stripeSecretKey}
+                  stripeTerminalLocationId={stripeTerminalLocationId}
+                  enableApplePay={enableApplePay}
+                  enableGooglePay={enableGooglePay}
+                  currency={currency}
+                  enableBookingFees={enableBookingFees}
+                  stripeConnectedAccountId={stripeConnectedAccountId}
+                  organizationId={organizationId}
+                  onStripeAccountIdChange={setStripeAccountId}
+                  onStripePublishableKeyChange={setStripePublishableKey}
+                  onStripeSecretKeyChange={setStripeSecretKey}
+                  onStripeTerminalLocationIdChange={setStripeTerminalLocationId}
+                  onEnableApplePayChange={setEnableApplePay}
+                  onEnableGooglePayChange={setEnableGooglePay}
+                  onCurrencyChange={setCurrency}
+                  onEnableBookingFeesChange={setEnableBookingFees}
+                  onConnectionChange={loadPaymentConfiguration}
             />
+          )}
 
-            {paymentProvider === 'stripe' && (
-              <StripeConfiguration
-                stripeAccountId={stripeAccountId}
-                stripePublishableKey={stripePublishableKey}
-                stripeSecretKey={stripeSecretKey}
-                stripeTerminalLocationId={stripeTerminalLocationId}
-                enableApplePay={enableApplePay}
-                enableGooglePay={enableGooglePay}
-                currency={currency}
-                enableBookingFees={enableBookingFees}
-                stripeConnectedAccountId={stripeConnectedAccountId}
-                organizationId={organizationId}
-                onStripeAccountIdChange={setStripeAccountId}
-                onStripePublishableKeyChange={setStripePublishableKey}
-                onStripeSecretKeyChange={setStripeSecretKey}
-                onStripeTerminalLocationIdChange={setStripeTerminalLocationId}
-                onEnableApplePayChange={setEnableApplePay}
-                onEnableGooglePayChange={setEnableGooglePay}
-                onCurrencyChange={setCurrency}
-                onEnableBookingFeesChange={setEnableBookingFees}
-                onConnectionChange={loadPaymentConfiguration}
-              />
-            )}
+          {paymentProvider === 'windcave' && (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2">
+                  <Landmark className="h-5 w-5" />
+                  Windcave Configuration
+                </CardTitle>
+                <CardDescription>
+                  Configure your Windcave payment gateway
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <WindcaveConfiguration
+                  windcaveUsername={windcaveUsername}
+                  windcaveApiKey={windcaveApiKey}
+                  windcaveEndpoint={windcaveEndpoint}
+                  windcaveEnabled={windcaveEnabled}
+                  windcaveHitUsername={windcaveHitUsername}
+                  windcaveHitKey={windcaveHitKey}
+                  windcaveStationId={windcaveStationId}
+                  currency={currency}
+                  onWindcaveUsernameChange={setWindcaveUsername}
+                  onWindcaveApiKeyChange={setWindcaveApiKey}
+                  onWindcaveEndpointChange={setWindcaveEndpoint}
+                  onWindcaveEnabledChange={setWindcaveEnabled}
+                  onWindcaveHitUsernameChange={setWindcaveHitUsername}
+                  onWindcaveHitKeyChange={setWindcaveHitKey}
+                  onWindcaveStationIdChange={setWindcaveStationId}
+                  onCurrencyChange={setCurrency}
+                />
+              </CardContent>
+            </Card>
+          )}
 
-            {paymentProvider === 'windcave' && (
-              <WindcaveConfiguration 
-                windcaveUsername={windcaveUsername}
-                windcaveApiKey={windcaveApiKey}
-                windcaveEndpoint={windcaveEndpoint}
-                windcaveEnabled={windcaveEnabled}
-                windcaveHitUsername={windcaveHitUsername}
-                windcaveHitKey={windcaveHitKey}
-                windcaveStationId={windcaveStationId}
-                currency={currency}
-                onWindcaveUsernameChange={setWindcaveUsername}
-                onWindcaveApiKeyChange={setWindcaveApiKey}
-                onWindcaveEndpointChange={setWindcaveEndpoint}
-                onWindcaveEnabledChange={setWindcaveEnabled}
-                onWindcaveHitUsernameChange={setWindcaveHitUsername}
-                onWindcaveHitKeyChange={setWindcaveHitKey}
-                onWindcaveStationIdChange={setWindcaveStationId}
-                onCurrencyChange={setCurrency}
-              />
-            )}
+          {/* Processing Fee */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg">Processing Fees</CardTitle>
+              <CardDescription>
+                Configure additional fees for card payments
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="creditCardFee">Credit Card Processing Fee (%)</Label>
+                <Input
+                  id="creditCardFee"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  value={creditCardProcessingFee}
+                  onChange={(e) => setCreditCardProcessingFee(parseFloat(e.target.value) || 0)}
+                  placeholder="Enter percentage (e.g., 2.5 for 2.5%)"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Optional processing fee added to ticket cost (e.g., 2.5 for 2.5%). Leave at 0 to disable.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            {paymentProvider === 'stripe' && null}
+        <TabsContent value="payment-log">
+          <PaymentLog organizationId={organizationId} />
+        </TabsContent>
 
-
-
-            <div className="space-y-3">
-              <Label htmlFor="creditCardFee">Credit Card Processing Fee (%)</Label>
-              <Input
-                id="creditCardFee"
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
-                value={creditCardProcessingFee}
-                onChange={(e) => setCreditCardProcessingFee(parseFloat(e.target.value) || 0)}
-                placeholder="Enter percentage (e.g., 2.5 for 2.5%)"
-              />
-              <p className="text-sm text-muted-foreground">
-                Optional processing fee added to ticket cost (e.g., 2.5 for 2.5%). Leave at 0 to disable.
-              </p>
-            </div>
-
-            <div className="pt-4">
-              <Button onClick={handleSave} disabled={loading} className="w-full">
-                {loading ? "Saving..." : "Save Configuration"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="payment-log">
-        <PaymentLog organizationId={organizationId} />
-      </TabsContent>
-
-      <TabsContent value="payouts-fees">
-        <PayoutsAndFees organizationId={organizationId} />
-      </TabsContent>
-    </Tabs>
+        <TabsContent value="payouts-fees">
+          <PayoutsAndFees organizationId={organizationId} />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };

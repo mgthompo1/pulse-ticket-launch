@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit2, Trash2, DollarSign, MapPin } from "lucide-react";
+import { Plus, Edit2, Trash2, DollarSign, MapPin, Ticket } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -214,21 +214,25 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-medium">Ticket Types & Pricing</h3>
-          <p className="text-sm text-muted-foreground">
-            Manage different ticket classes and their pricing for your event
-          </p>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Ticket Type
-            </Button>
-          </DialogTrigger>
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Ticket className="h-5 w-5" />
+              Ticket Types & Pricing
+            </CardTitle>
+            <CardDescription>
+              Manage different ticket classes and their pricing for your event
+            </CardDescription>
+          </div>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={resetForm}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Ticket Type
+              </Button>
+            </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <form onSubmit={handleSubmit}>
               <DialogHeader>
@@ -366,8 +370,9 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
-
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
       {ticketTypes.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
@@ -445,7 +450,8 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
           ))}
         </div>
       )}
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

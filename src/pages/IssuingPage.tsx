@@ -135,7 +135,7 @@ const IssuingPage: React.FC = () => {
 
   const getCardTypeBadge = (type: string) => {
     const colors: Record<string, string> = {
-      coordinator: 'bg-blue-100 text-blue-800',
+      coordinator: 'bg-indigo-100 text-blue-800',
       leader: 'bg-purple-100 text-purple-800',
       camper: 'bg-green-100 text-green-800',
       general: 'bg-gray-100 text-gray-800',
@@ -238,27 +238,32 @@ const IssuingPage: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <Tabs defaultValue="cards" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="cards">
-            <CreditCard className="mr-2 h-4 w-4" />
-            Cards
-          </TabsTrigger>
-          <TabsTrigger value="transactions">
-            <Activity className="mr-2 h-4 w-4" />
-            Transactions
-          </TabsTrigger>
-          <TabsTrigger value="payouts">
-            <TrendingUp className="mr-2 h-4 w-4" />
-            Payouts
-          </TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="cards" className="space-y-6">
+        <div className="overflow-x-auto -mx-4 px-4 pb-2">
+          <TabsList className="inline-flex h-12 p-1.5 gap-1 bg-muted/40 border rounded-xl min-w-max">
+            <TabsTrigger value="cards" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <CreditCard className="h-4 w-4" />
+              <span className="hidden sm:inline">Cards</span>
+            </TabsTrigger>
+            <TabsTrigger value="transactions" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Activity className="h-4 w-4" />
+              <span className="hidden sm:inline">Transactions</span>
+            </TabsTrigger>
+            <TabsTrigger value="payouts" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <TrendingUp className="h-4 w-4" />
+              <span className="hidden sm:inline">Payouts</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="cards" className="space-y-4">
           {/* Filters */}
           <Card>
             <CardHeader>
-              <CardTitle>Issued Cards</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Issued Cards
+              </CardTitle>
               <CardDescription>
                 Manage all virtual cards issued to coordinators and leaders
               </CardDescription>
@@ -404,7 +409,10 @@ const IssuingPage: React.FC = () => {
         <TabsContent value="transactions">
           <Card>
             <CardHeader>
-              <CardTitle>Transaction History</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Transaction History
+              </CardTitle>
               <CardDescription>
                 View all card transactions across your organization
               </CardDescription>
@@ -420,7 +428,10 @@ const IssuingPage: React.FC = () => {
         <TabsContent value="payouts">
           <Card>
             <CardHeader>
-              <CardTitle>Interchange Payouts</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Interchange Payouts
+              </CardTitle>
               <CardDescription>
                 Request payouts of your accumulated interchange revenue
               </CardDescription>
@@ -434,7 +445,7 @@ const IssuingPage: React.FC = () => {
                       <p className="text-2xl font-bold text-blue-900 mt-1">
                         {formatCurrency(interchangeBalance?.available_balance || 0)}
                       </p>
-                      <p className="text-sm text-blue-700 mt-1">
+                      <p className="text-sm text-indigo-700 mt-1">
                         From {interchangeBalance?.total_transactions || 0} transactions
                       </p>
                     </div>
@@ -447,7 +458,7 @@ const IssuingPage: React.FC = () => {
                     </Button>
                   </div>
                   {(interchangeBalance?.available_balance || 0) < 1000 && (
-                    <p className="text-xs text-blue-700 mt-3">
+                    <p className="text-xs text-indigo-700 mt-3">
                       Minimum payout amount is $10.00
                     </p>
                   )}

@@ -470,7 +470,10 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
       {/* Attendees Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Attendees ({filteredAttendees.length})</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Attendees ({filteredAttendees.length})
+          </CardTitle>
           <CardDescription>
             Manage individual attendees and their check-in status
           </CardDescription>

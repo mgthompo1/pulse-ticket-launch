@@ -348,7 +348,7 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
                     onOpenChange(false);
                   }}
                   size="sm"
-                  className="bg-black text-white hover:bg-black/90"
+                  className="bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400"
                 >
                   <Send className="h-4 w-4 mr-2" />
                   Invoice

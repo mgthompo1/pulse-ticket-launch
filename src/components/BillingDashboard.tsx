@@ -16,7 +16,8 @@ import {
   CheckCircle,
   Clock,
   Sparkles,
-  Info
+  Info,
+  Settings
 } from "lucide-react";
 import { BillingManagement } from "./BillingManagement";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -427,7 +428,7 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
               <span className="font-medium">Platform fees billed to you</span>
               <span className="hidden sm:inline"> — </span>
               <br className="sm:hidden" />
-              <span className="text-blue-700 dark:text-blue-300 text-sm">
+              <span className="text-indigo-700 dark:text-indigo-300 text-sm">
                 {orgPaymentConfig.windcaveEnabled
                   ? "Using Windcave for payments. Platform fees (1% + $0.50 per transaction) are invoiced to your organization."
                   : orgPaymentConfig.stripeConnected
@@ -440,10 +441,20 @@ const BillingDashboard: React.FC<BillingDashboardProps> = ({ organizationId, isL
       )}
 
       <Tabs defaultValue="usage" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 h-auto gap-1 p-1">
-          <TabsTrigger value="usage" className="text-xs sm:text-sm py-2">Usage & Invoices</TabsTrigger>
-          <TabsTrigger value="settings" className="text-xs sm:text-sm py-2">Payment Settings</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-4 px-4 pb-2">
+          <TabsList className="inline-flex h-12 p-1.5 gap-1 bg-muted/40 border rounded-xl min-w-max">
+            <TabsTrigger value="usage" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Receipt className="h-4 w-4" />
+              <span className="hidden sm:inline">Usage & Invoices</span>
+              <span className="sm:hidden">Usage</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Payment Settings</span>
+              <span className="sm:hidden">Settings</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="usage" className="space-y-6">
           {/* Current Period Summary - Compact Card */}

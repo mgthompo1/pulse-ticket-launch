@@ -14,7 +14,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound, Heart } from "lucide-react";
+import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound, Heart, Share2, FileText, Calendar, Send } from "lucide-react";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import MerchandiseManager from "@/components/MerchandiseManager";
@@ -852,45 +852,51 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         </div>
       )}
 
-      <Tabs defaultValue="widget" className="space-y-4">
-        <TabsList className="flex-wrap md:flex-nowrap overflow-x-auto bg-background">
-          <TabsTrigger value="widget" className="flex items-center gap-2">
-            <Monitor className="h-4 w-4" />
-            Widget
-          </TabsTrigger>
-          <TabsTrigger value="seats" className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
-            Seat Maps
-          </TabsTrigger>
-          <TabsTrigger value="tickets" className="flex items-center gap-2">
-            <Ticket className="h-4 w-4" />
-            Tickets
-          </TabsTrigger>
-          <TabsTrigger value="emails" className="flex items-center gap-2">
-            <Mail className="h-4 w-4" />
-            Emails
-          </TabsTrigger>
-          <TabsTrigger value="merchandise" className="flex items-center gap-2">
-            <Package className="h-4 w-4" />
-            Merchandise
-          </TabsTrigger>
-          <TabsTrigger value="attendees" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Attendees
-          </TabsTrigger>
-          <TabsTrigger value="promo-codes" className="flex items-center gap-2">
-            <Tag className="h-4 w-4" />
-            Promo Codes
-          </TabsTrigger>
-          <TabsTrigger value="group-discounts" className="flex items-center gap-2">
-            <UsersRound className="h-4 w-4" />
-            Group Discounts
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-2">
-            <Cog className="h-4 w-4" />
-            Settings
-          </TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="widget" className="space-y-6">
+        {/* Modern navigation bar with black active indicator */}
+        <div className="overflow-x-auto -mx-4 px-4 pb-2">
+          <TabsList className="inline-flex h-12 p-1.5 gap-1 bg-muted/40 border rounded-xl min-w-max">
+            <TabsTrigger value="widget" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Monitor className="h-4 w-4" />
+              <span className="hidden sm:inline">Widget</span>
+            </TabsTrigger>
+            <TabsTrigger value="seats" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <MapPin className="h-4 w-4" />
+              <span className="hidden sm:inline">Seats</span>
+            </TabsTrigger>
+            <TabsTrigger value="tickets" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Ticket className="h-4 w-4" />
+              <span className="hidden sm:inline">Tickets</span>
+            </TabsTrigger>
+            <TabsTrigger value="emails" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Mail className="h-4 w-4" />
+              <span className="hidden sm:inline">Emails</span>
+            </TabsTrigger>
+            <div className="w-px h-6 bg-border mx-1 self-center" />
+            <TabsTrigger value="merchandise" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Package className="h-4 w-4" />
+              <span className="hidden sm:inline">Merch</span>
+            </TabsTrigger>
+            <TabsTrigger value="attendees" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Attendees</span>
+            </TabsTrigger>
+            <div className="w-px h-6 bg-border mx-1 self-center" />
+            <TabsTrigger value="promo-codes" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Tag className="h-4 w-4" />
+              <span className="hidden sm:inline">Promos</span>
+            </TabsTrigger>
+            <TabsTrigger value="group-discounts" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <UsersRound className="h-4 w-4" />
+              <span className="hidden sm:inline">Groups</span>
+            </TabsTrigger>
+            <div className="w-px h-6 bg-border mx-1 self-center" />
+            <TabsTrigger value="settings" className="relative flex items-center gap-2 px-4 py-2 text-sm rounded-lg transition-all data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm dark:data-[state=active]:bg-indigo-900/30 dark:data-[state=active]:text-indigo-300 data-[state=inactive]:text-muted-foreground hover:text-foreground hover:bg-muted/60">
+              <Cog className="h-4 w-4" />
+              <span className="hidden sm:inline">Settings</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="widget" className="space-y-6">
           <div className="grid gap-6 md:grid-cols-2">
@@ -903,243 +909,283 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 <CardDescription>Customize colors and fonts</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="themeEnabled"
-                      checked={widgetCustomization.theme.enabled}
-                      onCheckedChange={(checked: boolean | 'indeterminate') => 
-                        updateWidgetCustomization(['theme', 'enabled'], checked === true)
-                      }
-                    />
-                    <Label htmlFor="themeEnabled" className="text-sm font-medium">
-                      Enable Theme Customization (Colour/Font)
-                    </Label>
+                {/* Modern toggle pattern */}
+                <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-purple-500/10">
+                      <Palette className="h-4 w-4 text-purple-500" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm">Theme Customization</div>
+                      <p className="text-xs text-muted-foreground">
+                        Customize colors and fonts for your widget
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    When disabled, the widget will use default styling. When enabled, you can customize all colors and fonts.
-                  </p>
+                  <Switch
+                    checked={widgetCustomization.theme.enabled}
+                    onCheckedChange={(checked) =>
+                      updateWidgetCustomization(['theme', 'enabled'], checked)
+                    }
+                  />
                 </div>
                 
                 {widgetCustomization.theme.enabled && (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="headerTextColor">Header Font Color</Label>
-                    <Input
-                      id="headerTextColor"
-                      type="color"
-                      value={widgetCustomization.theme.headerTextColor}
-                      onChange={(e) => updateWidgetCustomization(['theme', 'headerTextColor'], e.target.value)}
-                      className="w-full h-12"
-                    />
-                    <p className="text-xs text-muted-foreground">Color for headers and titles</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bodyTextColor">Body Font Color</Label>
-                    <Input
-                      id="bodyTextColor"
-                      type="color"
-                      value={widgetCustomization.theme.bodyTextColor}
-                      onChange={(e) => updateWidgetCustomization(['theme', 'bodyTextColor'], e.target.value)}
-                      className="w-full h-12"
-                    />
-                    <p className="text-xs text-muted-foreground">Color for body text and descriptions</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="buttonColor">Button Color</Label>
-                    <Input
-                      id="buttonColor"
-                      type="color"
-                      value={widgetCustomization.theme.primaryColor}
-                      onChange={(e) => updateWidgetCustomization(['theme', 'primaryColor'], e.target.value)}
-                      className="w-full h-12"
-                    />
-                    <p className="text-xs text-muted-foreground">Color for buttons and primary elements</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="buttonTextColor">Button Font Colour</Label>
-                    <Input
-                      id="buttonTextColor"
-                      type="color"
-                      value={widgetCustomization.theme.buttonTextColor}
-                      onChange={(e) => updateWidgetCustomization(['theme', 'buttonTextColor'], e.target.value)}
-                      className="w-full h-12"
-                    />
-                    <p className="text-xs text-muted-foreground">Color for text inside buttons</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="themeColor">Theme Color</Label>
-                  <Input
-                    id="themeColor"
-                    type="color"
-                    value={widgetCustomization.theme.secondaryColor}
-                    onChange={(e) => updateWidgetCustomization(['theme', 'secondaryColor'], e.target.value)}
-                    className="w-full h-12"
-                  />
-                  <p className="text-xs text-muted-foreground">Color for status bars, borders, and secondary elements</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="backgroundColor">Background Color</Label>
-                  <Input
-                    id="backgroundColor"
-                    type="color"
-                    value={widgetCustomization.theme.backgroundColor}
-                    onChange={(e) => updateWidgetCustomization(['theme', 'backgroundColor'], e.target.value)}
-                    className="w-full h-12"
-                  />
-                  <p className="text-xs text-muted-foreground">Color for the overall background</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cardBackgroundColor">Card Background Color</Label>
-                  <Input
-                    id="cardBackgroundColor"
-                    type="color"
-                    value={widgetCustomization.theme.cardBackgroundColor}
-                    onChange={(e) => updateWidgetCustomization(['theme', 'cardBackgroundColor'], e.target.value)}
-                    className="w-full h-12"
-                  />
-                  <p className="text-xs text-muted-foreground">Background for individual cards/sections</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="inputBackgroundColor">Text Input Background</Label>
-                  <Input
-                    id="inputBackgroundColor"
-                    type="color"
-                    value={widgetCustomization.theme.inputBackgroundColor}
-                    onChange={(e) => updateWidgetCustomization(['theme', 'inputBackgroundColor'], e.target.value)}
-                    className="w-full h-12"
-                  />
-                  <p className="text-xs text-muted-foreground">Background for input fields</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="fontFamily">Font Family</Label>
-                  <Select
-                    value={widgetCustomization.theme.fontFamily}
-                    onValueChange={(value) => updateWidgetCustomization(['theme', 'fontFamily'], value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {/* Modern Sans-Serif Fonts */}
-                      <SelectItem value="Manrope" className="font-manrope">Manrope (Default)</SelectItem>
-                      <SelectItem value="Inter" className="font-inter">Inter</SelectItem>
-                      <SelectItem value="Roboto" className="font-roboto">Roboto</SelectItem>
-                      <SelectItem value="Open Sans" className="font-open-sans">Open Sans</SelectItem>
-                      <SelectItem value="Poppins" className="font-poppins">Poppins</SelectItem>
-                      <SelectItem value="Montserrat" className="font-montserrat">Montserrat</SelectItem>
-                      <SelectItem value="Lato" className="font-lato">Lato</SelectItem>
-                      <SelectItem value="Source Sans Pro" className="font-source-sans-pro">Source Sans Pro</SelectItem>
-                      <SelectItem value="Ubuntu" className="font-ubuntu">Ubuntu</SelectItem>
-                      <SelectItem value="Noto Sans" className="font-noto-sans">Noto Sans</SelectItem>
-                      <SelectItem value="Work Sans" className="font-work-sans">Work Sans</SelectItem>
-                      <SelectItem value="PT Sans" className="font-pt-sans">PT Sans</SelectItem>
-                      <SelectItem value="Oswald" className="font-oswald">Oswald</SelectItem>
-                      <SelectItem value="Raleway" className="font-raleway">Raleway</SelectItem>
-                      <SelectItem value="Nunito" className="font-nunito">Nunito</SelectItem>
-                      <SelectItem value="Quicksand" className="font-quicksand">Quicksand</SelectItem>
-                      <SelectItem value="Josefin Sans" className="font-josefin-sans">Josefin Sans</SelectItem>
-                      <SelectItem value="DM Sans" className="font-dm-sans">DM Sans</SelectItem>
-                      <SelectItem value="Outfit" className="font-outfit">Outfit</SelectItem>
-                      <SelectItem value="Plus Jakarta Sans" className="font-plus-jakarta-sans">Plus Jakarta Sans</SelectItem>
-                      <SelectItem value="Albert Sans" className="font-albert-sans">Albert Sans</SelectItem>
-                      <SelectItem value="Onest" className="font-onest">Onest</SelectItem>
-                      <SelectItem value="Geist" className="font-geist">Geist</SelectItem>
-                      <SelectItem value="Cal Sans" className="font-cal-sans">Cal Sans</SelectItem>
-                      <SelectItem value="General Sans" className="font-general-sans">General Sans</SelectItem>
-                      <SelectItem value="Clash Display" className="font-clash-display">Clash Display</SelectItem>
-                      <SelectItem value="Clash Grotesk" className="font-clash-grotesk">Clash Grotesk</SelectItem>
-                      <SelectItem value="Sentient" className="font-sentient">Sentient</SelectItem>
-                      <SelectItem value="Chillax" className="font-chillax">Chillax</SelectItem>
-                      <SelectItem value="Cabinet Grotesk" className="font-cabinet-grotesk">Cabinet Grotesk</SelectItem>
-                      <SelectItem value="Switzer" className="font-switzer">Switzer</SelectItem>
-                      <SelectItem value="Gambarino" className="font-gambarino">Gambarino</SelectItem>
-                      <SelectItem value="Melodrama" className="font-melodrama">Melodrama</SelectItem>
-                      <SelectItem value="Zodiak" className="font-zodiak">Zodiak</SelectItem>
-                      <SelectItem value="Panchang" className="font-panchang">Panchang</SelectItem>
-                      
-                      {/* Classic Serif Fonts */}
-                      <SelectItem value="Playfair Display" className="font-playfair-display">Playfair Display</SelectItem>
-                      <SelectItem value="Merriweather" className="font-merriweather">Merriweather</SelectItem>
-                      
-                      {/* System Fonts */}
-                      <SelectItem value="Arial">Arial</SelectItem>
-                      <SelectItem value="Georgia">Georgia</SelectItem>
-                      <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                      <SelectItem value="Helvetica">Helvetica</SelectItem>
-                      <SelectItem value="-apple-system">System Font</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="borderEnabled">Show Borders</Label>
-                    <div className="flex items-center h-10">
-                      <input
-                        id="borderEnabled"
-                        type="checkbox"
-                        checked={widgetCustomization.theme.borderEnabled}
-                        onChange={(e) => updateWidgetCustomization(['theme', 'borderEnabled'], e.target.checked)}
-                        className="h-4 w-4 mr-2"
-                      />
-                      <span className="text-sm text-muted-foreground">Apply to cards and inputs</span>
+                    {/* Text Colors */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Text Colors</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <label className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
+                          <input
+                            type="color"
+                            value={widgetCustomization.theme.headerTextColor}
+                            onChange={(e) => updateWidgetCustomization(['theme', 'headerTextColor'], e.target.value)}
+                            className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                          />
+                          <div>
+                            <div className="text-sm font-medium">Headers</div>
+                            <div className="text-xs text-muted-foreground">Titles & headings</div>
+                          </div>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
+                          <input
+                            type="color"
+                            value={widgetCustomization.theme.bodyTextColor}
+                            onChange={(e) => updateWidgetCustomization(['theme', 'bodyTextColor'], e.target.value)}
+                            className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                          />
+                          <div>
+                            <div className="text-sm font-medium">Body</div>
+                            <div className="text-xs text-muted-foreground">Descriptions</div>
+                          </div>
+                        </label>
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="borderColor">Border Color</Label>
-                    <Input
-                      id="borderColor"
-                      type="color"
-                      value={widgetCustomization.theme.borderColor}
-                      onChange={(e) => updateWidgetCustomization(['theme', 'borderColor'], e.target.value)}
-                      className="w-full h-12"
-                    />
-                  </div>
-                </div>
+
+                    {/* Button Colors */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Button Colors</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <label className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
+                          <input
+                            type="color"
+                            value={widgetCustomization.theme.primaryColor}
+                            onChange={(e) => updateWidgetCustomization(['theme', 'primaryColor'], e.target.value)}
+                            className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                          />
+                          <div>
+                            <div className="text-sm font-medium">Button Fill</div>
+                            <div className="text-xs text-muted-foreground">Primary actions</div>
+                          </div>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
+                          <input
+                            type="color"
+                            value={widgetCustomization.theme.buttonTextColor}
+                            onChange={(e) => updateWidgetCustomization(['theme', 'buttonTextColor'], e.target.value)}
+                            className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                          />
+                          <div>
+                            <div className="text-sm font-medium">Button Text</div>
+                            <div className="text-xs text-muted-foreground">Label color</div>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Background Colors */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Backgrounds</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <label className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
+                          <input
+                            type="color"
+                            value={widgetCustomization.theme.backgroundColor}
+                            onChange={(e) => updateWidgetCustomization(['theme', 'backgroundColor'], e.target.value)}
+                            className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                          />
+                          <div>
+                            <div className="text-sm font-medium">Page</div>
+                            <div className="text-xs text-muted-foreground">Main background</div>
+                          </div>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
+                          <input
+                            type="color"
+                            value={widgetCustomization.theme.cardBackgroundColor}
+                            onChange={(e) => updateWidgetCustomization(['theme', 'cardBackgroundColor'], e.target.value)}
+                            className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                          />
+                          <div>
+                            <div className="text-sm font-medium">Cards</div>
+                            <div className="text-xs text-muted-foreground">Section backgrounds</div>
+                          </div>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
+                          <input
+                            type="color"
+                            value={widgetCustomization.theme.inputBackgroundColor}
+                            onChange={(e) => updateWidgetCustomization(['theme', 'inputBackgroundColor'], e.target.value)}
+                            className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                          />
+                          <div>
+                            <div className="text-sm font-medium">Inputs</div>
+                            <div className="text-xs text-muted-foreground">Form fields</div>
+                          </div>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
+                          <input
+                            type="color"
+                            value={widgetCustomization.theme.secondaryColor}
+                            onChange={(e) => updateWidgetCustomization(['theme', 'secondaryColor'], e.target.value)}
+                            className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                          />
+                          <div>
+                            <div className="text-sm font-medium">Accents</div>
+                            <div className="text-xs text-muted-foreground">Borders & highlights</div>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                    {/* Typography */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Typography</h4>
+                      <Select
+                        value={widgetCustomization.theme.fontFamily}
+                        onValueChange={(value) => updateWidgetCustomization(['theme', 'fontFamily'], value)}
+                      >
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="Select font family" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {/* Modern Sans-Serif Fonts */}
+                          <SelectItem value="Manrope" className="font-manrope">Manrope (Default)</SelectItem>
+                          <SelectItem value="Inter" className="font-inter">Inter</SelectItem>
+                          <SelectItem value="Roboto" className="font-roboto">Roboto</SelectItem>
+                          <SelectItem value="Open Sans" className="font-open-sans">Open Sans</SelectItem>
+                          <SelectItem value="Poppins" className="font-poppins">Poppins</SelectItem>
+                          <SelectItem value="Montserrat" className="font-montserrat">Montserrat</SelectItem>
+                          <SelectItem value="Lato" className="font-lato">Lato</SelectItem>
+                          <SelectItem value="Source Sans Pro" className="font-source-sans-pro">Source Sans Pro</SelectItem>
+                          <SelectItem value="Ubuntu" className="font-ubuntu">Ubuntu</SelectItem>
+                          <SelectItem value="Noto Sans" className="font-noto-sans">Noto Sans</SelectItem>
+                          <SelectItem value="Work Sans" className="font-work-sans">Work Sans</SelectItem>
+                          <SelectItem value="PT Sans" className="font-pt-sans">PT Sans</SelectItem>
+                          <SelectItem value="Oswald" className="font-oswald">Oswald</SelectItem>
+                          <SelectItem value="Raleway" className="font-raleway">Raleway</SelectItem>
+                          <SelectItem value="Nunito" className="font-nunito">Nunito</SelectItem>
+                          <SelectItem value="Quicksand" className="font-quicksand">Quicksand</SelectItem>
+                          <SelectItem value="Josefin Sans" className="font-josefin-sans">Josefin Sans</SelectItem>
+                          <SelectItem value="DM Sans" className="font-dm-sans">DM Sans</SelectItem>
+                          <SelectItem value="Outfit" className="font-outfit">Outfit</SelectItem>
+                          <SelectItem value="Plus Jakarta Sans" className="font-plus-jakarta-sans">Plus Jakarta Sans</SelectItem>
+                          <SelectItem value="Albert Sans" className="font-albert-sans">Albert Sans</SelectItem>
+                          <SelectItem value="Onest" className="font-onest">Onest</SelectItem>
+                          <SelectItem value="Geist" className="font-geist">Geist</SelectItem>
+                          <SelectItem value="Cal Sans" className="font-cal-sans">Cal Sans</SelectItem>
+                          <SelectItem value="General Sans" className="font-general-sans">General Sans</SelectItem>
+                          <SelectItem value="Clash Display" className="font-clash-display">Clash Display</SelectItem>
+                          <SelectItem value="Clash Grotesk" className="font-clash-grotesk">Clash Grotesk</SelectItem>
+                          <SelectItem value="Sentient" className="font-sentient">Sentient</SelectItem>
+                          <SelectItem value="Chillax" className="font-chillax">Chillax</SelectItem>
+                          <SelectItem value="Cabinet Grotesk" className="font-cabinet-grotesk">Cabinet Grotesk</SelectItem>
+                          <SelectItem value="Switzer" className="font-switzer">Switzer</SelectItem>
+                          <SelectItem value="Gambarino" className="font-gambarino">Gambarino</SelectItem>
+                          <SelectItem value="Melodrama" className="font-melodrama">Melodrama</SelectItem>
+                          <SelectItem value="Zodiak" className="font-zodiak">Zodiak</SelectItem>
+                          <SelectItem value="Panchang" className="font-panchang">Panchang</SelectItem>
+
+                          {/* Classic Serif Fonts */}
+                          <SelectItem value="Playfair Display" className="font-playfair-display">Playfair Display</SelectItem>
+                          <SelectItem value="Merriweather" className="font-merriweather">Merriweather</SelectItem>
+
+                          {/* System Fonts */}
+                          <SelectItem value="Arial">Arial</SelectItem>
+                          <SelectItem value="Georgia">Georgia</SelectItem>
+                          <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                          <SelectItem value="Helvetica">Helvetica</SelectItem>
+                          <SelectItem value="-apple-system">System Font</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Borders */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Borders</h4>
+                      <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-background hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="color"
+                            value={widgetCustomization.theme.borderColor}
+                            onChange={(e) => updateWidgetCustomization(['theme', 'borderColor'], e.target.value)}
+                            className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                            disabled={!widgetCustomization.theme.borderEnabled}
+                          />
+                          <div>
+                            <div className="text-sm font-medium">Show Borders</div>
+                            <div className="text-xs text-muted-foreground">Apply to cards and inputs</div>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={widgetCustomization.theme.borderEnabled}
+                          onCheckedChange={(checked) => updateWidgetCustomization(['theme', 'borderEnabled'], checked)}
+                        />
+                      </div>
+                    </div>
                   </>
                 )}
               </CardContent>
             </Card>
-          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Custom Branding</CardTitle>
-              <CardDescription>Add organization logo and custom header text</CardDescription>
-            </CardHeader>
+            {/* Custom Branding - Second column */}
+            <Card className="h-fit">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Layout className="h-5 w-5" />
+                  Custom Branding
+                </CardTitle>
+                <CardDescription>Add organization logo and custom text</CardDescription>
+              </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="showOrgLogo">Show Organization Logo</Label>
+              {/* Show Organization Logo Toggle */}
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-500/10">
+                    <Layout className="h-4 w-4 text-blue-500" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm">Organization Logo</div>
+                    <p className="text-xs text-muted-foreground">
+                      Display your logo on the ticket widget
+                    </p>
+                  </div>
+                </div>
                 <Switch
-                  id="showOrgLogo"
                   checked={widgetCustomization.branding.showOrgLogo}
                   onCheckedChange={(checked) => updateWidgetCustomization(['branding', 'showOrgLogo'], checked)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="customHeaderText">Custom Header Text</Label>
+
+              {/* Header Text */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Header Text</h4>
                 <Input
-                  id="customHeaderText"
                   value={widgetCustomization.branding.customHeaderText}
                   onChange={(e) => updateWidgetCustomization(['branding', 'customHeaderText'], e.target.value)}
                   placeholder="Welcome to our event!"
+                  className="h-11"
                 />
+                <p className="text-xs text-muted-foreground">Optional message displayed above ticket selection</p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="buttonTextType">Ticket Button Text</Label>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Primary button text for your event page
-                </p>
+              {/* Button Text */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Button Text</h4>
                 <Select
                   value={widgetCustomization.branding.buttonTextType}
                   onValueChange={(value) => {
                     updateWidgetCustomization(['branding', 'buttonTextType'], value);
-                    // Update buttonText based on selection
                     const textMap: Record<string, string> = {
                       'default': 'Get Tickets',
                       'register': 'Register',
@@ -1153,7 +1199,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     }
                   }}
                 >
-                  <SelectTrigger id="buttonTextType">
+                  <SelectTrigger className="h-11">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1169,16 +1215,16 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
                 {widgetCustomization.branding.buttonTextType === 'custom' && (
                   <Input
-                    id="customButtonText"
                     value={widgetCustomization.branding.buttonText}
                     onChange={(e) => updateWidgetCustomization(['branding', 'buttonText'], e.target.value)}
                     placeholder="Enter custom button text"
-                    className="mt-2"
+                    className="h-11"
                   />
                 )}
               </div>
             </CardContent>
-          </Card>
+            </Card>
+          </div>
 
           {/* Custom Questions Section */}
           <Card>
@@ -1193,17 +1239,19 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Enable/Disable Custom Questions */}
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="space-y-1">
-                  <Label htmlFor="enableCustomQuestions" className="text-base font-medium">
-                    Enable Custom Questions
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Require customers to answer custom questions during ticket purchase
-                  </p>
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amber-500/10">
+                    <HelpCircle className="h-4 w-4 text-amber-500" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm">Custom Questions</div>
+                    <p className="text-xs text-muted-foreground">
+                      Collect additional info during checkout
+                    </p>
+                  </div>
                 </div>
                 <Switch
-                  id="enableCustomQuestions"
                   checked={widgetCustomization.customQuestions?.enabled || false}
                   onCheckedChange={(checked) => updateWidgetCustomization(['customQuestions', 'enabled'], checked)}
                 />
@@ -1383,17 +1431,20 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between space-x-4">
-                <div className="flex-1 space-y-1">
-                  <Label htmlFor="donations-enabled" className="text-base font-medium cursor-pointer">
-                    Enable Donations
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Allow patrons to make optional donations during checkout
-                  </p>
+              {/* Enable Donations Toggle */}
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-pink-500/10">
+                    <Heart className="h-4 w-4 text-pink-500" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm">Enable Donations</div>
+                    <p className="text-xs text-muted-foreground">
+                      Allow optional donations during checkout
+                    </p>
+                  </div>
                 </div>
                 <Switch
-                  id="donations-enabled"
                   checked={eventData?.donations_enabled || false}
                   onCheckedChange={(checked) =>
                     setEventData(prev => ({ ...prev, donations_enabled: checked }))
@@ -1464,7 +1515,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           {eventData?.status === 'published' && (
             <Card>
               <CardHeader>
-                <CardTitle>Widget Sharing</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Share2 className="h-5 w-5" />
+                  Widget Sharing
+                </CardTitle>
                 <CardDescription>Share your customized ticket widget</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -1537,140 +1591,147 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Accordion type="multiple" className="w-full">
+              <Accordion type="multiple" className="w-full space-y-2">
                 {/* 1. Event Description Step */}
-                <AccordionItem value="event-step">
-                  <AccordionTrigger className="text-sm font-medium">
-                    1. Event Description Step
+                <AccordionItem value="event-step" className="border rounded-lg px-4">
+                  <AccordionTrigger className="text-sm font-medium hover:no-underline">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-500/10 text-blue-500 text-xs font-semibold">1</span>
+                      Event Description
+                    </div>
                   </AccordionTrigger>
-                  <AccordionContent className="space-y-4 pt-4">
+                  <AccordionContent className="space-y-4 pt-2 pb-4">
                     <div className="space-y-2">
-                      <Label htmlFor="eventDescriptionTitle">Event Description Title</Label>
+                      <Label className="text-xs text-muted-foreground">Title</Label>
                       <Input
-                        id="eventDescriptionTitle"
                         value={widgetCustomization.textCustomization?.eventDescriptionTitle ?? "Event description"}
                         onChange={(e) => updateWidgetCustomization(['textCustomization', 'eventDescriptionTitle'], e.target.value)}
                         placeholder="Event description"
+                        className="h-11"
                       />
-                      <p className="text-xs text-muted-foreground">Title shown on the first page of the checkout flow</p>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
 
                 {/* 2. Ticket Selection Step */}
-                <AccordionItem value="ticket-step">
-                  <AccordionTrigger className="text-sm font-medium">
-                    2. Ticket Selection Step
+                <AccordionItem value="ticket-step" className="border rounded-lg px-4">
+                  <AccordionTrigger className="text-sm font-medium hover:no-underline">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500/10 text-purple-500 text-xs font-semibold">2</span>
+                      Ticket Selection
+                    </div>
                   </AccordionTrigger>
-                  <AccordionContent className="space-y-4 pt-4">
+                  <AccordionContent className="space-y-4 pt-2 pb-4">
                     <div className="space-y-2">
-                      <Label htmlFor="ticketSelectionTitle">Ticket Selection Title</Label>
+                      <Label className="text-xs text-muted-foreground">Title</Label>
                       <Input
-                        id="ticketSelectionTitle"
                         value={widgetCustomization.textCustomization?.ticketSelectionTitle ?? "Select Your Tickets"}
                         onChange={(e) => updateWidgetCustomization(['textCustomization', 'ticketSelectionTitle'], e.target.value)}
                         placeholder="Select Your Tickets"
+                        className="h-11"
                       />
-                      <p className="text-xs text-muted-foreground">Main title for the ticket selection page</p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="ticketSelectionSubtitle">Ticket Selection Subtitle</Label>
+                      <Label className="text-xs text-muted-foreground">Subtitle</Label>
                       <Input
-                        id="ticketSelectionSubtitle"
                         value={widgetCustomization.textCustomization?.ticketSelectionSubtitle ?? "Choose your tickets and any additional items"}
                         onChange={(e) => updateWidgetCustomization(['textCustomization', 'ticketSelectionSubtitle'], e.target.value)}
                         placeholder="Choose your tickets and any additional items"
+                        className="h-11"
                       />
-                      <p className="text-xs text-muted-foreground">Subtitle text below the ticket selection title</p>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
 
                 {/* 3. Contact Information Card */}
-                <AccordionItem value="contact-step">
-                  <AccordionTrigger className="text-sm font-medium">
-                    3. Contact Information Labels
+                <AccordionItem value="contact-step" className="border rounded-lg px-4">
+                  <AccordionTrigger className="text-sm font-medium hover:no-underline">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-green-500/10 text-green-500 text-xs font-semibold">3</span>
+                      Contact Labels
+                    </div>
                   </AccordionTrigger>
-                  <AccordionContent className="space-y-4 pt-4">
+                  <AccordionContent className="space-y-4 pt-2 pb-4">
                     <div className="space-y-2">
-                      <Label htmlFor="ticketLabelPrefix">Ticket Label Prefix</Label>
+                      <Label className="text-xs text-muted-foreground">Ticket Label Prefix</Label>
                       <Input
-                        id="ticketLabelPrefix"
                         value={widgetCustomization.textCustomization?.ticketLabelPrefix ?? "Ticket"}
                         onChange={(e) => updateWidgetCustomization(['textCustomization', 'ticketLabelPrefix'], e.target.value)}
                         placeholder="Ticket"
+                        className="h-11"
                       />
-                      <p className="text-xs text-muted-foreground">Prefix used for ticket labels (e.g., "Ticket 1", "Ticket 2")</p>
+                      <p className="text-xs text-muted-foreground">Used as "Ticket 1", "Ticket 2", etc.</p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="primaryTicketLabel">Primary Ticket Holder Label</Label>
+                      <Label className="text-xs text-muted-foreground">Primary Holder Label</Label>
                       <Input
-                        id="primaryTicketLabel"
                         value={widgetCustomization.textCustomization?.primaryTicketLabel ?? "(Primary Ticket Holder)"}
                         onChange={(e) => updateWidgetCustomization(['textCustomization', 'primaryTicketLabel'], e.target.value)}
                         placeholder="(Primary Ticket Holder)"
+                        className="h-11"
                       />
-                      <p className="text-xs text-muted-foreground">Label shown for the first ticket/attendee</p>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
 
                 {/* 4. Attendee Details Step */}
-                <AccordionItem value="attendee-step">
-                  <AccordionTrigger className="text-sm font-medium">
-                    4. Attendee Details Step
+                <AccordionItem value="attendee-step" className="border rounded-lg px-4">
+                  <AccordionTrigger className="text-sm font-medium hover:no-underline">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-500/10 text-orange-500 text-xs font-semibold">4</span>
+                      Attendee Details
+                    </div>
                   </AccordionTrigger>
-                  <AccordionContent className="space-y-4 pt-4">
+                  <AccordionContent className="space-y-4 pt-2 pb-4">
                     <div className="space-y-2">
-                      <Label htmlFor="primaryContactLabel">Primary Contact Label</Label>
+                      <Label className="text-xs text-muted-foreground">Primary Contact Label</Label>
                       <Input
-                        id="primaryContactLabel"
                         value={widgetCustomization.textCustomization?.primaryContactLabel ?? "Primary Contact Information"}
                         onChange={(e) => updateWidgetCustomization(['textCustomization', 'primaryContactLabel'], e.target.value)}
                         placeholder="Primary Contact Information"
+                        className="h-11"
                       />
-                      <p className="text-xs text-muted-foreground">Label shown when multiple attendees are present</p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="attendeeInfoTitle">Attendee Information Title</Label>
+                      <Label className="text-xs text-muted-foreground">Section Title</Label>
                       <Input
-                        id="attendeeInfoTitle"
                         value={widgetCustomization.textCustomization?.attendeeInfoTitle ?? "Attendee Information"}
                         onChange={(e) => updateWidgetCustomization(['textCustomization', 'attendeeInfoTitle'], e.target.value)}
                         placeholder="Attendee Information"
+                        className="h-11"
                       />
-                      <p className="text-xs text-muted-foreground">Title for the attendee information section</p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="attendeeInfoDescription">Attendee Information Description</Label>
+                      <Label className="text-xs text-muted-foreground">Section Description</Label>
                       <Textarea
-                        id="attendeeInfoDescription"
                         value={widgetCustomization.textCustomization?.attendeeInfoDescription ?? "Please provide the name and email for each ticket holder. This helps us identify attendees at check-in."}
                         onChange={(e) => updateWidgetCustomization(['textCustomization', 'attendeeInfoDescription'], e.target.value)}
                         placeholder="Please provide the name and email for each ticket holder..."
-                        rows={3}
+                        rows={2}
                       />
-                      <p className="text-xs text-muted-foreground">Description text for the attendee information section</p>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
 
                 {/* 5. Custom Ticket Labels */}
-                <AccordionItem value="custom-labels">
-                  <AccordionTrigger className="text-sm font-medium">
-                    5. Custom Ticket Labels
+                <AccordionItem value="custom-labels" className="border rounded-lg px-4">
+                  <AccordionTrigger className="text-sm font-medium hover:no-underline">
+                    <div className="flex items-center gap-3">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-pink-500/10 text-pink-500 text-xs font-semibold">5</span>
+                      Custom Ticket Labels
+                    </div>
                   </AccordionTrigger>
-                  <AccordionContent className="space-y-4 pt-4">
-                    <div className="flex items-start gap-2 mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <HelpCircle className="h-4 w-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                  <AccordionContent className="space-y-4 pt-2 pb-4">
+                    <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg">
+                      <HelpCircle className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
                       <p className="text-xs text-muted-foreground">
-                        For Special Use Cases you can set custom labels for each ticket position.
+                        Override default labels for special use cases (e.g., "Parent", "Child")
                       </p>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {[0, 1, 2, 3, 4].map((index) => (
-                        <div key={index} className="grid grid-cols-[100px_1fr] gap-3 items-center">
-                          <Label className="text-sm">Ticket {index + 1}:</Label>
+                        <div key={index} className="flex items-center gap-3">
+                          <span className="text-xs text-muted-foreground w-16">Ticket {index + 1}</span>
                           <Input
                             value={(widgetCustomization.textCustomization?.ticketLabels as Record<number, string>)?.[index] || ''}
                             onChange={(e) => {
@@ -1683,6 +1744,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                               updateWidgetCustomization(['textCustomization', 'ticketLabels'], newLabels);
                             }}
                             placeholder={`e.g., ${index === 0 ? 'Parent' : 'Child'}`}
+                            className="h-10 flex-1"
                           />
                         </div>
                       ))}
@@ -1783,29 +1845,31 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Enable/Disable Seat Maps */}
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="enableSeatMaps" className="text-base font-medium">
-                      Enable Seat Maps
-                    </Label>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                      onClick={() => {
-                        window.dispatchEvent(new CustomEvent('openDashboardHelp', { detail: { tab: 'event-details' } }));
-                      }}
-                    >
-                      <HelpCircle className="h-4 w-4" />
-                    </Button>
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-green-500/10">
+                    <MapPin className="h-4 w-4 text-green-500" />
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Allow guests to select specific seats when purchasing tickets
-                  </p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">Seat Maps</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0"
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent('openDashboardHelp', { detail: { tab: 'event-details' } }));
+                        }}
+                      >
+                        <HelpCircle className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Let guests select specific seats
+                    </p>
+                  </div>
                 </div>
                 <Switch
-                  id="enableSeatMaps"
                   checked={widgetCustomization.seatMaps?.enabled || false}
                   onCheckedChange={(checked) => updateWidgetCustomization(['seatMaps', 'enabled'], checked)}
                 />
@@ -1857,24 +1921,31 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           {/* Ticket Design Customization */}
           <Card>
             <CardHeader>
-              <CardTitle>Ticket Design & Appearance</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Ticket className="h-5 w-5" />
+                Ticket Design & Appearance
+              </CardTitle>
               <CardDescription>Customize how your tickets look when sent to customers</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid gap-6 md:grid-cols-2">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Ticket Design</CardTitle>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Palette className="h-4 w-4" />
+                      Ticket Design
+                    </CardTitle>
                     <CardDescription>Customize ticket appearance</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="ticketTemplate">Template</Label>
+                  <CardContent className="space-y-5">
+                    {/* Template Selection */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Template Style</h4>
                       <Select
                         value={ticketCustomization.design.template}
                         onValueChange={(value) => updateTicketCustomization(['design', 'template'], value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-11">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1885,33 +1956,46 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ticketBgColor">Background Color</Label>
-                      <Input
-                        id="ticketBgColor"
-                        type="color"
-                        value={ticketCustomization.design.backgroundColor}
-                        onChange={(e) => updateTicketCustomization(['design', 'backgroundColor'], e.target.value)}
-                        className="w-full h-12"
-                      />
+
+                    {/* Colors */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Colors</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <label className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
+                          <input
+                            type="color"
+                            value={ticketCustomization.design.backgroundColor}
+                            onChange={(e) => updateTicketCustomization(['design', 'backgroundColor'], e.target.value)}
+                            className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                          />
+                          <div>
+                            <div className="text-sm font-medium">Background</div>
+                            <div className="text-xs text-muted-foreground">Ticket fill</div>
+                          </div>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
+                          <input
+                            type="color"
+                            value={ticketCustomization.design.textColor}
+                            onChange={(e) => updateTicketCustomization(['design', 'textColor'], e.target.value)}
+                            className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                          />
+                          <div>
+                            <div className="text-sm font-medium">Text</div>
+                            <div className="text-xs text-muted-foreground">Labels & info</div>
+                          </div>
+                        </label>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ticketTextColor">Text Color</Label>
-                      <Input
-                        id="ticketTextColor"
-                        type="color"
-                        value={ticketCustomization.design.textColor}
-                        onChange={(e) => updateTicketCustomization(['design', 'textColor'], e.target.value)}
-                        className="w-full h-12"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="qrCodePosition">QR Code Position</Label>
+
+                    {/* Layout Options */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">QR Code Position</h4>
                       <Select
                         value={ticketCustomization.design.qrCodePosition}
                         onValueChange={(value) => updateTicketCustomization(['design', 'qrCodePosition'], value)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-11">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1922,8 +2006,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ticketFontFamily">Font Family</Label>
+
+                    {/* Typography */}
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Typography</h4>
                       <Select
                         value={ticketCustomization.design.fontFamily || "Inter"}
                         onValueChange={(value) => updateTicketCustomization(['design', 'fontFamily'], value)}
@@ -1986,92 +2072,121 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Ticket Content</CardTitle>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <FileText className="h-4 w-4" />
+                      Ticket Content
+                    </CardTitle>
                     <CardDescription>Choose what information to include</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="showTicketLogo">Show Logo</Label>
+                  <CardContent className="space-y-3">
+                    {/* Show Logo Toggle */}
+                    <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-blue-500/10">
+                          <Layout className="h-4 w-4 text-blue-500" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-sm">Logo</div>
+                          <p className="text-xs text-muted-foreground">Display branding on ticket</p>
+                        </div>
+                      </div>
                       <Switch
-                        id="showTicketLogo"
                         checked={ticketCustomization.content.showLogo}
                         onCheckedChange={(checked) => updateTicketCustomization(['content', 'showLogo'], checked)}
                       />
                     </div>
-                    
+
                     {ticketCustomization.content.showLogo && (
-                      <div className="space-y-3 pl-4 border-l-2 border-border">
-                        <div className="space-y-2">
-                          <Label htmlFor="ticketLogoSource">Logo Source</Label>
-                          <Select
-                            value={ticketCustomization.content.logoSource || 'event'}
-                            onValueChange={(value) => updateTicketCustomization(['content', 'logoSource'], value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="event">Use Event Logo</SelectItem>
-                              <SelectItem value="organization">Use Organization Logo</SelectItem>
-                              <SelectItem value="custom">Custom Ticket Logo</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
+                      <div className="space-y-3 ml-4 pl-4 border-l-2 border-border">
+                        <Select
+                          value={ticketCustomization.content.logoSource || 'event'}
+                          onValueChange={(value) => updateTicketCustomization(['content', 'logoSource'], value)}
+                        >
+                          <SelectTrigger className="h-11">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="event">Use Event Logo</SelectItem>
+                            <SelectItem value="organization">Use Organization Logo</SelectItem>
+                            <SelectItem value="custom">Custom Ticket Logo</SelectItem>
+                          </SelectContent>
+                        </Select>
+
                         {ticketCustomization.content.logoSource === 'event' && (
                           <div className="space-y-3">
-                            <Label>Event Logo Upload</Label>
-                            <EventLogoUploader 
+                            <EventLogoUploader
                               eventId={eventId}
                                currentLogoUrl={currentLogoUrl || undefined}
                               onLogoChange={(logoUrl) => {
                                 setCurrentLogoUrl(logoUrl);
-                                // Refresh event data to get updated logo
                                 loadCustomizations();
                               }}
                             />
                             {!currentLogoUrl && (
-                              <p className="text-sm text-muted-foreground">
-                                Upload an event logo to display on tickets when "Use Event Logo" is selected.
+                              <p className="text-xs text-muted-foreground">
+                                Upload an event logo to display on tickets
                               </p>
                             )}
                           </div>
                         )}
-                        
+
                         {ticketCustomization.content.logoSource === 'custom' && (
-                          <div className="space-y-2">
-                            <Label htmlFor="customTicketLogo">Custom Ticket Logo URL</Label>
-                            <Input
-                              id="customTicketLogo"
-                              type="url"
-                              placeholder="https://example.com/logo.png"
-                              value={ticketCustomization.content.customLogoUrl || ''}
-                              onChange={(e) => updateTicketCustomization(['content', 'customLogoUrl'], e.target.value)}
-                            />
-                          </div>
+                          <Input
+                            type="url"
+                            placeholder="https://example.com/logo.png"
+                            value={ticketCustomization.content.customLogoUrl || ''}
+                            onChange={(e) => updateTicketCustomization(['content', 'customLogoUrl'], e.target.value)}
+                          />
                         )}
                       </div>
                     )}
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="showTicketQrCode">Show QR Code</Label>
+
+                    {/* Show QR Code Toggle */}
+                    <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-green-500/10">
+                          <Ticket className="h-4 w-4 text-green-500" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-sm">QR Code</div>
+                          <p className="text-xs text-muted-foreground">Scannable entry code</p>
+                        </div>
+                      </div>
                       <Switch
-                        id="showTicketQrCode"
                         checked={ticketCustomization.content.showQrCode}
                         onCheckedChange={(checked) => updateTicketCustomization(['content', 'showQrCode'], checked)}
                       />
                     </div>
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="showTicketEventDetails">Show Event Details</Label>
+
+                    {/* Show Event Details Toggle */}
+                    <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-purple-500/10">
+                          <Settings className="h-4 w-4 text-purple-500" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-sm">Event Details</div>
+                          <p className="text-xs text-muted-foreground">Date, time, and info</p>
+                        </div>
+                      </div>
                       <Switch
-                        id="showTicketEventDetails"
                         checked={ticketCustomization.content.showEventDetails}
                         onCheckedChange={(checked) => updateTicketCustomization(['content', 'showEventDetails'], checked)}
                       />
                     </div>
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="showTicketVenueInfo">Show Venue Info</Label>
+
+                    {/* Show Venue Info Toggle */}
+                    <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-orange-500/10">
+                          <MapPin className="h-4 w-4 text-orange-500" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-sm">Venue Info</div>
+                          <p className="text-xs text-muted-foreground">Location and address</p>
+                        </div>
+                      </div>
                       <Switch
-                        id="showTicketVenueInfo"
                         checked={ticketCustomization.content.showVenueInfo}
                         onCheckedChange={(checked) => updateTicketCustomization(['content', 'showVenueInfo'], checked)}
                       />
@@ -2159,107 +2274,145 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               {/* Colors & Style */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Colors & Style</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Palette className="h-5 w-5" />
+                    Colors & Style
+                  </CardTitle>
                   <CardDescription>Customize the visual appearance</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-5">
                   {/* Custom Colors Toggle */}
-                  <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/20">
-                    <div>
-                      <Label htmlFor="useCustomColors" className="font-medium">Custom Colors</Label>
-                      <p className="text-xs text-muted-foreground">Enable to override theme colors with custom values</p>
+                  <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-purple-500/10">
+                        <Palette className="h-4 w-4 text-purple-500" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm">Custom Colors</div>
+                        <p className="text-xs text-muted-foreground">Override theme with custom values</p>
+                      </div>
                     </div>
                     <Switch
-                      id="useCustomColors"
                       checked={emailCustomization.useCustomColors}
                       onCheckedChange={(checked) => updateEmailCustomization(['useCustomColors'], checked)}
                     />
                   </div>
-                  
+
                   {/* Color Controls - Only show if custom colors enabled */}
                   {emailCustomization.useCustomColors && (
-                  <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="headerColor">Header Color</Label>
-                      <Input
-                        id="headerColor"
-                        type="color"
-                        value={emailCustomization.template.headerColor}
-                        onChange={(e) => updateEmailCustomization(['template', 'headerColor'], e.target.value)}
-                        className="w-full h-12"
-                      />
+                    <div className="space-y-4">
+                      {/* Header & Background Colors */}
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Primary Colors</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <label className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
+                            <input
+                              type="color"
+                              value={emailCustomization.template.headerColor}
+                              onChange={(e) => updateEmailCustomization(['template', 'headerColor'], e.target.value)}
+                              className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                            />
+                            <div>
+                              <div className="text-sm font-medium">Header</div>
+                              <div className="text-xs text-muted-foreground">Top banner</div>
+                            </div>
+                          </label>
+                          <label className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
+                            <input
+                              type="color"
+                              value={emailCustomization.template.buttonColor}
+                              onChange={(e) => updateEmailCustomization(['template', 'buttonColor'], e.target.value)}
+                              className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                            />
+                            <div>
+                              <div className="text-sm font-medium">Button</div>
+                              <div className="text-xs text-muted-foreground">CTA buttons</div>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Text & Background Colors */}
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Backgrounds</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <label className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
+                            <input
+                              type="color"
+                              value={emailCustomization.template.backgroundColor}
+                              onChange={(e) => updateEmailCustomization(['template', 'backgroundColor'], e.target.value)}
+                              className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                            />
+                            <div>
+                              <div className="text-sm font-medium">Background</div>
+                              <div className="text-xs text-muted-foreground">Email body</div>
+                            </div>
+                          </label>
+                          <label className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
+                            <input
+                              type="color"
+                              value={emailCustomization.template.accentColor}
+                              onChange={(e) => updateEmailCustomization(['template', 'accentColor'], e.target.value)}
+                              className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                            />
+                            <div>
+                              <div className="text-sm font-medium">Accent</div>
+                              <div className="text-xs text-muted-foreground">Highlights</div>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Text & Border Colors */}
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Text & Borders</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <label className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
+                            <input
+                              type="color"
+                              value={emailCustomization.template.textColor}
+                              onChange={(e) => updateEmailCustomization(['template', 'textColor'], e.target.value)}
+                              className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                            />
+                            <div>
+                              <div className="text-sm font-medium">Text</div>
+                              <div className="text-xs text-muted-foreground">Body copy</div>
+                            </div>
+                          </label>
+                          <label className="flex items-center gap-3 p-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors cursor-pointer">
+                            <input
+                              type="color"
+                              value={emailCustomization.template.borderColor}
+                              onChange={(e) => updateEmailCustomization(['template', 'borderColor'], e.target.value)}
+                              className="w-8 h-8 rounded-md border-2 border-muted cursor-pointer"
+                            />
+                            <div>
+                              <div className="text-sm font-medium">Border</div>
+                              <div className="text-xs text-muted-foreground">Dividers</div>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Typography */}
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Typography</h4>
+                        <Select value={emailCustomization.template.fontFamily} onValueChange={(value) => updateEmailCustomization(['template', 'fontFamily'], value)}>
+                          <SelectTrigger className="h-11">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Arial, sans-serif">Arial</SelectItem>
+                            <SelectItem value="Helvetica, Arial, sans-serif">Helvetica</SelectItem>
+                            <SelectItem value="Georgia, serif">Georgia</SelectItem>
+                            <SelectItem value="'Times New Roman', serif">Times New Roman</SelectItem>
+                            <SelectItem value="'Courier New', monospace">Courier New</SelectItem>
+                            <SelectItem value="Verdana, sans-serif">Verdana</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="backgroundColor">Background Color</Label>
-                      <Input
-                        id="backgroundColor"
-                        type="color"
-                        value={emailCustomization.template.backgroundColor}
-                        onChange={(e) => updateEmailCustomization(['template', 'backgroundColor'], e.target.value)}
-                        className="w-full h-12"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="textColor">Text Color</Label>
-                      <Input
-                        id="textColor"
-                        type="color"
-                        value={emailCustomization.template.textColor}
-                        onChange={(e) => updateEmailCustomization(['template', 'textColor'], e.target.value)}
-                        className="w-full h-12"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="buttonColor">Button Color</Label>
-                      <Input
-                        id="buttonColor"
-                        type="color"
-                        value={emailCustomization.template.buttonColor}
-                        onChange={(e) => updateEmailCustomization(['template', 'buttonColor'], e.target.value)}
-                        className="w-full h-12"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="accentColor">Accent Color</Label>
-                      <Input
-                        id="accentColor"
-                        type="color"
-                        value={emailCustomization.template.accentColor}
-                        onChange={(e) => updateEmailCustomization(['template', 'accentColor'], e.target.value)}
-                        className="w-full h-12"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="borderColor">Border Color</Label>
-                      <Input
-                        id="borderColor"
-                        type="color"
-                        value={emailCustomization.template.borderColor}
-                        onChange={(e) => updateEmailCustomization(['template', 'borderColor'], e.target.value)}
-                        className="w-full h-12"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="fontFamily">Font Family</Label>
-                    <Select value={emailCustomization.template.fontFamily} onValueChange={(value) => updateEmailCustomization(['template', 'fontFamily'], value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Arial, sans-serif">Arial</SelectItem>
-                        <SelectItem value="Helvetica, Arial, sans-serif">Helvetica</SelectItem>
-                        <SelectItem value="Georgia, serif">Georgia</SelectItem>
-                        <SelectItem value="'Times New Roman', serif">Times New Roman</SelectItem>
-                        <SelectItem value="'Courier New', monospace">Courier New</SelectItem>
-                        <SelectItem value="Verdana, sans-serif">Verdana</SelectItem>
-                      </SelectContent>
-                    </Select>
-                   </div>
-                   </div>
-                   )}
+                  )}
                 </CardContent>
               </Card>
 
@@ -2268,52 +2421,63 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               {/* Branding Options */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Branding & Layout</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Layout className="h-5 w-5" />
+                    Branding & Layout
+                  </CardTitle>
                   <CardDescription>Control logo placement and layout options</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="emailShowLogo">Show Logo</Label>
+                <CardContent className="space-y-5">
+                  {/* Show Logo Toggle */}
+                  <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-blue-500/10">
+                        <Layout className="h-4 w-4 text-blue-500" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm">Show Logo</div>
+                        <p className="text-xs text-muted-foreground">Display branding in emails</p>
+                      </div>
+                    </div>
                     <Switch
-                      id="emailShowLogo"
                       checked={emailCustomization.branding.showLogo}
                       onCheckedChange={(checked) => updateEmailCustomization(['branding', 'showLogo'], checked)}
                     />
                   </div>
-                  
+
                   {emailCustomization.branding.showLogo && (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="logoPosition">Logo Position</Label>
-                        <Select value={emailCustomization.branding.logoPosition} onValueChange={(value) => updateEmailCustomization(['branding', 'logoPosition'], value)}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="header">Header</SelectItem>
-                            <SelectItem value="content">Content Area</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="logoSize">Logo Size</Label>
-                        <Select value={emailCustomization.branding.logoSize} onValueChange={(value) => updateEmailCustomization(['branding', 'logoSize'], value)}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="small">Small</SelectItem>
-                            <SelectItem value="medium">Medium</SelectItem>
-                            <SelectItem value="large">Large</SelectItem>
-                          </SelectContent>
-                        </Select>
+                    <div className="space-y-4 ml-4 pl-4 border-l-2 border-border">
+                      {/* Logo Settings */}
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Logo Settings</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Select value={emailCustomization.branding.logoPosition} onValueChange={(value) => updateEmailCustomization(['branding', 'logoPosition'], value)}>
+                            <SelectTrigger className="h-11">
+                              <SelectValue placeholder="Position" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="header">Header</SelectItem>
+                              <SelectItem value="content">Content Area</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Select value={emailCustomization.branding.logoSize} onValueChange={(value) => updateEmailCustomization(['branding', 'logoSize'], value)}>
+                            <SelectTrigger className="h-11">
+                              <SelectValue placeholder="Size" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="small">Small</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="large">Large</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="logoSource">Logo Source</Label>
+                      {/* Logo Source */}
+                      <div className="space-y-3">
+                        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Logo Source</h4>
                         <Select value={emailCustomization.branding.logoSource || 'event'} onValueChange={(value) => updateEmailCustomization(['branding', 'logoSource'], value)}>
-                          <SelectTrigger>
+                          <SelectTrigger className="h-11">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -2322,25 +2486,23 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                             <SelectItem value="custom">Custom URL</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
 
-                      {emailCustomization.branding.logoSource === 'custom' && (
-                        <div className="space-y-2">
-                          <Label htmlFor="customEmailLogo">Custom Logo URL</Label>
+                        {emailCustomization.branding.logoSource === 'custom' && (
                           <Input
-                            id="customEmailLogo"
                             type="url"
                             placeholder="https://example.com/logo.png"
                             value={emailCustomization.branding.customLogoUrl || ''}
                             onChange={(e) => updateEmailCustomization(['branding', 'customLogoUrl'], e.target.value)}
+                            className="mt-2"
                           />
-                        </div>
-                      )}
-                    </>
+                        )}
+                      </div>
+                    </div>
                   )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="headerStyle">Header Style</Label>
+                  {/* Header Style */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Header Style</h4>
                     <Select value={emailCustomization.layout?.headerStyle || 'standard'} onValueChange={(value) => updateEmailCustomization(['layout', 'headerStyle'], value)}>
                       <SelectTrigger>
                         <SelectValue />
@@ -2359,30 +2521,42 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               {/* Organiser Notifications */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Organiser Notifications</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Mail className="h-5 w-5" />
+                    Organiser Notifications
+                  </CardTitle>
                   <CardDescription>Get notified when tickets are sold</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="organiserNotifications">Send notifications when tickets are sold</Label>
+                  {/* Notifications Toggle */}
+                  <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-green-500/10">
+                        <Mail className="h-4 w-4 text-green-500" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm">Sale Notifications</div>
+                        <p className="text-xs text-muted-foreground">Email alerts for each ticket sale</p>
+                      </div>
+                    </div>
                     <Switch
-                      id="organiserNotifications"
                       checked={emailCustomization.notifications?.organiserNotifications || false}
                       onCheckedChange={(checked) => updateEmailCustomization(['notifications', 'organiserNotifications'], checked)}
                     />
                   </div>
+
                   {emailCustomization.notifications?.organiserNotifications && (
-                    <div className="space-y-2">
-                      <Label htmlFor="organiserEmail">Notification Email</Label>
+                    <div className="space-y-3 ml-4 pl-4 border-l-2 border-border">
+                      <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Notification Email</h4>
                       <Input
-                        id="organiserEmail"
                         type="email"
                         value={emailCustomization.notifications?.organiserEmail || ""}
                         onChange={(e) => updateEmailCustomization(['notifications', 'organiserEmail'], e.target.value)}
                         placeholder="Enter email to receive notifications"
+                        className="h-11"
                       />
-                      <p className="text-sm text-muted-foreground">
-                        You'll receive an email with ticket details and customer information each time a ticket is sold.
+                      <p className="text-xs text-muted-foreground">
+                        Receive ticket details and customer info for each sale
                       </p>
                     </div>
                   )}
@@ -2411,7 +2585,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               {/* Send Test Email */}
               <Card className="mt-4">
                 <CardHeader>
-                  <CardTitle>Send Test Email</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Send className="h-5 w-5" />
+                    Send Test Email
+                  </CardTitle>
                   <CardDescription>Send the current template to your inbox</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -2440,29 +2617,88 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Basic Event Information
-              </CardTitle>
-              <CardDescription>Edit your event's core details</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+          {/* Two-column grid for smaller cards */}
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Event Details Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Event Details
+                </CardTitle>
+                <CardDescription>Basic event information</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="event-name">Event Name *</Label>
+                  <label className="text-xs text-muted-foreground">Event Name *</label>
                   <Input
-                    id="event-name"
                     value={eventData?.name || ""}
                     onChange={(e) => {
                       setEventData(prev => prev ? { ...prev, name: e.target.value } : null);
                     }}
                     placeholder="Enter event name"
+                    className="h-10"
                   />
                 </div>
-                
-                <div>
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground">Description</label>
+                  <Textarea
+                    value={eventData?.description || ""}
+                    onChange={(e) => {
+                      setEventData(prev => prev ? { ...prev, description: e.target.value } : null);
+                    }}
+                    placeholder="Describe your event..."
+                    rows={3}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground">Capacity</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={eventData?.capacity || ""}
+                    onChange={(e) => {
+                      setEventData(prev => prev ? { ...prev, capacity: parseInt(e.target.value) || 0 } : null);
+                    }}
+                    placeholder="Max attendees"
+                    className="h-10"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Date & Venue Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Date & Venue
+                </CardTitle>
+                <CardDescription>When and where</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-3 grid-cols-2">
+                  <DateTimePicker
+                    id="event-date"
+                    label="Start *"
+                    value={eventData?.event_date || null}
+                    onChange={(date) => {
+                      setEventData(prev => prev ? { ...prev, event_date: date } : null);
+                    }}
+                    placeholder="Start"
+                  />
+                  <DateTimePicker
+                    id="event-end-date"
+                    label="End"
+                    value={eventData?.event_end_date || null}
+                    onChange={(date) => {
+                      setEventData(prev => prev ? { ...prev, event_end_date: date } : null);
+                    }}
+                    placeholder="End (optional)"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground">Venue / Location</label>
                   <VenueLocationPicker
                     value={{
                       address: eventData?.venue || "",
@@ -2481,142 +2717,77 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     }}
                   />
                 </div>
-              </div>
+              </CardContent>
+            </Card>
+          </div>
 
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <div>
-                  <DateTimePicker
-                    id="event-date"
-                    label="Start Date & Time *"
-                    value={eventData?.event_date || null}
-                    onChange={(date) => {
-                      setEventData(prev => prev ? { ...prev, event_date: date } : null);
-                    }}
-                    placeholder="Select event start date and time"
-                  />
-                </div>
+          {/* Save Button Row */}
+          <div className="flex justify-end p-4 rounded-lg border bg-muted/20">
+            <Button
+              onClick={async () => {
+                if (!eventData) return;
 
-                <div>
-                  <DateTimePicker
-                    id="event-end-date"
-                    label="End Date & Time (optional)"
-                    value={eventData?.event_end_date || null}
-                    onChange={(date) => {
-                      setEventData(prev => prev ? { ...prev, event_end_date: date } : null);
-                    }}
-                    placeholder="Select event end date and time"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="event-capacity">Capacity</Label>
-                  <Input
-                    id="event-capacity"
-                    type="number"
-                    min="1"
-                    value={eventData?.capacity || ""}
-                    onChange={(e) => {
-                      setEventData(prev => prev ? { ...prev, capacity: parseInt(e.target.value) || 0 } : null);
-                    }}
-                    placeholder="Maximum attendees"
-                  />
-                </div>
-              </div>
+                if (eventData.event_end_date) {
+                  const startDate = new Date(eventData.event_date);
+                  const endDate = new Date(eventData.event_end_date);
 
-              <div className="space-y-2">
-                <Label htmlFor="event-description">Description</Label>
-                <Textarea
-                  id="event-description"
-                  value={eventData?.description || ""}
-                  onChange={(e) => {
-                    setEventData(prev => prev ? { ...prev, description: e.target.value } : null);
-                  }}
-                  placeholder="Describe your event..."
-                  rows={4}
-                />
-              </div>
+                  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+                    toast({
+                      title: "Error",
+                      description: "Please provide valid start and end dates",
+                      variant: "destructive"
+                    });
+                    return;
+                  }
 
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="requires-approval"
-                  checked={eventData?.requires_approval || false}
-                  onCheckedChange={(checked) => {
-                    setEventData(prev => prev ? { ...prev, requires_approval: checked } : null);
-                  }}
-                />
-                <Label htmlFor="requires-approval">Require approval for ticket purchases</Label>
-              </div>
+                  if (endDate < startDate) {
+                    toast({
+                      title: "Error",
+                      description: "End date must be on or after the start date",
+                      variant: "destructive"
+                    });
+                    return;
+                  }
+                }
 
-              <div className="pt-4">
-                <Button 
-                  onClick={async () => {
-                    if (!eventData) return;
+                try {
+                  const { error } = await supabase
+                    .from("events")
+                    .update({
+                      name: eventData.name,
+                      venue: eventData.venue,
+                      venue_address: eventData.venue,
+                      venue_lat: eventData.venue_lat,
+                      venue_lng: eventData.venue_lng,
+                      venue_place_id: eventData.venue_place_id,
+                      description: eventData.description,
+                      event_date: eventData.event_date,
+                      event_end_date: eventData.event_end_date,
+                      capacity: eventData.capacity,
+                      requires_approval: eventData.requires_approval
+                    })
+                    .eq("id", eventId);
 
-                    if (eventData.event_end_date) {
-                      const startDate = new Date(eventData.event_date);
-                      const endDate = new Date(eventData.event_end_date);
+                  if (error) throw error;
 
-                      if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-                        toast({
-                          title: "Error",
-                          description: "Please provide valid start and end dates",
-                          variant: "destructive"
-                        });
-                        return;
-                      }
-
-                      if (endDate < startDate) {
-                        toast({
-                          title: "Error",
-                          description: "End date must be on or after the start date",
-                          variant: "destructive"
-                        });
-                        return;
-                      }
-                    }
-
-                    try {
-                      const { error } = await supabase
-                        .from("events")
-                        .update({
-                          name: eventData.name,
-                          venue: eventData.venue,
-                          venue_address: eventData.venue,
-                          venue_lat: eventData.venue_lat,
-                          venue_lng: eventData.venue_lng,
-                          venue_place_id: eventData.venue_place_id,
-                          description: eventData.description,
-                          event_date: eventData.event_date,
-                          event_end_date: eventData.event_end_date,
-                          capacity: eventData.capacity,
-                          requires_approval: eventData.requires_approval
-                        })
-                        .eq("id", eventId);
-
-                      if (error) throw error;
-
-                      toast({
-                        title: "Success",
-                        description: "Event details updated successfully"
-                      });
-                    } catch (error) {
-                      console.error("Error updating event details:", error);
-                      toast({
-                        title: "Error",
-                        description: "Failed to update event details",
-                        variant: "destructive"
-                      });
-                    }
-                  }}
-                  className="w-full md:w-auto"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Event Details
-                </Button>
-
-              </div>
-            </CardContent>
-          </Card>
+                  toast({
+                    title: "Success",
+                    description: "Event details updated successfully"
+                  });
+                } catch (error) {
+                  console.error("Error updating event details:", error);
+                  toast({
+                    title: "Error",
+                    description: "Failed to update event details",
+                    variant: "destructive"
+                  });
+                }
+              }}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save Changes
+            </Button>
+          </div>
 
           <EventLogoUploader
             eventId={eventId}
@@ -2626,106 +2797,78 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               setEventData(prev => prev ? { ...prev, logo_url: url } : prev);
             }}
           />
+
           <Card>
             <CardHeader>
-              <CardTitle>Event Settings</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Cog className="h-5 w-5" />
+                Event Settings
+              </CardTitle>
               <CardDescription>Configure event publication and general settings</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Event Status */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="space-y-1">
-                    <Label className="text-base font-medium">Event Status</Label>
-                    <p className="text-sm text-muted-foreground">
-                      {eventData?.status === 'published' 
-                        ? 'Your event is live and accepting ticket sales' 
-                        : 'Your event is in draft mode and not visible to the public'
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${eventData?.status === 'published' ? 'bg-green-500/10' : 'bg-gray-500/10'}`}>
+                    <Eye className={`h-4 w-4 ${eventData?.status === 'published' ? 'text-green-500' : 'text-gray-500'}`} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">Event Status</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${eventData?.status === 'published' ? 'bg-green-500/20 text-green-600' : 'bg-gray-500/20 text-gray-600'}`}>
+                        {eventData?.status === 'published' ? 'Live' : 'Draft'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {eventData?.status === 'published'
+                        ? 'Your event is live and accepting sales'
+                        : 'Not visible to the public'
                       }
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">
-                      {eventData?.status === 'published' ? 'Live' : 'Draft'}
-                    </span>
-                    <Switch
-                      checked={eventData?.status === 'published'}
-                      onCheckedChange={async (checked) => {
-                        try {
-                          const { error } = await supabase
-                            .from("events")
-                            .update({ status: checked ? 'published' : 'draft' })
-                            .eq("id", eventId);
-
-                          if (error) throw error;
-
-                          setEventData(prev => prev ? ({ ...prev, status: checked ? 'published' : 'draft' }) : null);
-                          
-                          toast({
-                            title: "Success",
-                            description: checked 
-                              ? "Event published successfully! It's now live and accepting ticket sales." 
-                              : "Event unpublished. It's now in draft mode and not visible to the public."
-                          });
-                        } catch (error) {
-                          console.error("Error updating event status:", error);
-                          toast({
-                            title: "Error",
-                            description: "Failed to update event status",
-                            variant: "destructive"
-                          });
-                        }
-                      }}
-                    />
-                  </div>
                 </div>
-              </div>
+                <Switch
+                  checked={eventData?.status === 'published'}
+                  onCheckedChange={async (checked) => {
+                    try {
+                      const { error } = await supabase
+                        .from("events")
+                        .update({ status: checked ? 'published' : 'draft' })
+                        .eq("id", eventId);
 
-              {/* Event Details */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="venueName">Venue Name</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="venueName"
-                      placeholder="e.g. Spark Arena"
-                      value={eventVenue}
-                      onChange={(e) => setEventVenue(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Button
-                      variant="outline"
-                      onClick={async () => {
-                        try {
-                          const { error } = await supabase
-                            .from("events")
-                            .update({ venue: eventVenue || null })
-                            .eq("id", eventId);
-                          if (error) throw error;
-                          setEventData(prev => prev ? ({ ...prev, venue: eventVenue || null }) : prev);
-                          toast({ title: "Saved", description: "Venue updated" });
-                        } catch (error) {
-                          console.error("Error updating venue:", error);
-                          toast({ title: "Error", description: "Failed to update venue", variant: "destructive" });
-                        }
-                      }}
-                    >
-                      Save
-                    </Button>
-                  </div>
-                </div>
+                      if (error) throw error;
+
+                      setEventData(prev => prev ? ({ ...prev, status: checked ? 'published' : 'draft' }) : null);
+
+                      toast({
+                        title: "Success",
+                        description: checked
+                          ? "Event published successfully! It's now live and accepting ticket sales."
+                          : "Event unpublished. It's now in draft mode and not visible to the public."
+                      });
+                    } catch (error) {
+                      console.error("Error updating event status:", error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to update event status",
+                        variant: "destructive"
+                      });
+                    }
+                  }}
+                />
               </div>
 
               {/* Event URL and Widget Embedding */}
               {eventData?.status === 'published' && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Public Event URL</Label>
+                <div className="space-y-3">
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sharing & Embedding</h4>
+                  <div className="space-y-3">
                     <div className="flex gap-2">
                       <Input
                         value={`${window.location.origin}/widget/${eventId}`}
                         readOnly
-                        className="flex-1"
+                        className="flex-1 h-11 text-sm"
                       />
                       <Button
                         variant="outline"
@@ -2740,15 +2883,13 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         Copy URL
                       </Button>
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label>Widget Embed Code</Label>
                     <div className="space-y-2">
+                      <label className="text-xs text-muted-foreground">Embed Code</label>
                       <Textarea
                         value={`<iframe src="${window.location.origin}/widget/${eventId}" width="100%" height="600" frameborder="0"></iframe>`}
                         readOnly
-                        rows={3}
+                        rows={2}
                         className="text-xs font-mono"
                       />
                       <Button
@@ -2766,39 +2907,22 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       </Button>
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label>Direct Widget URL</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        value={`${window.location.origin}/widget/${eventId}`}
-                        readOnly
-                        className="flex-1"
-                      />
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/widget/${eventId}`);
-                          toast({
-                            title: "Copied!",
-                            description: "Widget URL copied to clipboard"
-                          });
-                        }}
-                      >
-                        Copy URL
-                      </Button>
-                    </div>
-                  </div>
                 </div>
               )}
 
               {/* Ticket Delivery Method */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-base font-medium">Default Ticket Delivery Method</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Choose how tickets will be delivered to customers by default
-                  </p>
+              <div className="space-y-3">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Ticket Delivery</h4>
+                <div className="p-4 rounded-lg border bg-background">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-blue-500/10">
+                      <Mail className="h-4 w-4 text-blue-500" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm">Delivery Method</div>
+                      <p className="text-xs text-muted-foreground">How tickets are sent to customers</p>
+                    </div>
+                  </div>
                   <Select
                     value={(eventData as any)?.ticket_delivery_method || 'qr_ticket'}
                     onValueChange={async (value: 'qr_ticket' | 'confirmation_email') => {
@@ -2811,7 +2935,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         if (error) throw error;
 
                         setEventData(prev => prev ? ({ ...prev, ticket_delivery_method: value }) : null);
-                        
+
                         toast({
                           title: "Success",
                           description: "Ticket delivery method updated"
@@ -2826,7 +2950,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       }
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -2838,23 +2962,17 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               </div>
 
               {/* Checkout Mode */}
-              <div className="space-y-3 p-4 border rounded-lg">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-base font-medium">Checkout Experience</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Choose how customers will complete their purchase
-                      </p>
+              <div className="space-y-3">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Checkout Experience</h4>
+                <div className="p-4 rounded-lg border bg-background">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-purple-500/10">
+                      <Monitor className="h-4 w-4 text-purple-500" />
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={testEventUpdate}
-                      className="text-xs"
-                    >
-                      🧪 Test Update
-                    </Button>
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">Checkout Flow</div>
+                      <p className="text-xs text-muted-foreground">How customers complete their purchase</p>
+                    </div>
                   </div>
                   <Select
                     value={(eventData?.widget_customization as any)?.checkoutMode || 'onepage'}
@@ -2936,7 +3054,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       }
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -2945,24 +3063,29 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       <SelectItem value="beta">Beta Checkout (New UX)</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">
-                    • One Page: Traditional single-page layout<br/>
-                    • Multi-Step: Progressive flow with sidebar<br/>
-                    • Beta: New UX with mobile optimization, progressive loading, price transparency, and accessibility improvements
-                  </p>
+                  <div className="mt-3 p-3 rounded-md bg-muted/50 text-xs text-muted-foreground space-y-1">
+                    <p><strong>One Page:</strong> Traditional single-page layout</p>
+                    <p><strong>Multi-Step:</strong> Progressive flow with sidebar</p>
+                    <p><strong>Beta:</strong> Mobile optimized with progressive loading</p>
+                  </div>
                 </div>
               </div>
 
               {/* Publish Event */}
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="space-y-1">
-                  <Label className="text-base font-medium">Publish Event</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {eventData?.status === 'published' 
-                      ? 'Event is published and accepting ticket sales' 
-                      : 'Event is in draft mode - publish to start selling tickets'
-                    }
-                  </p>
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-background">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-green-500/10">
+                    <Eye className="h-4 w-4 text-green-500" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm">Publish Event</div>
+                    <p className="text-xs text-muted-foreground">
+                      {eventData?.status === 'published'
+                        ? 'Event is live and accepting sales'
+                        : 'Publish to start selling tickets'
+                      }
+                    </p>
+                  </div>
                 </div>
                 <Button
                   variant={eventData?.status === 'published' ? "secondary" : "default"}
@@ -3027,25 +3150,31 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               </div>
 
               {/* Payment Success URL */}
-              <div className="space-y-3 p-4 border rounded-lg">
-                <div className="space-y-2">
-                  <Label htmlFor="successUrl" className="text-base font-medium">Payment Success URL</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Custom URL to redirect customers after successful payment. Leave empty to use default.
-                  </p>
-                  <Input
-                    id="successUrl"
-                    type="url"
-                    placeholder="https://yourwebsite.com/thank-you"
-                    value={widgetCustomization.payment?.successUrl || ''}
-                    onChange={(e) => {
-                      updateWidgetCustomization(['payment', 'successUrl'], e.target.value);
-                    }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Perfect for embedded widgets - redirect customers back to your site after purchase
-                  </p>
+              <div className="p-4 border rounded-lg bg-background space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-500/10">
+                    <Monitor className="h-4 w-4 text-blue-500" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm">Payment Success URL</div>
+                    <p className="text-xs text-muted-foreground">
+                      Redirect customers after successful payment
+                    </p>
+                  </div>
                 </div>
+                <Input
+                  id="successUrl"
+                  type="url"
+                  placeholder="https://yourwebsite.com/thank-you"
+                  value={widgetCustomization.payment?.successUrl || ''}
+                  onChange={(e) => {
+                    updateWidgetCustomization(['payment', 'successUrl'], e.target.value);
+                  }}
+                  className="h-11"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Perfect for embedded widgets - redirect customers back to your site
+                </p>
               </div>
             </CardContent>
           </Card>
