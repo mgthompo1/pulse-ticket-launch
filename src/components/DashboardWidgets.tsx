@@ -30,6 +30,9 @@ import {
   Smartphone,
   Tablet,
   GripVertical,
+  UsersRound,
+  FileText,
+  AlertCircle,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -87,6 +90,9 @@ interface DashboardWidgetsProps {
   conversionFunnel: Array<{ step: string; count: number; rate: number }>;
   upcomingEvents: Array<{ id: string; name: string; date: string; ticketsSold: number; capacity: number }>;
   eventCapacity: Array<{ name: string; sold: number; capacity: number }>;
+  // Group data props
+  groupSalesByGroup: Array<{ name: string; revenue: number; ticketsSold: number; discounts: number }>;
+  outstandingInvoices: Array<{ id: string; groupName: string; invoiceNumber: string; amountOwed: number; dueDate: string | null; status: string }>;
   isLoading?: boolean;
 }
 
@@ -156,6 +162,8 @@ export const DashboardWidgets = ({
   conversionFunnel,
   upcomingEvents,
   eventCapacity,
+  groupSalesByGroup,
+  outstandingInvoices,
   isLoading = false,
 }: DashboardWidgetsProps) => {
   // Set up drag sensors
@@ -677,6 +685,201 @@ export const DashboardWidgets = ({
                   <Tooltip />
                   <Bar dataKey="sold" fill={CHART_COLORS[0]} name="Sold" radius={[4, 4, 0, 0]} activeBar={{ fill: CHART_HOVER_COLOR }} />
                   <Bar dataKey="capacity" fill={CHART_COLORS[4]} name="Capacity" radius={[4, 4, 0, 0]} opacity={0.3} activeBar={{ fill: "#f87171" }} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+        );
+
+      // Group widgets
+      case "groups_sales_by_group":
+        return (
+          <ChartCard
+            key={widgetConfig.widgetId}
+            title="Sales by Group"
+            description="Revenue breakdown by group"
+            className={sizeClass}
+          >
+            {groupSalesByGroup.length === 0 ? (
+              <div className="text-center py-8">
+                <UsersRound className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">No group sales data available</p>
+              </div>
+            ) : widgetConfig.chartType === "list" ? (
+              <div className="space-y-3">
+                {groupSalesByGroup.slice(0, 6).map((group, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div>
+                      <h4 className="font-semibold text-sm">{group.name}</h4>
+                      <p className="text-xs text-muted-foreground">{group.ticketsSold} tickets sold</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-lg" style={{ color: '#ff4d00' }}>
+                        ${group.revenue.toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={groupSalesByGroup.slice(0, 6)}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={70} />
+                  <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />
+                  <Bar dataKey="revenue" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} activeBar={{ fill: CHART_HOVER_COLOR }} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+        );
+
+      case "groups_tickets_by_group":
+        return (
+          <ChartCard
+            key={widgetConfig.widgetId}
+            title="Tickets by Group"
+            description="Tickets sold breakdown by group"
+            className={sizeClass}
+          >
+            {groupSalesByGroup.length === 0 ? (
+              <div className="text-center py-8">
+                <UsersRound className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">No group ticket data available</p>
+              </div>
+            ) : widgetConfig.chartType === "list" ? (
+              <div className="space-y-3">
+                {groupSalesByGroup.slice(0, 6).map((group, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div>
+                      <h4 className="font-semibold text-sm">{group.name}</h4>
+                      <p className="text-xs text-muted-foreground">${group.revenue.toLocaleString()} revenue</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-lg" style={{ color: '#3b82f6' }}>
+                        {group.ticketsSold}
+                      </div>
+                      <div className="text-xs text-muted-foreground">tickets</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={groupSalesByGroup.slice(0, 6)}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={70} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(value: number) => [value.toLocaleString(), "Tickets"]} />
+                  <Bar dataKey="ticketsSold" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} activeBar={{ fill: "#60a5fa" }} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+        );
+
+      case "groups_outstanding_invoices":
+        return (
+          <ChartCard
+            key={widgetConfig.widgetId}
+            title="Outstanding Invoices"
+            description="Unpaid group invoices"
+            className={sizeClass}
+          >
+            {outstandingInvoices.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">No outstanding invoices</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {outstandingInvoices.slice(0, 6).map((invoice) => (
+                  <div key={invoice.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5">
+                        {invoice.status === "overdue" ? (
+                          <AlertCircle className="h-5 w-5 text-destructive" />
+                        ) : (
+                          <FileText className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm">{invoice.groupName}</h4>
+                        <p className="text-xs text-muted-foreground font-mono">{invoice.invoiceNumber}</p>
+                        {invoice.dueDate && (
+                          <p className={`text-xs ${invoice.status === "overdue" ? "text-destructive" : "text-muted-foreground"}`}>
+                            Due: {format(new Date(invoice.dueDate), "MMM d, yyyy")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-lg text-destructive">
+                        ${invoice.amountOwed.toLocaleString()}
+                      </div>
+                      <Badge variant={invoice.status === "overdue" ? "destructive" : "secondary"} className="text-xs">
+                        {invoice.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ChartCard>
+        );
+
+      case "groups_discounts_given":
+        return (
+          <ChartCard
+            key={widgetConfig.widgetId}
+            title="Group Discounts Given"
+            description="Total discounts given to groups"
+            className={sizeClass}
+          >
+            {groupSalesByGroup.length === 0 ? (
+              <div className="text-center py-8">
+                <UsersRound className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">No group discount data available</p>
+              </div>
+            ) : widgetConfig.chartType === "list" ? (
+              <div className="space-y-3">
+                {/* Total discounts summary */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border-2 border-destructive/20">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5 text-destructive" />
+                    <div>
+                      <h4 className="font-semibold text-sm">Total Discounts</h4>
+                      <p className="text-xs text-muted-foreground">Across all groups</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-xl text-destructive">
+                      ${groupSalesByGroup.reduce((sum, g) => sum + g.discounts, 0).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+                {/* Per group breakdown */}
+                {groupSalesByGroup.filter(g => g.discounts > 0).slice(0, 5).map((group, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div>
+                      <h4 className="font-medium text-sm">{group.name}</h4>
+                      <p className="text-xs text-muted-foreground">{group.ticketsSold} tickets</p>
+                    </div>
+                    <div className="font-semibold text-base text-destructive">
+                      ${group.discounts.toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={groupSalesByGroup.filter(g => g.discounts > 0).slice(0, 6)}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={70} />
+                  <YAxis tickFormatter={(v) => `$${v}`} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Discounts"]} />
+                  <Bar dataKey="discounts" fill={CHART_COLORS[4]} radius={[4, 4, 0, 0]} activeBar={{ fill: "#f87171" }} />
                 </BarChart>
               </ResponsiveContainer>
             )}

@@ -8,7 +8,7 @@ export interface WidgetDefinition {
   id: string;
   name: string;
   description: string;
-  category: "revenue" | "tickets" | "orders" | "visitors" | "events";
+  category: "revenue" | "tickets" | "orders" | "visitors" | "events" | "groups";
   supportedChartTypes: ChartType[];
   defaultChartType: ChartType;
   defaultSize: WidgetSize;
@@ -200,6 +200,48 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     defaultSize: "medium",
     defaultEnabled: false,
   },
+
+  // Group widgets
+  {
+    id: "groups_sales_by_group",
+    name: "Sales by Group",
+    description: "Revenue breakdown by group",
+    category: "groups",
+    supportedChartTypes: ["bar", "list"],
+    defaultChartType: "bar",
+    defaultSize: "medium",
+    defaultEnabled: true,
+  },
+  {
+    id: "groups_tickets_by_group",
+    name: "Tickets by Group",
+    description: "Tickets sold breakdown by group",
+    category: "groups",
+    supportedChartTypes: ["bar", "list"],
+    defaultChartType: "bar",
+    defaultSize: "medium",
+    defaultEnabled: false,
+  },
+  {
+    id: "groups_outstanding_invoices",
+    name: "Outstanding Invoices",
+    description: "Unpaid group invoices",
+    category: "groups",
+    supportedChartTypes: ["list"],
+    defaultChartType: "list",
+    defaultSize: "medium",
+    defaultEnabled: true,
+  },
+  {
+    id: "groups_discounts_given",
+    name: "Group Discounts Given",
+    description: "Total discounts given to groups",
+    category: "groups",
+    supportedChartTypes: ["bar", "list"],
+    defaultChartType: "list",
+    defaultSize: "medium",
+    defaultEnabled: false,
+  },
 ];
 
 // Get default dashboard config
@@ -229,4 +271,5 @@ export const CATEGORY_LABELS: Record<string, string> = {
   orders: "Orders",
   visitors: "Visitors",
   events: "Events",
+  groups: "Groups",
 };

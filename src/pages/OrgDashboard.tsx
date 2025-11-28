@@ -222,6 +222,12 @@ const OrgDashboard = () => {
     ticketsByType: [] as Array<{ name: string; count: number }>,
   });
 
+  // Group analytics data
+  const [groupAnalytics, setGroupAnalytics] = useState({
+    groupSalesByGroup: [] as Array<{ name: string; revenue: number; ticketsSold: number; discounts: number }>,
+    outstandingInvoices: [] as Array<{ id: string; groupName: string; invoiceNumber: string; amountOwed: number; dueDate: string | null; status: string }>,
+  });
+
   // Listen for help requests from child components
   React.useEffect(() => {
     const handleHelpRequest = (event: CustomEvent) => {
@@ -293,6 +299,10 @@ const OrgDashboard = () => {
         loadAnalytics(currentOrganization.id, timeRange);
         loadAnalyticsData(currentOrganization.id);
         loadWidgetAnalytics(currentOrganization.id);
+        // Load group analytics if groups are enabled
+        if (currentOrganization.groups_enabled) {
+          loadGroupAnalytics(currentOrganization.id);
+        }
       } else {
         loadAttractionAnalytics(currentOrganization.id, timeRange);
         loadAttractionAnalyticsData(currentOrganization.id);
@@ -997,6 +1007,91 @@ const OrgDashboard = () => {
     }
   }, []);
 
+  // Load group analytics data (sales by group, outstanding invoices)
+  const loadGroupAnalytics = useCallback(async (orgId: string) => {
+    console.log("Loading group analytics for org:", orgId);
+
+    try {
+      // Get groups with their sales data
+      const { data: groupsData, error: groupsError } = await supabase
+        .from("groups")
+        .select(`
+          id,
+          name,
+          group_ticket_allocations (
+            allocated_quantity,
+            used_quantity
+          ),
+          group_ticket_sales (
+            paid_price,
+            discount_amount
+          )
+        `)
+        .eq("organization_id", orgId);
+
+      if (groupsError) {
+        console.error("Error loading groups:", groupsError);
+      }
+
+      // Process group sales data
+      const groupSalesByGroup = (groupsData || []).map((group: any) => {
+        const sales = group.group_ticket_sales || [];
+        const allocations = group.group_ticket_allocations || [];
+        return {
+          name: group.name,
+          revenue: sales.reduce((sum: number, s: any) => sum + (s.paid_price || 0), 0),
+          ticketsSold: allocations.reduce((sum: number, a: any) => sum + (a.used_quantity || 0), 0),
+          discounts: sales.reduce((sum: number, s: any) => sum + (s.discount_amount || 0), 0),
+        };
+      }).filter((g: any) => g.revenue > 0 || g.ticketsSold > 0 || g.discounts > 0)
+        .sort((a: any, b: any) => b.revenue - a.revenue);
+
+      // Get outstanding invoices
+      const { data: invoicesData, error: invoicesError } = await supabase
+        .from("group_invoices")
+        .select(`
+          id,
+          invoice_number,
+          amount_owed,
+          amount_paid,
+          due_date,
+          status,
+          groups!inner (
+            name,
+            organization_id
+          )
+        `)
+        .eq("groups.organization_id", orgId)
+        .in("status", ["draft", "sent", "pending", "partial", "overdue"]);
+
+      if (invoicesError) {
+        console.error("Error loading invoices:", invoicesError);
+      }
+
+      // Process outstanding invoices
+      const outstandingInvoices = (invoicesData || [])
+        .filter((inv: any) => (inv.amount_owed - inv.amount_paid) > 0)
+        .map((inv: any) => ({
+          id: inv.id,
+          groupName: inv.groups?.name || 'Unknown Group',
+          invoiceNumber: inv.invoice_number,
+          amountOwed: inv.amount_owed - inv.amount_paid,
+          dueDate: inv.due_date,
+          status: inv.status,
+        }))
+        .sort((a: any, b: any) => b.amountOwed - a.amountOwed);
+
+      setGroupAnalytics({
+        groupSalesByGroup,
+        outstandingInvoices,
+      });
+
+      console.log("Group analytics loaded:", { groupSalesByGroup: groupSalesByGroup.length, outstandingInvoices: outstandingInvoices.length });
+    } catch (error) {
+      console.error("Error loading group analytics:", error);
+    }
+  }, []);
+
   const handleOnboardingComplete = async () => {
     // Reload organizations to include the newly created one
     await reloadOrganizations();
@@ -1336,6 +1431,8 @@ const OrgDashboard = () => {
                               sold: e.tickets_sold,
                               capacity: e.capacity
                             }))}
+                            groupSalesByGroup={groupAnalytics.groupSalesByGroup}
+                            outstandingInvoices={groupAnalytics.outstandingInvoices}
                             isLoading={isLoadingAnalytics || isLoadingDashboardConfig}
                           />
 
