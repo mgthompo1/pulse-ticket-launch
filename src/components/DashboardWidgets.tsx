@@ -121,7 +121,7 @@ const SortableWidget = ({ id, children, className }: SortableWidgetProps) => {
   };
 
   return (
-    <div ref={setNodeRef} style={style} className={`relative group ${className}`}>
+    <div ref={setNodeRef} style={style} className={`relative group h-full ${className || ''}`}>
       {/* Drag handle */}
       <div
         {...attributes}
@@ -726,7 +726,7 @@ export const DashboardWidgets = ({
                 <BarChart data={groupSalesByGroup.slice(0, 6)}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={70} />
-                  <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={(v) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`} tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />
                   <Bar dataKey="revenue" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} activeBar={{ fill: CHART_HOVER_COLOR }} />
                 </BarChart>
@@ -900,7 +900,7 @@ export const DashboardWidgets = ({
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={widgetIds} strategy={rectSortingStrategy}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 auto-rows-fr">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6" style={{ gridAutoRows: 'minmax(320px, auto)' }}>
           {enabledWidgets.map((widget) => (
             <SortableWidget key={widget.widgetId} id={widget.widgetId}>
               {renderWidget(widget)}
@@ -922,12 +922,12 @@ interface StatCardProps {
 }
 
 const StatCard = ({ title, value, icon, description, className }: StatCardProps) => (
-  <Card className={className}>
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+  <Card className={`h-full flex flex-col min-h-[320px] ${className || ''}`}>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 flex-shrink-0">
       <CardTitle className="text-sm font-medium">{title}</CardTitle>
       <div className="text-muted-foreground">{icon}</div>
     </CardHeader>
-    <CardContent>
+    <CardContent className="flex-1 flex flex-col justify-center">
       <div className="text-2xl font-bold">{value}</div>
       {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
     </CardContent>
@@ -942,11 +942,11 @@ interface ChartCardProps {
 }
 
 const ChartCard = ({ title, description, children, className }: ChartCardProps) => (
-  <Card className={className}>
-    <CardHeader className="pb-2">
+  <Card className={`h-full flex flex-col min-h-[320px] ${className || ''}`}>
+    <CardHeader className="pb-2 flex-shrink-0">
       <CardTitle className="text-base">{title}</CardTitle>
       {description && <CardDescription>{description}</CardDescription>}
     </CardHeader>
-    <CardContent>{children}</CardContent>
+    <CardContent className="flex-1 flex flex-col">{children}</CardContent>
   </Card>
 );
