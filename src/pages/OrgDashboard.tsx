@@ -1292,6 +1292,25 @@ const OrgDashboard = () => {
                             totalTickets={analytics.totalOrders}
                             totalOrders={analytics.totalOrders}
                             avgOrderValue={analytics.totalOrders > 0 ? analytics.totalRevenue / analytics.totalOrders : 0}
+                            avgOrderByEvent={(() => {
+                              // Calculate average order value per event
+                              const eventOrderData = new Map<string, { total: number; count: number }>();
+                              orderData.forEach(order => {
+                                const eventName = order.events?.name || 'Unknown Event';
+                                const current = eventOrderData.get(eventName) || { total: 0, count: 0 };
+                                eventOrderData.set(eventName, {
+                                  total: current.total + (Number(order.total_amount) || 0),
+                                  count: current.count + 1
+                                });
+                              });
+                              return Array.from(eventOrderData.entries())
+                                .map(([name, data]) => ({
+                                  name,
+                                  avgValue: data.count > 0 ? data.total / data.count : 0,
+                                  orderCount: data.count
+                                }))
+                                .sort((a, b) => b.avgValue - a.avgValue);
+                            })()}
                             checkinRate={0} // TODO: Calculate from ticket check-ins
                             revenueByEvent={analyticsData.eventTypesData.map(e => ({ name: e.name, revenue: e.value }))}
                             revenueOverTime={analyticsData.salesData.map(d => ({ date: d.month, revenue: d.sales }))}

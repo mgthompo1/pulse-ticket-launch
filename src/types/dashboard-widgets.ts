@@ -129,12 +129,12 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
   {
     id: "orders_avg_value",
     name: "Average Order Value",
-    description: "Average value per order",
+    description: "Average order value by event with total",
     category: "orders",
-    supportedChartTypes: ["stat"],
-    defaultChartType: "stat",
-    defaultSize: "small",
-    defaultEnabled: false,
+    supportedChartTypes: ["list"],
+    defaultChartType: "list",
+    defaultSize: "medium",
+    defaultEnabled: true,
   },
   {
     id: "orders_over_time",

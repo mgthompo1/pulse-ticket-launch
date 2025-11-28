@@ -75,6 +75,7 @@ interface DashboardWidgetsProps {
   totalTickets: number;
   totalOrders: number;
   avgOrderValue: number;
+  avgOrderByEvent: Array<{ name: string; avgValue: number; orderCount: number }>;
   checkinRate: number;
   revenueByEvent: Array<{ name: string; revenue: number }>;
   revenueOverTime: Array<{ date: string; revenue: number }>;
@@ -143,6 +144,7 @@ export const DashboardWidgets = ({
   totalTickets,
   totalOrders,
   avgOrderValue,
+  avgOrderByEvent,
   checkinRate,
   revenueByEvent,
   revenueOverTime,
@@ -239,13 +241,47 @@ export const DashboardWidgets = ({
 
       case "orders_avg_value":
         return (
-          <StatCard
+          <ChartCard
             key={widgetConfig.widgetId}
-            title="Avg. Order Value"
-            value={`$${avgOrderValue.toFixed(2)}`}
-            icon={<TrendingUp className="h-5 w-5" />}
+            title="Average Order Value"
+            description="Average order value by event"
             className={sizeClass}
-          />
+          >
+            <div className="space-y-3">
+              {/* Total Average */}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border-2 border-primary/20">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  <div>
+                    <h4 className="font-semibold text-sm">Total Average</h4>
+                    <p className="text-xs text-muted-foreground">Across all events</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="font-bold text-xl" style={{ color: '#ff4d00' }}>
+                    ${avgOrderValue.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Per Event Breakdown */}
+              {avgOrderByEvent.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-2">No order data available</p>
+              ) : (
+                avgOrderByEvent.slice(0, 5).map((event, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div>
+                      <h4 className="font-medium text-sm">{event.name}</h4>
+                      <p className="text-xs text-muted-foreground">{event.orderCount} orders</p>
+                    </div>
+                    <div className="font-semibold text-base">
+                      ${event.avgValue.toFixed(2)}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </ChartCard>
         );
 
       case "checkin_rate":
