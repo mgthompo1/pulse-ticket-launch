@@ -600,19 +600,25 @@ export const PromotionalEmail: React.FC<PromotionalEmailProps> = ({ selectedEven
             {/* Secondary selector for ticket type */}
             {emailData.recipient_type === "ticket_type" && (
               <div className="space-y-2">
-                <Label htmlFor="ticket-type">Select Ticket Type</Label>
-                <Select value={selectedTicketType} onValueChange={setSelectedTicketType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose ticket type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ticketTypes.map(tt => (
-                      <SelectItem key={tt.id} value={tt.id}>
-                        {tt.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="ticket-type">Select Ticket Type *</Label>
+                {ticketTypes.length > 0 ? (
+                  <Select value={selectedTicketType} onValueChange={setSelectedTicketType}>
+                    <SelectTrigger className="border-primary/50">
+                      <SelectValue placeholder="Choose ticket type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ticketTypes.map(tt => (
+                        <SelectItem key={tt.id} value={tt.id}>
+                          {tt.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="text-sm text-muted-foreground p-3 border rounded-md bg-muted/50">
+                    No ticket types found for this event
+                  </div>
+                )}
               </div>
             )}
           </div>

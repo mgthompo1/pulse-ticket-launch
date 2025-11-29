@@ -353,7 +353,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Promo Codes</h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-muted-foreground mt-1">
             Create and manage discount codes for your events
           </p>
         </div>
@@ -387,7 +387,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                     placeholder="EARLYBIRD25"
                     required
                   />
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Use uppercase letters and numbers (e.g., SUMMER2024)
                   </p>
                 </div>
@@ -412,7 +412,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                   onChange={(e) => setFormData({ ...formData, notification_email: e.target.value })}
                   placeholder="pastor@church.org"
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   When this promo code is used, send a notification to this email address (e.g., church pastor, partner contact)
                 </p>
               </div>
@@ -474,7 +474,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                     value={formData.valid_until}
                     onChange={(e) => setFormData({ ...formData, valid_until: e.target.value })}
                   />
-                  <p className="text-xs text-gray-500">Leave blank for no expiry</p>
+                  <p className="text-xs text-muted-foreground">Leave blank for no expiry</p>
                 </div>
               </div>
 
@@ -489,7 +489,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                     onChange={(e) => setFormData({ ...formData, max_uses: e.target.value })}
                     placeholder="Unlimited"
                   />
-                  <p className="text-xs text-gray-500">Leave blank for unlimited</p>
+                  <p className="text-xs text-muted-foreground">Leave blank for unlimited</p>
                 </div>
 
                 <div className="space-y-2">
@@ -570,16 +570,16 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
       {loading ? (
         <Card>
           <CardContent className="py-8">
-            <p className="text-center text-gray-500">Loading promo codes...</p>
+            <p className="text-center text-muted-foreground">Loading promo codes...</p>
           </CardContent>
         </Card>
       ) : promoCodes.length === 0 ? (
         <Card>
           <CardContent className="py-12">
             <div className="text-center space-y-4">
-              <TrendingUp className="h-16 w-16 mx-auto text-gray-400" />
+              <TrendingUp className="h-16 w-16 mx-auto text-muted-foreground" />
               <h3 className="text-xl font-semibold">No Promo Codes Yet</h3>
-              <p className="text-gray-600 max-w-md mx-auto">
+              <p className="text-muted-foreground max-w-md mx-auto">
                 Create your first promo code to offer discounts to your customers
               </p>
             </div>
@@ -616,7 +616,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                   <TableRow key={code.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <code className="bg-gray-100 px-2 py-1 rounded font-mono font-bold">
+                        <code className="bg-muted px-2 py-1 rounded font-mono font-bold">
                           {code.code}
                         </code>
                         <Button
@@ -630,17 +630,17 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                       </div>
                       {code.groupName ? (
                         <div className="mt-1">
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700">
                             GROUP: {code.groupName}
                           </Badge>
                           {code.description && code.description.includes(' - ') && (
-                            <p className="text-xs text-gray-600 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                               {code.description.split(' - ').slice(1).join(' - ')}
                             </p>
                           )}
                         </div>
                       ) : code.description && !code.description.startsWith('GROUP:') ? (
-                        <p className="text-xs text-gray-600 mt-1">{code.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{code.description}</p>
                       ) : null}
                       {!code.event_id && (
                         <Badge variant="secondary" className="mt-1">All Events</Badge>
@@ -664,7 +664,7 @@ const PromoCodesManager = ({ eventId: propEventId }: PromoCodesManagerProps = {}
                           )}
                         </div>
                       ) : (
-                        <span className="text-gray-500">No expiry</span>
+                        <span className="text-muted-foreground">No expiry</span>
                       )}
                     </TableCell>
                     <TableCell>
