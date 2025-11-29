@@ -3,6 +3,7 @@ import XeroIntegration from "@/components/XeroIntegration";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +30,7 @@ import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import { PayoutsAndFees } from "@/components/PayoutsAndFees";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, BarChart3, Monitor, LogOut, Menu, HelpCircle, DollarSign, ExternalLink, Clock, CheckCircle, Search, ChevronDown } from "lucide-react";
+import { Calendar, Users, Ticket, BarChart3, Monitor, LogOut, Menu, HelpCircle, DollarSign, ExternalLink, Clock, CheckCircle, Search, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import OrganizationSettings from "@/components/OrganizationSettings";
 import OrganizationOnboarding from "@/components/OrganizationOnboarding";
 
@@ -107,6 +108,7 @@ const OrgDashboard = () => {
   const [selectedAttraction, setSelectedAttraction] = useState<any>(null);
   const [attractions, setAttractions] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
+  const [templatesOpen, setTemplatesOpen] = useState(false);
 
   // Use the organizations hook for multi-organization support
   const {
@@ -1732,8 +1734,8 @@ const OrgDashboard = () => {
                             className="font-manrope text-sm"
                           />
                         </div>
-                        <Button 
-                          onClick={handleCreateEvent} 
+                        <Button
+                          onClick={handleCreateEvent}
                           disabled={isCreatingEvent}
                           className="w-full md:w-auto font-manrope font-medium text-sm"
                         >
@@ -1741,6 +1743,41 @@ const OrgDashboard = () => {
                         </Button>
                       </CardContent>
                     </Card>
+
+                    {/* Event Templates - Collapsible */}
+                    <Collapsible open={templatesOpen} onOpenChange={setTemplatesOpen}>
+                      <Card className={`border-border shadow-sm hover:shadow-md transition-all rounded-2xl ${!templatesOpen ? 'border-dashed border-2 hover:border-primary/50' : ''}`}>
+                        <CollapsibleTrigger asChild>
+                          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-2xl select-none">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg ${templatesOpen ? 'bg-primary/10' : 'bg-muted'}`}>
+                                  <FileText className={`h-5 w-5 ${templatesOpen ? 'text-primary' : 'text-muted-foreground'}`} />
+                                </div>
+                                <div>
+                                  <CardTitle className="font-manrope font-semibold text-lg text-foreground">Event Templates</CardTitle>
+                                  <CardDescription className="font-manrope text-sm text-muted-foreground">
+                                    {templatesOpen ? 'Save and reuse event configurations' : 'Click to expand and manage templates'}
+                                  </CardDescription>
+                                </div>
+                              </div>
+                              <div className={`p-2 rounded-full transition-colors ${templatesOpen ? 'bg-primary/10' : 'bg-muted hover:bg-muted/80'}`}>
+                                {templatesOpen ? (
+                                  <ChevronUp className="h-5 w-5 text-primary" />
+                                ) : (
+                                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                                )}
+                              </div>
+                            </div>
+                          </CardHeader>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <CardContent className="pt-0">
+                            <EventTemplatesManager organizationId={currentOrganization?.id || ''} />
+                          </CardContent>
+                        </CollapsibleContent>
+                      </Card>
+                    </Collapsible>
                   </TabsContent>
                 ) : (
                   <TabsContent value="events" className="space-y-6">
@@ -1753,10 +1790,6 @@ const OrgDashboard = () => {
                     />
                   </TabsContent>
                 )}
-
-                <TabsContent value="templates" className="space-y-6">
-                  <EventTemplatesManager organizationId={currentOrganization?.id || ''} />
-                </TabsContent>
 
                 <TabsContent value="event-details" className="space-y-6">
                   {isEventsMode() ? (

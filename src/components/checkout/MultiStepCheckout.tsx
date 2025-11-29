@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +16,7 @@ import { Theme } from '@/types/theme';
 import { usePromoCodeAndDiscounts } from '@/hooks/usePromoCodeAndDiscounts';
 import { useTicketReservation } from '@/hooks/useTicketReservation';
 import { useTaxCalculation, formatTaxForOrder } from '@/hooks/useTaxCalculation';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PromoCodeHooks {
   promoCode: string;
@@ -75,6 +76,15 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [attendees, setAttendees] = useState<AttendeeInfo[]>([]);
   const [showStripeModal, setShowStripeModal] = useState(false);
+
+  // Abandoned cart tracking refs
+  const sessionId = useRef<string>("");
+  const abandonedCartSaved = useRef(false);
+
+  // Generate session ID on mount
+  useEffect(() => {
+    sessionId.current = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }, []);
 
   // Extract theme colors and branding from event data
             const themeData = eventData.widget_customization?.theme;
@@ -234,7 +244,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   };
 
   const prevStep = () => {
-    const stepOrder: CheckoutStep[] = isStripePayment 
+    const stepOrder: CheckoutStep[] = isStripePayment
       ? ['event', 'tickets', 'details']
       : ['event', 'tickets', 'details', 'payment'];
     const currentIndex = stepOrder.indexOf(currentStep);
@@ -242,6 +252,90 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
       setCurrentStep(stepOrder[currentIndex - 1]);
     }
   };
+
+  // Save abandoned cart when user has email and cart items
+  const saveAbandonedCart = useCallback(async () => {
+    if (!eventData?.id || !eventData?.organization_id) return;
+    if (!customerInfo?.email || cartItems.length === 0) return;
+    if (abandonedCartSaved.current) return;
+
+    // Check if abandoned cart recovery is enabled for this event
+    if (!eventData?.abandoned_cart_enabled) return;
+
+    try {
+      const cartItemsData = cartItems.map(item => ({
+        ticket_type_id: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+      }));
+      const cartTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+      // Detect device type
+      const userAgent = navigator.userAgent.toLowerCase();
+      const deviceType = /mobile|android|iphone|ipad/.test(userAgent)
+        ? (/ipad|tablet/.test(userAgent) ? 'tablet' : 'mobile')
+        : 'desktop';
+
+      const { error } = await supabase
+        .from("abandoned_carts")
+        .upsert({
+          event_id: eventData.id,
+          organization_id: eventData.organization_id,
+          customer_email: customerInfo.email,
+          customer_name: customerInfo.name || null,
+          customer_phone: customerInfo.phone || null,
+          cart_items: cartItemsData,
+          cart_total: cartTotal,
+          session_id: sessionId.current,
+          source_url: window.location.href,
+          device_type: deviceType,
+          status: 'pending',
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'event_id,customer_email,session_id'
+        });
+
+      if (error) {
+        console.error("Error saving abandoned cart:", error);
+      } else {
+        abandonedCartSaved.current = true;
+        console.log("Abandoned cart saved for recovery");
+      }
+    } catch (err) {
+      console.error("Error in saveAbandonedCart:", err);
+    }
+  }, [eventData?.id, eventData?.organization_id, eventData?.abandoned_cart_enabled, customerInfo, cartItems]);
+
+  // Save abandoned cart when user enters email with items in cart
+  useEffect(() => {
+    if (customerInfo?.email && cartItems.length > 0 && !abandonedCartSaved.current) {
+      // Debounce the save to avoid too many calls
+      const timer = setTimeout(() => {
+        saveAbandonedCart();
+      }, 2000); // Wait 2 seconds after email entry
+
+      return () => clearTimeout(timer);
+    }
+  }, [customerInfo?.email, cartItems, saveAbandonedCart]);
+
+  // Track page unload to update abandoned cart
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (customerInfo?.email && cartItems.length > 0 && !abandonedCartSaved.current) {
+        // Use sendBeacon for reliability on page unload
+        const payload = JSON.stringify({
+          event_id: eventData.id,
+          customer_email: customerInfo.email,
+          session_id: sessionId.current,
+        });
+        navigator.sendBeacon?.('/api/abandoned-cart-beacon', payload);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [eventData?.id, customerInfo?.email, cartItems]);
 
   const handleCustomerDetails = (info: CustomerInfo, attendeeData?: AttendeeInfo[]) => {
     setCustomerInfo(info);

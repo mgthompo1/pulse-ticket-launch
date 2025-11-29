@@ -26,6 +26,7 @@ import GroupDiscountsManager from "@/pages/GroupDiscountsManager";
 import { VenueLocationPicker } from "@/components/VenueLocationPicker";
 import { AbandonedCartSettings } from "@/components/AbandonedCartSettings";
 import { PostEventSurveySettings } from "@/components/PostEventSurveySettings";
+import { CheckoutTemplateBuilder, CheckoutTemplate } from "@/components/CheckoutTemplateBuilder";
 
 // Type definitions for better type safety
 interface EmailBlock {
@@ -64,6 +65,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showSeatMapDesigner, setShowSeatMapDesigner] = useState(false);
+  const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
@@ -1246,6 +1248,158 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
             </Card>
           </div>
 
+          {/* Checkout Templates */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Monitor className="h-5 w-5" />
+                Checkout Templates
+              </CardTitle>
+              <CardDescription>
+                Choose a preset template or create your own custom checkout flow
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Custom Template Toggle */}
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-purple-500/10">
+                    <Layout className="h-4 w-4 text-purple-500" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm">Use Custom Template</div>
+                    <p className="text-xs text-muted-foreground">
+                      Override presets with your own drag-and-drop layout
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={(eventData?.widget_customization as any)?.useCustomTemplate || false}
+                  onCheckedChange={async (checked) => {
+                    try {
+                      const currentCustomization = (eventData?.widget_customization as any) || {};
+                      const updatedCustomization = {
+                        ...currentCustomization,
+                        useCustomTemplate: checked
+                      };
+
+                      const { error } = await supabase
+                        .from("events")
+                        .update({ widget_customization: updatedCustomization })
+                        .eq("id", eventId);
+
+                      if (error) throw error;
+
+                      setEventData(prev => prev ? ({
+                        ...prev,
+                        widget_customization: updatedCustomization as any
+                      }) : null);
+                      setWidgetCustomization(updatedCustomization);
+
+                      toast({
+                        title: checked ? "Custom Template Enabled" : "Custom Template Disabled",
+                        description: checked
+                          ? "Your custom template is now active"
+                          : "Using preset template"
+                      });
+                    } catch (error) {
+                      console.error("Error updating template mode:", error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to update template mode",
+                        variant: "destructive"
+                      });
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Custom Template Builder Button */}
+              {(eventData?.widget_customization as any)?.useCustomTemplate && (
+                <div className="p-4 rounded-lg border-2 border-dashed border-primary/30 bg-primary/5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium text-sm">
+                        {(eventData?.widget_customization as any)?.customTemplate
+                          ? "Edit Custom Template"
+                          : "Create Custom Template"}
+                      </h4>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {(eventData?.widget_customization as any)?.customTemplate
+                          ? `${((eventData?.widget_customization as any)?.customTemplate as CheckoutTemplate)?.pages?.length || 1} page(s) configured`
+                          : "Drag and drop elements to build your checkout"}
+                      </p>
+                    </div>
+                    <Button onClick={() => setShowTemplateBuilder(true)}>
+                      <Layout className="h-4 w-4 mr-2" />
+                      {(eventData?.widget_customization as any)?.customTemplate ? "Edit" : "Build"} Template
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Preset Templates - only show when not using custom */}
+              {!(eventData?.widget_customization as any)?.useCustomTemplate && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Preset Templates</h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { value: 'onepage', label: 'One Page', desc: 'Single page checkout' },
+                      { value: 'multistep', label: 'Multi-Step', desc: 'Progressive steps' },
+                      { value: 'beta', label: 'Beta', desc: 'Mobile optimized' },
+                    ].map((template) => (
+                      <button
+                        key={template.value}
+                        onClick={async () => {
+                          try {
+                            const currentCustomization = (eventData?.widget_customization as any) || {};
+                            const updatedCustomization = {
+                              ...currentCustomization,
+                              checkoutMode: template.value
+                            };
+
+                            const { error } = await supabase
+                              .from("events")
+                              .update({ widget_customization: updatedCustomization })
+                              .eq("id", eventId);
+
+                            if (error) throw error;
+
+                            setEventData(prev => prev ? ({
+                              ...prev,
+                              widget_customization: updatedCustomization as any
+                            }) : null);
+                            setWidgetCustomization(updatedCustomization);
+
+                            toast({
+                              title: "Template Updated",
+                              description: `Now using ${template.label} template`
+                            });
+                          } catch (error) {
+                            console.error("Error updating template:", error);
+                            toast({
+                              title: "Error",
+                              description: "Failed to update template",
+                              variant: "destructive"
+                            });
+                          }
+                        }}
+                        className={`p-4 rounded-lg border-2 text-left transition-all hover:border-primary/50 ${
+                          (eventData?.widget_customization as any)?.checkoutMode === template.value
+                            ? 'border-primary bg-primary/5'
+                            : 'border-muted'
+                        }`}
+                      >
+                        <div className="font-medium text-sm">{template.label}</div>
+                        <div className="text-xs text-muted-foreground mt-1">{template.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Custom Questions Section */}
           <Card>
             <CardHeader>
@@ -1772,73 +1926,6 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
-            </CardContent>
-          </Card>
-
-          {/* Checkout Experience */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Monitor className="h-5 w-5" />
-                Checkout Experience
-              </CardTitle>
-              <CardDescription>
-                How customers complete their purchase
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Select
-                value={(eventData?.widget_customization as any)?.checkoutMode || 'onepage'}
-                onValueChange={async (value: 'onepage' | 'multistep' | 'beta') => {
-                  try {
-                    const currentCustomization = (eventData?.widget_customization as any) || {};
-                    const updatedCustomization = {
-                      ...currentCustomization,
-                      checkoutMode: value
-                    };
-
-                    const { error } = await supabase
-                      .from("events")
-                      .update({ widget_customization: updatedCustomization })
-                      .eq("id", eventId);
-
-                    if (error) throw error;
-
-                    setEventData(prev => prev ? ({
-                      ...prev,
-                      widget_customization: updatedCustomization as any
-                    }) : null);
-
-                    setWidgetCustomization(updatedCustomization);
-
-                    toast({
-                      title: "Success",
-                      description: `Checkout mode updated to ${value === 'onepage' ? 'One Page' : value === 'multistep' ? 'Multi-Step' : 'Beta'}.`
-                    });
-                  } catch (error) {
-                    console.error("Error updating checkout mode:", error);
-                    toast({
-                      title: "Error",
-                      description: "Failed to update checkout mode",
-                      variant: "destructive"
-                    });
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="onepage">One Page Checkout</SelectItem>
-                  <SelectItem value="multistep">Multi-Step Checkout</SelectItem>
-                  <SelectItem value="beta">Beta Checkout (New UX)</SelectItem>
-                </SelectContent>
-              </Select>
-              <div className="mt-3 p-3 rounded-md bg-muted/50 text-xs text-muted-foreground space-y-1">
-                <p><strong>One Page:</strong> Traditional single-page layout</p>
-                <p><strong>Multi-Step:</strong> Progressive flow with sidebar</p>
-                <p><strong>Beta:</strong> Mobile optimized with progressive loading</p>
-              </div>
             </CardContent>
           </Card>
 
@@ -2771,74 +2858,6 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
             </Card>
           </div>
 
-          {/* Save Button Row */}
-          <div className="flex justify-end p-4 rounded-lg border bg-muted/20">
-            <Button
-              onClick={async () => {
-                if (!eventData) return;
-
-                if (eventData.event_end_date) {
-                  const startDate = new Date(eventData.event_date);
-                  const endDate = new Date(eventData.event_end_date);
-
-                  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-                    toast({
-                      title: "Error",
-                      description: "Please provide valid start and end dates",
-                      variant: "destructive"
-                    });
-                    return;
-                  }
-
-                  if (endDate < startDate) {
-                    toast({
-                      title: "Error",
-                      description: "End date must be on or after the start date",
-                      variant: "destructive"
-                    });
-                    return;
-                  }
-                }
-
-                try {
-                  const { error } = await supabase
-                    .from("events")
-                    .update({
-                      name: eventData.name,
-                      venue: eventData.venue,
-                      venue_address: eventData.venue,
-                      venue_lat: eventData.venue_lat,
-                      venue_lng: eventData.venue_lng,
-                      venue_place_id: eventData.venue_place_id,
-                      description: eventData.description,
-                      event_date: eventData.event_date,
-                      event_end_date: eventData.event_end_date,
-                      capacity: eventData.capacity,
-                      requires_approval: eventData.requires_approval
-                    })
-                    .eq("id", eventId);
-
-                  if (error) throw error;
-
-                  toast({
-                    title: "Success",
-                    description: "Event details updated successfully"
-                  });
-                } catch (error) {
-                  console.error("Error updating event details:", error);
-                  toast({
-                    title: "Error",
-                    description: "Failed to update event details",
-                    variant: "destructive"
-                  });
-                }
-              }}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Save Changes
-            </Button>
-          </div>
-
           <EventLogoUploader
             eventId={eventId}
             currentLogoUrl={currentLogoUrl || undefined}
@@ -3289,6 +3308,43 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Checkout Template Builder Modal */}
+      <CheckoutTemplateBuilder
+        open={showTemplateBuilder}
+        onClose={() => setShowTemplateBuilder(false)}
+        initialTemplate={(eventData?.widget_customization as any)?.customTemplate || null}
+        onSave={async (template) => {
+          try {
+            const currentCustomization = (eventData?.widget_customization as any) || {};
+            const updatedCustomization = {
+              ...currentCustomization,
+              customTemplate: template,
+              useCustomTemplate: true
+            };
+
+            const { error } = await supabase
+              .from("events")
+              .update({ widget_customization: updatedCustomization })
+              .eq("id", eventId);
+
+            if (error) throw error;
+
+            setEventData(prev => prev ? ({
+              ...prev,
+              widget_customization: updatedCustomization as any
+            }) : null);
+            setWidgetCustomization(updatedCustomization);
+          } catch (error) {
+            console.error("Error saving template:", error);
+            toast({
+              title: "Error",
+              description: "Failed to save custom template",
+              variant: "destructive"
+            });
+          }
+        }}
+      />
     </div>
   );
 };

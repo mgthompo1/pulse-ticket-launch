@@ -121,6 +121,8 @@ export const AbandonedCartSettings = ({
     });
   };
 
+  const [processingEmails, setProcessingEmails] = useState(false);
+
   const sendTestEmail = async () => {
     setSendingTestEmail(true);
     try {
@@ -151,6 +153,41 @@ export const AbandonedCartSettings = ({
       });
     } finally {
       setSendingTestEmail(false);
+    }
+  };
+
+  // Process all pending recovery emails now
+  const processRecoveryEmails = async () => {
+    setProcessingEmails(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-abandoned-cart-email", {
+        body: {}, // No cart_id = process all pending
+      });
+
+      if (error) throw error;
+
+      const processed = data?.processed || 0;
+      const results = data?.results || [];
+      const successful = results.filter((r: any) => r.success).length;
+
+      toast({
+        title: "Recovery Emails Processed",
+        description: processed > 0
+          ? `Sent ${successful} recovery email(s) to customers with abandoned carts.`
+          : "No abandoned carts are ready for emails yet. Emails are sent after the configured delay period.",
+      });
+
+      // Refresh the cart list
+      loadAbandonedCarts();
+    } catch (error: any) {
+      console.error("Error processing recovery emails:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to process recovery emails",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessingEmails(false);
     }
   };
 
@@ -241,9 +278,18 @@ export const AbandonedCartSettings = ({
             </div>
             <Switch
               checked={settings.abandoned_cart_enabled}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, abandoned_cart_enabled: checked })
-              }
+              onCheckedChange={(checked) => {
+                const newSettings = { ...settings, abandoned_cart_enabled: checked };
+                setSettings(newSettings);
+                // Auto-save when toggling enabled/disabled
+                onSave(newSettings);
+                toast({
+                  title: checked ? "Cart Recovery Enabled" : "Cart Recovery Disabled",
+                  description: checked
+                    ? "Abandoned cart recovery emails are now active"
+                    : "Abandoned cart recovery has been turned off",
+                });
+              }}
             />
           </div>
 
@@ -353,9 +399,17 @@ export const AbandonedCartSettings = ({
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-4 pt-4">
+              <div className="flex flex-wrap items-center gap-4 pt-4">
                 <Button onClick={handleSave}>
                   Save Settings
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={processRecoveryEmails}
+                  disabled={processingEmails || stats.pending === 0}
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  {processingEmails ? "Processing..." : `Process Recovery Emails${stats.pending > 0 ? ` (${stats.pending})` : ""}`}
                 </Button>
                 <Button
                   variant="outline"
@@ -366,6 +420,9 @@ export const AbandonedCartSettings = ({
                   {sendingTestEmail ? "Sending..." : "Send Test Email"}
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Recovery emails are sent automatically after the delay period. Click "Process Recovery Emails" to send any pending emails immediately.
+              </p>
             </>
           )}
         </CardContent>

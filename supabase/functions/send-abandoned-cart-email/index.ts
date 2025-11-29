@@ -81,7 +81,7 @@ serve(async (req) => {
         `)
         .in("status", ["pending", "email_sent"])
         .lt("emails_sent", 3)
-        .lt("expires_at", new Date().toISOString())
+        .gt("expires_at", new Date().toISOString()) // Only get non-expired carts
         .order("created_at", { ascending: true })
         .limit(50);
 

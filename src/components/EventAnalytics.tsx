@@ -7,9 +7,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Users, Calendar, DollarSign, Ticket, TrendingUp, Search, BarChart3, Eye } from "lucide-react";
+import { Download, Users, Calendar, DollarSign, Ticket, TrendingUp, Search, BarChart3, Eye, ShoppingCart } from "lucide-react";
 import { format } from "date-fns";
 import { WidgetFunnelAnalytics } from "./WidgetFunnelAnalytics";
+import { RecoveryAnalytics } from "./RecoveryAnalytics";
 
 interface EventAnalyticsProps {
   events: Array<{
@@ -480,7 +481,7 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
 
       {eventDetails && analytics && !loading && (
         <Tabs defaultValue="sales" className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-xl grid-cols-3">
             <TabsTrigger value="sales" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Sales Analytics
@@ -488,6 +489,10 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
             <TabsTrigger value="funnel" className="flex items-center gap-2">
               <Eye className="h-4 w-4" />
               Widget Funnel
+            </TabsTrigger>
+            <TabsTrigger value="recovery" className="flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4" />
+              Recovery
             </TabsTrigger>
           </TabsList>
 
@@ -730,6 +735,10 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
 
           <TabsContent value="funnel">
             <WidgetFunnelAnalytics eventId={selectedEventId} />
+          </TabsContent>
+
+          <TabsContent value="recovery">
+            <RecoveryAnalytics eventId={selectedEventId} />
           </TabsContent>
         </Tabs>
       )}

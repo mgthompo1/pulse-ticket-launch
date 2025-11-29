@@ -14,6 +14,7 @@ import { AuthConfirm } from "./pages/AuthConfirm";
 import EmailConfirmation from "./pages/EmailConfirmation";
 import OrgDashboard from "./pages/OrgDashboard";
 import TicketWidget from "./pages/TicketWidget";
+import WidgetRouter from "./pages/WidgetRouter";
 import GroupPortal from "./pages/GroupPortal";
 import GroupPublicWidget from "./pages/GroupPublicWidget";
 import AttractionWidget from "./pages/AttractionWidget";
@@ -59,7 +60,7 @@ const App = () => (
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/auth/confirm" element={<AuthConfirm />} />
                 <Route path="/auth/check-email" element={<EmailConfirmation />} />
-                <Route path="/widget/:eventId" element={<TicketWidget />} />
+                <Route path="/widget/:eventId" element={<WidgetRouter />} />
                 <Route path="/group/:slug/widget" element={<GroupPublicWidget />} />
                 <Route path="/attraction/:attractionId" element={<AttractionWidget />} />
                 <Route path="/booking-demo" element={<AttractionBookingDemo />} />
