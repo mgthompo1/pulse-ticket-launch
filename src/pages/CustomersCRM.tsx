@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganizations } from "@/hooks/useOrganizations";
-import { Search, UserCog, DollarSign, TrendingUp, Calendar, Mail, Phone, MapPin, Tag, MoreVertical, Send, FileText, Link as LinkIcon, UserPlus } from "lucide-react";
+import { Search, UserCog, TrendingUp, Mail, MoreVertical, Send, FileText, Link as LinkIcon, UserPlus, Users, Heart, ShoppingBag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerDetailModal } from "@/components/CustomerDetailModal";
 import { BulkEmailModal } from "@/components/BulkEmailModal";
@@ -292,27 +292,30 @@ const CustomersCRM: React.FC = () => {
   }
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-            <UserCog className="h-6 w-6 md:h-8 md:w-8" />
-            Customers & CRM
+          <h1 className="text-2xl font-bold flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-indigo-500/10">
+              <Users className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            Customers
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm md:text-base">
-            Manage customer relationships, donations, and patron engagement
+          <p className="text-muted-foreground mt-1 text-sm">
+            Manage customer relationships and track engagement
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           {selectedContacts.size > 0 ? (
             <>
-              <Badge variant="secondary" className="text-sm px-3 py-1">
+              <Badge variant="secondary" className="text-sm px-3 py-1.5 rounded-lg">
                 {selectedContacts.size} selected
               </Badge>
               <Button
                 onClick={() => setBulkEmailOpen(true)}
                 size="sm"
+                className="rounded-xl"
               >
                 <Mail className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Send Email to Selected</span>
@@ -322,6 +325,7 @@ const CustomersCRM: React.FC = () => {
                 onClick={() => setSelectedContacts(new Set())}
                 variant="outline"
                 size="sm"
+                className="rounded-xl"
               >
                 Clear
               </Button>
@@ -329,7 +333,7 @@ const CustomersCRM: React.FC = () => {
           ) : (
             <Button
               onClick={() => setAddCustomerOpen(true)}
-              className="bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+              className="bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400 rounded-xl"
             >
               <UserPlus className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Add Customer</span>
@@ -340,68 +344,101 @@ const CustomersCRM: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Customers</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalContacts}</div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-blue-500/10">
+                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Customers</p>
+                <p className="text-2xl font-bold">{stats.totalContacts}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Lifetime Value</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.totalLifetimeValue)}</div>
+        <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-green-500/10">
+                <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Lifetime Value</p>
+                <p className="text-2xl font-bold">{formatCurrency(stats.totalLifetimeValue)}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Donations</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.totalDonations)}</div>
+        <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-pink-500/10">
+                <Heart className="h-5 w-5 text-pink-600 dark:text-pink-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Donations</p>
+                <p className="text-2xl font-bold">{formatCurrency(stats.totalDonations)}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Avg. Order Value</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.avgOrderValue)}</div>
+        <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-amber-500/10">
+                <ShoppingBag className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Avg. Order Value</p>
+                <p className="text-2xl font-bold">{formatCurrency(stats.avgOrderValue)}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Contacts Table */}
-      <Card>
-        <CardHeader className="pb-4">
+      <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+        <CardHeader className="pb-4 border-b bg-muted/30">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <CardTitle className="text-lg">All Customers</CardTitle>
+            <div>
+              <CardTitle className="text-lg font-semibold">All Customers</CardTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">{filteredContacts.length} total</p>
+            </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by name or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-full sm:w-64"
+                className="pl-9 w-full sm:w-72 rounded-xl bg-background"
               />
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {filteredContacts.length === 0 ? (
-            <div className="py-12 text-center">
-              <UserCog className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-lg font-medium">No customers yet</p>
-              <p className="text-muted-foreground">
+            <div className="py-16 text-center">
+              <div className="p-4 rounded-2xl bg-muted/50 w-fit mx-auto mb-4">
+                <Users className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <p className="text-lg font-semibold">No customers yet</p>
+              <p className="text-muted-foreground text-sm mt-1 max-w-sm mx-auto">
                 Customers will appear here when they make purchases or donations
               </p>
+              <Button
+                onClick={() => setAddCustomerOpen(true)}
+                className="mt-4 rounded-xl"
+                variant="outline"
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add your first customer
+              </Button>
             </div>
           ) : (
             <>
@@ -410,29 +447,29 @@ const CustomersCRM: React.FC = () => {
                 {filteredContacts.map(contact => (
                   <div
                     key={contact.id}
-                    className="border rounded-lg p-4 bg-card hover:bg-muted/50 transition-colors"
+                    className="border rounded-xl p-4 bg-card hover:bg-muted/30 transition-all hover:shadow-sm"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 flex-1 min-w-0">
                         <Checkbox
                           checked={selectedContacts.has(contact.id)}
                           onCheckedChange={() => toggleContactSelection(contact.id)}
-                          className="mt-1"
+                          className="mt-1 rounded"
                         />
                         <div className="flex-1 min-w-0" onClick={() => handleContactClick(contact)}>
-                          <p className="font-medium text-blue-600 truncate">
+                          <p className="font-semibold text-foreground truncate">
                             {contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || contact.email}
                           </p>
                           <p className="text-sm text-muted-foreground truncate">{contact.email}</p>
                           {contact.groups && contact.groups.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1">
+                            <div className="flex flex-wrap gap-1 mt-2">
                               {contact.groups.slice(0, 2).map((group, idx) => (
-                                <Badge key={idx} variant="outline" className="text-xs">
+                                <Badge key={idx} variant="secondary" className="text-xs rounded-md">
                                   {group.name}
                                 </Badge>
                               ))}
                               {contact.groups.length > 2 && (
-                                <Badge variant="outline" className="text-xs">
+                                <Badge variant="outline" className="text-xs rounded-md">
                                   +{contact.groups.length - 2}
                                 </Badge>
                               )}
@@ -442,12 +479,12 @@ const CustomersCRM: React.FC = () => {
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0 rounded-lg">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                          <DropdownMenuLabel>Phone Sales</DropdownMenuLabel>
+                        <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => {
                             setPhoneSalesContact(contact);
@@ -478,16 +515,16 @@ const CustomersCRM: React.FC = () => {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t" onClick={() => handleContactClick(contact)}>
-                      <div>
+                    <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t" onClick={() => handleContactClick(contact)}>
+                      <div className="text-center p-2 rounded-lg bg-muted/50">
                         <p className="text-xs text-muted-foreground">LTV</p>
                         <p className="font-semibold text-sm">{formatCurrency(contact.lifetime_value)}</p>
                       </div>
-                      <div>
+                      <div className="text-center p-2 rounded-lg bg-muted/50">
                         <p className="text-xs text-muted-foreground">Orders</p>
                         <p className="font-semibold text-sm">{contact.total_orders}</p>
                       </div>
-                      <div>
+                      <div className="text-center p-2 rounded-lg bg-muted/50">
                         <p className="text-xs text-muted-foreground">Events</p>
                         <p className="font-semibold text-sm">{contact.events_attended}</p>
                       </div>
@@ -499,103 +536,99 @@ const CustomersCRM: React.FC = () => {
               {/* Desktop Table View */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full">
-                <thead className="bg-slate-50 border-b">
+                <thead className="bg-muted/50">
                   <tr>
-                    <th className="text-left py-3 px-2 font-medium text-sm w-12">
+                    <th className="text-left py-3.5 px-4 font-medium text-sm text-muted-foreground w-12">
                       <Checkbox
                         checked={selectedContacts.size === filteredContacts.length && filteredContacts.length > 0}
                         onCheckedChange={toggleAllContacts}
+                        className="rounded"
                       />
                     </th>
-                    <th className="text-left py-3 px-2 font-medium text-sm">Name</th>
-                    <th className="text-left py-3 px-2 font-medium text-sm">Email</th>
-                    <th className="text-left py-3 px-2 font-medium text-sm hidden lg:table-cell">Group</th>
-                    <th className="text-right py-3 px-2 font-medium text-sm">LTV</th>
-                    <th className="text-right py-3 px-2 font-medium text-sm hidden md:table-cell">Donations</th>
-                    <th className="text-right py-3 px-2 font-medium text-sm">Orders</th>
-                    <th className="text-right py-3 px-2 font-medium text-sm hidden sm:table-cell">Events</th>
-                    <th className="text-left py-3 px-2 font-medium text-sm hidden xl:table-cell">Last Order</th>
-                    <th className="text-center py-3 px-2 font-medium text-sm w-20"></th>
+                    <th className="text-left py-3.5 px-4 font-medium text-sm text-muted-foreground">Customer</th>
+                    <th className="text-left py-3.5 px-4 font-medium text-sm text-muted-foreground hidden lg:table-cell">Group</th>
+                    <th className="text-right py-3.5 px-4 font-medium text-sm text-muted-foreground">LTV</th>
+                    <th className="text-right py-3.5 px-4 font-medium text-sm text-muted-foreground hidden md:table-cell">Donations</th>
+                    <th className="text-right py-3.5 px-4 font-medium text-sm text-muted-foreground">Orders</th>
+                    <th className="text-right py-3.5 px-4 font-medium text-sm text-muted-foreground hidden sm:table-cell">Events</th>
+                    <th className="text-left py-3.5 px-4 font-medium text-sm text-muted-foreground hidden xl:table-cell">Last Order</th>
+                    <th className="text-center py-3.5 px-4 font-medium text-sm text-muted-foreground w-16"></th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-border">
                   {filteredContacts.map(contact => (
                     <tr
                       key={contact.id}
-                      className="border-b hover:bg-slate-50 transition-colors"
+                      className="hover:bg-muted/30 transition-colors group"
                     >
-                      <td className="py-3 px-2" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-4 px-4" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selectedContacts.has(contact.id)}
                           onCheckedChange={() => toggleContactSelection(contact.id)}
+                          className="rounded"
                         />
                       </td>
-                      <td className="py-3 px-2 cursor-pointer" onClick={() => handleContactClick(contact)}>
-                        <div className="font-medium text-blue-600 hover:text-blue-800">
-                          {contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || contact.email}
-                        </div>
-                        {contact.tags && contact.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {contact.tags.slice(0, 1).map((tag, idx) => (
-                              <Badge key={idx} variant="secondary" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                            {contact.tags.length > 1 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{contact.tags.length - 1}
-                              </Badge>
-                            )}
+                      <td className="py-4 px-4 cursor-pointer" onClick={() => handleContactClick(contact)}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-medium text-sm flex-shrink-0">
+                            {(contact.full_name || contact.first_name || contact.email || '?')[0].toUpperCase()}
                           </div>
-                        )}
+                          <div className="min-w-0">
+                            <div className="font-medium text-foreground group-hover:text-indigo-600 transition-colors truncate">
+                              {contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unnamed'}
+                            </div>
+                            <div className="text-sm text-muted-foreground truncate">{contact.email}</div>
+                          </div>
+                        </div>
                       </td>
-                      <td className="py-3 px-2 text-sm text-muted-foreground cursor-pointer" onClick={() => handleContactClick(contact)}>
-                        {contact.email}
-                      </td>
-                      <td className="py-3 px-2 cursor-pointer hidden lg:table-cell" onClick={() => handleContactClick(contact)}>
+                      <td className="py-4 px-4 cursor-pointer hidden lg:table-cell" onClick={() => handleContactClick(contact)}>
                         {contact.groups && contact.groups.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {contact.groups.slice(0, 1).map((group, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
+                              <Badge key={idx} variant="secondary" className="text-xs rounded-md">
                                 {group.name}
                               </Badge>
                             ))}
                             {contact.groups.length > 1 && (
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className="text-xs rounded-md">
                                 +{contact.groups.length - 1}
                               </Badge>
                             )}
                           </div>
                         ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
+                          <span className="text-muted-foreground text-sm">—</span>
                         )}
                       </td>
-                      <td className="py-3 px-2 text-right font-semibold text-sm cursor-pointer" onClick={() => handleContactClick(contact)}>
-                        {formatCurrency(contact.lifetime_value)}
+                      <td className="py-4 px-4 text-right cursor-pointer" onClick={() => handleContactClick(contact)}>
+                        <span className="font-semibold text-sm">{formatCurrency(contact.lifetime_value)}</span>
                       </td>
-                      <td className="py-3 px-2 text-right cursor-pointer hidden md:table-cell" onClick={() => handleContactClick(contact)}>
+                      <td className="py-4 px-4 text-right cursor-pointer hidden md:table-cell" onClick={() => handleContactClick(contact)}>
                         {contact.total_donations > 0 ? (
                           <span className="text-pink-600 font-medium text-sm">
                             {formatCurrency(contact.total_donations)}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground text-sm">-</span>
+                          <span className="text-muted-foreground text-sm">—</span>
                         )}
                       </td>
-                      <td className="py-3 px-2 text-right cursor-pointer text-sm" onClick={() => handleContactClick(contact)}>{contact.total_orders}</td>
-                      <td className="py-3 px-2 text-right cursor-pointer text-sm hidden sm:table-cell" onClick={() => handleContactClick(contact)}>{contact.events_attended}</td>
-                      <td className="py-3 px-2 text-sm text-muted-foreground cursor-pointer hidden xl:table-cell" onClick={() => handleContactClick(contact)}>
+                      <td className="py-4 px-4 text-right cursor-pointer" onClick={() => handleContactClick(contact)}>
+                        <span className="text-sm font-medium">{contact.total_orders}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right cursor-pointer hidden sm:table-cell" onClick={() => handleContactClick(contact)}>
+                        <span className="text-sm font-medium">{contact.events_attended}</span>
+                      </td>
+                      <td className="py-4 px-4 text-sm text-muted-foreground cursor-pointer hidden xl:table-cell" onClick={() => handleContactClick(contact)}>
                         {formatDate(contact.last_order_date)}
                       </td>
-                      <td className="py-3 px-2 text-center" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-56">
-                            <DropdownMenuLabel>Phone Sales</DropdownMenuLabel>
+                          <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => {
                               setPhoneSalesContact(contact);
@@ -621,7 +654,7 @@ const CustomersCRM: React.FC = () => {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleContactClick(contact)}>
                               <Mail className="h-4 w-4 mr-2" />
-                              Send Email
+                              View Details
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
