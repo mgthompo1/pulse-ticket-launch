@@ -272,15 +272,24 @@ export const usePasskeys = () => {
 
       if (optionsError || !options) {
         console.error('Error getting authentication options:', optionsError);
-        
+
         if (optionsError?.message?.toLowerCase().includes('passkey authentication is not available')) {
           return { success: false, error: 'Passkey authentication is not available for this account' };
         }
-        
+
         return { success: false, error: optionsError?.message || 'Failed to prepare passkey authentication' };
       }
 
+      // Debug: Log the authentication options received from server
+      console.log('Authentication options received:', {
+        rpId: options.rpId,
+        challenge: options.challenge?.substring(0, 20) + '...',
+        allowCredentials: options.allowCredentials?.length || 0,
+        timeout: options.timeout
+      });
+
       // Start WebAuthn authentication
+      console.log('Starting WebAuthn authentication...');
       const authenticationResponse = await startAuthentication(options);
 
       // Verify authentication on server using direct fetch
