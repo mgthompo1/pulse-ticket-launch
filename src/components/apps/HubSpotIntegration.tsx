@@ -217,7 +217,40 @@ const HubSpotIntegration: React.FC<HubSpotIntegrationProps> = ({ organizationId,
       if (error) throw error;
 
       // Open popup for OAuth
-      window.open(data.authUrl, 'hubspot-auth', 'width=600,height=700');
+      const popup = window.open(data.authUrl, 'hubspot-auth', 'width=600,height=700');
+
+      // Poll for connection status in case postMessage doesn't work
+      const pollInterval = setInterval(async () => {
+        // Check if popup was closed
+        if (popup?.closed) {
+          clearInterval(pollInterval);
+          // Give a moment for the connection to be saved, then check
+          setTimeout(async () => {
+            const { data: conn } = await supabase
+              .from('hubspot_connections')
+              .select('id, hub_id')
+              .eq('organization_id', organizationId)
+              .maybeSingle();
+
+            if (conn) {
+              toast({
+                title: 'HubSpot Connected',
+                description: `Successfully connected to HubSpot portal ${conn.hub_id}`,
+              });
+              loadConnection();
+            }
+            setConnecting(false);
+          }, 1000);
+        }
+      }, 500);
+
+      // Clear polling after 5 minutes (timeout)
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        if (connecting) {
+          setConnecting(false);
+        }
+      }, 300000);
     } catch (error: any) {
       console.error('Error initiating HubSpot connection:', error);
       toast({
