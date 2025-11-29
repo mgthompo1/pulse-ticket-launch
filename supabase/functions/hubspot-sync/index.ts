@@ -231,43 +231,28 @@ serve(async (req) => {
       }
 
       case "pushContacts": {
-        // First, ensure custom properties exist in HubSpot
-        console.log("Ensuring custom properties exist in HubSpot...");
-        for (const prop of TICKETFLO_CUSTOM_PROPERTIES) {
-          try {
-            const response = await fetch(
-              `${HUBSPOT_API_BASE}/crm/v3/properties/contacts`,
-              {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(prop),
-              }
-            );
-            // We don't care if it fails due to already existing
-            if (response.ok) {
-              console.log(`Created property: ${prop.name}`);
-            }
-          } catch (err) {
-            // Ignore errors - property might already exist
-          }
-        }
+        // Note: Custom property creation skipped - requires crm.schemas.contacts.write scope
+        // which may not be available on all HubSpot tiers. Syncing standard fields only.
+        console.log("Starting contact push (standard fields only)...");
 
         // Get contacts to push
+        console.log("Fetching contacts for org:", organizationId);
         let query = supabaseAdmin
           .from("contacts")
           .select("*")
           .eq("organization_id", organizationId);
 
         if (contactIds && contactIds.length > 0) {
+          console.log("Filtering by contact IDs:", contactIds);
           query = query.in("id", contactIds);
         }
 
         const { data: contacts, error: contactsError } = await query;
 
+        console.log("Contacts query result - count:", contacts?.length, "error:", contactsError?.message);
+
         if (contactsError) {
+          console.error("Failed to fetch contacts:", contactsError);
           return new Response(
             JSON.stringify({ error: "Failed to fetch contacts", details: contactsError.message }),
             { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -275,11 +260,14 @@ serve(async (req) => {
         }
 
         if (!contacts || contacts.length === 0) {
+          console.log("No contacts found to push");
           return new Response(
             JSON.stringify({ message: "No contacts to push", processed: 0 }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
+
+        console.log(`Found ${contacts.length} contacts to push`);
 
         // Create sync log entry
         const { data: syncLog } = await supabaseAdmin
@@ -305,6 +293,7 @@ serve(async (req) => {
 
           for (const contact of batch) {
             try {
+              console.log(`Processing contact: ${contact.email}`);
               const result = await pushContactToHubSpot(
                 supabaseAdmin,
                 accessToken,
@@ -314,9 +303,11 @@ serve(async (req) => {
                 conflictResolution
               );
 
+              console.log(`Contact ${contact.email} result - created: ${result.created}, updated: ${result.updated}`);
               if (result.created) created++;
               else if (result.updated) updated++;
-            } catch (error) {
+            } catch (error: any) {
+              console.error(`Error pushing contact ${contact.email}:`, error.message);
               failed++;
               errors.push({
                 contactId: contact.id,
@@ -608,12 +599,22 @@ function getHubSpotPropertiesToFetch(mappings: any[]): string[] {
   return [...new Set([...defaultProperties, ...mappedProperties])];
 }
 
+// Standard HubSpot properties that don't require custom property creation
+const STANDARD_HUBSPOT_PROPERTIES = [
+  "email", "firstname", "lastname", "phone", "city", "country", "state", "zip", "address", "company", "jobtitle", "website"
+];
+
 // Helper: Map TicketFlo contact to HubSpot properties
 function mapToHubSpotProperties(contact: TicketFloContact, mappings: any[]): Record<string, string> {
   const properties: Record<string, string> = {};
 
   for (const mapping of mappings) {
     if (mapping.sync_direction !== "push" && mapping.sync_direction !== "both") continue;
+
+    // Skip custom properties (ticketflo_*) since we don't have permission to create them
+    if (mapping.is_custom_property || mapping.hubspot_property.startsWith("ticketflo_")) {
+      continue;
+    }
 
     const value = getContactFieldValue(contact, mapping.ticketflo_field, mapping.transform_type);
     if (value !== null && value !== undefined && value !== "") {
@@ -681,9 +682,12 @@ async function pushContactToHubSpot(
   mappings: any[],
   conflictResolution: string
 ): Promise<{ created: boolean; updated: boolean; hubspotContactId: string }> {
+  console.log(`pushContactToHubSpot called for: ${contact.email}`);
   const properties = mapToHubSpotProperties(contact, mappings);
+  console.log("Mapped properties:", JSON.stringify(properties));
 
   // Check if contact already exists in HubSpot (by email)
+  console.log("Searching for existing contact in HubSpot...");
   const searchResponse = await fetch(`${HUBSPOT_API_BASE}/crm/v3/objects/contacts/search`, {
     method: "POST",
     headers: {
@@ -706,6 +710,8 @@ async function pushContactToHubSpot(
   });
 
   const searchData = await searchResponse.json();
+  console.log("HubSpot search response status:", searchResponse.status);
+  console.log("HubSpot search results:", searchData.total, "found");
   const existingContact = searchData.results?.[0];
 
   if (existingContact) {

@@ -169,6 +169,7 @@ const OrgDashboard = () => {
   const [showHelp, setShowHelp] = useState(false);
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false);
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
+  const [hubspotConnected, setHubspotConnected] = useState(false);
 
   // Onboarding state
   const { showWizard: shouldShowWizard, refreshOnboardingState } = useOnboarding();
@@ -192,6 +193,24 @@ const OrgDashboard = () => {
       setShowOnboardingWizard(true);
     }
   }, [shouldShowWizard, currentOrganization]);
+
+  // Check HubSpot connection status
+  useEffect(() => {
+    const checkHubspotConnection = async () => {
+      if (!currentOrganization?.id) return;
+      try {
+        const { data } = await supabase
+          .from('hubspot_connections')
+          .select('id, connection_status')
+          .eq('organization_id', currentOrganization.id)
+          .maybeSingle();
+        setHubspotConnected(data?.connection_status === 'connected');
+      } catch (err) {
+        console.error('Error checking HubSpot connection:', err);
+      }
+    };
+    checkHubspotConnection();
+  }, [currentOrganization?.id, selectedIntegration]);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(true);
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
   const [analytics, setAnalytics] = useState({
@@ -1946,7 +1965,7 @@ const OrgDashboard = () => {
                           </Card>
 
                           {/* HubSpot Integration */}
-                          <Card className="hover:shadow-lg transition-shadow duration-200 flex flex-col">
+                          <Card className={`hover:shadow-lg transition-shadow duration-200 flex flex-col ${hubspotConnected ? 'ring-2 ring-green-500/50' : ''}`}>
                             <CardHeader>
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center gap-3">
@@ -1957,9 +1976,17 @@ const OrgDashboard = () => {
                                   </div>
                                   <div>
                                     <CardTitle className="text-lg">HubSpot</CardTitle>
-                                    <Badge variant="secondary" className="mt-1 text-xs">
-                                      CRM
-                                    </Badge>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <Badge variant="secondary" className="text-xs">
+                                        CRM
+                                      </Badge>
+                                      {hubspotConnected && (
+                                        <Badge variant="default" className="text-xs bg-green-500">
+                                          <CheckCircle className="h-3 w-3 mr-1" />
+                                          Connected
+                                        </Badge>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -1970,10 +1997,14 @@ const OrgDashboard = () => {
                               </CardDescription>
                               <Button
                                 className="w-full"
+                                variant={hubspotConnected ? "outline" : "default"}
                                 onClick={() => setSelectedIntegration('hubspot')}
                               >
-                                <ExternalLink className="h-4 w-4 mr-2" />
-                                Connect to HubSpot
+                                {hubspotConnected ? (
+                                  <><CheckCircle className="h-4 w-4 mr-2" /> Manage Integration</>
+                                ) : (
+                                  <><ExternalLink className="h-4 w-4 mr-2" /> Connect to HubSpot</>
+                                )}
                               </Button>
                             </CardContent>
                           </Card>
