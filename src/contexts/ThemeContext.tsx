@@ -75,27 +75,23 @@ interface ThemeProviderProps {
   children: React.ReactNode;
 }
 
+// Initialize theme from localStorage synchronously to prevent flash
+const getInitialTheme = (): Theme => {
+  if (typeof window === 'undefined') return 'light';
+  const savedTheme = localStorage.getItem('theme') as Theme;
+  if (savedTheme) return savedTheme;
+  // Check system preference
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
+
+const getInitialPreset = (): ThemePreset => {
+  if (typeof window === 'undefined') return 'default';
+  return (localStorage.getItem('themePreset') as ThemePreset) || 'default';
+};
+
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
-  const [theme, setThemeState] = useState<Theme>('light');
-  const [themePreset, setThemePresetState] = useState<ThemePreset>('default');
-
-  useEffect(() => {
-    // Load theme and preset from localStorage on mount
-    const savedTheme = localStorage.getItem('theme') as Theme;
-    const savedPreset = localStorage.getItem('themePreset') as ThemePreset;
-    
-    if (savedTheme) {
-      setThemeState(savedTheme);
-    } else {
-      // Check system preference
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      setThemeState(systemTheme);
-    }
-
-    if (savedPreset) {
-      setThemePresetState(savedPreset);
-    }
-  }, []);
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+  const [themePreset, setThemePresetState] = useState<ThemePreset>(getInitialPreset);
 
   useEffect(() => {
     // Apply theme to document

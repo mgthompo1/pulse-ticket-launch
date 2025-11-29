@@ -97,20 +97,36 @@ serve(async (req) => {
       }
     }
 
-    const allowCredentials = userCredentials.map((cred: any) => ({
-      id: (() => {
-        try {
-          return base64urlDecode(cred.credential_id);
-        } catch (decodeError) {
-          console.error("Failed to decode credential id", decodeError);
-          return new Uint8Array();
+    // Log credential data for debugging
+    console.log(`Found ${userCredentials.length} credentials for user`);
+    userCredentials.forEach((cred: any, idx: number) => {
+      console.log(`Credential ${idx}: id=${cred.credential_id ? 'present' : 'MISSING'}, transports=${JSON.stringify(cred.credential_transports)}`);
+    });
+
+    const allowCredentials = userCredentials
+      .filter((cred: any) => {
+        // Skip credentials without a valid credential_id
+        if (!cred.credential_id) {
+          console.warn("Skipping credential with missing credential_id");
+          return false;
         }
-      })(),
-      type: "public-key",
-      transports: cred.credential_transports && cred.credential_transports.length > 0
-        ? cred.credential_transports
-        : ["internal"]
-    })).filter((cred: any) => cred.id.length > 0);
+        return true;
+      })
+      .map((cred: any) => ({
+        id: (() => {
+          try {
+            return base64urlDecode(cred.credential_id);
+          } catch (decodeError) {
+            console.error("Failed to decode credential id:", decodeError, "credential_id value:", cred.credential_id);
+            return new Uint8Array();
+          }
+        })(),
+        type: "public-key",
+        transports: cred.credential_transports && cred.credential_transports.length > 0
+          ? cred.credential_transports
+          : ["internal"]
+      }))
+      .filter((cred: any) => cred.id.length > 0);
 
     if (allowCredentials.length === 0) {
       return new Response(JSON.stringify({ error: "Passkey authentication is not available for this account" }), {

@@ -137,17 +137,26 @@ serve(async (req) => {
     })();
 
     const credentialPublicKeyData = (storedCredential as any).credential_public_key;
+    console.log("Public key data type:", typeof credentialPublicKeyData);
+    console.log("Public key data:", credentialPublicKeyData);
+    console.log("Public key is array:", Array.isArray(credentialPublicKeyData));
+    console.log("Public key instanceof Uint8Array:", credentialPublicKeyData instanceof Uint8Array);
+
     const credentialPublicKey = (() => {
       if (credentialPublicKeyData instanceof Uint8Array) {
+        console.log("Using Uint8Array directly");
         return credentialPublicKeyData;
       }
       if (Array.isArray(credentialPublicKeyData)) {
+        console.log("Converting from array");
         return new Uint8Array(credentialPublicKeyData);
       }
       if (credentialPublicKeyData?.type === "Buffer" && Array.isArray(credentialPublicKeyData.data)) {
+        console.log("Converting from Buffer type");
         return new Uint8Array(credentialPublicKeyData.data);
       }
       if (typeof credentialPublicKeyData === "string" && credentialPublicKeyData.startsWith("\\x")) {
+        console.log("Converting from hex string (\\x format)");
         const hex = credentialPublicKeyData.slice(2);
         const bytes = new Uint8Array(hex.length / 2);
         for (let i = 0; i < bytes.length; i++) {
@@ -155,8 +164,25 @@ serve(async (req) => {
         }
         return bytes;
       }
+      // Try base64 decoding as fallback
+      if (typeof credentialPublicKeyData === "string") {
+        console.log("Attempting base64 decode");
+        try {
+          const binaryString = atob(credentialPublicKeyData);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          return bytes;
+        } catch (e) {
+          console.error("Base64 decode failed:", e);
+        }
+      }
+      console.error("Unsupported format, raw value:", JSON.stringify(credentialPublicKeyData));
       throw new Error("Unsupported credential public key format");
     })();
+
+    console.log("Final public key length:", credentialPublicKey.length);
 
     const opts: VerifyAuthenticationResponseOpts = {
       response: credential,

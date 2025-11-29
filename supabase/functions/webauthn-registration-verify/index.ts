@@ -145,15 +145,21 @@ serve(async (req) => {
 
     // Store the credential in the database
     const credentialID = base64urlEncode(registrationInfo.credentialID);
-    const credentialPublicKey = registrationInfo.credentialPublicKey instanceof Uint8Array
+    const credentialPublicKeyBytes = registrationInfo.credentialPublicKey instanceof Uint8Array
       ? registrationInfo.credentialPublicKey
       : new Uint8Array(registrationInfo.credentialPublicKey);
+
+    // Convert Uint8Array to hex string with \x prefix for proper BYTEA storage
+    const credentialPublicKeyHex = "\\x" + Array.from(credentialPublicKeyBytes)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    console.log("Storing public key as hex, byte length:", credentialPublicKeyBytes.length);
 
     const { error: storeError } = await supabaseClient
       .rpc("webauthn_store_credential", {
         p_user_id: user.id,
         p_credential_id: credentialID,
-        p_credential_public_key: credentialPublicKey,
+        p_credential_public_key: credentialPublicKeyHex,
         p_credential_counter: Number(registrationInfo.counter) || 0,
         p_credential_device_type: registrationInfo.credentialDeviceType || "unknown",
         p_credential_backed_up: Boolean(registrationInfo.credentialBackedUp),
