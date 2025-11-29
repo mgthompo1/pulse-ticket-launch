@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import XeroIntegration from "@/components/XeroIntegration";
+import HubSpotIntegration from "@/components/apps/HubSpotIntegration";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
@@ -1890,6 +1891,19 @@ const OrgDashboard = () => {
                         </div>
                         <XeroIntegration organizationId={currentOrganization?.id || ''} />
                       </div>
+                    ) : selectedIntegration === 'hubspot' ? (
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedIntegration(null)}
+                          >
+                            ← Back to Apps
+                          </Button>
+                        </div>
+                        <HubSpotIntegration organizationId={currentOrganization?.id || ''} />
+                      </div>
                     ) : (
                       <div className="space-y-6">
                         <div>
@@ -1948,18 +1962,18 @@ const OrgDashboard = () => {
                                     </Badge>
                                   </div>
                                 </div>
-                                <Badge variant="secondary" className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  Coming Soon
-                                </Badge>
                               </div>
                             </CardHeader>
                             <CardContent className="flex-1 flex flex-col justify-between">
                               <CardDescription className="mb-4">
-                                Connect your customer data and event attendees with HubSpot CRM for powerful marketing automation.
+                                Sync your customer data and event attendees with HubSpot CRM for powerful marketing automation.
                               </CardDescription>
-                              <Button className="w-full" variant="outline" disabled>
-                                Coming Soon
+                              <Button
+                                className="w-full"
+                                onClick={() => setSelectedIntegration('hubspot')}
+                              >
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                Connect to HubSpot
                               </Button>
                             </CardContent>
                           </Card>

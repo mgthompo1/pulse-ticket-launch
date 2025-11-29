@@ -28,6 +28,7 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
 import PaymentCancelled from "./pages/PaymentCancelled";
 import XeroCallback from "./pages/XeroCallback";
+import HubSpotCallback from "./pages/HubSpotCallback";
 import LinkedInCallback from "./pages/LinkedInCallback";
 import FacebookCallback from "./pages/FacebookCallback";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -74,6 +75,7 @@ const App = () => (
                 <Route path="/payment-failed" element={<PaymentFailed />} />
                 <Route path="/payment-cancelled" element={<PaymentCancelled />} />
                 <Route path="/xero-callback" element={<XeroCallback />} />
+                <Route path="/hubspot-callback" element={<HubSpotCallback />} />
                 <Route path="/dashboard/auth/linkedin/callback" element={<LinkedInCallback />} />
                 <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
                 <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
