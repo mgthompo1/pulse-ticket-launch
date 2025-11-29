@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const HubSpotCallback = () => {
   const [searchParams] = useSearchParams();
@@ -8,64 +9,85 @@ const HubSpotCallback = () => {
   const [message, setMessage] = useState("Processing HubSpot authorization...");
 
   useEffect(() => {
-    const code = searchParams.get("code");
-    const state = searchParams.get("state");
-    const error = searchParams.get("error");
-    const errorDescription = searchParams.get("error_description");
+    const processCallback = async () => {
+      const code = searchParams.get("code");
+      const state = searchParams.get("state");
+      const error = searchParams.get("error");
+      const errorDescription = searchParams.get("error_description");
 
-    if (error) {
-      setStatus("error");
-      setMessage(errorDescription || "Authorization was denied or failed");
+      if (error) {
+        setStatus("error");
+        setMessage(errorDescription || "Authorization was denied or failed");
 
-      // Notify parent window of error
-      if (window.opener) {
-        window.opener.postMessage(
-          { type: "HUBSPOT_AUTH_ERROR", error: errorDescription || error },
-          window.location.origin
-        );
-        setTimeout(() => window.close(), 2000);
+        // Notify parent window of error
+        if (window.opener) {
+          window.opener.postMessage(
+            { type: "HUBSPOT_AUTH_ERROR", error: errorDescription || error },
+            window.location.origin
+          );
+          setTimeout(() => window.close(), 2000);
+        }
+        return;
       }
-      return;
-    }
 
-    if (!code || !state) {
-      setStatus("error");
-      setMessage("Missing authorization code or state parameter");
-      return;
-    }
+      if (!code || !state) {
+        setStatus("error");
+        setMessage("Missing authorization code or state parameter");
+        return;
+      }
 
-    // Extract organization ID from state (format: org_{orgId}_{timestamp})
-    const stateMatch = state.match(/^org_([^_]+)_/);
-    if (!stateMatch) {
-      setStatus("error");
-      setMessage("Invalid state parameter");
-      return;
-    }
+      // Extract organization ID from state (format: org_{orgId}_{timestamp})
+      const stateMatch = state.match(/^org_([^_]+)_/);
+      if (!stateMatch) {
+        setStatus("error");
+        setMessage("Invalid state parameter");
+        return;
+      }
 
-    const organizationId = stateMatch[1];
+      const organizationId = stateMatch[1];
 
-    // Send the code to the parent window
-    if (window.opener) {
-      window.opener.postMessage(
-        {
-          type: "HUBSPOT_AUTH_SUCCESS",
-          code,
-          state,
-          organizationId,
-        },
-        window.location.origin
-      );
+      // Exchange the code for tokens directly from the callback page
+      try {
+        setMessage("Exchanging authorization code...");
 
-      setStatus("success");
-      setMessage("Authorization successful! This window will close...");
+        const { data, error: exchangeError } = await supabase.functions.invoke('hubspot-auth', {
+          body: {
+            action: 'exchangeCode',
+            code,
+            organizationId,
+          },
+        });
 
-      // Close the popup after a brief delay
-      setTimeout(() => window.close(), 1500);
-    } else {
-      // If not in a popup, show success and suggest closing
-      setStatus("success");
-      setMessage("Authorization successful! You can close this window and return to TicketFlo.");
-    }
+        if (exchangeError) throw exchangeError;
+
+        setStatus("success");
+        setMessage("Authorization successful! This window will close...");
+
+        // Notify parent window to refresh
+        if (window.opener) {
+          window.opener.postMessage(
+            { type: "HUBSPOT_AUTH_SUCCESS", organizationId },
+            window.location.origin
+          );
+        }
+
+        // Close the popup after a brief delay
+        setTimeout(() => window.close(), 1500);
+      } catch (err: any) {
+        console.error("Error exchanging code:", err);
+        setStatus("error");
+        setMessage(err.message || "Failed to complete authorization");
+
+        if (window.opener) {
+          window.opener.postMessage(
+            { type: "HUBSPOT_AUTH_ERROR", error: err.message },
+            window.location.origin
+          );
+        }
+      }
+    };
+
+    processCallback();
   }, [searchParams]);
 
   return (

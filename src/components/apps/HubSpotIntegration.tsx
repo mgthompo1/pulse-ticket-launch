@@ -177,38 +177,18 @@ const HubSpotIntegration: React.FC<HubSpotIntegrationProps> = ({ organizationId,
       if (event.origin !== window.location.origin) return;
 
       if (event.data.type === 'HUBSPOT_AUTH_SUCCESS') {
-        const { code, organizationId: orgId } = event.data;
+        const { organizationId: orgId } = event.data;
 
         if (orgId !== organizationId) return;
 
-        setConnecting(true);
-        try {
-          const { data, error } = await supabase.functions.invoke('hubspot-auth', {
-            body: {
-              action: 'exchangeCode',
-              code,
-              organizationId,
-            },
-          });
+        // Code exchange already happened in the callback page
+        toast({
+          title: 'HubSpot Connected',
+          description: 'Successfully connected to HubSpot',
+        });
 
-          if (error) throw error;
-
-          toast({
-            title: 'HubSpot Connected',
-            description: `Successfully connected to HubSpot portal ${data.connection.hubId}`,
-          });
-
-          loadConnection();
-        } catch (error: any) {
-          console.error('Error completing HubSpot connection:', error);
-          toast({
-            title: 'Connection Failed',
-            description: error.message || 'Failed to complete HubSpot connection',
-            variant: 'destructive',
-          });
-        } finally {
-          setConnecting(false);
-        }
+        setConnecting(false);
+        loadConnection();
       } else if (event.data.type === 'HUBSPOT_AUTH_ERROR') {
         toast({
           title: 'Connection Failed',

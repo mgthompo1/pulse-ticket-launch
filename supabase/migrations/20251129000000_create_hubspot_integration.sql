@@ -138,12 +138,17 @@ ALTER TABLE hubspot_sync_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE hubspot_contact_mappings ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can manage HubSpot connections for their organizations
+-- Check if user is org owner OR has admin/owner role in organization_users
 CREATE POLICY hubspot_connections_policy ON hubspot_connections
   FOR ALL USING (
     organization_id IN (
-      SELECT om.organization_id FROM organization_members om
-      WHERE om.user_id = auth.uid()
-      AND om.role IN ('owner', 'admin')
+      SELECT id FROM organizations WHERE user_id = auth.uid()
+    )
+    OR
+    organization_id IN (
+      SELECT ou.organization_id FROM organization_users ou
+      WHERE ou.user_id = auth.uid()
+      AND ou.role IN ('owner', 'admin')
     )
   );
 
@@ -151,9 +156,12 @@ CREATE POLICY hubspot_field_mappings_policy ON hubspot_field_mappings
   FOR ALL USING (
     hubspot_connection_id IN (
       SELECT hc.id FROM hubspot_connections hc
-      JOIN organization_members om ON om.organization_id = hc.organization_id
-      WHERE om.user_id = auth.uid()
-      AND om.role IN ('owner', 'admin')
+      WHERE hc.organization_id IN (SELECT id FROM organizations WHERE user_id = auth.uid())
+      OR hc.organization_id IN (
+        SELECT ou.organization_id FROM organization_users ou
+        WHERE ou.user_id = auth.uid()
+        AND ou.role IN ('owner', 'admin')
+      )
     )
   );
 
@@ -161,9 +169,12 @@ CREATE POLICY hubspot_sync_logs_policy ON hubspot_sync_logs
   FOR ALL USING (
     hubspot_connection_id IN (
       SELECT hc.id FROM hubspot_connections hc
-      JOIN organization_members om ON om.organization_id = hc.organization_id
-      WHERE om.user_id = auth.uid()
-      AND om.role IN ('owner', 'admin')
+      WHERE hc.organization_id IN (SELECT id FROM organizations WHERE user_id = auth.uid())
+      OR hc.organization_id IN (
+        SELECT ou.organization_id FROM organization_users ou
+        WHERE ou.user_id = auth.uid()
+        AND ou.role IN ('owner', 'admin')
+      )
     )
   );
 
@@ -171,9 +182,12 @@ CREATE POLICY hubspot_contact_mappings_policy ON hubspot_contact_mappings
   FOR ALL USING (
     hubspot_connection_id IN (
       SELECT hc.id FROM hubspot_connections hc
-      JOIN organization_members om ON om.organization_id = hc.organization_id
-      WHERE om.user_id = auth.uid()
-      AND om.role IN ('owner', 'admin')
+      WHERE hc.organization_id IN (SELECT id FROM organizations WHERE user_id = auth.uid())
+      OR hc.organization_id IN (
+        SELECT ou.organization_id FROM organization_users ou
+        WHERE ou.user_id = auth.uid()
+        AND ou.role IN ('owner', 'admin')
+      )
     )
   );
 
