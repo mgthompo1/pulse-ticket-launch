@@ -22,6 +22,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   ExternalLink,
   CheckCircle,
@@ -75,6 +77,14 @@ interface HubSpotSyncLog {
   created_at: string;
 }
 
+interface Contact {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  hubspot_contact_id: string | null;
+}
+
 interface HubSpotIntegrationProps {
   organizationId: string;
   onBack: () => void;
@@ -84,12 +94,16 @@ const HubSpotIntegration: React.FC<HubSpotIntegrationProps> = ({ organizationId,
   const [connection, setConnection] = useState<HubSpotConnection | null>(null);
   const [fieldMappings, setFieldMappings] = useState<HubSpotFieldMapping[]>([]);
   const [syncLogs, setSyncLogs] = useState<HubSpotSyncLog[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [contactCount, setContactCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncDirection, setSyncDirection] = useState<'push' | 'pull'>('push');
+  const [syncMode, setSyncMode] = useState<'all' | 'selected'>('all');
+  const [contactSearch, setContactSearch] = useState('');
   const { toast } = useToast();
 
   // Load connection status
@@ -166,9 +180,26 @@ const HubSpotIntegration: React.FC<HubSpotIntegrationProps> = ({ organizationId,
     }
   };
 
+  // Load contacts for selection
+  const loadContacts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('id, email, first_name, last_name, hubspot_contact_id')
+        .eq('organization_id', organizationId)
+        .order('email');
+
+      if (error) throw error;
+      setContacts(data || []);
+    } catch (error) {
+      console.error('Error loading contacts:', error);
+    }
+  };
+
   useEffect(() => {
     loadConnection();
     loadContactCount();
+    loadContacts();
   }, [loadConnection, organizationId]);
 
   // Listen for OAuth callback messages
@@ -332,23 +363,41 @@ const HubSpotIntegration: React.FC<HubSpotIntegrationProps> = ({ organizationId,
 
   // Manual sync
   const performSync = async () => {
+    if (syncMode === 'selected' && selectedContactIds.size === 0) {
+      toast({
+        title: 'No Contacts Selected',
+        description: 'Please select at least one contact to sync',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke('hubspot-sync', {
         body: {
           action: syncDirection === 'push' ? 'pushContacts' : 'pullContacts',
           organizationId,
+          contactIds: syncMode === 'selected' ? Array.from(selectedContactIds) : undefined,
         },
       });
 
       if (error) throw error;
 
+      const processed = data.processed || data.recordsProcessed || 0;
+      const created = data.created || 0;
+      const updated = data.updated || 0;
+      const failed = data.failed || 0;
+
       toast({
         title: 'Sync Complete',
-        description: `${syncDirection === 'push' ? 'Pushed' : 'Pulled'} ${data.recordsProcessed || 0} contacts`,
+        description: `${syncDirection === 'push' ? 'Pushed' : 'Pulled'} ${processed} contacts (${created} created, ${updated} updated${failed > 0 ? `, ${failed} failed` : ''})`,
       });
 
+      // Clear selection after successful sync
+      setSelectedContactIds(new Set());
       loadConnection();
+      loadContacts();
       if (connection) {
         loadSyncLogs(connection.id);
       }
@@ -363,6 +412,36 @@ const HubSpotIntegration: React.FC<HubSpotIntegrationProps> = ({ organizationId,
       setSyncing(false);
     }
   };
+
+  // Toggle contact selection
+  const toggleContactSelection = (contactId: string) => {
+    setSelectedContactIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(contactId)) {
+        newSet.delete(contactId);
+      } else {
+        newSet.add(contactId);
+      }
+      return newSet;
+    });
+  };
+
+  // Select all / deselect all contacts
+  const toggleSelectAll = () => {
+    if (selectedContactIds.size === filteredContacts.length) {
+      setSelectedContactIds(new Set());
+    } else {
+      setSelectedContactIds(new Set(filteredContacts.map((c) => c.id)));
+    }
+  };
+
+  // Filter contacts by search
+  const filteredContacts = contacts.filter(
+    (c) =>
+      c.email.toLowerCase().includes(contactSearch.toLowerCase()) ||
+      (c.first_name?.toLowerCase() || '').includes(contactSearch.toLowerCase()) ||
+      (c.last_name?.toLowerCase() || '').includes(contactSearch.toLowerCase())
+  );
 
   // Toggle field mapping
   const toggleFieldMapping = async (mappingId: string, enabled: boolean) => {
@@ -608,6 +687,81 @@ const HubSpotIntegration: React.FC<HubSpotIntegrationProps> = ({ organizationId,
                   </Card>
                 </div>
 
+                {/* Sync Mode Selection (only for push) */}
+                {syncDirection === 'push' && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <Button
+                        variant={syncMode === 'all' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSyncMode('all')}
+                      >
+                        Sync All ({contactCount})
+                      </Button>
+                      <Button
+                        variant={syncMode === 'selected' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSyncMode('selected')}
+                      >
+                        Select Contacts ({selectedContactIds.size} selected)
+                      </Button>
+                    </div>
+
+                    {/* Contact Selection */}
+                    {syncMode === 'selected' && (
+                      <div className="border rounded-lg">
+                        <div className="p-3 border-b bg-muted/50">
+                          <div className="flex items-center gap-3">
+                            <Input
+                              placeholder="Search contacts..."
+                              value={contactSearch}
+                              onChange={(e) => setContactSearch(e.target.value)}
+                              className="flex-1"
+                            />
+                            <Button variant="outline" size="sm" onClick={toggleSelectAll}>
+                              {selectedContactIds.size === filteredContacts.length ? 'Deselect All' : 'Select All'}
+                            </Button>
+                          </div>
+                        </div>
+                        <ScrollArea className="h-64">
+                          <div className="divide-y">
+                            {filteredContacts.map((contact) => (
+                              <div
+                                key={contact.id}
+                                className="flex items-center gap-3 p-3 hover:bg-muted/50 cursor-pointer"
+                                onClick={() => toggleContactSelection(contact.id)}
+                              >
+                                <Checkbox
+                                  checked={selectedContactIds.has(contact.id)}
+                                  onCheckedChange={() => toggleContactSelection(contact.id)}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">
+                                    {contact.first_name || contact.last_name
+                                      ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim()
+                                      : contact.email}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground truncate">{contact.email}</p>
+                                </div>
+                                {contact.hubspot_contact_id && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    <CheckCircle className="w-3 h-3 mr-1" /> Synced
+                                  </Badge>
+                                )}
+                              </div>
+                            ))}
+                            {filteredContacts.length === 0 && (
+                              <div className="p-8 text-center text-muted-foreground">
+                                No contacts found
+                              </div>
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Conflict Resolution */}
                 <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                   <div>
@@ -633,7 +787,7 @@ const HubSpotIntegration: React.FC<HubSpotIntegrationProps> = ({ organizationId,
 
                 <Button
                   onClick={performSync}
-                  disabled={syncing}
+                  disabled={syncing || (syncMode === 'selected' && selectedContactIds.size === 0)}
                   className="w-full"
                   size="lg"
                 >

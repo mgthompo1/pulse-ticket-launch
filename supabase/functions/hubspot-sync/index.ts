@@ -11,7 +11,7 @@ const corsHeaders = {
 const HUBSPOT_API_BASE = "https://api.hubapi.com";
 
 interface RequestBody {
-  action: "pushContacts" | "pullContacts" | "pushSingleContact" | "getContactCount";
+  action: "pushContacts" | "pullContacts" | "pushSingleContact" | "getContactCount" | "createProperties";
   organizationId: string;
   contactIds?: string[]; // Optional: specific contacts to sync
   options?: {
@@ -20,6 +20,58 @@ interface RequestBody {
     updateExisting?: boolean;
   };
 }
+
+// Custom properties to create in HubSpot
+const TICKETFLO_CUSTOM_PROPERTIES = [
+  {
+    name: "ticketflo_total_spent",
+    label: "TicketFlo Total Spent",
+    type: "number",
+    fieldType: "number",
+    groupName: "contactinformation",
+    description: "Total amount spent on tickets via TicketFlo",
+  },
+  {
+    name: "ticketflo_total_orders",
+    label: "TicketFlo Total Orders",
+    type: "number",
+    fieldType: "number",
+    groupName: "contactinformation",
+    description: "Total number of orders placed via TicketFlo",
+  },
+  {
+    name: "ticketflo_lifetime_value",
+    label: "TicketFlo Lifetime Value",
+    type: "number",
+    fieldType: "number",
+    groupName: "contactinformation",
+    description: "Customer lifetime value in TicketFlo",
+  },
+  {
+    name: "ticketflo_events_attended",
+    label: "TicketFlo Events Attended",
+    type: "number",
+    fieldType: "number",
+    groupName: "contactinformation",
+    description: "Number of events attended via TicketFlo",
+  },
+  {
+    name: "ticketflo_last_order_date",
+    label: "TicketFlo Last Order Date",
+    type: "date",
+    fieldType: "date",
+    groupName: "contactinformation",
+    description: "Date of last order via TicketFlo",
+  },
+  {
+    name: "ticketflo_tags",
+    label: "TicketFlo Tags",
+    type: "string",
+    fieldType: "text",
+    groupName: "contactinformation",
+    description: "Customer tags from TicketFlo",
+  },
+];
 
 interface HubSpotContact {
   id: string;
@@ -133,7 +185,76 @@ serve(async (req) => {
         );
       }
 
+      case "createProperties": {
+        // Create custom TicketFlo properties in HubSpot
+        const results = { created: 0, existing: 0, failed: 0, errors: [] as string[] };
+
+        for (const prop of TICKETFLO_CUSTOM_PROPERTIES) {
+          try {
+            const response = await fetch(
+              `${HUBSPOT_API_BASE}/crm/v3/properties/contacts`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(prop),
+              }
+            );
+
+            if (response.ok) {
+              results.created++;
+            } else {
+              const errorData = await response.json();
+              if (errorData.category === "DUPLICATE_PROPERTY" || errorData.message?.includes("already exists")) {
+                results.existing++;
+              } else {
+                results.failed++;
+                results.errors.push(`${prop.name}: ${errorData.message}`);
+              }
+            }
+          } catch (err: any) {
+            results.failed++;
+            results.errors.push(`${prop.name}: ${err.message}`);
+          }
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: `Created ${results.created} properties, ${results.existing} already existed, ${results.failed} failed`,
+            ...results,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       case "pushContacts": {
+        // First, ensure custom properties exist in HubSpot
+        console.log("Ensuring custom properties exist in HubSpot...");
+        for (const prop of TICKETFLO_CUSTOM_PROPERTIES) {
+          try {
+            const response = await fetch(
+              `${HUBSPOT_API_BASE}/crm/v3/properties/contacts`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(prop),
+              }
+            );
+            // We don't care if it fails due to already existing
+            if (response.ok) {
+              console.log(`Created property: ${prop.name}`);
+            }
+          } catch (err) {
+            // Ignore errors - property might already exist
+          }
+        }
+
         // Get contacts to push
         let query = supabaseAdmin
           .from("contacts")
