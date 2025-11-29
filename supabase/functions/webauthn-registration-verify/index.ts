@@ -91,7 +91,8 @@ serve(async (req) => {
 
     const expectedChallenge = (challengeData as any).challenge;
 
-    // Get the origin from the request to determine the correct RP ID and expected origin
+    // Use canonical rpID - always ticketflo.org regardless of www subdomain
+    // This ensures passkeys work across both www.ticketflo.org and ticketflo.org
     const origin = req.headers.get("origin") || req.headers.get("referer");
     let rpID = "localhost"; // Default for development
     let expectedOrigin = "http://localhost:8081"; // Default for development
@@ -99,9 +100,17 @@ serve(async (req) => {
     if (origin) {
       try {
         const originUrl = new URL(origin);
-        rpID = originUrl.hostname;
-        expectedOrigin = origin;
-        console.log(`Using RP ID from origin: ${rpID}, expected origin: ${expectedOrigin}`);
+        const hostname = originUrl.hostname;
+        // Use canonical domain (strip www prefix)
+        if (hostname.includes("ticketflo.org")) {
+          rpID = "ticketflo.org";
+          // Accept both www and non-www origins
+          expectedOrigin = origin;
+        } else {
+          rpID = hostname;
+          expectedOrigin = origin;
+        }
+        console.log(`Using canonical RP ID: ${rpID} (origin was: ${hostname}), expected origin: ${expectedOrigin}`);
       } catch (error) {
         console.log("Could not parse origin, using localhost");
         rpID = "localhost";

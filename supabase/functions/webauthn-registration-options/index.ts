@@ -67,14 +67,21 @@ serve(async (req) => {
       });
     }
 
-    // Get the origin from the request to determine the correct RP ID
+    // Use canonical rpID - always ticketflo.org regardless of www subdomain
+    // This ensures passkeys work across both www.ticketflo.org and ticketflo.org
     const origin = req.headers.get("origin") || req.headers.get("referer");
     let rpID = "localhost"; // Default for development
-    
+
     if (origin) {
       try {
-        rpID = new URL(origin).hostname;
-        console.log(`Using RP ID from origin: ${rpID}`);
+        const hostname = new URL(origin).hostname;
+        // Use canonical domain (strip www prefix)
+        if (hostname.includes("ticketflo.org")) {
+          rpID = "ticketflo.org";
+        } else {
+          rpID = hostname;
+        }
+        console.log(`Using canonical RP ID: ${rpID} (origin was: ${hostname})`);
       } catch (error) {
         console.log("Could not parse origin, using localhost");
         rpID = "localhost";
