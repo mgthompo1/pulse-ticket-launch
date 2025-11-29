@@ -43,6 +43,11 @@ export interface PasskeyAuthenticationResult {
   user?: any;
 }
 
+export interface PasskeyStatusResult {
+  hasPasskeys: boolean;
+  passkeyCount: number;
+}
+
 export const usePasskeys = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSupported, setIsSupported] = useState<boolean | null>(null);
@@ -372,12 +377,52 @@ export const usePasskeys = () => {
     }
   };
 
+  // Check if an email has passkeys registered
+  const checkPasskeyStatus = async (email: string): Promise<PasskeyStatusResult> => {
+    if (!email.trim()) {
+      return { hasPasskeys: false, passkeyCount: 0 };
+    }
+
+    try {
+      const supabaseConfig = ensureSupabaseConfig();
+      const { url: supabaseUrl, anonKey } = supabaseConfig;
+
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/check-passkey-status`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`
+          },
+          body: JSON.stringify({ email })
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Passkey status for', email, ':', data);
+        return {
+          hasPasskeys: data.hasPasskeys || false,
+          passkeyCount: data.passkeyCount || 0
+        };
+      }
+
+      return { hasPasskeys: false, passkeyCount: 0 };
+    } catch (error) {
+      console.error('Error checking passkey status:', error);
+      return { hasPasskeys: false, passkeyCount: 0 };
+    }
+  };
+
   return {
     isLoading,
     isSupported,
     isPlatformAvailable,
     checkSupport,
     registerPasskey,
-    authenticateWithPasskey
+    authenticateWithPasskey,
+    checkPasskeyStatus
   };
 };

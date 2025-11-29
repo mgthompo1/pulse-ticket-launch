@@ -31,17 +31,67 @@ const Auth = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [showPasskeySetup, setShowPasskeySetup] = useState(false);
+  const [hasPasskeys, setHasPasskeys] = useState(false);
+  const [checkingPasskeys, setCheckingPasskeys] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
-  const { isSupported: isPasskeySupported, checkSupport } = usePasskeys();
+  const { isSupported: isPasskeySupported, checkSupport, checkPasskeyStatus, authenticateWithPasskey } = usePasskeys();
   
   const inviteToken = searchParams.get('invite');
 
   useEffect(() => {
     checkSupport();
   }, [checkSupport]);
+
+  // Check passkey status when email changes (with debounce)
+  const handleEmailBlur = useCallback(async () => {
+    if (!validateEmail(email) || !isPasskeySupported) {
+      setHasPasskeys(false);
+      return;
+    }
+
+    setCheckingPasskeys(true);
+    try {
+      const status = await checkPasskeyStatus(email);
+      setHasPasskeys(status.hasPasskeys);
+
+      // Auto-trigger passkey auth if user has passkeys
+      if (status.hasPasskeys && activeTab === 'signin') {
+        console.log('User has passkeys, prompting for authentication...');
+      }
+    } catch (error) {
+      console.error('Error checking passkey status:', error);
+      setHasPasskeys(false);
+    } finally {
+      setCheckingPasskeys(false);
+    }
+  }, [email, isPasskeySupported, checkPasskeyStatus, activeTab]);
+
+  // Handle passkey sign in
+  const handlePasskeySignIn = async () => {
+    if (!validateEmail(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const result = await authenticateWithPasskey(email);
+      if (result.success) {
+        navigate('/dashboard');
+      } else {
+        setError(result.error || 'Passkey authentication failed');
+      }
+    } catch (error) {
+      setError('Passkey authentication failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Removed - now using shared validation utilities from @/lib/validation
 
@@ -419,66 +469,135 @@ const Auth = () => {
                         type="email"
                         placeholder="your@email.com"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setHasPasskeys(false); // Reset when typing
+                        }}
+                        onBlur={handleEmailBlur}
                         required
                         className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#ff4d00] focus:ring-[#ff4d00]/20"
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password" className="text-gray-300 font-manrope">Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#ff4d00] focus:ring-[#ff4d00]/20"
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      variant="hero"
-                      className="w-full hover:bg-[#e64400] transition-all shadow-lg shadow-[#ff4d00]/20"
-                      disabled={loading}
-                    >
-                      {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                      Sign In
-                    </Button>
-                    
-                    {/* OAuth & Passkey Sign In Options */}
-                    <div className="relative my-6">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t border-white/10" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-transparent px-2 text-gray-500 font-manrope">
-                          Or continue with
-                        </span>
-                      </div>
+                      {checkingPasskeys && (
+                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Checking account...
+                        </div>
+                      )}
                     </div>
 
-                    <OAuthButtons onError={handlePasskeyAuthError} />
+                    {/* Show passkey-first UI if user has passkeys */}
+                    {hasPasskeys && isPasskeySupported ? (
+                      <div className="space-y-4">
+                        <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                          <div className="flex items-center gap-2 text-sm text-green-400">
+                            <CheckCircle className="w-4 h-4" />
+                            <span className="font-manrope">Passkey available for this account</span>
+                          </div>
+                        </div>
 
-                    {isPasskeySupported && (
-                      <>
+                        <Button
+                          type="button"
+                          variant="hero"
+                          className="w-full hover:bg-[#e64400] transition-all shadow-lg shadow-[#ff4d00]/20"
+                          disabled={loading}
+                          onClick={handlePasskeySignIn}
+                        >
+                          {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                          Sign in with Passkey
+                        </Button>
+
                         <div className="relative my-4">
                           <div className="absolute inset-0 flex items-center">
                             <span className="w-full border-t border-white/10" />
                           </div>
                           <div className="relative flex justify-center text-xs uppercase">
                             <span className="bg-transparent px-2 text-gray-500 font-manrope">
-                              Or use passkey
+                              Or use password instead
                             </span>
                           </div>
                         </div>
 
-                        <PasskeyButton
-                          email={email}
-                          onSuccess={handlePasskeyAuthSuccess}
-                          onError={handlePasskeyAuthError}
+                        <div className="space-y-2">
+                          <Label htmlFor="password" className="text-gray-300 font-manrope">Password</Label>
+                          <Input
+                            id="password"
+                            type="password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#ff4d00] focus:ring-[#ff4d00]/20"
+                          />
+                        </div>
+                        <Button
+                          type="submit"
                           variant="outline"
-                        />
+                          className="w-full bg-white/5 border-white/10 text-gray-300 hover:bg-white/10 hover:text-white font-manrope"
+                          disabled={loading || !password}
+                        >
+                          {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                          Sign In with Password
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Standard password flow */}
+                        <div className="space-y-2">
+                          <Label htmlFor="password" className="text-gray-300 font-manrope">Password</Label>
+                          <Input
+                            id="password"
+                            type="password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-[#ff4d00] focus:ring-[#ff4d00]/20"
+                          />
+                        </div>
+                        <Button
+                          type="submit"
+                          variant="hero"
+                          className="w-full hover:bg-[#e64400] transition-all shadow-lg shadow-[#ff4d00]/20"
+                          disabled={loading}
+                        >
+                          {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                          Sign In
+                        </Button>
+
+                        {/* OAuth & Passkey Sign In Options */}
+                        <div className="relative my-6">
+                          <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t border-white/10" />
+                          </div>
+                          <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-transparent px-2 text-gray-500 font-manrope">
+                              Or continue with
+                            </span>
+                          </div>
+                        </div>
+
+                        <OAuthButtons onError={handlePasskeyAuthError} />
+
+                        {isPasskeySupported && (
+                          <>
+                            <div className="relative my-4">
+                              <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t border-white/10" />
+                              </div>
+                              <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-transparent px-2 text-gray-500 font-manrope">
+                                  Or use passkey
+                                </span>
+                              </div>
+                            </div>
+
+                            <PasskeyButton
+                              email={email}
+                              onSuccess={handlePasskeyAuthSuccess}
+                              onError={handlePasskeyAuthError}
+                              variant="outline"
+                            />
+                          </>
+                        )}
                       </>
                     )}
 
