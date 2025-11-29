@@ -153,8 +153,10 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete }: OnboardingWiza
       setCreatedEventId(event.id);
       setEventUrl(`${window.location.origin}/widget/${event.id}`);
 
-      // Mark onboarding as complete
-      localStorage.setItem("onboarding_completed", "true");
+      // Mark onboarding as complete (per-organization)
+      if (organization?.id) {
+        localStorage.setItem(`onboarding_completed_${organization.id}`, "true");
+      }
 
       goToNext();
     } catch (error) {
@@ -211,7 +213,10 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete }: OnboardingWiza
   };
 
   const handleSkip = () => {
-    localStorage.setItem("onboarding_completed", "true");
+    // Mark onboarding as complete for this specific organization
+    if (organization?.id) {
+      localStorage.setItem(`onboarding_completed_${organization.id}`, "true");
+    }
     onClose();
   };
 

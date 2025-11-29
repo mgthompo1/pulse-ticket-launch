@@ -36,8 +36,9 @@ export const useOnboarding = (): OnboardingState => {
     }
 
     try {
-      // Check localStorage for onboarding completion
-      const onboardingCompleted = localStorage.getItem("onboarding_completed") === "true";
+      // Check localStorage for onboarding completion (per-organization)
+      const onboardingKey = `onboarding_completed_${organization.id}`;
+      const onboardingCompleted = localStorage.getItem(onboardingKey) === "true";
 
       // Check if organization has any events
       const { data: events, error: eventsError } = await supabase
@@ -98,7 +99,9 @@ export const useOnboarding = (): OnboardingState => {
     checkOnboardingStatus();
   }, [checkOnboardingStatus]);
 
-  const hasCompletedOnboarding = localStorage.getItem("onboarding_completed") === "true";
+  const hasCompletedOnboarding = organization?.id
+    ? localStorage.getItem(`onboarding_completed_${organization.id}`) === "true"
+    : false;
 
   const checklistItems: ChecklistItem[] = [
     {
