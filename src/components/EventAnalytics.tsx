@@ -416,65 +416,77 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Event Analytics</h2>
-          <p className="text-muted-foreground">Detailed insights and reporting for your events</p>
+          <h2 className="text-2xl font-bold flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-blue-500/10">
+              <BarChart3 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            Event Analytics
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm">Detailed insights and reporting for your events</p>
         </div>
       </div>
 
-      <div>
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold">Select Event</h3>
-          <p className="text-sm text-muted-foreground">Choose an event to view detailed analytics</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {events.map((event) => (
-            <Card
-              key={event.id}
-              className={`cursor-pointer transition-all hover:shadow-md ${
-                selectedEventId === event.id
-                  ? 'ring-2 ring-primary border-primary'
-                  : 'hover:border-primary/50'
-              }`}
-              onClick={() => setSelectedEventId(event.id)}
-            >
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">{event.name}</CardTitle>
-                <CardDescription className="flex items-center gap-2 mt-2">
-                  <Calendar className="h-4 w-4" />
-                  {format(new Date(event.event_date), 'MMM d, yyyy')}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-1">
-                  {event.venue && (
-                    <p className="text-sm text-muted-foreground">
-                      {event.venue}
+      {/* Event Selection */}
+      <Card className="rounded-2xl border-border shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg font-semibold">Select Event</CardTitle>
+          <CardDescription>Choose an event to view detailed analytics</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {events.map((event) => (
+              <div
+                key={event.id}
+                className={`cursor-pointer p-4 rounded-xl border-2 transition-all hover:shadow-md ${
+                  selectedEventId === event.id
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50 bg-background'
+                }`}
+                onClick={() => setSelectedEventId(event.id)}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`p-2 rounded-lg ${selectedEventId === event.id ? 'bg-primary/10' : 'bg-muted'}`}>
+                    <Calendar className={`h-4 w-4 ${selectedEventId === event.id ? 'text-primary' : 'text-muted-foreground'}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-sm truncate">{event.name}</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {format(new Date(event.event_date), 'MMM d, yyyy')}
                     </p>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <Badge
-                      variant={event.status === 'published' ? 'default' : 'secondary'}
-                      className="text-xs"
-                    >
-                      {event.status}
-                    </Badge>
-                    <p className="text-xs text-muted-foreground">
-                      Capacity: {event.capacity}
-                    </p>
+                    {event.venue && (
+                      <p className="text-xs text-muted-foreground mt-1 truncate">
+                        {event.venue}
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between mt-2">
+                      <Badge
+                        variant={event.status === 'published' ? 'default' : 'secondary'}
+                        className="text-xs rounded-md"
+                      >
+                        {event.status}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {event.capacity} capacity
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
       {loading && (
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-center text-muted-foreground">Loading analytics...</p>
+        <Card className="rounded-2xl border-border">
+          <CardContent className="p-12">
+            <div className="flex flex-col items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+              <p className="text-muted-foreground">Loading analytics...</p>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -498,30 +510,32 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
 
           <TabsContent value="sales" className="space-y-6">
           {/* Event Overview */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
+          <Card className="rounded-2xl border-border shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="p-2 rounded-lg bg-indigo-500/10">
+                  <Calendar className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                </div>
                 Event Overview
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Event Name</p>
-                  <p className="font-medium text-sm sm:text-base truncate">{eventDetails.name}</p>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Event Name</p>
+                  <p className="font-semibold text-sm truncate">{eventDetails.name}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Date & Time</p>
-                  <p className="font-medium text-sm sm:text-base">{format(new Date(eventDetails.event_date), 'MMM d, yyyy HH:mm')}</p>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Date & Time</p>
+                  <p className="font-semibold text-sm">{format(new Date(eventDetails.event_date), 'MMM d, yyyy HH:mm')}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Venue</p>
-                  <p className="font-medium text-sm sm:text-base truncate">{eventDetails.venue || 'Not specified'}</p>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Venue</p>
+                  <p className="font-semibold text-sm truncate">{eventDetails.venue || 'Not specified'}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Status</p>
-                  <Badge variant={eventDetails.status === 'published' ? 'default' : 'secondary'}>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Status</p>
+                  <Badge variant={eventDetails.status === 'published' ? 'default' : 'secondary'} className="rounded-md">
                     {eventDetails.status}
                   </Badge>
                 </div>
@@ -530,145 +544,169 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
           </Card>
 
           {/* Analytics Summary */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">${analytics.totalRevenue.toFixed(2)}</div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-green-500/10">
+                    <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Revenue</p>
+                    <p className="text-xl font-bold">${analytics.totalRevenue.toFixed(2)}</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Tickets Sold</CardTitle>
-                <Ticket className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{analytics.totalTicketsSold}</div>
-                <p className="text-xs text-muted-foreground">of {eventDetails.capacity} capacity</p>
+            <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-purple-500/10">
+                    <Ticket className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Tickets Sold</p>
+                    <p className="text-xl font-bold">{analytics.totalTicketsSold}</p>
+                    <p className="text-[10px] text-muted-foreground">of {eventDetails.capacity}</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{analytics.totalAttendees}</div>
+            <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-blue-500/10">
+                    <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Orders</p>
+                    <p className="text-xl font-bold">{analytics.totalAttendees}</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Checked In</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{analytics.checkedInCount}</div>
-                <p className="text-xs text-muted-foreground">
-                  {analytics.totalTicketsSold > 0 ? ((analytics.checkedInCount / analytics.totalTicketsSold) * 100).toFixed(1) : 0}% attendance
-                </p>
+            <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10">
+                    <Users className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Checked In</p>
+                    <p className="text-xl font-bold">{analytics.checkedInCount}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {analytics.totalTicketsSold > 0 ? ((analytics.checkedInCount / analytics.totalTicketsSold) * 100).toFixed(1) : 0}%
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Avg Order Value</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">${analytics.averageOrderValue.toFixed(2)}</div>
+            <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-amber-500/10">
+                    <TrendingUp className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Avg Order</p>
+                    <p className="text-xl font-bold">${analytics.averageOrderValue.toFixed(2)}</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{analytics.conversionRate.toFixed(1)}%</div>
+            <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-pink-500/10">
+                    <TrendingUp className="h-5 w-5 text-pink-600 dark:text-pink-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Conversion</p>
+                    <p className="text-xl font-bold">{analytics.conversionRate.toFixed(1)}%</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
 
           {/* Orders Table */}
-          <Card>
-            <CardHeader className="space-y-4">
+          <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
+            <CardHeader className="border-b bg-muted/30 pb-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <CardTitle>Order Details</CardTitle>
-                  <CardDescription>Complete list of orders and attendee information</CardDescription>
+                  <CardTitle className="text-lg font-semibold">Order Details</CardTitle>
+                  <CardDescription className="mt-0.5">{filteredOrders.length} orders</CardDescription>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                   <div className="relative">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Search orders..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-8 w-full sm:w-64"
+                      className="pl-9 w-full sm:w-72 rounded-xl bg-background"
                     />
                   </div>
-                  <Button onClick={exportToCSV} variant="outline" size="sm" className="w-full sm:w-auto">
+                  <Button onClick={exportToCSV} variant="outline" size="sm" className="w-full sm:w-auto rounded-xl">
                     <Download className="h-4 w-4 mr-2" />
                     Export CSV
                   </Button>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <div className="overflow-x-auto">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableHead className="w-24">First Name</TableHead>
-                        <TableHead className="w-24">Last Name</TableHead>
-                        <TableHead className="w-40">Email</TableHead>
-                        <TableHead className="w-28">Phone</TableHead>
-                        <TableHead className="w-28">Order Date</TableHead>
-                        <TableHead className="w-32">Items</TableHead>
-                        <TableHead className="w-20">Amount</TableHead>
-                        {hasDonations && <TableHead className="w-20">Donation</TableHead>}
-                        {hasGroupSales && <TableHead className="w-32">Group Name</TableHead>}
-                        {hasAssignedSeats && <TableHead className="w-32">Assigned Seat</TableHead>}
+                        <TableHead className="w-24 py-3.5 px-4 font-medium text-muted-foreground">First Name</TableHead>
+                        <TableHead className="w-24 py-3.5 px-4 font-medium text-muted-foreground">Last Name</TableHead>
+                        <TableHead className="w-40 py-3.5 px-4 font-medium text-muted-foreground">Email</TableHead>
+                        <TableHead className="w-28 py-3.5 px-4 font-medium text-muted-foreground">Phone</TableHead>
+                        <TableHead className="w-28 py-3.5 px-4 font-medium text-muted-foreground">Order Date</TableHead>
+                        <TableHead className="w-32 py-3.5 px-4 font-medium text-muted-foreground">Items</TableHead>
+                        <TableHead className="w-20 py-3.5 px-4 font-medium text-muted-foreground">Amount</TableHead>
+                        {hasDonations && <TableHead className="w-20 py-3.5 px-4 font-medium text-muted-foreground">Donation</TableHead>}
+                        {hasGroupSales && <TableHead className="w-32 py-3.5 px-4 font-medium text-muted-foreground">Group Name</TableHead>}
+                        {hasAssignedSeats && <TableHead className="w-32 py-3.5 px-4 font-medium text-muted-foreground">Assigned Seat</TableHead>}
                         {customQuestions.map((question) => (
-                          <TableHead key={question.id} className="w-48" title={question.label}>
+                          <TableHead key={question.id} className="w-48 py-3.5 px-4 font-medium text-muted-foreground" title={question.label}>
                             {truncateQuestion(question.label, 35)}
                           </TableHead>
                         ))}
-                        <TableHead className="w-20">Status</TableHead>
+                        <TableHead className="w-20 py-3.5 px-4 font-medium text-muted-foreground">Status</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody>
+                    <TableBody className="divide-y divide-border">
                       {filteredOrders.map((order) => {
                         const { firstName, lastName } = splitName(order.customer_name);
                         return (
-                          <TableRow key={order.id}>
-                          <TableCell className="py-2 px-2">
+                          <TableRow key={order.id} className="hover:bg-muted/30 transition-colors">
+                          <TableCell className="py-4 px-4">
                             <p className="font-medium text-sm">{firstName}</p>
                           </TableCell>
-                          <TableCell className="py-2 px-2">
+                          <TableCell className="py-4 px-4">
                             <p className="font-medium text-sm">{lastName}</p>
                           </TableCell>
-                          <TableCell className="py-2 px-2">
-                            <p className="text-xs truncate">{order.customer_email}</p>
+                          <TableCell className="py-4 px-4">
+                            <p className="text-sm text-muted-foreground truncate">{order.customer_email}</p>
                           </TableCell>
-                          <TableCell className="py-2 px-2">
-                            <p className="text-xs">{order.customer_phone || 'Not provided'}</p>
+                          <TableCell className="py-4 px-4">
+                            <p className="text-sm text-muted-foreground">{order.customer_phone || '—'}</p>
                           </TableCell>
-                        <TableCell className="py-2 px-2">
-                          <p className="text-xs">{format(new Date(order.created_at), 'MMM d, yyyy')}</p>
-                          <p className="text-[10px] text-muted-foreground">{format(new Date(order.created_at), 'HH:mm')}</p>
+                        <TableCell className="py-4 px-4">
+                          <p className="text-sm">{format(new Date(order.created_at), 'MMM d, yyyy')}</p>
+                          <p className="text-xs text-muted-foreground">{format(new Date(order.created_at), 'HH:mm')}</p>
                         </TableCell>
-                         <TableCell className="py-2 px-2">
-                           <div>
+                         <TableCell className="py-4 px-4">
+                           <div className="space-y-0.5">
                              {order.order_items.map((item, index) => (
-                               <div key={index} className="text-xs truncate">
+                               <div key={index} className="text-sm truncate">
                                  {item.quantity}x {
                                    item.item_type === 'merchandise'
                                      ? (item.merchandise?.name || 'Unknown Merchandise')
@@ -678,38 +716,42 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                              ))}
                            </div>
                          </TableCell>
-                         <TableCell className="py-2 px-2">
-                           <p className="font-medium text-sm">${order.total_amount.toFixed(2)}</p>
+                         <TableCell className="py-4 px-4">
+                           <p className="font-semibold text-sm">${order.total_amount.toFixed(2)}</p>
                          </TableCell>
                          {hasDonations && (
-                           <TableCell className="py-2 px-2">
-                             <p className="text-sm">${order.donation_amount?.toFixed(2) || '0.00'}</p>
+                           <TableCell className="py-4 px-4">
+                             {order.donation_amount && order.donation_amount > 0 ? (
+                               <p className="text-sm text-pink-600 font-medium">${order.donation_amount.toFixed(2)}</p>
+                             ) : (
+                               <p className="text-sm text-muted-foreground">—</p>
+                             )}
                            </TableCell>
                          )}
                          {hasGroupSales && (
-                           <TableCell className="py-2 px-2">
-                             <p className="text-xs truncate">{order.group_name || '-'}</p>
+                           <TableCell className="py-4 px-4">
+                             <p className="text-sm truncate">{order.group_name || '—'}</p>
                            </TableCell>
                          )}
                          {hasAssignedSeats && (
-                           <TableCell className="py-2 px-2">
-                             <div className="text-xs">
+                           <TableCell className="py-4 px-4">
+                             <div className="text-sm">
                                {order.order_items.flatMap((item: any) =>
                                  item.tickets?.filter((t: any) => t.assigned_seat).map((t: any, idx: number) => (
                                    <div key={idx} className="truncate">{t.assigned_seat}</div>
                                  ))
                                )}
-                               {!order.order_items.some((item: any) => item.tickets?.some((t: any) => t.assigned_seat)) && '-'}
+                               {!order.order_items.some((item: any) => item.tickets?.some((t: any) => t.assigned_seat)) && '—'}
                              </div>
                            </TableCell>
                          )}
                          {customQuestions.map((question) => (
-                           <TableCell key={question.id} className="py-2 px-2">
-                             <p className="text-xs truncate">{getAnswerForQuestion(order, question.id)}</p>
+                           <TableCell key={question.id} className="py-4 px-4">
+                             <p className="text-sm truncate">{getAnswerForQuestion(order, question.id)}</p>
                            </TableCell>
                          ))}
-                         <TableCell className="py-2 px-2">
-                           <Badge variant={order.status === 'completed' || order.status === 'paid' ? 'default' : 'secondary'} className="text-xs">
+                         <TableCell className="py-4 px-4">
+                           <Badge variant={order.status === 'completed' || order.status === 'paid' ? 'default' : 'secondary'} className="text-xs rounded-md">
                              {order.status}
                            </Badge>
                            </TableCell>
@@ -720,13 +762,21 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                 </Table>
               </div>
               {filteredOrders.length === 0 && orders.length > 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  No orders match your search
+                <div className="text-center py-12">
+                  <div className="p-4 rounded-2xl bg-muted/50 w-fit mx-auto mb-4">
+                    <Search className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <p className="font-semibold">No orders match your search</p>
+                  <p className="text-sm text-muted-foreground mt-1">Try adjusting your search terms</p>
                 </div>
               )}
               {orders.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  No orders found for this event
+                <div className="text-center py-12">
+                  <div className="p-4 rounded-2xl bg-muted/50 w-fit mx-auto mb-4">
+                    <Ticket className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <p className="font-semibold">No orders yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">Orders will appear here when customers make purchases</p>
                 </div>
               )}
             </CardContent>
@@ -744,9 +794,15 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
       )}
 
       {!selectedEventId && !loading && (
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-center text-muted-foreground">Select an event above to view detailed analytics and reporting</p>
+        <Card className="rounded-2xl border-border">
+          <CardContent className="py-12">
+            <div className="text-center">
+              <div className="p-4 rounded-2xl bg-muted/50 w-fit mx-auto mb-4">
+                <BarChart3 className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <p className="font-semibold text-lg">Select an event to get started</p>
+              <p className="text-muted-foreground text-sm mt-1">Choose an event above to view detailed analytics and reporting</p>
+            </div>
           </CardContent>
         </Card>
       )}
