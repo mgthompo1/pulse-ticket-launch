@@ -49,9 +49,9 @@ serve(async (req) => {
 
     console.log(`Verifying authentication for email: ${email}`);
 
-    // Get user by email
+    // Get user by email (case-insensitive)
     const { data: userData, error: userError } = await supabaseClient.auth.admin.listUsers();
-    const user = userData?.users.find(u => u.email === email);
+    const user = userData?.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
     if (userError || !user) {
       console.error("User lookup error:", userError);
