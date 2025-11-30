@@ -8,12 +8,9 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Calendar, Users, Settings, BarChart3, Mail, CreditCard, TrendingUp, Link, Shield, MapPin, UsersRound, ChevronDown, UserCog, DollarSign } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { Calendar, Users, Settings, BarChart3, Mail, CreditCard, TrendingUp, Link, Shield, MapPin, UsersRound, UserCog, DollarSign, Target } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganizations } from "@/hooks/useOrganizations";
-import { OrganizationSwitcher } from "@/components/OrganizationSwitcher";
 import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 
 interface Event {
@@ -29,7 +26,7 @@ interface AppSidebarProps {
   selectedEvent: Event | null;
 }
 
-const getSidebarItems = (systemType: string, groupsEnabled: boolean, crmEnabled: boolean, issuingEnabled: boolean) => {
+const getSidebarItems = (systemType: string, groupsEnabled: boolean, crmEnabled: boolean, issuingEnabled: boolean, playbooksEnabled: boolean) => {
   const items = [
     { id: "overview", title: "Overview", icon: BarChart3 },
     {
@@ -66,6 +63,11 @@ const getSidebarItems = (systemType: string, groupsEnabled: boolean, crmEnabled:
     items.push({ id: "issuing", title: "Issuing", icon: DollarSign });
   }
 
+  // Conditionally add Playbooks menu item if enabled
+  if (playbooksEnabled) {
+    items.push({ id: "playbooks", title: "Playbooks", icon: Target });
+  }
+
   // Add remaining items
   items.push(
     { id: "support", title: "Support", icon: Mail },
@@ -80,79 +82,14 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const { user } = useAuth();
-  const { organizations, currentOrganization, switchOrganization } = useOrganizations();
-  const [organizationLogo, setOrganizationLogo] = useState<string | null>(null);
-  const [organizationName, setOrganizationName] = useState<string>("");
-  const [systemType, setSystemType] = useState<string>("EVENTS");
-  const [groupsEnabled, setGroupsEnabled] = useState<boolean>(false);
-  const [crmEnabled, setCrmEnabled] = useState<boolean>(false);
-  const [issuingEnabled, setIssuingEnabled] = useState<boolean>(false);
+  const { currentOrganization } = useOrganizations();
 
-  useEffect(() => {
-    const loadOrganization = async () => {
-      if (!user) return;
-
-      try {
-        // First, try to find organization where user is the owner
-        const { data: orgData, error } = await supabase
-          .from("organizations")
-          .select("logo_url, name, system_type, groups_enabled, crm_enabled, issuing_enabled")
-          .eq("user_id", user.id)
-          .single();
-
-        let organizationData = orgData;
-
-        // If no owned organization found, check if user is a member of any organization
-        if (error && error.code === 'PGRST116') {
-          console.log("No owned organization found, checking memberships...");
-
-          const { data: membershipData, error: membershipError } = await supabase
-            .from("organization_users")
-            .select(`
-              organization_id,
-              role,
-              organizations (
-                logo_url,
-                name,
-                system_type,
-                groups_enabled,
-                crm_enabled,
-                issuing_enabled
-              )
-            `)
-            .eq("user_id", user.id)
-            .limit(1)
-            .single();
-
-          if (membershipError) {
-            console.error("Error loading organization membership:", membershipError);
-            return;
-          }
-
-          if (membershipData?.organizations) {
-            organizationData = membershipData.organizations as typeof orgData;
-            console.log("Found organization via membership:", organizationData);
-          }
-        } else if (error) {
-          console.error("Error loading organization:", error);
-          return;
-        }
-
-        if (organizationData) {
-          setOrganizationLogo(organizationData.logo_url);
-          setOrganizationName(organizationData.name || "");
-          setSystemType(organizationData.system_type || "EVENTS");
-          setGroupsEnabled(organizationData.groups_enabled || false);
-          setCrmEnabled(organizationData.crm_enabled || false);
-          setIssuingEnabled(organizationData.issuing_enabled || false);
-        }
-      } catch (error) {
-        console.error("Error loading organization:", error);
-      }
-    };
-
-    loadOrganization();
-  }, [user]);
+  // Use currentOrganization from the hook - this stays in sync when settings change
+  const systemType = currentOrganization?.system_type || "EVENTS";
+  const groupsEnabled = currentOrganization?.groups_enabled || false;
+  const crmEnabled = currentOrganization?.crm_enabled || false;
+  const issuingEnabled = currentOrganization?.issuing_enabled || false;
+  const playbooksEnabled = currentOrganization?.playbooks_enabled || false;
 
   return (
     <Sidebar
@@ -164,7 +101,7 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
         <SidebarGroup className="px-3 !pt-3 pb-4">
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {getSidebarItems(systemType, groupsEnabled, crmEnabled, issuingEnabled).map((item) => {
+              {getSidebarItems(systemType, groupsEnabled, crmEnabled, issuingEnabled, playbooksEnabled).map((item) => {
                 const isDisabled = item.requiresEvent && !selectedEvent;
                 const isActive = activeTab === item.id;
 

@@ -12,7 +12,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import {
   Building2, Mail, Globe, Phone, MapPin, Upload, Save, Settings,
   Calendar, MapPin as Attraction, Users, UserCog, Calculator,
-  CreditCard, Palette, Moon, Sun, Monitor, ChevronRight
+  CreditCard, Palette, Moon, Sun, Monitor, ChevronRight, Target
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { TaxSettings } from "@/components/TaxSettings";
@@ -33,6 +33,7 @@ interface OrganizationData {
   groups_enabled: boolean;
   crm_enabled: boolean;
   issuing_enabled: boolean;
+  playbooks_enabled: boolean;
   stripe_account_id: string | null;
 }
 
@@ -68,6 +69,7 @@ const OrganizationSettings: React.FC = () => {
     groups_enabled: false,
     crm_enabled: false,
     issuing_enabled: false,
+    playbooks_enabled: false,
     stripe_account_id: null,
   });
 
@@ -108,6 +110,7 @@ const OrganizationSettings: React.FC = () => {
           groups_enabled: orgData.groups_enabled || false,
           crm_enabled: orgData.crm_enabled || false,
           issuing_enabled: orgData.issuing_enabled || false,
+          playbooks_enabled: orgData.playbooks_enabled || false,
           stripe_account_id: orgData.stripe_account_id || null,
         });
       }
@@ -210,6 +213,7 @@ const OrganizationSettings: React.FC = () => {
           groups_enabled: organizationData.groups_enabled,
           crm_enabled: organizationData.crm_enabled,
           issuing_enabled: organizationData.issuing_enabled,
+          playbooks_enabled: organizationData.playbooks_enabled,
         })
         .eq("id", organizationData.id);
 
@@ -534,7 +538,7 @@ const OrganizationSettings: React.FC = () => {
           </div>
 
           {/* Virtual Cards */}
-          <div className="flex items-center justify-between py-4">
+          <div className="flex items-center justify-between py-4 border-b">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-purple-500/10">
                 <CreditCard className="h-5 w-5 text-purple-500" />
@@ -557,6 +561,27 @@ const OrganizationSettings: React.FC = () => {
                 setOrganizationData(prev => ({ ...prev, issuing_enabled: checked }))
               }
               disabled={!organizationData.stripe_account_id}
+            />
+          </div>
+
+          {/* Event Marketing Playbooks */}
+          <div className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-pink-500/10">
+                <Target className="h-5 w-5 text-pink-500" />
+              </div>
+              <div>
+                <div className="font-medium">Event Marketing Playbooks</div>
+                <p className="text-sm text-muted-foreground">
+                  CRM integration, guest lists, and attendee tracking
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={organizationData.playbooks_enabled}
+              onCheckedChange={(checked) =>
+                setOrganizationData(prev => ({ ...prev, playbooks_enabled: checked }))
+              }
             />
           </div>
         </CardContent>

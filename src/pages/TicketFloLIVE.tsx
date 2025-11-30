@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { WaiverConfiguration } from "@/components/WaiverConfiguration";
 import { SignedWaivers } from "@/components/SignedWaivers";
 import { WaiverSigningModal } from "@/components/WaiverSigningModal";
+import { AttendeeNotesPanel } from "@/components/AttendeeNotesPanel";
 
 interface GuestStatus {
   ticket_id: string;
@@ -143,6 +144,14 @@ const TicketFloLIVE = () => {
     ticketCode: string;
     customerName: string;
     customerEmail: string;
+  } | null>(null);
+
+  // Attendee notes state (for playbook events)
+  const [showNotesPanel, setShowNotesPanel] = useState(false);
+  const [checkedInAttendee, setCheckedInAttendee] = useState<{
+    email: string;
+    name: string;
+    company?: string;
   } | null>(null);
 
   // Analytics state
@@ -657,6 +666,15 @@ const handleCreateConcessionItem = async () => {
         }
         setCheckInNotes("");
         loadGuests();
+
+        // Show notes panel for playbook tracking (if email available)
+        if (customerEmail) {
+          setCheckedInAttendee({
+            email: customerEmail,
+            name: customerName,
+          });
+          setShowNotesPanel(true);
+        }
       } else {
         console.error("❌ Check-in failed with data:", data);
         console.error("Error message from server:", data?.error);
@@ -2371,6 +2389,21 @@ const handleCreateConcessionItem = async () => {
           customerName={waiverTicketInfo.customerName}
           customerEmail={waiverTicketInfo.customerEmail}
           onWaiverSigned={handleWaiverSigned}
+        />
+      )}
+
+      {/* Attendee Notes Panel (for playbook events) */}
+      {showNotesPanel && checkedInAttendee && eventId && (
+        <AttendeeNotesPanel
+          eventId={eventId}
+          email={checkedInAttendee.email}
+          customerName={checkedInAttendee.name}
+          company={checkedInAttendee.company}
+          isDialog={true}
+          onClose={() => {
+            setShowNotesPanel(false);
+            setCheckedInAttendee(null);
+          }}
         />
       )}
     </div>

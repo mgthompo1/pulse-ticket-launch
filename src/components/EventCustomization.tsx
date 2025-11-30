@@ -14,7 +14,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound, Heart, Share2, FileText, Calendar, Send, ShoppingCart, ClipboardList } from "lucide-react";
+import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound, Heart, Share2, FileText, Calendar, Send, ShoppingCart, ClipboardList, Target, BarChart3 } from "lucide-react";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import MerchandiseManager from "@/components/MerchandiseManager";
@@ -27,6 +27,8 @@ import { VenueLocationPicker } from "@/components/VenueLocationPicker";
 import { AbandonedCartSettings } from "@/components/AbandonedCartSettings";
 import { PostEventSurveySettings } from "@/components/PostEventSurveySettings";
 import { CheckoutTemplateBuilder, CheckoutTemplate } from "@/components/CheckoutTemplateBuilder";
+import { EventInviteManager } from "@/components/EventInviteManager";
+import { EventPlaybookSummary } from "@/components/EventPlaybookSummary";
 
 // Type definitions for better type safety
 interface EmailBlock {
@@ -58,12 +60,26 @@ import { createDefaultTemplate, EmailTemplate } from "@/types/email-template";
 interface EventCustomizationProps {
   eventId: string;
   onSave?: () => void;
+  initialTab?: string;
+  initialSubTab?: string;
 }
 
-const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave }) => {
+const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave, initialTab, initialSubTab }) => {
   const { toast } = useToast();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState(initialTab || "widget");
+  const [attendeesSubTab, setAttendeesSubTab] = useState(initialSubTab || "registered");
+
+  // Update tabs when initialTab/initialSubTab props change (from Playbooks navigation)
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+    if (initialSubTab) {
+      setAttendeesSubTab(initialSubTab);
+    }
+  }, [initialTab, initialSubTab]);
   const [showSeatMapDesigner, setShowSeatMapDesigner] = useState(false);
   const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
@@ -870,7 +886,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         </div>
       )}
 
-      <Tabs defaultValue="widget" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         {/* Compact navigation bar */}
         <div className="overflow-x-auto -mx-4 px-4 pb-2">
           <TabsList className="inline-flex h-10 p-1 gap-0.5 bg-muted/40 border rounded-xl min-w-max">
@@ -2750,7 +2766,40 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         </TabsContent>
 
         <TabsContent value="attendees" className="space-y-6">
-          <AttendeeManagement eventId={eventId} />
+          <Tabs value={attendeesSubTab} onValueChange={setAttendeesSubTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-6">
+              <TabsTrigger value="registered" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Registered
+              </TabsTrigger>
+              <TabsTrigger value="invite-list" className="flex items-center gap-2">
+                <Target className="h-4 w-4" />
+                Guest List
+              </TabsTrigger>
+              <TabsTrigger value="summary" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Summary
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="registered">
+              <AttendeeManagement eventId={eventId} />
+            </TabsContent>
+
+            <TabsContent value="invite-list">
+              <EventInviteManager
+                eventId={eventId}
+                organizationId={organizationId}
+              />
+            </TabsContent>
+
+            <TabsContent value="summary">
+              <EventPlaybookSummary
+                eventId={eventId}
+                organizationId={organizationId}
+              />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="settings" className="space-y-6">
@@ -3235,6 +3284,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
             organizationId={organizationId}
           />
         </TabsContent>
+
       </Tabs>
       
       {/* Seat Map Designer Modal */}

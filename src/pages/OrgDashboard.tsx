@@ -51,6 +51,7 @@ import AttractionCustomization from "@/components/AttractionCustomization";
 import GroupsManagement from "@/components/GroupsManagement";
 import CustomersCRM from "@/pages/CustomersCRM";
 import IssuingPage from "@/pages/IssuingPage";
+import Playbooks from "@/pages/Playbooks";
 import { useNavigate } from "react-router-dom";
 import { OnboardingWizard } from "@/components/OnboardingWizard";
 import { useOnboarding } from "@/hooks/useOnboarding";
@@ -110,6 +111,8 @@ const OrgDashboard = () => {
   const [attractions, setAttractions] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [eventCustomizationTab, setEventCustomizationTab] = useState<string | undefined>(undefined);
+  const [eventCustomizationSubTab, setEventCustomizationSubTab] = useState<string | undefined>(undefined);
 
   // Use the organizations hook for multi-organization support
   const {
@@ -159,6 +162,11 @@ const OrgDashboard = () => {
   const canAccessIssuing = () => {
     const role = currentOrganization?.role;
     return (role === 'owner' || role === 'admin') && currentOrganization?.issuing_enabled === true;
+  };
+
+  const canAccessPlaybooks = () => {
+    const role = currentOrganization?.role;
+    return (role === 'owner' || role === 'admin') && currentOrganization?.playbooks_enabled === true;
   };
 
   // System type checking
@@ -264,6 +272,60 @@ const OrgDashboard = () => {
 
     return () => {
       window.removeEventListener('openDashboardHelp', handleHelpRequest as EventListener);
+    };
+  }, []);
+
+  // Listen for tab change requests from Playbooks and other components
+  React.useEffect(() => {
+    const handleTabChange = async (event: CustomEvent) => {
+      if (event.detail?.tab) {
+        setActiveTab(event.detail.tab);
+
+        // If navigating to event-details, handle sub-tab selection
+        if (event.detail.tab === 'event-details') {
+          // Set the EventCustomization tab and sub-tab if provided
+          if (event.detail.eventTab) {
+            setEventCustomizationTab(event.detail.eventTab);
+          }
+          if (event.detail.eventSubTab) {
+            setEventCustomizationSubTab(event.detail.eventSubTab);
+          }
+
+          // If an eventId is provided, load and select that event
+          if (event.detail?.eventId) {
+            try {
+              const { data: eventData, error } = await supabase
+                .from('events')
+                .select('*')
+                .eq('id', event.detail.eventId)
+                .single();
+
+              if (!error && eventData) {
+                setSelectedEvent({
+                  id: eventData.id,
+                  name: eventData.name,
+                  status: eventData.status,
+                  venue: eventData.venue,
+                  capacity: eventData.capacity || 0,
+                  tickets_sold: 0,
+                  revenue: 0,
+                  created_at: eventData.created_at,
+                  event_date: eventData.event_date,
+                  event_end_date: eventData.event_end_date,
+                });
+              }
+            } catch (err) {
+              console.error('Error loading event:', err);
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('changeTab', handleTabChange as EventListener);
+
+    return () => {
+      window.removeEventListener('changeTab', handleTabChange as EventListener);
     };
   }, []);
 
@@ -1815,7 +1877,11 @@ const OrgDashboard = () => {
                   {isEventsMode() ? (
                     selectedEvent ? (
                       <div className="space-y-6">
-                        <EventCustomization eventId={selectedEvent.id} />
+                        <EventCustomization
+                          eventId={selectedEvent.id}
+                          initialTab={eventCustomizationTab}
+                          initialSubTab={eventCustomizationSubTab}
+                        />
                       </div>
                     ) : (
                       <Card>
@@ -1888,6 +1954,12 @@ const OrgDashboard = () => {
                 {canAccessIssuing() && (
                   <TabsContent value="issuing" className="space-y-6">
                     <IssuingPage />
+                  </TabsContent>
+                )}
+
+                {canAccessPlaybooks() && (
+                  <TabsContent value="playbooks" className="space-y-6">
+                    <Playbooks />
                   </TabsContent>
                 )}
 
