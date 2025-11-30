@@ -172,10 +172,25 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete }: OnboardingWiza
   };
 
   const publishEvent = async () => {
-    if (!createdEventId) return;
+    if (!createdEventId || !organization?.id) return;
 
     setIsLoading(true);
     try {
+      // Check billing setup first
+      const { data: billingData } = await supabase.rpc('check_billing_setup', {
+        p_organization_id: organization.id
+      });
+
+      if (!billingData) {
+        toast({
+          title: "Billing Setup Required",
+          description: "Please set up billing and add a payment method before publishing events",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
       const { error } = await supabase
         .from("events")
         .update({ status: "published" })

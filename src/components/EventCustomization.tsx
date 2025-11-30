@@ -2901,6 +2901,22 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   checked={eventData?.status === 'published'}
                   onCheckedChange={async (checked) => {
                     try {
+                      // If publishing, check billing setup first
+                      if (checked) {
+                        const { data: billingData } = await supabase.rpc('check_billing_setup', {
+                          p_organization_id: organizationId
+                        });
+
+                        if (!billingData) {
+                          toast({
+                            title: "Billing Setup Required",
+                            description: "Please set up billing and add a payment method before publishing events",
+                            variant: "destructive"
+                          });
+                          return;
+                        }
+                      }
+
                       const { error } = await supabase
                         .from("events")
                         .update({ status: checked ? 'published' : 'draft' })
