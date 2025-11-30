@@ -46,7 +46,11 @@ import {
   Trash2,
   Plus,
   Eye,
-  EyeOff
+  EyeOff,
+  GitCommit,
+  GitBranch,
+  Code,
+  FileDiff
 } from "lucide-react";
 import { format } from "date-fns";
 import { OrganizationDetailModal } from "@/components/OrganizationDetailModal";
@@ -143,6 +147,39 @@ const MasterAdmin = () => {
   }>({
     loading: true,
     entries: []
+  });
+  const [codeDeployments, setCodeDeployments] = useState<{
+    loading: boolean;
+    deployments: Array<{
+      id: string;
+      commit_hash: string;
+      commit_message: string;
+      author_name: string;
+      author_email: string;
+      branch: string;
+      files_changed: number;
+      insertions: number;
+      deletions: number;
+      deployed_at: string;
+      environment: string;
+      status: string;
+    }>;
+  }>({
+    loading: true,
+    deployments: []
+  });
+  const [deploymentSettings, setDeploymentSettings] = useState<{
+    loading: boolean;
+    saving: boolean;
+    email_alerts_enabled: boolean;
+    alert_emails: string[];
+    newEmail: string;
+  }>({
+    loading: true,
+    saving: false,
+    email_alerts_enabled: false,
+    alert_emails: [],
+    newEmail: ''
   });
   const [announcements, setAnnouncements] = useState<{
     loading: boolean;
@@ -616,6 +653,133 @@ const MasterAdmin = () => {
     };
     fetchAuditLog();
   }, []);
+
+  // Fetch code deployments
+  useEffect(() => {
+    const fetchCodeDeployments = async () => {
+      const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+      if (!adminToken) return;
+
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: { token: adminToken, dataType: 'code_deployments' }
+        });
+
+        if (error) throw error;
+        if (data?.success) {
+          setCodeDeployments({ deployments: data.data || [], loading: false });
+        } else {
+          setCodeDeployments(prev => ({ ...prev, loading: false }));
+        }
+      } catch (error) {
+        console.error("Error loading code deployments:", error);
+        setCodeDeployments(prev => ({ ...prev, loading: false }));
+      }
+    };
+    fetchCodeDeployments();
+  }, []);
+
+  // Fetch deployment settings
+  useEffect(() => {
+    const fetchDeploymentSettings = async () => {
+      const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+      if (!adminToken) return;
+
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-data', {
+          body: { token: adminToken, dataType: 'get_deployment_settings' }
+        });
+
+        if (error) throw error;
+        if (data?.success) {
+          setDeploymentSettings(prev => ({
+            ...prev,
+            email_alerts_enabled: data.data.email_alerts_enabled || false,
+            alert_emails: data.data.alert_emails || [],
+            loading: false
+          }));
+        } else {
+          setDeploymentSettings(prev => ({ ...prev, loading: false }));
+        }
+      } catch (error) {
+        console.error("Error loading deployment settings:", error);
+        setDeploymentSettings(prev => ({ ...prev, loading: false }));
+      }
+    };
+    fetchDeploymentSettings();
+  }, []);
+
+  // Save deployment settings
+  const saveDeploymentSettings = async () => {
+    const adminToken = sessionStorage.getItem('ticketflo_admin_token');
+    if (!adminToken) return;
+
+    setDeploymentSettings(prev => ({ ...prev, saving: true }));
+
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-data', {
+        body: {
+          token: adminToken,
+          dataType: 'update_deployment_settings',
+          deploymentSettings: {
+            email_alerts_enabled: deploymentSettings.email_alerts_enabled,
+            alert_emails: deploymentSettings.alert_emails
+          }
+        }
+      });
+
+      if (error) throw error;
+      if (data?.success) {
+        toast({
+          title: "Settings saved",
+          description: "Deployment email alert settings have been updated."
+        });
+      }
+    } catch (error) {
+      console.error("Error saving deployment settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save deployment settings.",
+        variant: "destructive"
+      });
+    } finally {
+      setDeploymentSettings(prev => ({ ...prev, saving: false }));
+    }
+  };
+
+  // Add email to deployment alerts
+  const addDeploymentEmail = () => {
+    const email = deploymentSettings.newEmail.trim();
+    if (!email || !email.includes('@')) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address.",
+        variant: "destructive"
+      });
+      return;
+    }
+    if (deploymentSettings.alert_emails.includes(email)) {
+      toast({
+        title: "Duplicate email",
+        description: "This email is already in the list.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setDeploymentSettings(prev => ({
+      ...prev,
+      alert_emails: [...prev.alert_emails, email],
+      newEmail: ''
+    }));
+  };
+
+  // Remove email from deployment alerts
+  const removeDeploymentEmail = (email: string) => {
+    setDeploymentSettings(prev => ({
+      ...prev,
+      alert_emails: prev.alert_emails.filter(e => e !== email)
+    }));
+  };
 
   // Fetch announcements
   useEffect(() => {
@@ -2107,6 +2271,191 @@ const MasterAdmin = () => {
           {/* Audit Log Tab */}
           {activeTab === "audit" && (
             <div className="space-y-6">
+              {/* Code Deployments / Git Commits */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <GitCommit className="w-5 h-5" />
+                    Code Deployments
+                  </CardTitle>
+                  <CardDescription>Track all code changes and deployments to production</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {codeDeployments.loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <span className="ml-2">Loading deployments...</span>
+                    </div>
+                  ) : codeDeployments.deployments.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <GitBranch className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No deployments recorded yet.</p>
+                      <p className="text-sm">Code changes will appear here when logged.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {codeDeployments.deployments.map((deployment) => (
+                        <div
+                          key={deployment.id}
+                          className="flex items-start gap-4 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                        >
+                          <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                            <GitCommit className="w-5 h-5 text-green-600 dark:text-green-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">
+                                {deployment.commit_hash?.substring(0, 7)}
+                              </code>
+                              <Badge variant="outline" className="text-xs">
+                                <GitBranch className="w-3 h-3 mr-1" />
+                                {deployment.branch}
+                              </Badge>
+                              <Badge
+                                variant={deployment.status === 'success' ? 'default' : 'destructive'}
+                                className="text-xs"
+                              >
+                                {deployment.status}
+                              </Badge>
+                            </div>
+                            <p className="text-sm font-medium truncate">
+                              {deployment.commit_message}
+                            </p>
+                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                              <span>{deployment.author_name}</span>
+                              <span className="flex items-center gap-1">
+                                <FileDiff className="w-3 h-3" />
+                                {deployment.files_changed} files
+                              </span>
+                              <span className="text-green-600">+{deployment.insertions}</span>
+                              <span className="text-red-600">-{deployment.deletions}</span>
+                              <span>{format(new Date(deployment.deployed_at), 'MMM d, yyyy HH:mm')}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Deployment Email Alert Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Mail className="w-5 h-5" />
+                    Deployment Email Alerts
+                  </CardTitle>
+                  <CardDescription>Get notified via email whenever code is deployed</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {deploymentSettings.loading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span className="ml-2 text-sm">Loading settings...</span>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Enable/Disable Toggle */}
+                      <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+                        <div className="space-y-0.5">
+                          <Label className="text-base font-medium">Enable Email Alerts</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Send email notifications for each code deployment
+                          </p>
+                        </div>
+                        <Button
+                          variant={deploymentSettings.email_alerts_enabled ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setDeploymentSettings(prev => ({
+                            ...prev,
+                            email_alerts_enabled: !prev.email_alerts_enabled
+                          }))}
+                        >
+                          {deploymentSettings.email_alerts_enabled ? (
+                            <>
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Enabled
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="w-4 h-4 mr-2" />
+                              Disabled
+                            </>
+                          )}
+                        </Button>
+                      </div>
+
+                      {/* Email Recipients */}
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">Alert Recipients</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="email"
+                            placeholder="Enter email address"
+                            value={deploymentSettings.newEmail}
+                            onChange={(e) => setDeploymentSettings(prev => ({ ...prev, newEmail: e.target.value }))}
+                            onKeyDown={(e) => e.key === 'Enter' && addDeploymentEmail()}
+                            className="flex-1"
+                          />
+                          <Button onClick={addDeploymentEmail} size="sm">
+                            <Plus className="w-4 h-4 mr-1" />
+                            Add
+                          </Button>
+                        </div>
+
+                        {/* Email List */}
+                        {deploymentSettings.alert_emails.length > 0 ? (
+                          <div className="space-y-2">
+                            {deploymentSettings.alert_emails.map((email) => (
+                              <div
+                                key={email}
+                                className="flex items-center justify-between p-2 rounded-md bg-muted/50 border"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <Mail className="w-4 h-4 text-muted-foreground" />
+                                  <span className="text-sm">{email}</span>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeDeploymentEmail(email)}
+                                  className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground italic">
+                            No email recipients added yet.
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Save Button */}
+                      <div className="flex justify-end pt-2">
+                        <Button onClick={saveDeploymentSettings} disabled={deploymentSettings.saving}>
+                          {deploymentSettings.saving ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4 mr-2" />
+                              Save Settings
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Admin Audit Log */}
               {auditLog.loading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin" />
@@ -2117,7 +2466,7 @@ const MasterAdmin = () => {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <ScrollText className="w-5 h-5" />
-                      Platform Audit Log
+                      Admin Activity Log
                     </CardTitle>
                     <CardDescription>Track all administrative actions and system events</CardDescription>
                   </CardHeader>
@@ -2379,37 +2728,37 @@ const MasterAdmin = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                        <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800">
                           <div className="flex items-center gap-2 mb-2">
-                            <CreditCard className="w-5 h-5 text-blue-600" />
-                            <span className="font-semibold text-blue-800">Stripe Connected</span>
+                            <CreditCard className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                            <span className="font-semibold text-blue-800 dark:text-blue-300">Stripe Connected</span>
                           </div>
-                          <div className="text-2xl font-bold text-blue-600">+25 pts</div>
-                          <p className="text-xs text-blue-600 mt-1">Has linked Stripe account for payments</p>
+                          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">+25 pts</div>
+                          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Has linked Stripe account for payments</p>
                         </div>
-                        <div className="p-4 rounded-lg bg-purple-50 border border-purple-200">
+                        <div className="p-4 rounded-lg bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800">
                           <div className="flex items-center gap-2 mb-2">
-                            <Calendar className="w-5 h-5 text-purple-600" />
-                            <span className="font-semibold text-purple-800">Events Created</span>
+                            <Calendar className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                            <span className="font-semibold text-purple-800 dark:text-purple-300">Events Created</span>
                           </div>
-                          <div className="text-2xl font-bold text-purple-600">+25 pts</div>
-                          <p className="text-xs text-purple-600 mt-1">Has at least 1 event created</p>
+                          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">+25 pts</div>
+                          <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">Has at least 1 event created</p>
                         </div>
-                        <div className="p-4 rounded-lg bg-green-50 border border-green-200">
+                        <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800">
                           <div className="flex items-center gap-2 mb-2">
-                            <Ticket className="w-5 h-5 text-green-600" />
-                            <span className="font-semibold text-green-800">Tickets Sold</span>
+                            <Ticket className="w-5 h-5 text-green-600 dark:text-green-400" />
+                            <span className="font-semibold text-green-800 dark:text-green-300">Tickets Sold</span>
                           </div>
-                          <div className="text-2xl font-bold text-green-600">+25 pts</div>
-                          <p className="text-xs text-green-600 mt-1">Has sold at least 1 ticket</p>
+                          <div className="text-2xl font-bold text-green-600 dark:text-green-400">+25 pts</div>
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-1">Has sold at least 1 ticket</p>
                         </div>
-                        <div className="p-4 rounded-lg bg-orange-50 border border-orange-200">
+                        <div className="p-4 rounded-lg bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-800">
                           <div className="flex items-center gap-2 mb-2">
-                            <Activity className="w-5 h-5 text-orange-600" />
-                            <span className="font-semibold text-orange-800">Recent Activity</span>
+                            <Activity className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                            <span className="font-semibold text-orange-800 dark:text-orange-300">Recent Activity</span>
                           </div>
-                          <div className="text-2xl font-bold text-orange-600">+25 pts</div>
-                          <p className="text-xs text-orange-600 mt-1">Activity within last 30 days</p>
+                          <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">+25 pts</div>
+                          <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Activity within last 30 days</p>
                         </div>
                       </div>
 
@@ -2489,9 +2838,9 @@ const MasterAdmin = () => {
                               .sort((a, b) => a.score - b.score)
                               .map((org) => (
                                 <TableRow key={org.id} className={
-                                  org.score < 25 ? 'bg-red-50' :
-                                  org.score < 50 ? 'bg-orange-50' :
-                                  org.score < 75 ? 'bg-yellow-50' : ''
+                                  org.score < 25 ? 'bg-red-50 dark:bg-red-950/30' :
+                                  org.score < 50 ? 'bg-orange-50 dark:bg-orange-950/30' :
+                                  org.score < 75 ? 'bg-yellow-50 dark:bg-yellow-950/30' : ''
                                 }>
                                   <TableCell className="font-medium">{org.name}</TableCell>
                                   <TableCell>
@@ -2506,10 +2855,10 @@ const MasterAdmin = () => {
                                       ></div>
                                       <Progress value={org.score} className="w-20" />
                                       <span className={`text-sm font-bold ${
-                                        org.score >= 75 ? 'text-green-600' :
-                                        org.score >= 50 ? 'text-yellow-600' :
-                                        org.score >= 25 ? 'text-orange-600' :
-                                        'text-red-600'
+                                        org.score >= 75 ? 'text-green-600 dark:text-green-400' :
+                                        org.score >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                                        org.score >= 25 ? 'text-orange-600 dark:text-orange-400' :
+                                        'text-red-600 dark:text-red-400'
                                       }`}>
                                         {org.score}/100
                                       </span>
@@ -2519,7 +2868,7 @@ const MasterAdmin = () => {
                                     {org.metrics.hasStripeConnected ? (
                                       <div className="flex flex-col items-center">
                                         <CheckCircle className="w-5 h-5 text-green-500" />
-                                        <span className="text-xs text-green-600 font-medium">+25</span>
+                                        <span className="text-xs text-green-600 dark:text-green-400 font-medium">+25</span>
                                       </div>
                                     ) : (
                                       <div className="flex flex-col items-center">
@@ -2532,7 +2881,7 @@ const MasterAdmin = () => {
                                     {org.metrics.hasEvents ? (
                                       <div className="flex flex-col items-center">
                                         <CheckCircle className="w-5 h-5 text-green-500" />
-                                        <span className="text-xs text-green-600 font-medium">+25</span>
+                                        <span className="text-xs text-green-600 dark:text-green-400 font-medium">+25</span>
                                       </div>
                                     ) : (
                                       <div className="flex flex-col items-center">
@@ -2545,7 +2894,7 @@ const MasterAdmin = () => {
                                     {org.metrics.hasTicketsSold ? (
                                       <div className="flex flex-col items-center">
                                         <CheckCircle className="w-5 h-5 text-green-500" />
-                                        <span className="text-xs text-green-600 font-medium">+25</span>
+                                        <span className="text-xs text-green-600 dark:text-green-400 font-medium">+25</span>
                                       </div>
                                     ) : (
                                       <div className="flex flex-col items-center">
@@ -2558,7 +2907,7 @@ const MasterAdmin = () => {
                                     {org.metrics.isActive ? (
                                       <div className="flex flex-col items-center">
                                         <CheckCircle className="w-5 h-5 text-green-500" />
-                                        <span className="text-xs text-green-600 font-medium">+25</span>
+                                        <span className="text-xs text-green-600 dark:text-green-400 font-medium">+25</span>
                                       </div>
                                     ) : (
                                       <div className="flex flex-col items-center">

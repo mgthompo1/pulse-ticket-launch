@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { CreditCard, Users, CheckCircle, Printer, Plus, ShoppingCart, BarChart3, TrendingUp, DollarSign, Package, Menu, Search, Home, Tag, Eye, UserCheck, Settings, FileSignature, ChevronDown, ChevronRight } from "lucide-react";
+import { CreditCard, Users, CheckCircle, Printer, Plus, ShoppingCart, BarChart3, TrendingUp, DollarSign, Package, Menu, Search, Home, Tag, Eye, UserCheck, Settings, FileSignature, ChevronDown, ChevronRight, Calendar, MessageSquare, Clock, MapPin, Trash2, Edit, GripVertical, User } from "lucide-react";
 import { LanyardPreviewData, LanyardTemplate, createDefaultLanyardTemplate, getAllLanyardTemplates } from "@/types/lanyard-template";
 import { LanyardPreviewSimple } from "@/components/LanyardPreviewSimple";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -154,6 +154,39 @@ const TicketFloLIVE = () => {
     company?: string;
   } | null>(null);
 
+  // Event schedule state
+  const [scheduleItems, setScheduleItems] = useState<Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    start_time: string;
+    end_time: string | null;
+    location: string | null;
+    speaker: string | null;
+    category: string;
+    is_break: boolean;
+    sort_order: number;
+    is_visible_to_attendees: boolean;
+  }>>([]);
+  const [newScheduleItem, setNewScheduleItem] = useState({
+    title: "",
+    description: "",
+    start_time: "",
+    end_time: "",
+    location: "",
+    speaker: "",
+    category: "general",
+    is_break: false,
+    is_visible_to_attendees: true
+  });
+  const [editingScheduleItem, setEditingScheduleItem] = useState<string | null>(null);
+
+  // Selected guest for notes (from guest list)
+  const [selectedGuestForNotes, setSelectedGuestForNotes] = useState<{
+    email: string;
+    name: string;
+  } | null>(null);
+
   // Analytics state
 const [analytics, setAnalytics] = useState<{
   totalRevenue: number;
@@ -180,6 +213,7 @@ const [analytics, setAnalytics] = useState<{
       loadAnalytics();
       loadOrganizationConfig();
       loadEventData();
+      loadSchedule();
     }
   }, [eventId]);
 
@@ -211,6 +245,125 @@ const [analytics, setAnalytics] = useState<{
       setOrganizationData(event.organizations);
     } catch (error) {
       console.error("Error loading event data:", error);
+    }
+  };
+
+  // Load event schedule
+  const loadSchedule = async () => {
+    if (!eventId) return;
+    try {
+      const { data, error } = await supabase
+        .from("event_schedule")
+        .select("*")
+        .eq("event_id", eventId)
+        .order("start_time", { ascending: true })
+        .order("sort_order", { ascending: true });
+
+      if (error) {
+        console.error("Error loading schedule:", error);
+        return;
+      }
+      setScheduleItems(data || []);
+    } catch (error) {
+      console.error("Error loading schedule:", error);
+    }
+  };
+
+  // Add schedule item
+  const handleAddScheduleItem = async () => {
+    if (!eventId || !newScheduleItem.title || !newScheduleItem.start_time) {
+      toast({
+        title: "Missing fields",
+        description: "Please fill in at least title and start time",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("event_schedule")
+        .insert({
+          event_id: eventId,
+          title: newScheduleItem.title,
+          description: newScheduleItem.description || null,
+          start_time: newScheduleItem.start_time,
+          end_time: newScheduleItem.end_time || null,
+          location: newScheduleItem.location || null,
+          speaker: newScheduleItem.speaker || null,
+          category: newScheduleItem.category,
+          is_break: newScheduleItem.is_break,
+          is_visible_to_attendees: newScheduleItem.is_visible_to_attendees,
+          sort_order: scheduleItems.length
+        });
+
+      if (error) throw error;
+
+      toast({ title: "Schedule item added" });
+      setNewScheduleItem({
+        title: "",
+        description: "",
+        start_time: "",
+        end_time: "",
+        location: "",
+        speaker: "",
+        category: "general",
+        is_break: false,
+        is_visible_to_attendees: true
+      });
+      loadSchedule();
+    } catch (error) {
+      console.error("Error adding schedule item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add schedule item",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Update schedule item
+  const handleUpdateScheduleItem = async (id: string, updates: Partial<typeof newScheduleItem>) => {
+    try {
+      const { error } = await supabase
+        .from("event_schedule")
+        .update(updates)
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast({ title: "Schedule item updated" });
+      setEditingScheduleItem(null);
+      loadSchedule();
+    } catch (error) {
+      console.error("Error updating schedule item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update schedule item",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Delete schedule item
+  const handleDeleteScheduleItem = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("event_schedule")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast({ title: "Schedule item deleted" });
+      loadSchedule();
+    } catch (error) {
+      console.error("Error deleting schedule item:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete schedule item",
+        variant: "destructive"
+      });
     }
   };
 
@@ -1176,20 +1329,16 @@ const handleCreateConcessionItem = async () => {
     return filteredGuests;
   };
 
-  // Sidebar navigation items
+  // Sidebar navigation items - reorganized with Schedule, Attendees, and Settings as main tabs
   const sidebarItems = [
     { id: "checkin", icon: CheckCircle, label: "Check-In" },
     { id: "pos", icon: CreditCard, label: "Point of Sale" },
-    { id: "guests", icon: Users, label: "Guest Status" },
-    { id: "analytics", icon: BarChart3, label: "Analytics" },
+    { id: "guests", icon: Users, label: "Guests" },
+    { id: "attendees", icon: MessageSquare, label: "Attendees" },
+    { id: "schedule", icon: Calendar, label: "Schedule" },
+    { id: "analytics", icon: BarChart3, label: "POS Analytics" },
+    ...(user ? [{ id: "settings", icon: Settings, label: "Settings" }] : []),
   ];
-
-  // Settings sub-items (only visible when user is authenticated)
-  const settingsItems = user ? [
-    { id: "concessions", icon: Package, label: "Manage Items" },
-    { id: "lanyards", icon: Tag, label: "Lanyard Config" },
-    { id: "waivers", icon: FileSignature, label: "Waivers" },
-  ] : [];
 
   return (
     <div className="force-light flex h-screen bg-gray-50">
@@ -1230,50 +1379,6 @@ const handleCreateConcessionItem = async () => {
               </button>
             );
           })}
-
-          {/* Settings Section with Collapsible Sub-items */}
-          {user && settingsItems.length > 0 && (
-            <div className="space-y-1">
-              <button
-                onClick={() => setIsSettingsExpanded(!isSettingsExpanded)}
-                className="w-full flex items-center justify-between px-3 py-2 text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg transition-colors"
-              >
-                <div className="flex items-center">
-                  <Settings className="h-5 w-5" />
-                  {!isSidebarCollapsed && <span className="ml-3">Settings</span>}
-                </div>
-                {!isSidebarCollapsed && (
-                  isSettingsExpanded ?
-                    <ChevronDown className="h-4 w-4" /> :
-                    <ChevronRight className="h-4 w-4" />
-                )}
-              </button>
-
-              {/* Settings Sub-items */}
-              {isSettingsExpanded && !isSidebarCollapsed && (
-                <div className="ml-4 space-y-1">
-                  {settingsItems.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = activeTab === item.id;
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => setActiveTab(item.id)}
-                        className={`w-full flex items-center px-3 py-2 rounded-lg transition-colors text-sm ${
-                          isActive
-                            ? 'bg-blue-600 text-white'
-                            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                        }`}
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span className="ml-3">{item.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
         </nav>
 
         {/* Dashboard Button */}
@@ -1313,41 +1418,41 @@ const handleCreateConcessionItem = async () => {
 
         {/* Content Area */}
         <main className="flex-1 overflow-auto p-6">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-8">
-            <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Guests</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalGuests}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Checked In</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.checkedIn}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Lanyards Printed</CardTitle>
-            <Printer className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.lanyardsPrinted}</div>
-          </CardContent>
-        </Card>
-          </div>
-
           {/* Tab Content */}
           {activeTab === "checkin" && (
+            <>
+            {/* Stats Cards - Only show on Check-In tab */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-8">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Guests</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.totalGuests}</div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Checked In</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.checkedIn}</div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Lanyards Printed</CardTitle>
+                  <Printer className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.lanyardsPrinted}</div>
+                </CardContent>
+              </Card>
+            </div>
             <div className="space-y-6">
               {/* Search and Quick Actions Bar */}
               <Card>
@@ -1503,6 +1608,7 @@ const handleCreateConcessionItem = async () => {
                 </CardContent>
               </Card>
             </div>
+            </>
           )}
 
           {/* Point of Sale Tab */}
@@ -1763,39 +1869,72 @@ const handleCreateConcessionItem = async () => {
           <Card>
             <CardHeader>
               <CardTitle>Guest Status Overview</CardTitle>
+              <CardDescription>View and manage all event guests</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {guests.map((guest) => (
-                  <div key={guest.ticket_id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-4">
-                        <div>
-                          <p className="font-semibold">{guest.customer_name}</p>
-                          <p className="text-sm text-muted-foreground">{guest.customer_email}</p>
-                          <p className="text-sm">Ticket: {guest.ticket_code}</p>
+              <div className="space-y-3">
+                {guests.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No guests registered yet</p>
+                  </div>
+                ) : (
+                  guests.map((guest) => (
+                    <div key={guest.ticket_id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                          <User className="h-5 w-5 text-gray-500" />
                         </div>
-                        <Badge variant={guest.checked_in ? "default" : "secondary"}>
-                          {guest.checked_in ? "Checked In" : "Not Checked In"}
-                        </Badge>
-                        {guest.lanyard_printed && (
-                          <Badge variant="outline">Lanyard Printed</Badge>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold truncate">{guest.customer_name}</p>
+                          <p className="text-sm text-muted-foreground truncate">{guest.customer_email}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs">{guest.ticket_type}</Badge>
+                            <span className="text-xs text-muted-foreground">#{guest.ticket_code}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={guest.checked_in ? "default" : "secondary"}>
+                            {guest.checked_in ? "Checked In" : "Not Checked In"}
+                          </Badge>
+                          {guest.lanyard_printed && (
+                            <Badge variant="outline">Lanyard Printed</Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 ml-4">
+                        {/* Notes Button - Always available */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedGuestForNotes({
+                              email: guest.customer_email,
+                              name: guest.customer_name
+                            });
+                          }}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                          {!isSidebarCollapsed && <span className="ml-2">Notes</span>}
+                        </Button>
+
+                        {/* Print Lanyard - Only for checked in guests without lanyard */}
+                        {guest.checked_in && !guest.lanyard_printed && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handlePrintLanyard(guest)}
+                            disabled={loading}
+                          >
+                            <Printer className="h-4 w-4" />
+                            {!isSidebarCollapsed && <span className="ml-2">Print</span>}
+                          </Button>
                         )}
                       </div>
                     </div>
-                    
-                    {guest.checked_in && !guest.lanyard_printed && (
-                      <Button
-                        size="sm"
-                        onClick={() => handlePrintLanyard(guest)}
-                        disabled={loading}
-                      >
-                        <Printer className="mr-2 h-4 w-4" />
-                        Print Lanyard
-                      </Button>
-                    )}
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -2151,7 +2290,7 @@ const handleCreateConcessionItem = async () => {
             </div>
           )}
 
-          {/* Waivers Configuration Tab */}
+          {/* Waivers Configuration Tab (now part of Settings) */}
           {activeTab === "waivers" && eventData?.organizations && (
             <div className="space-y-6">
               <WaiverConfiguration
@@ -2162,6 +2301,338 @@ const handleCreateConcessionItem = async () => {
                 eventId={eventId as string}
                 organizationId={eventData.organizations.id}
               />
+            </div>
+          )}
+
+          {/* Unified Settings Tab */}
+          {activeTab === "settings" && (
+            <div className="space-y-6">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold">Settings</h2>
+                <p className="text-muted-foreground">Configure your event settings</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Manage Items Card */}
+                <Card
+                  className="cursor-pointer hover:shadow-lg transition-shadow border-2 hover:border-blue-500"
+                  onClick={() => setActiveTab("concessions")}
+                >
+                  <CardHeader className="text-center pb-2">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
+                      <Package className="h-8 w-8 text-blue-600" />
+                    </div>
+                    <CardTitle>Manage Items</CardTitle>
+                    <CardDescription>Add and manage concession items for sale</CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    <Badge variant="outline">{concessionItems.length} items</Badge>
+                  </CardContent>
+                </Card>
+
+                {/* Lanyard Config Card */}
+                <Card
+                  className="cursor-pointer hover:shadow-lg transition-shadow border-2 hover:border-purple-500"
+                  onClick={() => setActiveTab("lanyards")}
+                >
+                  <CardHeader className="text-center pb-2">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-100 flex items-center justify-center">
+                      <Tag className="h-8 w-8 text-purple-600" />
+                    </div>
+                    <CardTitle>Lanyard Config</CardTitle>
+                    <CardDescription>Customize lanyard templates and printing</CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    <Badge variant="outline">{currentLanyardTemplate ? "Configured" : "Not Set"}</Badge>
+                  </CardContent>
+                </Card>
+
+                {/* Waivers Card */}
+                <Card
+                  className="cursor-pointer hover:shadow-lg transition-shadow border-2 hover:border-green-500"
+                  onClick={() => setActiveTab("waivers")}
+                >
+                  <CardHeader className="text-center pb-2">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+                      <FileSignature className="h-8 w-8 text-green-600" />
+                    </div>
+                    <CardTitle>Waivers</CardTitle>
+                    <CardDescription>Manage waiver templates and signatures</CardDescription>
+                  </CardHeader>
+                  <CardContent className="text-center">
+                    <Badge variant="outline">View Waivers</Badge>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {/* Attendees / CRM Tab */}
+          {activeTab === "attendees" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold">Attendee Notes</h2>
+                  <p className="text-muted-foreground">Manage notes and CRM data for all attendees</p>
+                </div>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>All Attendees</CardTitle>
+                  <CardDescription>Click on any attendee to view or add notes</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {guests.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No attendees yet</p>
+                      </div>
+                    ) : (
+                      guests.map((guest) => (
+                        <div
+                          key={guest.ticket_id}
+                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                          onClick={() => setSelectedGuestForNotes({
+                            email: guest.customer_email,
+                            name: guest.customer_name
+                          })}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                              <User className="h-5 w-5 text-indigo-600" />
+                            </div>
+                            <div>
+                              <p className="font-semibold">{guest.customer_name}</p>
+                              <p className="text-sm text-muted-foreground">{guest.customer_email}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            {guest.checked_in && (
+                              <Badge variant="default" className="bg-green-500">Checked In</Badge>
+                            )}
+                            <Button size="sm" variant="outline">
+                              <MessageSquare className="h-4 w-4 mr-2" />
+                              View Notes
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Event Schedule Tab */}
+          {activeTab === "schedule" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold">Event Schedule</h2>
+                  <p className="text-muted-foreground">Create and manage your event runsheet</p>
+                </div>
+              </div>
+
+              {/* Add New Schedule Item */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Add Schedule Item</CardTitle>
+                  <CardDescription>Add sessions, breaks, or activities to your event schedule</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Title *</Label>
+                      <Input
+                        placeholder="e.g., Keynote Speech"
+                        value={newScheduleItem.title}
+                        onChange={(e) => setNewScheduleItem({ ...newScheduleItem, title: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Start Time *</Label>
+                      <Input
+                        type="time"
+                        value={newScheduleItem.start_time}
+                        onChange={(e) => setNewScheduleItem({ ...newScheduleItem, start_time: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>End Time</Label>
+                      <Input
+                        type="time"
+                        value={newScheduleItem.end_time}
+                        onChange={(e) => setNewScheduleItem({ ...newScheduleItem, end_time: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Location</Label>
+                      <Input
+                        placeholder="e.g., Main Hall"
+                        value={newScheduleItem.location}
+                        onChange={(e) => setNewScheduleItem({ ...newScheduleItem, location: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Speaker/Host</Label>
+                      <Input
+                        placeholder="e.g., John Smith"
+                        value={newScheduleItem.speaker}
+                        onChange={(e) => setNewScheduleItem({ ...newScheduleItem, speaker: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Category</Label>
+                      <Select
+                        value={newScheduleItem.category}
+                        onValueChange={(value) => setNewScheduleItem({ ...newScheduleItem, category: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="general">General</SelectItem>
+                          <SelectItem value="keynote">Keynote</SelectItem>
+                          <SelectItem value="workshop">Workshop</SelectItem>
+                          <SelectItem value="panel">Panel</SelectItem>
+                          <SelectItem value="networking">Networking</SelectItem>
+                          <SelectItem value="break">Break</SelectItem>
+                          <SelectItem value="meal">Meal</SelectItem>
+                          <SelectItem value="entertainment">Entertainment</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2 md:col-span-2 lg:col-span-3">
+                      <Label>Description</Label>
+                      <Textarea
+                        placeholder="Brief description of this session..."
+                        value={newScheduleItem.description}
+                        onChange={(e) => setNewScheduleItem({ ...newScheduleItem, description: e.target.value })}
+                        rows={2}
+                      />
+                    </div>
+                    <div className="flex items-center gap-4 md:col-span-2 lg:col-span-3">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newScheduleItem.is_break}
+                          onChange={(e) => setNewScheduleItem({ ...newScheduleItem, is_break: e.target.checked })}
+                          className="rounded"
+                        />
+                        <span className="text-sm">This is a break</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newScheduleItem.is_visible_to_attendees}
+                          onChange={(e) => setNewScheduleItem({ ...newScheduleItem, is_visible_to_attendees: e.target.checked })}
+                          className="rounded"
+                        />
+                        <span className="text-sm">Visible to attendees</span>
+                      </label>
+                    </div>
+                  </div>
+                  <Button onClick={handleAddScheduleItem} className="mt-4">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add to Schedule
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Schedule Timeline */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Event Timeline</CardTitle>
+                  <CardDescription>{scheduleItems.length} items scheduled</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {scheduleItems.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No schedule items yet</p>
+                      <p className="text-sm">Add your first item above to build your event runsheet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {scheduleItems.map((item, index) => (
+                        <div
+                          key={item.id}
+                          className={`relative flex gap-4 p-4 rounded-lg border ${
+                            item.is_break ? 'bg-amber-50 border-amber-200' : 'bg-white hover:bg-gray-50'
+                          }`}
+                        >
+                          {/* Time Column */}
+                          <div className="flex flex-col items-center w-20 flex-shrink-0">
+                            <div className="text-sm font-bold text-blue-600">
+                              {item.start_time?.slice(0, 5)}
+                            </div>
+                            {item.end_time && (
+                              <>
+                                <div className="h-4 w-px bg-gray-300 my-1"></div>
+                                <div className="text-xs text-gray-500">
+                                  {item.end_time?.slice(0, 5)}
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Content Column */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <h4 className="font-semibold text-gray-900">{item.title}</h4>
+                                {item.description && (
+                                  <p className="text-sm text-gray-600 mt-1">{item.description}</p>
+                                )}
+                                <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                                  {item.location && (
+                                    <span className="flex items-center gap-1">
+                                      <MapPin className="h-3 w-3" />
+                                      {item.location}
+                                    </span>
+                                  )}
+                                  {item.speaker && (
+                                    <span className="flex items-center gap-1">
+                                      <User className="h-3 w-3" />
+                                      {item.speaker}
+                                    </span>
+                                  )}
+                                  <Badge variant="outline" className="text-xs">
+                                    {item.category}
+                                  </Badge>
+                                  {!item.is_visible_to_attendees && (
+                                    <Badge variant="secondary" className="text-xs">Hidden</Badge>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setEditingScheduleItem(item.id)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-red-500 hover:text-red-600"
+                                  onClick={() => handleDeleteScheduleItem(item.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           )}
 
@@ -2392,7 +2863,7 @@ const handleCreateConcessionItem = async () => {
         />
       )}
 
-      {/* Attendee Notes Panel (for playbook events) */}
+      {/* Attendee Notes Panel (for playbook events - after check-in) */}
       {showNotesPanel && checkedInAttendee && eventId && (
         <AttendeeNotesPanel
           eventId={eventId}
@@ -2404,6 +2875,17 @@ const handleCreateConcessionItem = async () => {
             setShowNotesPanel(false);
             setCheckedInAttendee(null);
           }}
+        />
+      )}
+
+      {/* Attendee Notes Panel (for selected guest from list) */}
+      {selectedGuestForNotes && eventId && (
+        <AttendeeNotesPanel
+          eventId={eventId}
+          email={selectedGuestForNotes.email}
+          customerName={selectedGuestForNotes.name}
+          isDialog={true}
+          onClose={() => setSelectedGuestForNotes(null)}
         />
       )}
     </div>

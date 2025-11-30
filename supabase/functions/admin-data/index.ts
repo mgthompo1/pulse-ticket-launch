@@ -8,7 +8,7 @@ const corsHeaders = {
 
 interface AdminDataRequest {
   token: string;
-  dataType: 'organizations' | 'events' | 'orders' | 'metrics' | 'analytics' | 'contact_enquiries' | 'platform_config' | 'update_platform_config' | 'users' | 'stripe_revenue' | 'onboarding_funnel' | 'payouts' | 'refunds' | 'audit_log' | 'announcements' | 'create_announcement' | 'toggle_announcement' | 'delete_announcement' | 'org_health_scores' | 'system_logs';
+  dataType: 'organizations' | 'events' | 'orders' | 'metrics' | 'analytics' | 'contact_enquiries' | 'platform_config' | 'update_platform_config' | 'users' | 'stripe_revenue' | 'onboarding_funnel' | 'payouts' | 'refunds' | 'audit_log' | 'announcements' | 'create_announcement' | 'toggle_announcement' | 'delete_announcement' | 'org_health_scores' | 'system_logs' | 'code_deployments' | 'log_deployment' | 'get_deployment_settings' | 'update_deployment_settings';
   configData?: {
     platform_fee_percentage: number;
     platform_fee_fixed: number;
@@ -23,6 +23,22 @@ interface AdminDataRequest {
   type?: 'info' | 'warning' | 'success' | 'error';
   announcementId?: string;
   active?: boolean;
+  deploymentData?: {
+    commit_hash: string;
+    commit_message: string;
+    author_name: string;
+    author_email: string;
+    branch: string;
+    files_changed: number;
+    insertions: number;
+    deletions: number;
+    environment: string;
+    send_email?: boolean;
+  };
+  deploymentSettings?: {
+    email_alerts_enabled: boolean;
+    alert_emails: string[];
+  };
 }
 
 serve(async (req) => {
@@ -37,7 +53,7 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { token, dataType, configData, message, type, announcementId, active }: AdminDataRequest = await req.json();
+    const { token, dataType, configData, message, type, announcementId, active, deploymentData, deploymentSettings }: AdminDataRequest = await req.json();
 
     console.log("=== ADMIN DATA REQUEST ===");
     console.log("Data Type:", dataType);
@@ -786,6 +802,230 @@ serve(async (req) => {
           tableStats,
           pendingInvites,
           totalUsers: systemLogsAuthUsers?.users?.length || 0
+        };
+        break;
+
+      case 'code_deployments':
+        console.log('Fetching code deployments...');
+
+        const { data: deployments, error: deploymentsError } = await supabaseClient
+          .from('code_deployments')
+          .select('*')
+          .order('deployed_at', { ascending: false })
+          .limit(50);
+
+        if (deploymentsError) {
+          console.log('Code deployments table may not exist:', deploymentsError);
+          data = [];
+        } else {
+          data = deployments || [];
+        }
+        break;
+
+      case 'log_deployment':
+        console.log('Logging deployment...');
+
+        if (!deploymentData) {
+          throw new Error('Deployment data is required');
+        }
+
+        // Get admin email for the actor
+        const { data: adminData } = await supabaseClient
+          .from('admin_users')
+          .select('email')
+          .eq('id', adminId)
+          .single();
+
+        const { data: newDeployment, error: deploymentError } = await supabaseClient
+          .from('code_deployments')
+          .insert({
+            commit_hash: deploymentData.commit_hash,
+            commit_message: deploymentData.commit_message,
+            author_name: deploymentData.author_name,
+            author_email: deploymentData.author_email,
+            branch: deploymentData.branch,
+            files_changed: deploymentData.files_changed,
+            insertions: deploymentData.insertions,
+            deletions: deploymentData.deletions,
+            environment: deploymentData.environment,
+            deployed_by: adminId,
+            status: 'success'
+          })
+          .select()
+          .single();
+
+        if (deploymentError) {
+          console.error('Log deployment error:', deploymentError);
+          throw deploymentError;
+        }
+
+        // Also log to audit log
+        await supabaseClient
+          .from('audit_logs')
+          .insert({
+            admin_id: adminId,
+            action: 'code_deployment',
+            details: {
+              commit_hash: deploymentData.commit_hash,
+              commit_message: deploymentData.commit_message,
+              branch: deploymentData.branch,
+              files_changed: deploymentData.files_changed
+            },
+            actor_email: adminData?.email,
+            ip_address: req.headers.get('x-forwarded-for') || 'unknown',
+            user_agent: req.headers.get('user-agent') || 'unknown'
+          });
+
+        // Send email alert if enabled
+        if (deploymentData.send_email) {
+          try {
+            // Check if email alerts are enabled in platform_config
+            const { data: configForEmail } = await supabaseClient
+              .from('platform_config')
+              .select('deployment_email_alerts_enabled, deployment_alert_emails')
+              .single();
+
+            if (configForEmail?.deployment_email_alerts_enabled && configForEmail?.deployment_alert_emails?.length > 0) {
+              const resendApiKey = Deno.env.get("RESEND_API_KEY");
+
+              if (resendApiKey) {
+                const commitShort = deploymentData.commit_hash.substring(0, 7);
+                const emailHtml = `
+                  <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 24px; border-radius: 12px 12px 0 0;">
+                      <h1 style="color: white; margin: 0; font-size: 24px;">🚀 New Code Deployment</h1>
+                    </div>
+                    <div style="background: #f8fafc; padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 12px 12px;">
+                      <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 16px;">
+                        <h2 style="margin: 0 0 16px 0; color: #1e293b; font-size: 18px;">Commit Details</h2>
+                        <table style="width: 100%; border-collapse: collapse;">
+                          <tr>
+                            <td style="padding: 8px 0; color: #64748b; width: 120px;">Commit:</td>
+                            <td style="padding: 8px 0; font-family: monospace; color: #6366f1; font-weight: 600;">${commitShort}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0; color: #64748b;">Branch:</td>
+                            <td style="padding: 8px 0; color: #1e293b;">${deploymentData.branch}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0; color: #64748b;">Author:</td>
+                            <td style="padding: 8px 0; color: #1e293b;">${deploymentData.author_name} &lt;${deploymentData.author_email}&gt;</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0; color: #64748b;">Environment:</td>
+                            <td style="padding: 8px 0;"><span style="background: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;">${deploymentData.environment}</span></td>
+                          </tr>
+                        </table>
+                      </div>
+                      <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 16px;">
+                        <h3 style="margin: 0 0 12px 0; color: #1e293b; font-size: 16px;">Message</h3>
+                        <p style="margin: 0; color: #475569; line-height: 1.6;">${deploymentData.commit_message}</p>
+                      </div>
+                      <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                        <h3 style="margin: 0 0 12px 0; color: #1e293b; font-size: 16px;">Changes</h3>
+                        <div style="display: flex; gap: 16px;">
+                          <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: 700; color: #6366f1;">${deploymentData.files_changed}</div>
+                            <div style="font-size: 12px; color: #64748b;">files</div>
+                          </div>
+                          <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: 700; color: #22c55e;">+${deploymentData.insertions}</div>
+                            <div style="font-size: 12px; color: #64748b;">insertions</div>
+                          </div>
+                          <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: 700; color: #ef4444;">-${deploymentData.deletions}</div>
+                            <div style="font-size: 12px; color: #64748b;">deletions</div>
+                          </div>
+                        </div>
+                      </div>
+                      <p style="margin: 20px 0 0 0; color: #94a3b8; font-size: 12px; text-align: center;">
+                        This is an automated notification from TicketFlo
+                      </p>
+                    </div>
+                  </div>
+                `;
+
+                // Send email via Resend
+                for (const email of configForEmail.deployment_alert_emails) {
+                  await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${resendApiKey}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      from: 'TicketFlo <notifications@ticketflo.org>',
+                      to: email,
+                      subject: `[TicketFlo] New deployment: ${commitShort} - ${deploymentData.commit_message.substring(0, 50)}`,
+                      html: emailHtml
+                    })
+                  });
+                }
+                console.log('Deployment email alerts sent to:', configForEmail.deployment_alert_emails);
+              }
+            }
+          } catch (emailError) {
+            console.error('Failed to send deployment email alert:', emailError);
+            // Don't fail the deployment log if email fails
+          }
+        }
+
+        data = newDeployment;
+        break;
+
+      case 'get_deployment_settings':
+        console.log('Fetching deployment settings...');
+
+        const { data: deploySettings, error: deploySettingsError } = await supabaseClient
+          .from('platform_config')
+          .select('deployment_email_alerts_enabled, deployment_alert_emails')
+          .single();
+
+        if (deploySettingsError && deploySettingsError.code !== 'PGRST116') {
+          throw deploySettingsError;
+        }
+
+        data = {
+          email_alerts_enabled: deploySettings?.deployment_email_alerts_enabled || false,
+          alert_emails: deploySettings?.deployment_alert_emails || []
+        };
+        break;
+
+      case 'update_deployment_settings':
+        console.log('Updating deployment settings...');
+
+        if (!deploymentSettings) {
+          throw new Error('Deployment settings data is required');
+        }
+
+        const { data: updatedDeploySettings, error: updateDeploySettingsError } = await supabaseClient
+          .from('platform_config')
+          .update({
+            deployment_email_alerts_enabled: deploymentSettings.email_alerts_enabled,
+            deployment_alert_emails: deploymentSettings.alert_emails
+          })
+          .select('deployment_email_alerts_enabled, deployment_alert_emails')
+          .single();
+
+        if (updateDeploySettingsError) {
+          console.error('Update deployment settings error:', updateDeploySettingsError);
+          throw updateDeploySettingsError;
+        }
+
+        // Log to audit
+        await supabaseClient
+          .from('audit_logs')
+          .insert({
+            admin_id: adminId,
+            action: 'update_deployment_settings',
+            details: deploymentSettings,
+            ip_address: req.headers.get('x-forwarded-for') || 'unknown',
+            user_agent: req.headers.get('user-agent') || 'unknown'
+          });
+
+        data = {
+          email_alerts_enabled: updatedDeploySettings?.deployment_email_alerts_enabled || false,
+          alert_emails: updatedDeploySettings?.deployment_alert_emails || []
         };
         break;
 
