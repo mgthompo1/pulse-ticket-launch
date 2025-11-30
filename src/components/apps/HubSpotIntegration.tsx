@@ -389,10 +389,27 @@ const HubSpotIntegration: React.FC<HubSpotIntegrationProps> = ({ organizationId,
       const updated = data.updated || 0;
       const failed = data.failed || 0;
 
-      toast({
-        title: 'Sync Complete',
-        description: `${syncDirection === 'push' ? 'Pushed' : 'Pulled'} ${processed} contacts (${created} created, ${updated} updated${failed > 0 ? `, ${failed} failed` : ''})`,
-      });
+      if (failed > 0 && failed === processed) {
+        // All contacts failed
+        toast({
+          title: 'Sync Failed',
+          description: `All ${failed} contacts failed to sync. Check the sync logs for details.`,
+          variant: 'destructive',
+        });
+      } else if (failed > 0) {
+        // Partial failure
+        toast({
+          title: 'Sync Completed with Errors',
+          description: `${syncDirection === 'push' ? 'Pushed' : 'Pulled'} ${processed} contacts (${created} created, ${updated} updated, ${failed} failed). Check sync logs for details.`,
+          variant: 'destructive',
+        });
+      } else {
+        // Success
+        toast({
+          title: 'Sync Complete',
+          description: `${syncDirection === 'push' ? 'Pushed' : 'Pulled'} ${processed} contacts (${created} created, ${updated} updated)`,
+        });
+      }
 
       // Clear selection after successful sync
       setSelectedContactIds(new Set());

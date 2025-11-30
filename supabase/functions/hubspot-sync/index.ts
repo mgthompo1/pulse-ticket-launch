@@ -772,8 +772,47 @@ async function pushContactToHubSpot(
     });
 
     if (!createResponse.ok) {
-      const errorText = await createResponse.text();
-      throw new Error(`Failed to create HubSpot contact: ${errorText}`);
+      const errorData = await createResponse.json();
+
+      // Handle "Contact already exists" conflict - extract ID and update instead
+      if (errorData.category === "CONFLICT" && errorData.message?.includes("Existing ID:")) {
+        const existingIdMatch = errorData.message.match(/Existing ID: (\d+)/);
+        if (existingIdMatch) {
+          const existingHubspotId = existingIdMatch[1];
+          console.log(`Contact exists with ID ${existingHubspotId}, updating instead...`);
+
+          // Update the existing contact
+          const updateResponse = await fetch(
+            `${HUBSPOT_API_BASE}/crm/v3/objects/contacts/${existingHubspotId}`,
+            {
+              method: "PATCH",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ properties }),
+            }
+          );
+
+          if (!updateResponse.ok) {
+            const updateErrorText = await updateResponse.text();
+            throw new Error(`Failed to update existing HubSpot contact: ${updateErrorText}`);
+          }
+
+          // Update mapping
+          await updateContactMapping(supabase, connectionId, contact.id, existingHubspotId, "push");
+
+          // Update hubspot_contact_id on the contact
+          await supabase
+            .from("contacts")
+            .update({ hubspot_contact_id: existingHubspotId })
+            .eq("id", contact.id);
+
+          return { created: false, updated: true, hubspotContactId: existingHubspotId };
+        }
+      }
+
+      throw new Error(`Failed to create HubSpot contact: ${JSON.stringify(errorData)}`);
     }
 
     const newContact = await createResponse.json();
