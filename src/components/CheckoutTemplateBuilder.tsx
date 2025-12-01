@@ -310,11 +310,13 @@ function SortableElement({
   isSelected,
   onSelect,
   onRemove,
+  canDelete,
 }: {
   element: CheckoutElement;
   isSelected: boolean;
   onSelect: () => void;
   onRemove: () => void;
+  canDelete: boolean;
 }) {
   const {
     attributes,
@@ -367,17 +369,17 @@ function SortableElement({
       <Button
         variant="ghost"
         size="sm"
-        className={`h-8 w-8 p-0 ${elementDef?.required ? 'opacity-30 cursor-not-allowed' : 'opacity-60 hover:opacity-100 hover:bg-destructive/10'} transition-opacity`}
+        className={`h-8 w-8 p-0 ${!canDelete ? 'opacity-30 cursor-not-allowed' : 'opacity-60 hover:opacity-100 hover:bg-destructive/10'} transition-opacity`}
         onClick={(e) => {
           e.stopPropagation();
-          if (!elementDef?.required) {
+          if (canDelete) {
             onRemove();
           }
         }}
-        disabled={elementDef?.required}
-        title={elementDef?.required ? "Required element cannot be removed" : "Remove element"}
+        disabled={!canDelete}
+        title={!canDelete ? "Last required element cannot be removed" : "Remove element"}
       >
-        <Trash2 className={`h-4 w-4 ${elementDef?.required ? 'text-muted-foreground' : 'text-destructive'}`} />
+        <Trash2 className={`h-4 w-4 ${!canDelete ? 'text-muted-foreground' : 'text-destructive'}`} />
       </Button>
     </div>
   );
@@ -393,6 +395,7 @@ function PageCanvas({
   onRemoveElement,
   onUpdatePageTitle,
   onRemovePage,
+  canDeleteElement,
 }: {
   page: CheckoutPage;
   pageIndex: number;
@@ -402,6 +405,7 @@ function PageCanvas({
   onRemoveElement: (elementId: string) => void;
   onUpdatePageTitle: (title: string) => void;
   onRemovePage: () => void;
+  canDeleteElement: (elementId: string) => boolean;
 }) {
   return (
     <Card className="flex-1">
@@ -449,6 +453,7 @@ function PageCanvas({
                   isSelected={selectedElement === element.id}
                   onSelect={() => onSelectElement(element.id)}
                   onRemove={() => onRemoveElement(element.id)}
+                  canDelete={canDeleteElement(element.id)}
                 />
               ))
             )}
@@ -1336,14 +1341,36 @@ export function CheckoutTemplateBuilder({
     });
   };
 
+  // Helper to count how many of a specific element type exist across all pages
+  const countElementsOfType = (type: ElementType): number => {
+    return template.pages.reduce((count, page) => {
+      return count + page.elements.filter((e) => e.type === type).length;
+    }, 0);
+  };
+
+  // Check if an element can be deleted (required elements can be deleted if there's more than one)
+  const canDeleteElement = (elementId: string): boolean => {
+    for (const page of template.pages) {
+      const element = page.elements.find((e) => e.id === elementId);
+      if (element) {
+        const elementDef = AVAILABLE_ELEMENTS.find((e) => e.type === element.type);
+        if (!elementDef?.required) return true; // Non-required elements can always be deleted
+        // Required elements can be deleted if there's more than one of that type
+        return countElementsOfType(element.type) > 1;
+      }
+    }
+    return true;
+  };
+
   const removeElement = (pageIndex: number, elementId: string) => {
     const element = template.pages[pageIndex].elements.find((e) => e.id === elementId);
     const elementDef = AVAILABLE_ELEMENTS.find((e) => e.type === element?.type);
 
-    if (elementDef?.required) {
+    // Check if this is the last required element of its type
+    if (elementDef?.required && countElementsOfType(element!.type) <= 1) {
       toast({
         title: "Cannot Remove",
-        description: `${elementDef.label} is required for checkout`,
+        description: `At least one ${elementDef.label} is required for checkout`,
         variant: "destructive",
       });
       return;
@@ -1748,6 +1775,7 @@ export function CheckoutTemplateBuilder({
                                 onRemoveElement={(elementId) => removeElement(pageIndex, elementId)}
                                 onUpdatePageTitle={(title) => updatePageTitle(pageIndex, title)}
                                 onRemovePage={() => removePage(pageIndex)}
+                                canDeleteElement={canDeleteElement}
                               />
                             );
                           })}
