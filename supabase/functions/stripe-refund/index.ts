@@ -61,21 +61,46 @@ serve(async (req) => {
 
     console.log("Order found:", order.id, "for event:", order.events.name);
 
-    // Get Stripe credentials for this organization
-    console.log("Getting Stripe credentials...");
-    const { data: credentials, error: credError } = await supabaseClient
-      .from("payment_credentials")
-      .select("stripe_secret_key")
-      .eq("organization_id", order.events.organization_id)
+    // Check if this organization uses Stripe Connect
+    const { data: orgData, error: orgError } = await supabaseClient
+      .from("organizations")
+      .select("stripe_account_id")
+      .eq("id", order.events.organization_id)
       .single();
 
-    if (credError || !credentials?.stripe_secret_key) {
-      throw new Error("Stripe credentials not found for this organization");
+    const usesStripeConnect = !!(orgData?.stripe_account_id);
+    console.log("Organization uses Stripe Connect:", usesStripeConnect);
+
+    let stripeSecretKey: string;
+
+    if (usesStripeConnect) {
+      // For Stripe Connect payments, we need to use the PLATFORM's secret key
+      // because destination charges are created on the platform account
+      const platformKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (!platformKey) {
+        throw new Error("Platform Stripe secret key not configured");
+      }
+      stripeSecretKey = platformKey;
+      console.log("Using PLATFORM Stripe key for Connect refund");
+    } else {
+      // For direct API payments, use the organization's credentials
+      console.log("Getting organization Stripe credentials...");
+      const { data: credentials, error: credError } = await supabaseClient
+        .from("payment_credentials")
+        .select("stripe_secret_key")
+        .eq("organization_id", order.events.organization_id)
+        .single();
+
+      if (credError || !credentials?.stripe_secret_key) {
+        throw new Error("Stripe credentials not found for this organization");
+      }
+      stripeSecretKey = credentials.stripe_secret_key;
+      console.log("Using ORGANIZATION Stripe key for direct refund");
     }
 
-    // Initialize Stripe with organization's credentials
+    // Initialize Stripe with the appropriate credentials
     console.log("Initializing Stripe...");
-    const stripe = new Stripe(credentials.stripe_secret_key, {
+    const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16",
     });
 
@@ -94,7 +119,9 @@ serve(async (req) => {
 
     // Create the refund
     console.log("Creating Stripe refund...");
-    const refund = await stripe.refunds.create({
+
+    // Build refund params
+    const refundParams: any = {
       payment_intent: paymentIntentId,
       amount: refundAmountInCents,
       reason: reason || 'requested_by_customer',
@@ -103,7 +130,59 @@ serve(async (req) => {
         eventName: order.events.name,
         originalAmount: order.total_amount.toString(),
       }
-    });
+    };
+
+    // For Stripe Connect payments, keep the platform fee (TFLO revenue)
+    // Try to reverse the transfer so the connected account pays for the refund
+    // If they have insufficient balance, process refund anyway and track the debt
+    if (usesStripeConnect) {
+      refundParams.refund_application_fee = false; // Keep TFLO's platform fee
+      refundParams.reverse_transfer = true; // Try to deduct from connected account's balance
+      console.log("Connect refund: keeping platform fee, attempting transfer reversal");
+    }
+
+    let refund;
+    try {
+      refund = await stripe.refunds.create(refundParams);
+    } catch (refundError: any) {
+      // If insufficient balance, retry without reversing transfer
+      // The platform covers it and can recover from future payouts
+      const errorMsg = refundError.message?.toLowerCase() || '';
+      const isInsufficientBalance = errorMsg.includes('insufficient funds') ||
+                                     errorMsg.includes('sufficient funds') ||
+                                     errorMsg.includes('reverse this amount');
+
+      if (isInsufficientBalance && usesStripeConnect) {
+        console.log("Connected account has insufficient balance, processing refund without immediate transfer reversal");
+        refundParams.reverse_transfer = false;
+        refund = await stripe.refunds.create(refundParams);
+
+        // Log this for tracking - platform needs to recover this amount later
+        console.log("WARNING: Refund processed without transfer reversal. Platform covered the refund.");
+        console.log("Connected account owes:", refundAmountInCents / 100, order.currency || 'USD');
+
+        // Track the debt in audit log
+        try {
+          await supabaseClient
+            .from("security_audit_log")
+            .insert({
+              event_type: "platform_covered_refund",
+              event_data: {
+                orderId: orderId,
+                refundId: refund.id,
+                amountOwed: refundAmountInCents / 100,
+                connectedAccountId: orgData?.stripe_account_id,
+                organizationId: order.events.organization_id,
+                reason: "insufficient_connected_account_balance"
+              }
+            });
+        } catch (logErr) {
+          console.error("Failed to log platform-covered refund:", logErr);
+        }
+      } else {
+        throw refundError;
+      }
+    }
 
     console.log("Stripe refund created:", refund.id, "status:", refund.status);
 

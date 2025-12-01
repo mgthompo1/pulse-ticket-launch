@@ -58,3 +58,6 @@ xcshareddata/
 
 # Supabase CLI temp files
 supabase/.temp/
+
+# Archive folder (old SQL migrations, not needed in repo)
+archive/

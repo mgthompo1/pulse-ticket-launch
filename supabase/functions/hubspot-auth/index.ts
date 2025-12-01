@@ -19,7 +19,6 @@ const HUBSPOT_REDIRECT_URI = Deno.env.get("HUBSPOT_REDIRECT_URI") || "https://ti
 const HUBSPOT_SCOPES = [
   "crm.objects.contacts.read",
   "crm.objects.contacts.write",
-  "crm.schemas.contacts.read",
   "oauth",
 ].join(" ");
 

@@ -68,6 +68,8 @@ import {
   Mail,
   Phone,
   DollarSign,
+  MessageSquare,
+  Users,
 } from "lucide-react";
 
 // Types
@@ -114,6 +116,7 @@ type ElementType =
   | "event_header"
   | "ticket_selector"
   | "customer_info"
+  | "attendee_details"
   | "payment_form"
   | "order_summary"
   | "promo_code"
@@ -121,7 +124,8 @@ type ElementType =
   | "terms_checkbox"
   | "timer"
   | "text_block"
-  | "divider";
+  | "divider"
+  | "info_modal";
 
 interface ElementDefinition {
   type: ElementType;
@@ -165,6 +169,20 @@ const AVAILABLE_ELEMENTS: ElementDefinition[] = [
     description: "Name, email, phone fields",
     required: true,
     defaultConfig: { requirePhone: false, requireName: true },
+  },
+  {
+    type: "attendee_details",
+    label: "Attendee Details",
+    icon: <Users className="h-4 w-4" />,
+    description: "Collect info for each ticket holder",
+    required: false,
+    defaultConfig: {
+      collectPerTicket: true,
+      prefillBuyer: true,
+      requireEmail: true,
+      requirePhone: false,
+      showCustomQuestions: true,
+    },
   },
   {
     type: "payment_form",
@@ -229,6 +247,19 @@ const AVAILABLE_ELEMENTS: ElementDefinition[] = [
     description: "Visual separator",
     required: false,
     defaultConfig: { style: "line" },
+  },
+  {
+    type: "info_modal",
+    label: "Info Modal",
+    icon: <MessageSquare className="h-4 w-4" />,
+    description: "Popup with additional info",
+    required: false,
+    defaultConfig: {
+      triggerText: "Learn More",
+      modalTitle: "Additional Information",
+      modalContent: "Add your content here...",
+      triggerStyle: "link" // "link" | "button" | "icon"
+    },
   },
 ];
 
@@ -333,19 +364,21 @@ function SortableElement({
           )}
         </div>
       </div>
-      {!elementDef?.required && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
-          onClick={(e) => {
-            e.stopPropagation();
+      <Button
+        variant="ghost"
+        size="sm"
+        className={`h-8 w-8 p-0 ${elementDef?.required ? 'opacity-30 cursor-not-allowed' : 'opacity-60 hover:opacity-100 hover:bg-destructive/10'} transition-opacity`}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!elementDef?.required) {
             onRemove();
-          }}
-        >
-          <Trash2 className="h-4 w-4 text-destructive" />
-        </Button>
-      )}
+          }
+        }}
+        disabled={elementDef?.required}
+        title={elementDef?.required ? "Required element cannot be removed" : "Remove element"}
+      >
+        <Trash2 className={`h-4 w-4 ${elementDef?.required ? 'text-muted-foreground' : 'text-destructive'}`} />
+      </Button>
     </div>
   );
 }
@@ -483,6 +516,45 @@ function ElementProperties({
                 onCheckedChange={(checked) => onUpdate({ requireName: checked })}
               />
             </div>
+          </>
+        )}
+
+        {element.type === "attendee_details" && (
+          <>
+            <div className="p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground mb-3">
+              Collects name and contact info for each ticket purchased. Great for events that need to identify individual attendees at check-in.
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">Pre-fill buyer as first attendee</Label>
+              <Switch
+                checked={element.config.prefillBuyer as boolean}
+                onCheckedChange={(checked) => onUpdate({ prefillBuyer: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">Require Email</Label>
+              <Switch
+                checked={element.config.requireEmail as boolean}
+                onCheckedChange={(checked) => onUpdate({ requireEmail: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">Require Phone</Label>
+              <Switch
+                checked={element.config.requirePhone as boolean}
+                onCheckedChange={(checked) => onUpdate({ requirePhone: checked })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">Show Custom Questions</Label>
+              <Switch
+                checked={element.config.showCustomQuestions as boolean}
+                onCheckedChange={(checked) => onUpdate({ showCustomQuestions: checked })}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Custom questions are configured in Event Settings → Custom Questions
+            </p>
           </>
         )}
 
@@ -631,6 +703,54 @@ function ElementProperties({
             </div>
           </>
         )}
+
+        {element.type === "info_modal" && (
+          <>
+            <div className="space-y-2">
+              <Label className="text-xs">Trigger Text</Label>
+              <Input
+                value={(element.config.triggerText as string) || "Learn More"}
+                onChange={(e) => onUpdate({ triggerText: e.target.value })}
+                className="h-9"
+                placeholder="Learn More"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Trigger Style</Label>
+              <Select
+                value={(element.config.triggerStyle as string) || "link"}
+                onValueChange={(value) => onUpdate({ triggerStyle: value })}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="link">Text Link</SelectItem>
+                  <SelectItem value="button">Button</SelectItem>
+                  <SelectItem value="icon">Icon Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Modal Title</Label>
+              <Input
+                value={(element.config.modalTitle as string) || ""}
+                onChange={(e) => onUpdate({ modalTitle: e.target.value })}
+                className="h-9"
+                placeholder="Additional Information"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Modal Content</Label>
+              <textarea
+                value={(element.config.modalContent as string) || ""}
+                onChange={(e) => onUpdate({ modalContent: e.target.value })}
+                className="w-full h-32 p-2 text-sm rounded-md border bg-background resize-none"
+                placeholder="Enter the content to show in the modal..."
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -753,6 +873,67 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
               <Input placeholder="+1 (555) 000-0000" className="bg-muted/50" />
             </div>
           )}
+        </div>
+      );
+
+    case "attendee_details":
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold">{element.config.label || element.label}</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Please provide details for each ticket holder
+          </p>
+          {/* Mock Attendee 1 */}
+          <Card className="border-primary/30">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-xs">Ticket 1</Badge>
+                <span className="text-xs text-muted-foreground">(Primary Ticket Holder)</span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Name *</Label>
+                  <Input placeholder="John Doe" className="h-8 bg-muted/50 text-sm" disabled />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Email {element.config.requireEmail ? "*" : ""}</Label>
+                  <Input placeholder="john@example.com" className="h-8 bg-muted/50 text-sm" disabled />
+                </div>
+              </div>
+              {element.config.requirePhone && (
+                <div className="space-y-1">
+                  <Label className="text-xs">Phone *</Label>
+                  <Input placeholder="+1 (555) 000-0000" className="h-8 bg-muted/50 text-sm" disabled />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          {/* Mock Attendee 2 */}
+          <Card>
+            <CardHeader className="pb-2">
+              <Badge variant="outline" className="text-xs w-fit">Ticket 2</Badge>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Name *</Label>
+                  <Input placeholder="Guest name" className="h-8 bg-muted/50 text-sm" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Email {element.config.requireEmail ? "*" : ""}</Label>
+                  <Input placeholder="guest@example.com" className="h-8 bg-muted/50 text-sm" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <p className="text-xs text-muted-foreground text-center">
+            + more attendees based on ticket quantity
+          </p>
         </div>
       );
 
@@ -887,6 +1068,41 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
 
     case "divider":
       return <div className="border-t my-4" />;
+
+    case "info_modal": {
+      const triggerStyle = element.config.triggerStyle as string || "link";
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            {triggerStyle === "link" && (
+              <span className="text-primary underline cursor-pointer text-sm hover:text-primary/80">
+                {(element.config.triggerText as string) || "Learn More"}
+              </span>
+            )}
+            {triggerStyle === "button" && (
+              <Button variant="outline" size="sm">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                {(element.config.triggerText as string) || "Learn More"}
+              </Button>
+            )}
+            {triggerStyle === "icon" && (
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full">
+                <HelpCircle className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            )}
+          </div>
+          {/* Mini modal preview */}
+          <div className="ml-4 p-3 rounded-lg border bg-muted/30 text-xs">
+            <div className="font-medium mb-1">
+              {(element.config.modalTitle as string) || "Modal Title"}
+            </div>
+            <div className="text-muted-foreground line-clamp-2">
+              {(element.config.modalContent as string) || "Modal content preview..."}
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     case "custom_questions":
       return (
@@ -1079,17 +1295,29 @@ export function CheckoutTemplateBuilder({
   };
 
   const addPage = () => {
+    const newPageId = `page-${Date.now()}`;
     setTemplate((prev) => ({
       ...prev,
       pages: [
         ...prev.pages,
         {
-          id: `page-${Date.now()}`,
+          id: newPageId,
           title: `Step ${prev.pages.length + 1}`,
           elements: [],
         },
       ],
     }));
+    toast({
+      title: "Page Added",
+      description: "New checkout page has been added. Drag elements to customize it.",
+    });
+    // Scroll to bottom after state update
+    setTimeout(() => {
+      const scrollArea = document.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollArea) {
+        scrollArea.scrollTop = scrollArea.scrollHeight;
+      }
+    }, 100);
   };
 
   const removePage = (pageIndex: number) => {
