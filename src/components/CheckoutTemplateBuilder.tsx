@@ -11,6 +11,7 @@ import {
   DragEndEvent,
   DragOverEvent,
   UniqueIdentifier,
+  useDroppable,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -407,6 +408,11 @@ function PageCanvas({
   onRemovePage: () => void;
   canDeleteElement: (elementId: string) => boolean;
 }) {
+  // Make the page itself a droppable target
+  const { setNodeRef, isOver } = useDroppable({
+    id: `page-drop-${pageIndex}`,
+  });
+
   return (
     <Card className="flex-1">
       <CardHeader className="pb-3">
@@ -439,7 +445,14 @@ function PageCanvas({
           items={page.elements.map((e) => e.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="space-y-2 min-h-[200px] p-4 rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/30">
+          <div
+            ref={setNodeRef}
+            className={`space-y-2 min-h-[200px] p-4 rounded-lg border-2 border-dashed transition-colors ${
+              isOver
+                ? "border-primary bg-primary/10"
+                : "border-muted-foreground/20 bg-muted/30"
+            }`}
+          >
             {page.elements.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
                 <Layers className="h-8 w-8 mb-2 opacity-50" />
@@ -1234,6 +1247,13 @@ export function CheckoutTemplateBuilder({
     const activeIdStr = String(active.id);
     const overIdStr = String(over.id);
 
+    // Check if dropping onto a page drop zone (for empty pages or adding to end)
+    const isPageDrop = overIdStr.startsWith("page-drop-");
+    let dropPageIndex = -1;
+    if (isPageDrop) {
+      dropPageIndex = parseInt(overIdStr.replace("page-drop-", ""), 10);
+    }
+
     // Check if dragging from palette
     if (activeIdStr.startsWith("palette-")) {
       const elementType = activeIdStr.replace("palette-", "") as ElementType;
@@ -1244,14 +1264,20 @@ export function CheckoutTemplateBuilder({
       let targetPageIndex = 0;
       let targetPosition = 0;
 
-      // Check if dropping on a specific element or page
-      for (let i = 0; i < template.pages.length; i++) {
-        const pageElements = template.pages[i].elements;
-        const elementIndex = pageElements.findIndex((e) => e.id === overIdStr);
-        if (elementIndex !== -1) {
-          targetPageIndex = i;
-          targetPosition = elementIndex;
-          break;
+      // If dropped on a page drop zone, add to end of that page
+      if (isPageDrop && dropPageIndex >= 0) {
+        targetPageIndex = dropPageIndex;
+        targetPosition = template.pages[dropPageIndex].elements.length;
+      } else {
+        // Check if dropping on a specific element
+        for (let i = 0; i < template.pages.length; i++) {
+          const pageElements = template.pages[i].elements;
+          const elementIndex = pageElements.findIndex((e) => e.id === overIdStr);
+          if (elementIndex !== -1) {
+            targetPageIndex = i;
+            targetPosition = elementIndex;
+            break;
+          }
         }
       }
 
@@ -1279,7 +1305,7 @@ export function CheckoutTemplateBuilder({
       return;
     }
 
-    // Find source and target page/position
+    // Find source page/position for existing element being moved
     let sourcePageIndex = -1;
     let sourceElementIndex = -1;
     let targetPageIndex = -1;
@@ -1303,6 +1329,35 @@ export function CheckoutTemplateBuilder({
     // If we couldn't find the element being dragged, exit
     if (sourcePageIndex === -1 || sourceElementIndex === -1) return;
 
+    // Handle drop onto page drop zone (moving element to a different page)
+    if (isPageDrop && dropPageIndex >= 0 && dropPageIndex !== sourcePageIndex) {
+      setTemplate((prev) => {
+        const newPages = [...prev.pages];
+
+        // Get the element being moved
+        const elementToMove = prev.pages[sourcePageIndex].elements[sourceElementIndex];
+
+        // Remove from source page
+        const sourceElements = [...prev.pages[sourcePageIndex].elements];
+        sourceElements.splice(sourceElementIndex, 1);
+        newPages[sourcePageIndex] = {
+          ...newPages[sourcePageIndex],
+          elements: sourceElements,
+        };
+
+        // Add to end of target page
+        const targetElements = [...prev.pages[dropPageIndex].elements];
+        targetElements.push(elementToMove);
+        newPages[dropPageIndex] = {
+          ...newPages[dropPageIndex],
+          elements: targetElements,
+        };
+
+        return { ...prev, pages: newPages };
+      });
+      return;
+    }
+
     // Same page reordering
     if (sourcePageIndex === targetPageIndex && targetElementIndex !== -1) {
       if (sourceElementIndex !== targetElementIndex) {
@@ -1318,7 +1373,7 @@ export function CheckoutTemplateBuilder({
       return;
     }
 
-    // Cross-page move
+    // Cross-page move (dropping on an element in another page)
     if (targetPageIndex !== -1 && sourcePageIndex !== targetPageIndex) {
       setTemplate((prev) => {
         const newPages = [...prev.pages];
@@ -1334,7 +1389,7 @@ export function CheckoutTemplateBuilder({
           elements: sourceElements,
         };
 
-        // Add to target page
+        // Add to target page at specific position
         const targetElements = [...prev.pages[targetPageIndex].elements];
         targetElements.splice(targetElementIndex, 0, elementToMove);
         newPages[targetPageIndex] = {
