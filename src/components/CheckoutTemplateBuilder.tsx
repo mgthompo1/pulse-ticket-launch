@@ -1279,23 +1279,72 @@ export function CheckoutTemplateBuilder({
       return;
     }
 
-    // Handle reordering within same page
-    for (let pageIndex = 0; pageIndex < template.pages.length; pageIndex++) {
-      const page = template.pages[pageIndex];
-      const activeIndex = page.elements.findIndex((e) => e.id === activeIdStr);
-      const overIndex = page.elements.findIndex((e) => e.id === overIdStr);
+    // Find source and target page/position
+    let sourcePageIndex = -1;
+    let sourceElementIndex = -1;
+    let targetPageIndex = -1;
+    let targetElementIndex = -1;
 
-      if (activeIndex !== -1 && overIndex !== -1 && activeIndex !== overIndex) {
+    for (let i = 0; i < template.pages.length; i++) {
+      const page = template.pages[i];
+      const activeIdx = page.elements.findIndex((e) => e.id === activeIdStr);
+      const overIdx = page.elements.findIndex((e) => e.id === overIdStr);
+
+      if (activeIdx !== -1) {
+        sourcePageIndex = i;
+        sourceElementIndex = activeIdx;
+      }
+      if (overIdx !== -1) {
+        targetPageIndex = i;
+        targetElementIndex = overIdx;
+      }
+    }
+
+    // If we couldn't find the element being dragged, exit
+    if (sourcePageIndex === -1 || sourceElementIndex === -1) return;
+
+    // Same page reordering
+    if (sourcePageIndex === targetPageIndex && targetElementIndex !== -1) {
+      if (sourceElementIndex !== targetElementIndex) {
         setTemplate((prev) => {
           const newPages = [...prev.pages];
-          newPages[pageIndex] = {
-            ...newPages[pageIndex],
-            elements: arrayMove(page.elements, activeIndex, overIndex),
+          newPages[sourcePageIndex] = {
+            ...newPages[sourcePageIndex],
+            elements: arrayMove(prev.pages[sourcePageIndex].elements, sourceElementIndex, targetElementIndex),
           };
           return { ...prev, pages: newPages };
         });
-        return;
       }
+      return;
+    }
+
+    // Cross-page move
+    if (targetPageIndex !== -1 && sourcePageIndex !== targetPageIndex) {
+      setTemplate((prev) => {
+        const newPages = [...prev.pages];
+
+        // Get the element being moved
+        const elementToMove = prev.pages[sourcePageIndex].elements[sourceElementIndex];
+
+        // Remove from source page
+        const sourceElements = [...prev.pages[sourcePageIndex].elements];
+        sourceElements.splice(sourceElementIndex, 1);
+        newPages[sourcePageIndex] = {
+          ...newPages[sourcePageIndex],
+          elements: sourceElements,
+        };
+
+        // Add to target page
+        const targetElements = [...prev.pages[targetPageIndex].elements];
+        targetElements.splice(targetElementIndex, 0, elementToMove);
+        newPages[targetPageIndex] = {
+          ...newPages[targetPageIndex],
+          elements: targetElements,
+        };
+
+        return { ...prev, pages: newPages };
+      });
+      return;
     }
   };
 
