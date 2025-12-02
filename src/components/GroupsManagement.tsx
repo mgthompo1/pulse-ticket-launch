@@ -223,20 +223,48 @@ export const GroupsManagement: React.FC = () => {
     setShowGroupDialog(true);
   };
 
-  const handleEditGroup = (group: Group) => {
+  const handleEditGroup = async (group: Group) => {
     setEditingGroup(group);
-    setFormData({
-      name: group.name,
-      description: group.description || "",
-      contact_name: group.contact_name || "",
-      contact_email: group.contact_email,
-      contact_phone: group.contact_phone || "",
-      billing_contact_name: "",
-      billing_contact_email: "",
-      billing_address: "",
-      url_slug: group.url_slug || "",
-      passkey: group.passkey || "",
-    });
+
+    // Fetch full group data including billing fields
+    try {
+      const { data: fullGroup, error } = await supabase
+        .from("groups")
+        .select("*")
+        .eq("id", group.id)
+        .single();
+
+      if (error) throw error;
+
+      setFormData({
+        name: fullGroup.name,
+        description: fullGroup.description || "",
+        contact_name: fullGroup.contact_name || "",
+        contact_email: fullGroup.contact_email,
+        contact_phone: fullGroup.contact_phone || "",
+        billing_contact_name: fullGroup.billing_contact_name || "",
+        billing_contact_email: fullGroup.billing_contact_email || "",
+        billing_address: fullGroup.billing_address || "",
+        url_slug: fullGroup.url_slug || "",
+        passkey: fullGroup.passkey || "",
+      });
+    } catch (error) {
+      console.error("Error fetching group details:", error);
+      // Fallback to partial data
+      setFormData({
+        name: group.name,
+        description: group.description || "",
+        contact_name: group.contact_name || "",
+        contact_email: group.contact_email,
+        contact_phone: group.contact_phone || "",
+        billing_contact_name: "",
+        billing_contact_email: "",
+        billing_address: "",
+        url_slug: group.url_slug || "",
+        passkey: group.passkey || "",
+      });
+    }
+
     setShowGroupDialog(true);
   };
 

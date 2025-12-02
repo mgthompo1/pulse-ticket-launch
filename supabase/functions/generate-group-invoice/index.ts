@@ -132,12 +132,28 @@ serve(async (req) => {
       amountOwed
     });
 
-    // Get unique event ID (assuming all sales are for same event for now)
-    const firstSale = sales[0];
-    const invoiceEventId = eventId || (firstSale as any).group_ticket_allocations?.event_id;
+    // Determine event ID for invoice
+    // If eventId was provided, use it. Otherwise, check if all sales are for the same event
+    let invoiceEventId: string | null = eventId || null;
 
     if (!invoiceEventId) {
-      throw new Error("Could not determine event ID for invoice");
+      // Get unique event IDs from sales
+      const eventIds = new Set<string>();
+      for (const sale of sales) {
+        const saleEventId = (sale as any).group_ticket_allocations?.event_id;
+        if (saleEventId) {
+          eventIds.add(saleEventId);
+        }
+      }
+
+      if (eventIds.size === 1) {
+        // All sales are for the same event, use that event ID
+        invoiceEventId = Array.from(eventIds)[0];
+      } else {
+        // Multiple events - leave event_id as null (multi-event invoice)
+        invoiceEventId = null;
+        console.log(`Invoice covers ${eventIds.size} events - creating multi-event invoice`);
+      }
     }
 
     // 4. Generate invoice number

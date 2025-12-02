@@ -167,7 +167,7 @@ export const GroupPublicWidget = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
           <p className="text-muted-foreground">Loading group information...</p>
@@ -178,7 +178,7 @@ export const GroupPublicWidget = () => {
 
   if (error || !group) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
@@ -201,13 +201,13 @@ export const GroupPublicWidget = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-card border-b">
         <div className="max-w-6xl mx-auto px-4 py-6">
           <div className="flex items-start gap-4">
             {group.logo_url && (
-              <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+              <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                 <img
                   src={group.logo_url}
                   alt={group.name}
@@ -278,7 +278,7 @@ export const GroupPublicWidget = () => {
                 return (
                   <Card key={allocation.id} className="overflow-hidden">
                     {allocation.events.logo_url && (
-                      <div className="h-48 overflow-hidden bg-gray-100">
+                      <div className="h-48 overflow-hidden bg-muted">
                         <img
                           src={allocation.events.logo_url}
                           alt={allocation.events.name}
@@ -346,7 +346,7 @@ export const GroupPublicWidget = () => {
                             {remaining} of {allocation.allocated_quantity} remaining
                           </span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="w-full bg-muted rounded-full h-2">
                           <div
                             className="bg-primary h-2 rounded-full transition-all"
                             style={{ width: `${usagePercent}%` }}
@@ -390,7 +390,7 @@ export const GroupPublicWidget = () => {
       </div>
 
       {/* Footer */}
-      <div className="border-t bg-white mt-12">
+      <div className="border-t bg-card mt-12">
         <div className="max-w-6xl mx-auto px-4 py-6">
           <div className="text-center text-sm text-muted-foreground">
             <p>

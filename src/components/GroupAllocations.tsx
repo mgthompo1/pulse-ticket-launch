@@ -43,6 +43,7 @@ interface GroupAllocationsProps {
 
 interface Allocation {
   id: string;
+  group_id: string;
   event_id: string;
   ticket_type_id: string;
   allocated_quantity: number;
@@ -71,6 +72,7 @@ export const GroupAllocations: React.FC<GroupAllocationsProps> = ({
   const [allocations, setAllocations] = useState<Allocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAllocateDialog, setShowAllocateDialog] = useState(false);
+  const [editingAllocation, setEditingAllocation] = useState<Allocation | null>(null);
 
   useEffect(() => {
     loadAllocations();
@@ -108,6 +110,18 @@ export const GroupAllocations: React.FC<GroupAllocationsProps> = ({
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditAllocation = (allocation: Allocation) => {
+    setEditingAllocation(allocation);
+    setShowAllocateDialog(true);
+  };
+
+  const handleCloseDialog = (open: boolean) => {
+    setShowAllocateDialog(open);
+    if (!open) {
+      setEditingAllocation(null);
     }
   };
 
@@ -366,6 +380,12 @@ export const GroupAllocations: React.FC<GroupAllocationsProps> = ({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
+                              onClick={() => handleEditAllocation(allocation)}
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit Allocation
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
                               onClick={() => handleDeleteAllocation(allocation.id)}
                               className="text-destructive"
                             >
@@ -397,9 +417,21 @@ export const GroupAllocations: React.FC<GroupAllocationsProps> = ({
       {/* Allocate Dialog */}
       <AllocateTicketsDialog
         open={showAllocateDialog}
-        onOpenChange={setShowAllocateDialog}
+        onOpenChange={handleCloseDialog}
         organizationId={organizationId}
         preSelectedGroupId={groupId}
+        editingAllocation={editingAllocation ? {
+          id: editingAllocation.id,
+          group_id: editingAllocation.group_id,
+          event_id: editingAllocation.event_id,
+          ticket_type_id: editingAllocation.ticket_type_id,
+          allocated_quantity: editingAllocation.allocated_quantity,
+          used_quantity: editingAllocation.used_quantity,
+          reserved_quantity: editingAllocation.reserved_quantity,
+          full_price: editingAllocation.full_price,
+          minimum_price: editingAllocation.minimum_price,
+          notes: editingAllocation.notes,
+        } : null}
         onSuccess={loadAllocations}
       />
     </div>

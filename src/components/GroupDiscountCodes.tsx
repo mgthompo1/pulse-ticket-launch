@@ -14,6 +14,7 @@ import {
   DollarSign,
   Tag,
   AlertCircle,
+  Calendar,
 } from "lucide-react";
 import {
   Dialog,
@@ -48,6 +49,8 @@ interface DiscountCode {
   max_uses: number | null;
   current_uses: number;
   active: boolean;
+  valid_from: string | null;
+  valid_until: string | null;
   created_at: string;
 }
 
@@ -68,6 +71,8 @@ export const GroupDiscountCodes: React.FC<GroupDiscountCodesProps> = ({
     customPrice: "",
     reason: "",
     maxUses: "",
+    validFrom: "",
+    validUntil: "",
   });
 
   useEffect(() => {
@@ -79,12 +84,12 @@ export const GroupDiscountCodes: React.FC<GroupDiscountCodesProps> = ({
     setLoading(true);
     try {
       // Query promo_codes table for codes specific to this group
-      // Group codes have the group_id in their description field prefixed with "GROUP:"
+      // Support both new group_id column and legacy description pattern
       const { data, error } = await supabase
         .from("promo_codes")
         .select("*")
         .eq("organization_id", organizationId)
-        .ilike("description", `GROUP:${groupId}%`)
+        .or(`group_id.eq.${groupId},description.ilike.GROUP:${groupId}%`)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -150,19 +155,19 @@ export const GroupDiscountCodes: React.FC<GroupDiscountCodesProps> = ({
         discountValue = parseFloat(formData.customPrice);
       }
 
-      // Store group_id in description with "GROUP:" prefix for filtering
-      const description = `GROUP:${groupId}${formData.reason ? ` - ${formData.reason}` : ''}`;
-
       const codeData = {
         code: formData.code.toUpperCase(),
         discount_type: formData.discountType,
         discount_value: discountValue,
         organization_id: organizationId,
         event_id: null,
-        description: description,
+        group_id: groupId, // Use proper FK reference instead of description hack
+        description: formData.reason || null, // Now description is just for notes
         max_uses: formData.maxUses ? parseInt(formData.maxUses) : null,
         current_uses: 0,
         active: true,
+        valid_from: formData.validFrom || null,
+        valid_until: formData.validUntil || null,
       };
 
       const { error } = await supabase.from("promo_codes").insert(codeData);
@@ -182,6 +187,8 @@ export const GroupDiscountCodes: React.FC<GroupDiscountCodesProps> = ({
         customPrice: "",
         reason: "",
         maxUses: "",
+        validFrom: "",
+        validUntil: "",
       });
       loadDiscountCodes();
     } catch (error) {
@@ -306,7 +313,7 @@ export const GroupDiscountCodes: React.FC<GroupDiscountCodesProps> = ({
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <code className="text-lg font-mono font-bold bg-gray-100 px-3 py-1 rounded">
+                      <code className="text-lg font-mono font-bold bg-muted px-3 py-1 rounded">
                         {code.code}
                       </code>
                       <Button
@@ -369,10 +376,35 @@ export const GroupDiscountCodes: React.FC<GroupDiscountCodesProps> = ({
                   </span>
                 </div>
 
-                {/* Status Badge */}
-                <Badge variant={code.active ? "default" : "secondary"}>
-                  {code.active ? "Active" : "Inactive"}
-                </Badge>
+                {/* Validity Period */}
+                {(code.valid_from || code.valid_until) && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    <span>
+                      {code.valid_from && code.valid_until
+                        ? `${new Date(code.valid_from).toLocaleDateString()} - ${new Date(code.valid_until).toLocaleDateString()}`
+                        : code.valid_from
+                        ? `From ${new Date(code.valid_from).toLocaleDateString()}`
+                        : `Until ${new Date(code.valid_until!).toLocaleDateString()}`}
+                    </span>
+                  </div>
+                )}
+
+                {/* Status Badges */}
+                <div className="flex gap-2 flex-wrap">
+                  <Badge variant={code.active ? "default" : "secondary"}>
+                    {code.active ? "Active" : "Inactive"}
+                  </Badge>
+                  {code.valid_until && new Date(code.valid_until) < new Date() && (
+                    <Badge variant="destructive">Expired</Badge>
+                  )}
+                  {code.valid_from && new Date(code.valid_from) > new Date() && (
+                    <Badge variant="outline">Scheduled</Badge>
+                  )}
+                  {code.max_uses && code.current_uses >= code.max_uses && (
+                    <Badge variant="secondary">Max Uses Reached</Badge>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -515,6 +547,31 @@ export const GroupDiscountCodes: React.FC<GroupDiscountCodesProps> = ({
                 Leave empty for unlimited uses
               </p>
             </div>
+
+            {/* Validity Period */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="validFrom">Valid From (Optional)</Label>
+                <Input
+                  id="validFrom"
+                  type="date"
+                  value={formData.validFrom}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, validFrom: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="validUntil">Valid Until (Optional)</Label>
+                <Input
+                  id="validUntil"
+                  type="date"
+                  value={formData.validUntil}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, validUntil: e.target.value }))}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Leave empty for no date restrictions
+            </p>
           </div>
 
           <DialogFooter>

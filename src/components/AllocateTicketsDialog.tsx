@@ -22,12 +22,26 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
+interface AllocationToEdit {
+  id: string;
+  group_id: string;
+  event_id: string;
+  ticket_type_id: string;
+  allocated_quantity: number;
+  used_quantity: number;
+  reserved_quantity: number;
+  full_price: number;
+  minimum_price: number | null;
+  notes: string | null;
+}
+
 interface AllocateTicketsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   organizationId: string;
   preSelectedGroupId?: string;
   preSelectedEventId?: string;
+  editingAllocation?: AllocationToEdit | null;
   onSuccess?: () => void;
 }
 
@@ -55,6 +69,7 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
   organizationId,
   preSelectedGroupId,
   preSelectedEventId,
+  editingAllocation,
   onSuccess,
 }) => {
   const { toast } = useToast();
@@ -62,6 +77,8 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
   const [groups, setGroups] = useState<Group[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
+
+  const isEditing = !!editingAllocation;
 
   const [formData, setFormData] = useState({
     groupId: preSelectedGroupId || "",
@@ -72,6 +89,32 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
     minimumPrice: "",
     notes: "",
   });
+
+  // Populate form when editing
+  useEffect(() => {
+    if (open && editingAllocation) {
+      setFormData({
+        groupId: editingAllocation.group_id,
+        eventId: editingAllocation.event_id,
+        ticketTypeId: editingAllocation.ticket_type_id,
+        allocatedQuantity: editingAllocation.allocated_quantity.toString(),
+        fullPrice: editingAllocation.full_price.toFixed(2),
+        minimumPrice: editingAllocation.minimum_price?.toFixed(2) || "",
+        notes: editingAllocation.notes || "",
+      });
+    } else if (open && !editingAllocation) {
+      // Reset form for new allocation
+      setFormData({
+        groupId: preSelectedGroupId || "",
+        eventId: preSelectedEventId || "",
+        ticketTypeId: "",
+        allocatedQuantity: "",
+        fullPrice: "",
+        minimumPrice: "",
+        notes: "",
+      });
+    }
+  }, [open, editingAllocation, preSelectedGroupId, preSelectedEventId]);
 
   useEffect(() => {
     if (open && organizationId) {
@@ -92,8 +135,8 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
   }, [formData.eventId]);
 
   useEffect(() => {
-    // Auto-populate full price from selected ticket type
-    if (formData.ticketTypeId) {
+    // Auto-populate full price from selected ticket type (only for new allocations, not edits)
+    if (formData.ticketTypeId && !isEditing) {
       const selectedTicketType = ticketTypes.find((tt) => tt.id === formData.ticketTypeId);
       if (selectedTicketType) {
         setFormData((prev) => ({
@@ -102,7 +145,7 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
         }));
       }
     }
-  }, [formData.ticketTypeId, ticketTypes]);
+  }, [formData.ticketTypeId, ticketTypes, isEditing]);
 
   const loadGroups = async () => {
     try {
@@ -207,9 +250,34 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
       return;
     }
 
-    // Check if ticket type has enough inventory
+    // For new allocations, check for duplicate allocation (same group + event + ticket type)
+    if (!isEditing) {
+      const { data: existingAllocation, error: checkError } = await supabase
+        .from("group_ticket_allocations")
+        .select("id")
+        .eq("group_id", formData.groupId)
+        .eq("event_id", formData.eventId)
+        .eq("ticket_type_id", formData.ticketTypeId)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error("Error checking for duplicate:", checkError);
+      }
+
+      if (existingAllocation) {
+        toast({
+          title: "Duplicate Allocation",
+          description: "This group already has an allocation for this ticket type. Please edit the existing allocation instead.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    // For new allocations, check if ticket type has enough inventory
     const selectedTicketType = ticketTypes.find((tt) => tt.id === formData.ticketTypeId);
-    if (selectedTicketType && quantity > selectedTicketType.quantity_available) {
+    if (!isEditing && selectedTicketType && quantity > selectedTicketType.quantity_available) {
       toast({
         title: "Validation Error",
         description: `Only ${selectedTicketType.quantity_available} tickets available for this type`,
@@ -218,25 +286,59 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
       return;
     }
 
+    // For edits, ensure new quantity isn't less than already used + reserved
+    if (isEditing && editingAllocation) {
+      const minRequired = editingAllocation.used_quantity + editingAllocation.reserved_quantity;
+      if (quantity < minRequired) {
+        toast({
+          title: "Validation Error",
+          description: `Cannot reduce allocation below ${minRequired} (${editingAllocation.used_quantity} sold + ${editingAllocation.reserved_quantity} reserved)`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setLoading(true);
     try {
-      const { error } = await supabase.from("group_ticket_allocations").insert({
-        group_id: formData.groupId,
-        event_id: formData.eventId,
-        ticket_type_id: formData.ticketTypeId,
-        allocated_quantity: quantity,
-        full_price: fullPrice,
-        minimum_price: minimumPrice,
-        notes: formData.notes || null,
-        is_active: true,
-      });
+      if (isEditing && editingAllocation) {
+        // Update existing allocation
+        const { error } = await supabase
+          .from("group_ticket_allocations")
+          .update({
+            allocated_quantity: quantity,
+            full_price: fullPrice,
+            minimum_price: minimumPrice,
+            notes: formData.notes || null,
+          })
+          .eq("id", editingAllocation.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: `Allocated ${quantity} tickets to group`,
-      });
+        toast({
+          title: "Success",
+          description: "Allocation updated successfully",
+        });
+      } else {
+        // Create new allocation
+        const { error } = await supabase.from("group_ticket_allocations").insert({
+          group_id: formData.groupId,
+          event_id: formData.eventId,
+          ticket_type_id: formData.ticketTypeId,
+          allocated_quantity: quantity,
+          full_price: fullPrice,
+          minimum_price: minimumPrice,
+          notes: formData.notes || null,
+          is_active: true,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: `Allocated ${quantity} tickets to group`,
+        });
+      }
 
       // Reset form
       setFormData({
@@ -270,10 +372,11 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Allocate Tickets to Group</DialogTitle>
+          <DialogTitle>{isEditing ? "Edit Allocation" : "Allocate Tickets to Group"}</DialogTitle>
           <DialogDescription>
-            Assign ticket inventory from an event to a group. The group will be able to sell these
-            tickets to their members.
+            {isEditing
+              ? "Update the allocation quantity and pricing. Group, event, and ticket type cannot be changed."
+              : "Assign ticket inventory from an event to a group. The group will be able to sell these tickets to their members."}
           </DialogDescription>
         </DialogHeader>
 
@@ -284,7 +387,7 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
             <Select
               value={formData.groupId}
               onValueChange={(value) => setFormData((prev) => ({ ...prev, groupId: value }))}
-              disabled={!!preSelectedGroupId}
+              disabled={!!preSelectedGroupId || isEditing}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a group" />
@@ -305,7 +408,7 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
             <Select
               value={formData.eventId}
               onValueChange={(value) => setFormData((prev) => ({ ...prev, eventId: value }))}
-              disabled={!!preSelectedEventId}
+              disabled={!!preSelectedEventId || isEditing}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select an event" />
@@ -326,7 +429,7 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
             <Select
               value={formData.ticketTypeId}
               onValueChange={(value) => setFormData((prev) => ({ ...prev, ticketTypeId: value }))}
-              disabled={!formData.eventId}
+              disabled={!formData.eventId || isEditing}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a ticket type" />
@@ -463,7 +566,7 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
           </Button>
           <Button onClick={handleSubmit} disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Allocate Tickets
+            {isEditing ? "Save Changes" : "Allocate Tickets"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -30,7 +30,7 @@ interface Group {
   logo_url: string | null;
   url_slug: string;
   organization_id: string;
-  passkey: string | null;
+  has_passkey: boolean; // Don't expose actual passkey to client
   organizations: {
     name: string;
     logo_url: string | null;
@@ -99,34 +99,36 @@ export const GroupPortal = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passkeyInput, setPasskeyInput] = useState("");
   const [passkeyError, setPasskeyError] = useState("");
+  const [validatingPasskey, setValidatingPasskey] = useState(false);
 
   useEffect(() => {
     if (slug) {
+      // Check if session token exists before loading
+      const sessionToken = sessionStorage.getItem(`group_session_${slug}`);
+      if (sessionToken) {
+        setIsAuthenticated(true);
+      }
       loadGroupData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
-
-  useEffect(() => {
-    // Check if passkey is stored in sessionStorage
-    if (group && slug) {
-      const storedPasskey = sessionStorage.getItem(`group_passkey_${slug}`);
-      if (storedPasskey && storedPasskey === group.passkey) {
-        setIsAuthenticated(true);
-      }
-    }
-  }, [group, slug]);
 
   const loadGroupData = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // 1. Load group by slug
+      // 1. Load group by slug (excluding passkey from response for security)
       const { data: groupData, error: groupError } = await supabase
         .from("groups")
         .select(`
-          *,
+          id,
+          name,
+          description,
+          logo_url,
+          url_slug,
+          organization_id,
+          passkey,
           organizations (
             name,
             logo_url
@@ -145,7 +147,19 @@ export const GroupPortal = () => {
         return;
       }
 
-      setGroup(groupData as Group);
+      // Transform to not expose actual passkey, just whether one exists
+      const safeGroupData: Group = {
+        id: groupData.id,
+        name: groupData.name,
+        description: groupData.description,
+        logo_url: groupData.logo_url,
+        url_slug: groupData.url_slug,
+        organization_id: groupData.organization_id,
+        has_passkey: !!groupData.passkey,
+        organizations: groupData.organizations as { name: string; logo_url: string | null },
+      };
+
+      setGroup(safeGroupData);
 
       // 2. Load allocations
       const { data: allocationsData, error: allocationsError } = await supabase
@@ -273,14 +287,18 @@ export const GroupPortal = () => {
       const totalRevenue = (transformedSales || []).reduce((sum, sale) => sum + (sale.total_amount || 0), 0);
       const totalTicketsSold = transformedSales.length; // Each sale in group_ticket_sales is 1 ticket
 
-      // Get pending invoices
+      // Get unpaid invoices (draft, sent, viewed, partial, overdue - everything except paid/cancelled)
       const { data: invoicesData } = await supabase
         .from("group_invoices")
-        .select("total_amount")
+        .select("amount_owed, amount_paid")
         .eq("group_id", groupData.id)
-        .eq("status", "pending");
+        .in("status", ["draft", "sent", "viewed", "partial", "overdue"]);
 
-      const pendingInvoiceAmount = (invoicesData || []).reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
+      // Calculate remaining unpaid amount (amount_owed - amount_paid for each invoice)
+      const pendingInvoiceAmount = (invoicesData || []).reduce((sum, inv) => {
+        const remaining = (inv.amount_owed || 0) - (inv.amount_paid || 0);
+        return sum + remaining;
+      }, 0);
 
       // Count unique orders
       const uniqueOrderIds = new Set(
@@ -314,23 +332,55 @@ export const GroupPortal = () => {
     }
   };
 
-  const handlePasskeySubmit = (e: React.FormEvent) => {
+  const handlePasskeySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!group || !group.passkey) {
+    if (!group || !group.has_passkey) {
       setPasskeyError("This group has not set up a passkey yet.");
       return;
     }
 
-    if (passkeyInput === group.passkey) {
-      // Save passkey to sessionStorage
-      if (slug) {
-        sessionStorage.setItem(`group_passkey_${slug}`, passkeyInput);
+    if (!passkeyInput.trim()) {
+      setPasskeyError("Please enter a passkey.");
+      return;
+    }
+
+    setValidatingPasskey(true);
+    setPasskeyError("");
+
+    try {
+      // Server-side passkey validation
+      const { data, error } = await supabase.functions.invoke('validate-group-passkey', {
+        body: {
+          slug,
+          passkey: passkeyInput,
+        },
+      });
+
+      if (error) {
+        console.error("Passkey validation error:", error);
+        setPasskeyError("An error occurred. Please try again.");
+        setPasskeyInput("");
+        return;
+      }
+
+      if (!data?.success) {
+        setPasskeyError(data?.error || "Incorrect passkey. Please try again.");
+        setPasskeyInput("");
+        return;
+      }
+
+      // Save session token to sessionStorage (not the passkey itself)
+      if (slug && data.sessionToken) {
+        sessionStorage.setItem(`group_session_${slug}`, data.sessionToken);
       }
       setIsAuthenticated(true);
       setPasskeyError("");
-    } else {
-      setPasskeyError("Incorrect passkey. Please try again.");
+    } catch (err) {
+      console.error("Passkey validation exception:", err);
+      setPasskeyError("An error occurred. Please try again.");
       setPasskeyInput("");
+    } finally {
+      setValidatingPasskey(false);
     }
   };
 
@@ -346,7 +396,7 @@ export const GroupPortal = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
           <p className="text-muted-foreground">Loading group portal...</p>
@@ -357,7 +407,7 @@ export const GroupPortal = () => {
 
   if (error || !group) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
@@ -382,12 +432,12 @@ export const GroupPortal = () => {
   // Show passkey input if not authenticated
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
           <CardHeader>
             <div className="flex items-center gap-4 mb-4">
               {group.logo_url && (
-                <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                   <img
                     src={group.logo_url}
                     alt={group.name}
@@ -413,15 +463,22 @@ export const GroupPortal = () => {
                   value={passkeyInput}
                   onChange={(e) => setPasskeyInput(e.target.value)}
                   placeholder="Enter group passkey"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                   autoFocus
                 />
                 {passkeyError && (
-                  <p className="text-sm text-red-600 mt-2">{passkeyError}</p>
+                  <p className="text-sm text-destructive mt-2">{passkeyError}</p>
                 )}
               </div>
-              <Button type="submit" className="w-full" disabled={!passkeyInput}>
-                Access Portal
+              <Button type="submit" className="w-full" disabled={!passkeyInput || validatingPasskey}>
+                {validatingPasskey ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Validating...
+                  </>
+                ) : (
+                  "Access Portal"
+                )}
               </Button>
               <p className="text-xs text-muted-foreground text-center">
                 Contact your group administrator if you don't have the passkey.
@@ -434,13 +491,13 @@ export const GroupPortal = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-card border-b">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex items-start gap-4">
             {group.logo_url && (
-              <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+              <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                 <img
                   src={group.logo_url}
                   alt={group.name}
@@ -612,7 +669,7 @@ export const GroupPortal = () => {
                                 {allocation.used_quantity} / {allocation.allocated_quantity} sold
                               </span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="w-full bg-muted rounded-full h-2">
                               <div
                                 className="bg-primary h-2 rounded-full transition-all"
                                 style={{ width: `${usagePercent}%` }}

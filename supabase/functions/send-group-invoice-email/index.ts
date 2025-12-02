@@ -45,7 +45,8 @@ serve(async (req) => {
           organization_id,
           organizations (
             id,
-            name
+            name,
+            currency
           )
         ),
         events (
@@ -99,7 +100,7 @@ serve(async (req) => {
             line_items: [
               {
                 price_data: {
-                  currency: "nzd", // TODO: Get from organization settings
+                  currency: ((invoice as any).groups?.organizations?.currency || "nzd").toLowerCase(),
                   product_data: {
                     name: `Invoice ${invoice.invoice_number} - ${(invoice as any).events?.name || "Group Ticket Discounts"}`,
                     description: `Payment for ${invoice.total_tickets_sold} tickets sold from ${invoice.billing_period_start} to ${invoice.billing_period_end}`,

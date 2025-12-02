@@ -32,8 +32,35 @@ import {
   Tag,
   ShoppingCart,
   CreditCard,
+  Users,
+  HelpCircle,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+// Simple HTML sanitizer - strips all tags except basic formatting
+const sanitizeHtml = (html: string): string => {
+  // Create a temporary element to parse HTML
+  const temp = document.createElement("div");
+  temp.innerHTML = html;
+  // Only allow text content - strips all HTML
+  // For basic formatting, we convert common tags to plain text equivalents
+  return temp.textContent || temp.innerText || "";
+};
 
 // Types matching the template builder
 interface CheckoutElement {
@@ -117,9 +144,12 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
     phone: "",
   });
   const [promoCode, setPromoCode] = useState("");
-  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: number } | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: number; discountType: "percent" | "fixed" } | null>(null);
+  const [applyingPromo, setApplyingPromo] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
+  const [attendeeDetails, setAttendeeDetails] = useState<Array<{ name: string; email: string; phone: string }>>([]);
+  const [customQuestions, setCustomQuestions] = useState<Array<{ id: string; question: string; type: string; required: boolean; options?: string[] }>>([]);
 
   // Payment state
   const [paymentProcessing, setPaymentProcessing] = useState(false);
@@ -132,7 +162,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
 
   // Initialize session ID
   useEffect(() => {
-    sessionId.current = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    sessionId.current = crypto.randomUUID();
   }, []);
 
   // Save abandoned cart when user has email and cart items
@@ -253,6 +283,24 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
 
       if (ticketsError) throw ticketsError;
       setTicketTypes(tickets || []);
+
+      // Load custom questions for the event
+      const { data: questions } = await supabase
+        .from("custom_questions")
+        .select("*")
+        .eq("event_id", eventId)
+        .eq("is_active", true)
+        .order("display_order", { ascending: true });
+
+      if (questions) {
+        setCustomQuestions(questions.map(q => ({
+          id: q.id,
+          question: q.question,
+          type: q.question_type || "text",
+          required: q.is_required || false,
+          options: q.options || [],
+        })));
+      }
     } catch (error) {
       console.error("Error loading event:", error);
       toast({
@@ -264,6 +312,33 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
       setLoading(false);
     }
   };
+
+  // Update attendee details when ticket count changes
+  useEffect(() => {
+    const totalTickets = Object.values(selectedTickets).reduce((sum, qty) => sum + qty, 0);
+    setAttendeeDetails(prev => {
+      if (totalTickets === prev.length) return prev;
+      if (totalTickets > prev.length) {
+        // Add new attendee slots
+        const newAttendees = [...prev];
+        for (let i = prev.length; i < totalTickets; i++) {
+          // Pre-fill first attendee with customer info
+          if (i === 0 && customerInfo.firstName) {
+            newAttendees.push({
+              name: `${customerInfo.firstName} ${customerInfo.lastName}`.trim(),
+              email: customerInfo.email,
+              phone: customerInfo.phone,
+            });
+          } else {
+            newAttendees.push({ name: "", email: "", phone: "" });
+          }
+        }
+        return newAttendees;
+      }
+      // Remove extra attendee slots
+      return prev.slice(0, totalTickets);
+    });
+  }, [selectedTickets, customerInfo.firstName, customerInfo.lastName, customerInfo.email, customerInfo.phone]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -278,8 +353,16 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
       }
     });
 
-    const discount = appliedPromo ? (subtotal * appliedPromo.discount) / 100 : 0;
-    const total = subtotal - discount;
+    // Handle both percentage and fixed discounts
+    let discount = 0;
+    if (appliedPromo) {
+      if (appliedPromo.discountType === "percent") {
+        discount = (subtotal * appliedPromo.discount) / 100;
+      } else {
+        discount = Math.min(appliedPromo.discount, subtotal); // Don't discount more than subtotal
+      }
+    }
+    const total = Math.max(0, subtotal - discount);
 
     return { subtotal, discount, total, ticketCount };
   }, [selectedTickets, ticketTypes, appliedPromo]);
@@ -288,6 +371,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
   const applyPromoCode = async () => {
     if (!promoCode.trim()) return;
 
+    setApplyingPromo(true);
     try {
       const { data, error } = await supabase
         .from("promo_codes")
@@ -316,17 +400,50 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
         return;
       }
 
+      // Check expiration dates
+      const now = new Date();
+      if (data.valid_from && new Date(data.valid_from) > now) {
+        toast({
+          title: "Code Not Active",
+          description: "This promo code is not yet active",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (data.valid_until && new Date(data.valid_until) < now) {
+        toast({
+          title: "Code Expired",
+          description: "This promo code has expired",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Handle both percentage and fixed discounts
+      const isPercentage = data.discount_percent && data.discount_percent > 0;
+      const discountValue = isPercentage ? data.discount_percent : (data.discount_amount || 0);
+
       setAppliedPromo({
         code: data.code,
-        discount: data.discount_percent || 0,
+        discount: discountValue,
+        discountType: isPercentage ? "percent" : "fixed",
       });
 
       toast({
         title: "Code Applied",
-        description: `${data.discount_percent}% discount applied`,
+        description: isPercentage
+          ? `${discountValue}% discount applied`
+          : `$${discountValue.toFixed(2)} discount applied`,
       });
     } catch (error) {
       console.error("Error applying promo:", error);
+      toast({
+        title: "Error",
+        description: "Failed to apply promo code",
+        variant: "destructive",
+      });
+    } finally {
+      setApplyingPromo(false);
     }
   };
 
@@ -394,11 +511,21 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
             return false;
           }
           break;
-        case "customer_info":
+        case "customer_info": {
           if (!customerInfo.email || !customerInfo.firstName) {
             toast({
               title: "Required Fields",
               description: "Please fill in your name and email",
+              variant: "destructive",
+            });
+            return false;
+          }
+          // Validate email format
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(customerInfo.email)) {
+            toast({
+              title: "Invalid Email",
+              description: "Please enter a valid email address",
               variant: "destructive",
             });
             return false;
@@ -412,6 +539,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
             return false;
           }
           break;
+        }
         case "terms_checkbox":
           if (!termsAccepted) {
             toast({
@@ -420,6 +548,49 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
               variant: "destructive",
             });
             return false;
+          }
+          break;
+        case "attendee_details":
+          // Validate attendee details if element is present
+          for (let i = 0; i < attendeeDetails.length; i++) {
+            const attendee = attendeeDetails[i];
+            if (!attendee.name.trim()) {
+              toast({
+                title: "Attendee Details Required",
+                description: `Please enter a name for ticket ${i + 1}`,
+                variant: "destructive",
+              });
+              return false;
+            }
+            if (element.config.requireEmail && !attendee.email.trim()) {
+              toast({
+                title: "Attendee Email Required",
+                description: `Please enter an email for ticket ${i + 1}`,
+                variant: "destructive",
+              });
+              return false;
+            }
+            if (element.config.requirePhone && !attendee.phone.trim()) {
+              toast({
+                title: "Attendee Phone Required",
+                description: `Please enter a phone number for ticket ${i + 1}`,
+                variant: "destructive",
+              });
+              return false;
+            }
+          }
+          break;
+        case "custom_questions":
+          // Validate required custom questions
+          for (const q of customQuestions) {
+            if (q.required && !customAnswers[q.id]?.trim()) {
+              toast({
+                title: "Required Question",
+                description: `Please answer: ${q.question}`,
+                variant: "destructive",
+              });
+              return false;
+            }
           }
           break;
       }
@@ -727,7 +898,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                 </div>
                 {appliedPromo && (
                   <div className="flex justify-between text-sm text-green-600">
-                    <span>Discount ({appliedPromo.discount}%)</span>
+                    <span>Discount ({appliedPromo.discountType === "percent" ? `${appliedPromo.discount}%` : `$${appliedPromo.discount.toFixed(2)}`})</span>
                     <span>-${totals.discount.toFixed(2)}</span>
                   </div>
                 )}
@@ -763,7 +934,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
             {appliedPromo && (
               <Badge variant="secondary" className="bg-green-100 text-green-800">
                 <Tag className="h-3 w-3 mr-1" />
-                {appliedPromo.code} - {appliedPromo.discount}% off
+                {appliedPromo.code} - {appliedPromo.discountType === "percent" ? `${appliedPromo.discount}% off` : `$${appliedPromo.discount.toFixed(2)} off`}
               </Badge>
             )}
           </div>
@@ -825,22 +996,182 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
         return (
           <div
             key={element.id}
-            className="prose prose-sm dark:prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: (element.config.content as string) || "" }}
-          />
+            className="prose prose-sm dark:prose-invert max-w-none p-3 rounded-lg bg-muted/30"
+          >
+            <p className="whitespace-pre-wrap">{sanitizeHtml((element.config.content as string) || "")}</p>
+          </div>
         );
 
       case "divider":
         return <Separator key={element.id} className="my-4" />;
 
+      case "attendee_details":
+        return (
+          <div key={element.id} className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">{element.config.label || element.label}</h3>
+            </div>
+            {totals.ticketCount === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Select tickets above to add attendee details
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {attendeeDetails.map((attendee, index) => (
+                  <Card key={index} className={index === 0 ? "border-primary/30" : ""}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={index === 0 ? "secondary" : "outline"} className="text-xs">
+                          Ticket {index + 1}
+                        </Badge>
+                        {index === 0 && (
+                          <span className="text-xs text-muted-foreground">(Primary Ticket Holder)</span>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Name *</Label>
+                          <Input
+                            value={attendee.name}
+                            onChange={(e) => {
+                              const newDetails = [...attendeeDetails];
+                              newDetails[index] = { ...newDetails[index], name: e.target.value };
+                              setAttendeeDetails(newDetails);
+                            }}
+                            placeholder="Full name"
+                            className="h-9"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">
+                            Email {element.config.requireEmail ? "*" : ""}
+                          </Label>
+                          <Input
+                            type="email"
+                            value={attendee.email}
+                            onChange={(e) => {
+                              const newDetails = [...attendeeDetails];
+                              newDetails[index] = { ...newDetails[index], email: e.target.value };
+                              setAttendeeDetails(newDetails);
+                            }}
+                            placeholder="email@example.com"
+                            className="h-9"
+                          />
+                        </div>
+                      </div>
+                      {element.config.requirePhone && (
+                        <div className="space-y-1">
+                          <Label className="text-xs">Phone *</Label>
+                          <Input
+                            type="tel"
+                            value={attendee.phone}
+                            onChange={(e) => {
+                              const newDetails = [...attendeeDetails];
+                              newDetails[index] = { ...newDetails[index], phone: e.target.value };
+                              setAttendeeDetails(newDetails);
+                            }}
+                            placeholder="+1 (555) 000-0000"
+                            className="h-9"
+                          />
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+
+      case "info_modal":
+        return (
+          <div key={element.id}>
+            <Dialog>
+              <DialogTrigger asChild>
+                {(element.config.triggerStyle as string) === "button" ? (
+                  <Button variant="outline" size="sm">
+                    <HelpCircle className="h-4 w-4 mr-2" />
+                    {(element.config.triggerText as string) || "Learn More"}
+                  </Button>
+                ) : (element.config.triggerStyle as string) === "icon" ? (
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full">
+                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                ) : (
+                  <button className="text-primary underline text-sm hover:text-primary/80">
+                    {(element.config.triggerText as string) || "Learn More"}
+                  </button>
+                )}
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    {(element.config.modalTitle as string) || "Information"}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <p className="whitespace-pre-wrap">
+                    {sanitizeHtml((element.config.modalContent as string) || "")}
+                  </p>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        );
+
       case "custom_questions":
-        // This would integrate with the existing custom questions system
+        if (customQuestions.length === 0) {
+          return null; // Don't render if no custom questions configured
+        }
         return (
           <div key={element.id} className="space-y-4">
             <h3 className="font-semibold">{element.config.label || element.label}</h3>
-            <p className="text-sm text-muted-foreground">
-              Custom questions from your event configuration will appear here
-            </p>
+            {customQuestions.map((q) => (
+              <div key={q.id} className="space-y-2">
+                <Label className="text-sm">
+                  {q.question} {q.required && "*"}
+                </Label>
+                {q.type === "select" && q.options ? (
+                  <Select
+                    value={customAnswers[q.id] || ""}
+                    onValueChange={(value) =>
+                      setCustomAnswers((prev) => ({ ...prev, [q.id]: value }))
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an option" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {q.options.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : q.type === "textarea" ? (
+                  <textarea
+                    value={customAnswers[q.id] || ""}
+                    onChange={(e) =>
+                      setCustomAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
+                    }
+                    className="w-full h-24 p-2 text-sm rounded-md border bg-background resize-none"
+                    placeholder="Enter your answer..."
+                  />
+                ) : (
+                  <Input
+                    value={customAnswers[q.id] || ""}
+                    onChange={(e) =>
+                      setCustomAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
+                    }
+                    placeholder="Enter your answer"
+                  />
+                )}
+              </div>
+            ))}
           </div>
         );
 
@@ -965,7 +1296,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
               </div>
               {appliedPromo && (
                 <p className="text-xs text-green-600 mt-2">
-                  {appliedPromo.discount}% discount applied!
+                  {appliedPromo.discountType === "percent" ? `${appliedPromo.discount}%` : `$${appliedPromo.discount.toFixed(2)}`} discount applied!
                 </p>
               )}
             </CardContent>
@@ -1013,7 +1344,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                   </div>
                   {appliedPromo && (
                     <div className="flex justify-between text-sm text-green-600">
-                      <span>Discount ({appliedPromo.discount}%)</span>
+                      <span>Discount ({appliedPromo.discountType === "percent" ? `${appliedPromo.discount}%` : `$${appliedPromo.discount.toFixed(2)}`})</span>
                       <span>-${totals.discount.toFixed(2)}</span>
                     </div>
                   )}

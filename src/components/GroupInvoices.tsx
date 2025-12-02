@@ -13,7 +13,15 @@ import {
   Clock,
   AlertCircle,
   DollarSign,
+  XCircle,
+  MoreVertical,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -325,6 +333,59 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
     }
   };
 
+  const handleCancelInvoice = async (invoice: Invoice) => {
+    if (!confirm(`Are you sure you want to cancel invoice ${invoice.invoice_number}? This action cannot be undone.`)) {
+      return;
+    }
+
+    // Don't allow cancelling paid invoices
+    if (invoice.status === "paid") {
+      toast({
+        title: "Cannot Cancel",
+        description: "Cannot cancel a paid invoice. Refund the payment first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("group_invoices")
+        .update({
+          status: "cancelled",
+        })
+        .eq("id", invoice.id);
+
+      if (error) throw error;
+
+      // Log the cancellation
+      await supabase.from("group_activity_log").insert({
+        group_id: groupId,
+        action: "invoice_cancelled",
+        entity_type: "invoice",
+        entity_id: invoice.id,
+        metadata: {
+          invoice_number: invoice.invoice_number,
+          amount_owed: invoice.amount_owed,
+        },
+      });
+
+      toast({
+        title: "Invoice Cancelled",
+        description: `Invoice ${invoice.invoice_number} has been cancelled`,
+      });
+
+      loadInvoices();
+    } catch (error) {
+      console.error("Error cancelling invoice:", error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel invoice",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleViewPDF = (invoice: Invoice) => {
     // Create a printable invoice view
     const printWindow = window.open('', '_blank');
@@ -574,7 +635,7 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
                               Send
                             </Button>
                           )}
-                          {!readOnly && invoice.status !== 'paid' && (
+                          {!readOnly && invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
                             <Button
                               size="sm"
                               variant="outline"
@@ -586,6 +647,24 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
                               <DollarSign className="h-3 w-3 mr-1" />
                               Record Payment
                             </Button>
+                          )}
+                          {!readOnly && invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="sm" variant="ghost">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleCancelInvoice(invoice)}
+                                  className="text-destructive"
+                                >
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  Cancel Invoice
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           )}
                         </div>
                         {invoice.payment_link && (
