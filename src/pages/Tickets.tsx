@@ -270,12 +270,12 @@ const Tickets: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12">
+      <div className="min-h-screen bg-background py-12">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading your tickets...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-4 text-muted-foreground">Loading your tickets...</p>
             </div>
           </div>
         </div>
@@ -285,16 +285,16 @@ const Tickets: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12">
+      <div className="min-h-screen bg-background py-12">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <Card>
               <CardHeader>
-                <CardTitle className="text-red-600">Error</CardTitle>
+                <CardTitle className="text-destructive">Error</CardTitle>
                 <CardDescription>{error}</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">
+                <p className="text-muted-foreground">
                   Please check your email for the correct ticket link, or contact support if you continue to have issues.
                 </p>
               </CardContent>
@@ -310,22 +310,22 @@ const Tickets: React.FC = () => {
     if (orderData?.events?.ticket_delivery_method === 'confirmation_email') {
       const eventData = orderData.events;
       const organizationData = eventData?.organizations;
-      
+
       return (
-        <div className="min-h-screen bg-gray-50 py-12">
+        <div className="min-h-screen bg-background py-12">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto">
               {/* Header */}
               <div className="text-center mb-8">
                 {organizationData?.logo_url && (
-                  <img 
-                    src={organizationData.logo_url} 
+                  <img
+                    src={organizationData.logo_url}
                     alt={organizationData.name}
                     className="h-16 mx-auto mb-4"
                   />
                 )}
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Registration Confirmed</h1>
-                <p className="text-gray-600">Your registration has been successfully confirmed</p>
+                <h1 className="text-3xl font-bold text-foreground mb-2">Registration Confirmed</h1>
+                <p className="text-muted-foreground">Your registration has been successfully confirmed</p>
               </div>
 
               {/* Event Details */}
@@ -339,10 +339,10 @@ const Tickets: React.FC = () => {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-gray-500" />
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <p className="font-medium">{eventData?.name}</p>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-muted-foreground">
                           {new Date(eventData?.event_date).toLocaleDateString('en-US', {
                             weekday: 'long',
                             year: 'numeric',
@@ -354,10 +354,10 @@ const Tickets: React.FC = () => {
                     </div>
                     {eventData?.venue && (
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-gray-500" />
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <p className="font-medium">Venue</p>
-                          <p className="text-sm text-gray-600">{eventData.venue}</p>
+                          <p className="text-sm text-muted-foreground">{eventData.venue}</p>
                         </div>
                       </div>
                     )}
@@ -374,11 +374,11 @@ const Tickets: React.FC = () => {
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span>Customer:</span>
+                      <span className="text-muted-foreground">Customer:</span>
                       <span className="font-medium">{orderData.customer_name || orderData.customer_email}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Order ID:</span>
+                      <span className="text-muted-foreground">Order ID:</span>
                       <span className="font-medium font-mono text-sm">{orderData.id}</span>
                     </div>
                     <div className="flex justify-between font-semibold pt-2 border-t">
@@ -395,7 +395,7 @@ const Tickets: React.FC = () => {
     }
 
     return (
-      <div className="min-h-screen bg-gray-50 py-12">
+      <div className="min-h-screen bg-background py-12">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto">
             <Card>
@@ -414,20 +414,20 @@ const Tickets: React.FC = () => {
   const organizationData = eventData?.organizations;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-background py-12">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8">
             {organizationData?.logo_url && (
-              <img 
-                src={organizationData.logo_url} 
+              <img
+                src={organizationData.logo_url}
                 alt={organizationData.name}
                 className="h-16 mx-auto mb-4"
               />
             )}
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Your Tickets</h1>
-            <p className="text-gray-600">Present these tickets at the event for entry</p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Your Tickets</h1>
+            <p className="text-muted-foreground">Present these tickets at the event for entry</p>
           </div>
 
           {/* Event Summary */}
@@ -442,10 +442,10 @@ const Tickets: React.FC = () => {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="font-medium">{eventData.name}</p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-muted-foreground">
                         {new Date(eventData.event_date).toLocaleDateString('en-US', {
                           weekday: 'long',
                           year: 'numeric',
@@ -457,18 +457,18 @@ const Tickets: React.FC = () => {
                   </div>
                   {eventData.venue && (
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-gray-500" />
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <p className="font-medium">Venue</p>
-                        <p className="text-sm text-gray-600">{eventData.venue}</p>
+                        <p className="text-sm text-muted-foreground">{eventData.venue}</p>
                       </div>
                     </div>
                   )}
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-gray-500" />
+                    <User className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="font-medium">Tickets</p>
-                      <p className="text-sm text-gray-600">{tickets.length} ticket{tickets.length > 1 ? 's' : ''}</p>
+                      <p className="text-sm text-muted-foreground">{tickets.length} ticket{tickets.length > 1 ? 's' : ''}</p>
                     </div>
                   </div>
                 </div>
