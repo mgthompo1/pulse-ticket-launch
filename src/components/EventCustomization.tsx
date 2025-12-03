@@ -29,6 +29,12 @@ import { PostEventSurveySettings } from "@/components/PostEventSurveySettings";
 import { CheckoutTemplateBuilder, CheckoutTemplate } from "@/components/CheckoutTemplateBuilder";
 import { EventInviteManager } from "@/components/EventInviteManager";
 import { EventPlaybookSummary } from "@/components/EventPlaybookSummary";
+import { WaitlistManager } from "@/components/WaitlistManager";
+import { TicketTransferManager } from "@/components/TicketTransferManager";
+import { RefundRequestManager } from "@/components/RefundRequestManager";
+import { TicketUpgradeManager } from "@/components/TicketUpgradeManager";
+import { VoucherManager } from "@/components/VoucherManager";
+import { RecurringEventManager } from "@/components/RecurringEventManager";
 
 // Type definitions for better type safety
 interface EmailBlock {
@@ -86,6 +92,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [organizationId, setOrganizationId] = useState<string>("");
+  const [ticketTypesData, setTicketTypesData] = useState<{ id: string; name: string; price: number; quantity_available: number; quantity_sold: number }[]>([]);
   const [organizationData, setOrganizationData] = useState<{
     name: string;
     logo_url?: string | null;
@@ -371,6 +378,21 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         }
       }
       setEventVenue(data?.venue || "");
+
+      // Load ticket types for waitlist/upgrade managers
+      try {
+        const { data: ticketTypes } = await supabase
+          .from("ticket_types")
+          .select("id, name, price, quantity_available, quantity_sold")
+          .eq("event_id", eventId)
+          .order("sort_order", { ascending: true });
+
+        if (ticketTypes) {
+          setTicketTypesData(ticketTypes);
+        }
+      } catch (ttError) {
+        console.warn("Could not load ticket types:", ttError);
+      }
 
       if (data?.widget_customization) {
         // Use widget_customization from database as source of truth
@@ -2065,6 +2087,12 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               </div>
             </CardContent>
           </Card>
+
+          {/* Waitlist Management - shown when tickets sell out */}
+          <WaitlistManager
+            eventId={eventId}
+            ticketTypes={ticketTypesData}
+          />
         </TabsContent>
 
         <TabsContent value="tickets" className="space-y-6">
@@ -2349,6 +2377,18 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               </div>
             </CardContent>
           </Card>
+
+          {/* Ticket Transfers */}
+          <TicketTransferManager eventId={eventId} />
+
+          {/* Ticket Upgrades */}
+          <TicketUpgradeManager
+            eventId={eventId}
+            ticketTypes={ticketTypesData}
+          />
+
+          {/* Refund Requests */}
+          <RefundRequestManager eventId={eventId} />
         </TabsContent>
 
         <TabsContent value="emails" className="space-y-6">
@@ -3203,6 +3243,14 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
             </CardContent>
           </Card>
 
+          {/* Recurring Events / Event Series */}
+          {organizationId && (
+            <RecurringEventManager
+              organizationId={organizationId}
+              eventId={eventId}
+            />
+          )}
+
           {/* Delete Event Section */}
           <Card className="border-destructive/20">
             <CardHeader>
@@ -3230,6 +3278,14 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
         <TabsContent value="promo-codes" className="space-y-6">
           <PromoCodesManager eventId={eventId} />
+
+          {/* Vouchers & Credits */}
+          {organizationId && (
+            <VoucherManager
+              organizationId={organizationId}
+              eventId={eventId}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="group-discounts" className="space-y-6">

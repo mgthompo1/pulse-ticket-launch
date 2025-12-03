@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Download, Mail, Calendar, MapPin, User } from 'lucide-react';
+import { TicketActions } from '@/components/TicketActions';
 import jsPDF from 'jspdf';
 
 interface TicketData {
@@ -20,7 +21,9 @@ interface TicketData {
   order_items: {
     id: string;
     order_id: string;
+    ticket_type_id: string;
     ticket_types: {
+      id: string;
       name: string;
       price: number;
     } | null;
@@ -137,7 +140,9 @@ const Tickets: React.FC = () => {
           order_items!inner (
             id,
             order_id,
+            ticket_type_id,
             ticket_types (
+              id,
               name,
               price
             ),
@@ -482,8 +487,8 @@ const Tickets: React.FC = () => {
           {/* Tickets */}
           <div className="space-y-6">
             {tickets.map((ticket, index) => (
-              <div key={ticket.id}>
-                <h3 className="text-lg font-semibold mb-4">
+              <div key={ticket.id} className="space-y-4">
+                <h3 className="text-lg font-semibold">
                   Ticket {index + 1} - {ticket.order_items?.ticket_types?.name || 'General Admission'}
                 </h3>
                 <TicketDisplay
@@ -499,6 +504,19 @@ const Tickets: React.FC = () => {
                       additionalInfo: 'Present this ticket at the event for entry'
                     }
                   }}
+                />
+                <TicketActions
+                  ticketId={ticket.id}
+                  ticketCode={ticket.ticket_code}
+                  ticketTypeName={ticket.order_items?.ticket_types?.name || 'General Admission'}
+                  eventId={eventData?.id || ''}
+                  eventName={eventData?.name || 'Event'}
+                  eventDate={eventData?.event_date || new Date().toISOString()}
+                  customerEmail={ticket.order_items?.orders?.customer_email || email || ''}
+                  customerName={ticket.order_items?.orders?.customer_name || ''}
+                  ticketPrice={ticket.order_items?.ticket_types?.price || 0}
+                  orderId={ticket.order_items?.order_id || orderId || ''}
+                  ticketTypeId={ticket.order_items?.ticket_types?.id || ticket.order_items?.ticket_type_id || ''}
                 />
               </div>
             ))}

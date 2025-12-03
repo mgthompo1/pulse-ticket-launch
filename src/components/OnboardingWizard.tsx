@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -199,6 +199,9 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete, onNavigate }: On
     description: "",
   });
 
+  // Ref to prevent duplicate event creation from rapid clicks
+  const isCreatingEventRef = useRef(false);
+
   const currentStepIndex = STEPS.findIndex(s => s.id === currentStep);
 
   const goToNext = () => {
@@ -216,6 +219,12 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete, onNavigate }: On
   };
 
   const createEvent = async () => {
+    // Prevent duplicate submissions using ref (survives re-renders)
+    if (isCreatingEventRef.current) {
+      console.log("Event creation already in progress, ignoring duplicate call");
+      return;
+    }
+
     if (!organization?.id) {
       toast({
         title: "Error",
@@ -225,6 +234,7 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete, onNavigate }: On
       return;
     }
 
+    isCreatingEventRef.current = true;
     setIsLoading(true);
     try {
       // Combine date and time
@@ -276,6 +286,8 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete, onNavigate }: On
         description: "Failed to create event. Please try again.",
         variant: "destructive",
       });
+      // Reset ref on error so user can retry
+      isCreatingEventRef.current = false;
     } finally {
       setIsLoading(false);
     }
@@ -345,11 +357,20 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete, onNavigate }: On
     onClose();
   };
 
+  // Handle dialog dismissal (ESC, clicking outside, X button)
+  const handleDialogClose = () => {
+    // If an event was created, make sure to trigger onComplete to refresh the dashboard
+    if (createdEventId) {
+      onComplete();
+    }
+    onClose();
+  };
+
   const isEventDataValid = eventData.name && eventData.date && eventData.venue;
   const isTicketDataValid = ticketData.name && ticketData.price && ticketData.quantity;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleDialogClose()}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Progress indicator */}
         {currentStep !== "welcome" && currentStep !== "success" && (
