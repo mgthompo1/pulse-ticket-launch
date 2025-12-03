@@ -215,6 +215,7 @@ const [analytics, setAnalytics] = useState<{
       loadEventData();
       loadSchedule();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- initial data load only on eventId change
   }, [eventId]);
 
   // Load lanyard template when both eventId and user are available
@@ -222,6 +223,7 @@ const [analytics, setAnalytics] = useState<{
     if (eventId && user && !authLoading) {
       loadCurrentLanyardTemplate();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- load once when auth is ready
   }, [eventId, user, authLoading]);
 
   const loadEventData = async () => {
@@ -1499,7 +1501,7 @@ const handleCreateConcessionItem = async () => {
                           className="flex-1"
                           autoComplete="off"
                         />
-                        <Button onClick={handleCheckIn} disabled={loading}>
+                        <Button onClick={() => setTimeout(handleCheckIn, 50)} disabled={loading}>
                           <CheckCircle className="mr-2 h-4 w-4" />
                           Check In
                         </Button>
@@ -1581,8 +1583,11 @@ const handleCreateConcessionItem = async () => {
                               <Button
                                 size="sm"
                                 onClick={() => {
+                                  if (ticketCodeInputRef.current) {
+                                    ticketCodeInputRef.current.value = guest.ticket_code;
+                                  }
                                   setTicketCode(guest.ticket_code);
-                                  handleCheckIn();
+                                  setTimeout(handleCheckIn, 50);
                                 }}
                                 disabled={loading}
                               >

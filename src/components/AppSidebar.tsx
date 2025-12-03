@@ -11,7 +11,6 @@ import {
 import { Calendar, Users, Settings, BarChart3, Mail, CreditCard, TrendingUp, Link, Shield, MapPin, UsersRound, UserCog, DollarSign, Target } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganizations } from "@/hooks/useOrganizations";
-import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 
 interface Event {
   id: string;
@@ -136,10 +135,6 @@ export function AppSidebar({ activeTab, setActiveTab, selectedEvent }: AppSideba
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Onboarding Checklist - shows until first event is created */}
-        {!isCollapsed && systemType === "EVENTS" && (
-          <OnboardingChecklist onNavigate={setActiveTab} />
-        )}
 
         {/* Bottom Section - User Info */}
         {!isCollapsed && (

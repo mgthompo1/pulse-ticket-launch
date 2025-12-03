@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 
 interface OnboardingState {
   showWizard: boolean;
   isLoading: boolean;
   hasCompletedOnboarding: boolean;
   hasEvents: boolean;
+  hasPublishedEvent: boolean;
   hasPaymentSetup: boolean;
   checklistItems: ChecklistItem[];
   refreshOnboardingState: () => Promise<void>;
@@ -19,8 +19,12 @@ interface ChecklistItem {
   link?: string;
 }
 
-export const useOnboarding = (): OnboardingState => {
-  const { user, organization } = useAuth();
+interface UseOnboardingOptions {
+  organizationId?: string | null;
+}
+
+export const useOnboarding = (options?: UseOnboardingOptions): OnboardingState => {
+  const organizationId = options?.organizationId;
   const [isLoading, setIsLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
   // Default to true to prevent flash - will be set to false if no events found
@@ -30,78 +34,85 @@ export const useOnboarding = (): OnboardingState => {
   const [hasSoldTicket, setHasSoldTicket] = useState(false);
 
   const checkOnboardingStatus = useCallback(async () => {
-    if (!organization?.id) {
+    if (!organizationId) {
       setIsLoading(false);
       return;
     }
 
-    try {
-      // Check localStorage for onboarding completion (per-organization)
-      const onboardingKey = `onboarding_completed_${organization.id}`;
-      const onboardingCompleted = localStorage.getItem(onboardingKey) === "true";
+    console.log("🎯 Checking onboarding status for org:", organizationId);
 
+    try {
       // Check if organization has any events
       const { data: events, error: eventsError } = await supabase
         .from("events")
         .select("id, status")
-        .eq("organization_id", organization.id)
+        .eq("organization_id", organizationId)
         .limit(10);
 
       if (eventsError) throw eventsError;
 
       const hasAnyEvents = events && events.length > 0;
       const hasPublished = events?.some(e => e.status === "published") || false;
+
+      console.log("🎯 Onboarding check - hasAnyEvents:", hasAnyEvents, "hasPublished:", hasPublished);
+
       setHasEvents(hasAnyEvents);
       setHasPublishedEvent(hasPublished);
 
-      // Check if payment is set up (Stripe connected)
-      const { data: orgData, error: orgError } = await supabase
-        .from("organizations")
-        .select("stripe_connected_account_id, windcave_user_id")
-        .eq("id", organization.id)
-        .single();
+      // Show wizard if user doesn't have a published event yet
+      // This ensures onboarding shows until they complete the full flow
+      // Set this FIRST before any other queries that might fail
+      const shouldShowWizard = !hasPublished;
+      console.log("🎯 Should show wizard:", shouldShowWizard);
+      setShowWizard(shouldShowWizard);
 
-      if (orgError && orgError.code !== "PGRST116") throw orgError;
+      // Check if payment is set up (Stripe connected) - non-blocking
+      try {
+        const { data: orgData, error: orgError } = await supabase
+          .from("organizations")
+          .select("stripe_connected_account_id, windcave_user_id")
+          .eq("id", organizationId)
+          .single();
 
-      const hasPayment = !!(orgData?.stripe_connected_account_id || orgData?.windcave_user_id);
-      setHasPaymentSetup(hasPayment);
-
-      // Check if any tickets have been sold
-      if (hasAnyEvents && events) {
-        const eventIds = events.map(e => e.id);
-        const { data: orders, error: ordersError } = await supabase
-          .from("orders")
-          .select("id")
-          .in("event_id", eventIds)
-          .eq("status", "completed")
-          .limit(1);
-
-        if (!ordersError) {
-          setHasSoldTicket(orders && orders.length > 0);
+        if (!orgError) {
+          const hasPayment = !!(orgData?.stripe_connected_account_id || orgData?.windcave_user_id);
+          setHasPaymentSetup(hasPayment);
         }
+      } catch (e) {
+        console.warn("Could not check payment setup:", e);
       }
 
-      // Show wizard if:
-      // 1. Onboarding not completed in localStorage
-      // 2. No events exist
-      // 3. User just signed up (could check created_at)
-      const shouldShowWizard = !onboardingCompleted && !hasAnyEvents;
-      setShowWizard(shouldShowWizard);
+      // Check if any tickets have been sold - non-blocking
+      if (hasAnyEvents && events) {
+        try {
+          const eventIds = events.map(e => e.id);
+          const { data: orders, error: ordersError } = await supabase
+            .from("orders")
+            .select("id")
+            .in("event_id", eventIds)
+            .eq("status", "completed")
+            .limit(1);
+
+          if (!ordersError) {
+            setHasSoldTicket(orders && orders.length > 0);
+          }
+        } catch (e) {
+          console.warn("Could not check tickets sold:", e);
+        }
+      }
 
     } catch (error) {
       console.error("Error checking onboarding status:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [organization?.id]);
+  }, [organizationId]);
 
   useEffect(() => {
     checkOnboardingStatus();
   }, [checkOnboardingStatus]);
 
-  const hasCompletedOnboarding = organization?.id
-    ? localStorage.getItem(`onboarding_completed_${organization.id}`) === "true"
-    : false;
+  const hasCompletedOnboarding = hasPublishedEvent;
 
   const checklistItems: ChecklistItem[] = [
     {
@@ -139,6 +150,7 @@ export const useOnboarding = (): OnboardingState => {
     isLoading,
     hasCompletedOnboarding,
     hasEvents,
+    hasPublishedEvent,
     hasPaymentSetup,
     checklistItems,
     refreshOnboardingState,

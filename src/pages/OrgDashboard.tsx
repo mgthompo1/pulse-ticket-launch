@@ -54,6 +54,7 @@ import IssuingPage from "@/pages/IssuingPage";
 import Playbooks from "@/pages/Playbooks";
 import { useNavigate } from "react-router-dom";
 import { OnboardingWizard } from "@/components/OnboardingWizard";
+import { FloatingOnboardingWidget } from "@/components/FloatingOnboardingWidget";
 import { useOnboarding } from "@/hooks/useOnboarding";
 
 // Types
@@ -179,8 +180,10 @@ const OrgDashboard = () => {
   const [selectedIntegration, setSelectedIntegration] = useState<string | null>(null);
   const [hubspotConnected, setHubspotConnected] = useState(false);
 
-  // Onboarding state
-  const { showWizard: shouldShowWizard, refreshOnboardingState } = useOnboarding();
+  // Onboarding state - pass organizationId to ensure it uses the same org context
+  const { showWizard: shouldShowWizard, refreshOnboardingState, checklistItems } = useOnboarding({
+    organizationId: currentOrganization?.id
+  });
 
   // Dashboard customization config
   const {
@@ -200,6 +203,7 @@ const OrgDashboard = () => {
     if (shouldShowWizard && currentOrganization && isEventsMode()) {
       setShowOnboardingWizard(true);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- isEventsMode is stable
   }, [shouldShowWizard, currentOrganization]);
 
   // Check HubSpot connection status
@@ -393,7 +397,8 @@ const OrgDashboard = () => {
         loadAttractionAnalyticsData(currentOrganization.id);
       }
     }
-  }, [currentOrganization?.id, timeRange]); // Re-run when organization or time range changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- load functions are stable, pass orgId as arg
+  }, [currentOrganization?.id, timeRange]);
 
   const loadAttractions = useCallback(async (orgId: string) => {
     console.log("Loading attractions for org:", orgId);
@@ -2249,9 +2254,22 @@ const OrgDashboard = () => {
         onClose={() => setShowOnboardingWizard(false)}
         onComplete={() => {
           refreshOnboardingState();
-          fetchEvents();
+          if (currentOrganization?.id) {
+            loadEvents(currentOrganization.id);
+          }
         }}
+        onNavigate={(tab) => setActiveTab(tab)}
       />
+
+      {/* Floating Onboarding Widget - shows when wizard is closed but onboarding not complete */}
+      {shouldShowWizard && !showOnboardingWizard && isEventsMode() && (
+        <FloatingOnboardingWidget
+          checklistItems={checklistItems}
+          organizationId={currentOrganization?.id}
+          onNavigate={(tab) => setActiveTab(tab)}
+          onOpenWizard={() => setShowOnboardingWizard(true)}
+        />
+      )}
     </SidebarProvider>
   );
 };

@@ -13,7 +13,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useOrganizations } from "@/hooks/useOrganizations";
 import {
   Rocket,
   Calendar,
@@ -30,6 +30,20 @@ import {
   PartyPopper,
   ExternalLink,
   Copy,
+  Church,
+  Mic2,
+  Handshake,
+  Theater,
+  GraduationCap,
+  UserPlus,
+  UsersRound,
+  FileCheck,
+  Mail,
+  Printer,
+  UserCog,
+  QrCode,
+  LayoutGrid,
+  Smartphone,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -37,9 +51,103 @@ interface OnboardingWizardProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete: () => void;
+  onNavigate?: (tab: string) => void;
 }
 
-type Step = "welcome" | "event-basics" | "tickets" | "payment" | "success";
+type Step = "welcome" | "event-type" | "event-basics" | "tickets" | "payment" | "success";
+
+type EventType = "church" | "conference" | "customer" | "partner" | "performance" | "graduation" | null;
+
+interface FeatureItem {
+  icon: React.ElementType;
+  label: string;
+  description: string;
+  navTarget?: string; // Tab to navigate to
+  settingsKey?: string; // Settings to enable
+}
+
+interface EventTypeOption {
+  id: EventType;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  features: FeatureItem[];
+}
+
+const EVENT_TYPES: EventTypeOption[] = [
+  {
+    id: "church",
+    title: "Church / Ministry",
+    description: "Services, camps, retreats, and ministry events",
+    icon: Church,
+    features: [
+      { icon: UsersRound, label: "Groups", description: "Organize sub-churches and ministries", navTarget: "groups", settingsKey: "groups_enabled" },
+      { icon: UserPlus, label: "Bulk Import", description: "Import guest lists in bulk", navTarget: "event-details" },
+      { icon: FileCheck, label: "Waivers", description: "Digital waivers for camps and youth events", navTarget: "event-details" },
+      { icon: Smartphone, label: "TicketFlo LIVE", description: "Real-time check-in at the door", navTarget: "events" },
+    ],
+  },
+  {
+    id: "conference",
+    title: "Conference",
+    description: "Professional conferences and corporate events",
+    icon: Mic2,
+    features: [
+      { icon: Mail, label: "Email Tickets", description: "Send confirmation emails instead of QR codes", navTarget: "event-details" },
+      { icon: Printer, label: "Badge Printing", description: "Print lanyards and name badges", navTarget: "event-details" },
+      { icon: UserPlus, label: "Bulk Import", description: "Import attendee lists in bulk", navTarget: "event-details" },
+      { icon: Smartphone, label: "TicketFlo LIVE", description: "Fast check-in with barcode scanning", navTarget: "events" },
+    ],
+  },
+  {
+    id: "customer",
+    title: "Customer Event",
+    description: "Events for your existing customers",
+    icon: Users,
+    features: [
+      { icon: UserCog, label: "CRM Integration", description: "Track customer engagement and history", navTarget: "customers", settingsKey: "crm_enabled" },
+      { icon: Mail, label: "Email Campaigns", description: "Send targeted invitations", navTarget: "marketing" },
+      { icon: QrCode, label: "QR Tickets", description: "Simple mobile-friendly tickets", navTarget: "event-details" },
+      { icon: Smartphone, label: "TicketFlo LIVE", description: "Streamlined guest check-in", navTarget: "events" },
+    ],
+  },
+  {
+    id: "partner",
+    title: "Partner Event",
+    description: "Events for business partners and prospects",
+    icon: Handshake,
+    features: [
+      { icon: UserCog, label: "CRM Integration", description: "Track partner relationships", navTarget: "customers", settingsKey: "crm_enabled" },
+      { icon: Mail, label: "Playbooks", description: "Automated communication sequences", navTarget: "playbooks", settingsKey: "playbooks_enabled" },
+      { icon: QrCode, label: "QR Tickets", description: "Professional mobile tickets", navTarget: "event-details" },
+      { icon: Smartphone, label: "TicketFlo LIVE", description: "VIP-ready check-in experience", navTarget: "events" },
+    ],
+  },
+  {
+    id: "performance",
+    title: "Performance",
+    description: "Concerts, theater, and live performances",
+    icon: Theater,
+    features: [
+      { icon: LayoutGrid, label: "Seat Mapping", description: "Interactive seat selection", navTarget: "event-details" },
+      { icon: QrCode, label: "QR Tickets", description: "Secure scannable tickets", navTarget: "event-details" },
+      { icon: Ticket, label: "Multiple Tiers", description: "VIP, General Admission, and more", navTarget: "event-details" },
+      { icon: Smartphone, label: "TicketFlo LIVE", description: "High-volume check-in scanning", navTarget: "events" },
+    ],
+  },
+  {
+    id: "graduation",
+    title: "Graduation",
+    description: "Ceremonies and graduation events",
+    icon: GraduationCap,
+    features: [
+      { icon: LayoutGrid, label: "Seat Mapping", description: "Assign family seating sections", navTarget: "event-details" },
+      { icon: UserPlus, label: "Guest Limits", description: "Control tickets per graduate", navTarget: "event-details" },
+      { icon: QrCode, label: "QR Tickets", description: "Easy ticket distribution", navTarget: "event-details" },
+      { icon: Smartphone, label: "TicketFlo LIVE", description: "Organized venue entry", navTarget: "events" },
+    ],
+  },
+];
 
 interface EventData {
   name: string;
@@ -59,19 +167,21 @@ interface TicketData {
 
 const STEPS: { id: Step; title: string; icon: React.ElementType }[] = [
   { id: "welcome", title: "Welcome", icon: Rocket },
+  { id: "event-type", title: "Event Type", icon: LayoutGrid },
   { id: "event-basics", title: "Event Details", icon: Calendar },
   { id: "tickets", title: "Tickets", icon: Ticket },
   { id: "payment", title: "Payments", icon: CreditCard },
   { id: "success", title: "Complete", icon: CheckCircle2 },
 ];
 
-export const OnboardingWizard = ({ isOpen, onClose, onComplete }: OnboardingWizardProps) => {
+export const OnboardingWizard = ({ isOpen, onClose, onComplete, onNavigate }: OnboardingWizardProps) => {
   const [currentStep, setCurrentStep] = useState<Step>("welcome");
   const [isLoading, setIsLoading] = useState(false);
   const [createdEventId, setCreatedEventId] = useState<string | null>(null);
   const [eventUrl, setEventUrl] = useState<string>("");
+  const [selectedEventType, setSelectedEventType] = useState<EventType>(null);
   const { toast } = useToast();
-  const { organization } = useAuth();
+  const { currentOrganization: organization } = useOrganizations();
 
   const [eventData, setEventData] = useState<EventData>({
     name: "",
@@ -144,7 +254,7 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete }: OnboardingWiza
           event_id: event.id,
           name: ticketData.name,
           price: parseFloat(ticketData.price) || 0,
-          quantity: parseInt(ticketData.quantity) || 100,
+          quantity_available: parseInt(ticketData.quantity) || 100,
           description: ticketData.description || null,
         });
 
@@ -244,7 +354,7 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete }: OnboardingWiza
         {/* Progress indicator */}
         {currentStep !== "welcome" && currentStep !== "success" && (
           <div className="flex items-center justify-center gap-2 mb-4">
-            {STEPS.filter(s => s.id !== "welcome" && s.id !== "success").map((step, index) => {
+            {STEPS.filter(s => s.id !== "welcome" && s.id !== "success").map((step, index, filteredArr) => {
               const stepIndex = STEPS.findIndex(s => s.id === step.id);
               const isActive = stepIndex === currentStepIndex;
               const isCompleted = stepIndex < currentStepIndex;
@@ -261,9 +371,9 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete }: OnboardingWiza
                   >
                     {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : index + 1}
                   </div>
-                  {index < 2 && (
+                  {index < filteredArr.length - 1 && (
                     <div
-                      className={`w-12 h-0.5 mx-1 ${
+                      className={`w-8 h-0.5 mx-1 ${
                         isCompleted ? "bg-green-500" : "bg-muted"
                       }`}
                     />
@@ -315,6 +425,83 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete }: OnboardingWiza
               </Button>
               <Button variant="ghost" onClick={handleSkip} className="text-muted-foreground">
                 Skip for now, I'll explore on my own
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Event Type Step */}
+        {currentStep === "event-type" && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <LayoutGrid className="w-5 h-5 text-indigo-600" />
+                What type of event are you creating?
+              </DialogTitle>
+              <DialogDescription>
+                Select your event type so we can highlight the features most relevant to you.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid grid-cols-2 gap-3 my-4">
+              {EVENT_TYPES.map((eventType) => {
+                const isSelected = selectedEventType === eventType.id;
+                return (
+                  <Card
+                    key={eventType.id}
+                    className={`cursor-pointer transition-all hover:border-indigo-400 ${
+                      isSelected ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20" : ""
+                    }`}
+                    onClick={() => setSelectedEventType(eventType.id)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className={`p-2 rounded-lg ${isSelected ? "bg-indigo-600" : "bg-muted"}`}>
+                          <eventType.icon className={`w-5 h-5 ${isSelected ? "text-white" : "text-muted-foreground"}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-medium text-sm ${isSelected ? "text-indigo-700 dark:text-indigo-300" : ""}`}>
+                            {eventType.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {eventType.description}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+
+            {/* Feature highlights for selected type */}
+            {selectedEventType && (
+              <div className="mb-4">
+                <p className="text-sm font-medium mb-2 text-muted-foreground">
+                  Key features for {EVENT_TYPES.find(e => e.id === selectedEventType)?.title}:
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {EVENT_TYPES.find(e => e.id === selectedEventType)?.features.map((feature, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                      <feature.icon className="w-4 h-4 text-indigo-600" />
+                      <div>
+                        <p className="text-xs font-medium">{feature.label}</p>
+                        <p className="text-xs text-muted-foreground">{feature.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={goToPrevious}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+              <Button onClick={goToNext} disabled={!selectedEventType}>
+                Continue
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
           </>
@@ -598,27 +785,79 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete }: OnboardingWiza
                 </div>
               </div>
 
-              {/* Next Steps */}
+              {/* Essential Steps */}
               <Card>
                 <CardContent className="p-4 space-y-3">
-                  <p className="font-medium text-sm">Next Steps:</p>
+                  <p className="font-medium text-sm">Essential Steps:</p>
                   <div className="space-y-2">
-                    {[
-                      { label: "Connect Stripe to accept payments", link: "Payments tab" },
-                      { label: "Customize your event page design", link: "Customization" },
-                      { label: "Add more ticket types if needed", link: "Tickets tab" },
-                      { label: "Publish when ready to sell", link: "Event Details" },
-                    ].map((item, i) => (
-                      <div key={i} className="flex items-center gap-2 text-sm">
-                        <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-xs font-medium text-indigo-600">
-                          {i + 1}
-                        </div>
-                        <span>{item.label}</span>
+                    <button
+                      onClick={() => {
+                        if (onNavigate) {
+                          onNavigate("payments");
+                          handleComplete();
+                        }
+                      }}
+                      className="w-full flex items-center gap-2 text-sm p-2 rounded-lg hover:bg-muted transition-colors text-left"
+                    >
+                      <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-xs font-medium text-indigo-600">
+                        1
                       </div>
-                    ))}
+                      <CreditCard className="w-4 h-4 text-muted-foreground" />
+                      <span>Connect payment provider to accept payments</span>
+                      <ArrowRight className="w-3 h-3 ml-auto text-muted-foreground" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (onNavigate) {
+                          onNavigate("event-details");
+                          handleComplete();
+                        }
+                      }}
+                      className="w-full flex items-center gap-2 text-sm p-2 rounded-lg hover:bg-muted transition-colors text-left"
+                    >
+                      <div className="w-5 h-5 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-xs font-medium text-indigo-600">
+                        2
+                      </div>
+                      <Ticket className="w-4 h-4 text-muted-foreground" />
+                      <span>Publish your event when ready to sell</span>
+                      <ArrowRight className="w-3 h-3 ml-auto text-muted-foreground" />
+                    </button>
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Features for your event type */}
+              {selectedEventType && (
+                <Card className="border-indigo-200 dark:border-indigo-800">
+                  <CardContent className="p-4 space-y-3">
+                    <p className="font-medium text-sm flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-indigo-600" />
+                      Recommended for {EVENT_TYPES.find(e => e.id === selectedEventType)?.title}:
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {EVENT_TYPES.find(e => e.id === selectedEventType)?.features.map((feature, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            if (onNavigate && feature.navTarget) {
+                              onNavigate(feature.navTarget);
+                              handleComplete();
+                            }
+                          }}
+                          className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left group"
+                        >
+                          <feature.icon className="w-4 h-4 text-indigo-600 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium group-hover:text-indigo-600 transition-colors">{feature.label}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-2">{feature.description}</p>
+                          </div>
+                          <ArrowRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-0.5" />
+                        </button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             <div className="flex flex-col gap-2">

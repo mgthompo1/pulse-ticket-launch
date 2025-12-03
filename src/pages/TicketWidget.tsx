@@ -220,6 +220,7 @@ const TicketWidget = () => {
     }
     
     return newTheme;
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- we only want to recalculate when theme changes, not all widget_customization
   }, [eventData?.widget_customization?.theme]);
 
   // Destructure theme colors for easier use
@@ -436,6 +437,7 @@ const TicketWidget = () => {
     } catch (error) {
       console.error("Error refreshing widget data:", error);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- checkoutMode is only used for logging, not logic
   }, [eventId, eventData?.widget_customization]);
 
   // Auto-refresh widget data every 30 seconds
@@ -707,6 +709,7 @@ const TicketWidget = () => {
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadWindcaveScripts is stable (no state dependencies)
   }, [eventId, toast, isGroupPurchase, allocationId]);
 
   useEffect(() => {
@@ -760,7 +763,8 @@ const TicketWidget = () => {
         setCheckoutMode('onepage');
       }
     }
-  }, [eventData?.widget_customization?.checkoutMode, eventData?.id]); // Remove checkoutMode from dependencies to prevent circular updates
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- checkoutMode excluded to prevent circular updates
+  }, [eventData?.widget_customization?.checkoutMode, eventData?.id]);
 
   // Function to dynamically load Windcave scripts based on endpoint
   const loadWindcaveScripts = async (endpoint: string): Promise<void> => {
@@ -1610,6 +1614,7 @@ const TicketWidget = () => {
     }
     
     return { isMultiStep, isBeta, effectiveCheckoutMode };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- specific checkoutMode path is intentional for targeted reactivity
   }, [checkoutMode, eventData?.widget_customization?.checkoutMode, eventData]);
 
   // Legacy support for shouldRenderMultiStep

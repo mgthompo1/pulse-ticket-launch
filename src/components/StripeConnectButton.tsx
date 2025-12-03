@@ -74,6 +74,7 @@ export const StripeConnectButton: React.FC<StripeConnectButtonProps> = ({
       window.history.replaceState({}, '', newUrl);
       return;
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only run on mount to handle OAuth callback URL params
   }, []);
 
   const handleConnect = async () => {
