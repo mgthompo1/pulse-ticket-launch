@@ -1,0 +1,3 @@
+# Local Kodo cache
+*.cache
+*.log

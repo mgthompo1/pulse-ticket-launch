@@ -7,6 +7,10 @@ const footerLinks = {
     { name: "Features", href: "#features" },
     { name: "Pricing", href: "#pricing" },
   ],
+  Support: [
+    { name: "Contact Us", href: "/contact" },
+    { name: "System Status", href: "https://kodostatus.com/status/ticketflo", external: true },
+  ],
   Legal: [
     { name: "Privacy Policy", href: "/privacy-policy" },
     { name: "Terms of Service", href: "/terms" },
@@ -70,6 +74,15 @@ export const Footer = () => {
                     {link.href.startsWith('#') ? (
                       <a
                         href={link.href}
+                        className="text-sm text-white hover:text-[#ff4d00] transition-colors font-manrope"
+                      >
+                        {link.name}
+                      </a>
+                    ) : 'external' in link && link.external ? (
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="text-sm text-white hover:text-[#ff4d00] transition-colors font-manrope"
                       >
                         {link.name}

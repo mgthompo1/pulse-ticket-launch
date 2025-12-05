@@ -1,0 +1,39 @@
+# Kodo Status Page Configuration
+# Docs: https://github.com/mgthompo1/KODO
+
+# Your Kodo instance URL
+api_url: https://kodo.dev
+
+# Services to monitor
+services:
+  - name: api
+    description: Main API service
+    # Heartbeat monitoring settings (optional)
+    # heartbeat:
+    #   interval: 60  # Expected heartbeat every 60 seconds
+    #   grace: 30     # Grace period before marking down
+
+  - name: web
+    description: Web application
+
+  - name: database
+    description: Database service
+
+# Health rules for auto-incident creation (optional)
+# rules:
+#   - service: api
+#     condition: heartbeat_missed
+#     action:
+#       create_incident:
+#         title: "API heartbeat missed"
+#         severity: major
+
+# Metric thresholds for auto-status updates (optional)
+# thresholds:
+#   error_rate:
+#     degraded: 1      # >1% → degraded
+#     partial_outage: 10   # >10% → partial outage
+#     major_outage: 50     # >50% → major outage
+#   response_time_ms:
+#     degraded: 1000   # >1s → degraded
+#     partial_outage: 3000
