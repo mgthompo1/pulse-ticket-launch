@@ -40,6 +40,7 @@ const Auth = () => {
   const { isSupported: isPasskeySupported, checkSupport, checkPasskeyStatus, authenticateWithPasskey } = usePasskeys();
   
   const inviteToken = searchParams.get('invite');
+  const returnTo = searchParams.get('returnTo');
 
   useEffect(() => {
     checkSupport();
@@ -82,7 +83,7 @@ const Auth = () => {
     try {
       const result = await authenticateWithPasskey(email);
       if (result.success) {
-        navigate('/dashboard');
+        navigate(returnTo || '/dashboard');
       } else {
         setError(result.error || 'Passkey authentication failed');
       }
@@ -113,9 +114,14 @@ const Auth = () => {
   useEffect(() => {
     // Only redirect if not loading invitation and no valid invitation
     if (!authLoading && user && !inviteToken && !invitationLoading) {
-      navigate("/dashboard");
+      // Check for returnTo param (used by OAuth flows like Givvv integration)
+      if (returnTo) {
+        navigate(returnTo);
+      } else {
+        navigate("/dashboard");
+      }
     }
-  }, [user, authLoading, navigate, inviteToken, invitationLoading]);
+  }, [user, authLoading, navigate, inviteToken, invitationLoading, returnTo]);
 
   useEffect(() => {
     // Check for invitation token
@@ -287,11 +293,12 @@ const Auth = () => {
       });
       
       // Check if user should set up passkey after successful traditional sign in
-      const shouldPromptPasskeySetup = !invitationValid && isPasskeySupported;
+      // Skip passkey setup if coming from OAuth flow (returnTo exists)
+      const shouldPromptPasskeySetup = !invitationValid && isPasskeySupported && !returnTo;
       if (shouldPromptPasskeySetup) {
         setShowPasskeySetup(true);
       } else {
-        navigate("/dashboard");
+        navigate(returnTo || "/dashboard");
       }
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Sign in failed");
@@ -302,7 +309,7 @@ const Auth = () => {
 
   const handlePasskeyAuthSuccess = () => {
     setError("");
-    navigate("/dashboard");
+    navigate(returnTo || "/dashboard");
   };
 
   const handlePasskeyAuthError = (error: string) => {
