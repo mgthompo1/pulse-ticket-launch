@@ -44,6 +44,7 @@ import { InvitationPasswordSetup } from "./components/InvitationPasswordSetup";
 import { InvitationAcceptance } from "./components/InvitationAcceptance";
 import TopUpPage from "./pages/TopUpPage";
 import QATestingDashboard from "./pages/QATestingDashboard";
+import GivvvAuth from "./pages/GivvvAuth";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,7 @@ const App = () => (
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/auth/confirm" element={<AuthConfirm />} />
                 <Route path="/auth/check-email" element={<EmailConfirmation />} />
+                <Route path="/auth/givvv" element={<GivvvAuth />} />
                 <Route path="/widget/:eventId" element={<WidgetRouter />} />
                 <Route path="/group/:slug/widget" element={<GroupPublicWidget />} />
                 <Route path="/attraction/:attractionId" element={<AttractionWidget />} />
