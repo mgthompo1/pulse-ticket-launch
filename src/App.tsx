@@ -45,6 +45,14 @@ import { InvitationAcceptance } from "./components/InvitationAcceptance";
 import TopUpPage from "./pages/TopUpPage";
 import QATestingDashboard from "./pages/QATestingDashboard";
 import GivvvAuth from "./pages/GivvvAuth";
+import CompareEventbrite from "./pages/CompareEventbrite";
+import CompareHumanitix from "./pages/CompareHumanitix";
+import CompareEventsAir from "./pages/CompareEventsAir";
+import FeatureGroupSales from "./pages/FeatureGroupSales";
+import FeatureSeating from "./pages/FeatureSeating";
+import FeatureWhiteLabel from "./pages/FeatureWhiteLabel";
+import FeatureLowFees from "./pages/FeatureLowFees";
+import FeatureCheckin from "./pages/FeatureCheckin";
 
 const queryClient = new QueryClient();
 
@@ -92,6 +100,18 @@ const App = () => (
                 <Route path="/invitation-setup" element={<InvitationPasswordSetup />} />
                 <Route path="/sentry-test" element={<SentryTest />} />
                 <Route path="/demo-landing" element={<DemoLanding />} />
+
+                {/* Comparison pages */}
+                <Route path="/compare/eventbrite" element={<CompareEventbrite />} />
+                <Route path="/compare/humanitix" element={<CompareHumanitix />} />
+                <Route path="/compare/eventsair" element={<CompareEventsAir />} />
+
+                {/* Feature pages */}
+                <Route path="/features/group-sales" element={<FeatureGroupSales />} />
+                <Route path="/features/seating" element={<FeatureSeating />} />
+                <Route path="/features/white-label" element={<FeatureWhiteLabel />} />
+                <Route path="/features/low-fees" element={<FeatureLowFees />} />
+                <Route path="/features/checkin" element={<FeatureCheckin />} />
 
                 {/* Protected routes */}
                 <Route path="/error-monitoring" element={

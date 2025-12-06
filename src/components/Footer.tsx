@@ -6,6 +6,16 @@ const footerLinks = {
   Product: [
     { name: "Features", href: "#features" },
     { name: "Pricing", href: "#pricing" },
+    { name: "Group Sales", href: "/features/group-sales" },
+    { name: "Seat Selection", href: "/features/seating" },
+    { name: "White Label", href: "/features/white-label" },
+    { name: "Check-in App", href: "/features/checkin" },
+  ],
+  Compare: [
+    { name: "vs Eventbrite", href: "/compare/eventbrite" },
+    { name: "vs Humanitix", href: "/compare/humanitix" },
+    { name: "vs EventsAir", href: "/compare/eventsair" },
+    { name: "Low Fees", href: "/features/low-fees" },
   ],
   Support: [
     { name: "Contact Us", href: "/contact" },
