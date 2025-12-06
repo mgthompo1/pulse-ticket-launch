@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -29,11 +29,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { TicketType, CartItem, MerchandiseCartItem, CustomerInfo, EventData, CustomQuestion } from '@/types/widget';
+import { TicketType, CustomerInfo, EventData, CustomQuestion } from '@/types/widget';
 import { Theme } from '@/types/theme';
 import { StripePaymentModal } from './StripePaymentModal';
 import { AttendeeDetailsForm, AttendeeInfo } from './AttendeeDetailsForm';
-import { useTaxCalculation, formatTaxForOrder } from '@/hooks/useTaxCalculation';
+import { useCheckoutEngine } from '@/hooks/useCheckoutEngine';
 
 // Helper function to get button text based on branding configuration
 const getButtonText = (branding?: { buttonTextType?: string; buttonText?: string }): string => {
@@ -94,6 +94,8 @@ interface BetaCheckoutProps {
   onClose?: () => void;
   promoCodeHooks?: PromoCodeHooks;
   reservationHooks?: ReservationHooks;
+  groupId?: string | null;
+  allocationId?: string | null;
 }
 
 // Improvement #1: Above-the-fold optimization - inspired by mockup header card
@@ -287,6 +289,8 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
   customQuestions = [],
   promoCodeHooks,
   reservationHooks,
+  groupId,
+  allocationId,
 }) => {
   const { toast } = useToast();
   
@@ -296,22 +300,42 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
   // Loading states - Improvement #2
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(100);
-  
-  // Cart state
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [merchandiseCart, setMerchandiseCart] = useState<MerchandiseCartItem[]>([]);
-  
-  // Customer info state
-  const [customerInfo, setCustomerInfo] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    customAnswers: {} as Record<string, string>
-  });
-  const [errors, setErrors] = useState({} as Record<string, string>);
 
-  // Attendee details state (for multiple tickets)
-  const [attendees, setAttendees] = useState<AttendeeInfo[]>([]);
+  const {
+    cartItems,
+    merchandiseCart,
+    customerInfo,
+    setCustomerInfo,
+    attendees,
+    setAttendees,
+    selectedDonationAmount,
+    setSelectedDonationAmount,
+    customDonationAmount,
+    setCustomDonationAmount,
+    theme,
+    cartTotals,
+    ticketSubtotal,
+    merchandiseSubtotal,
+    discountedTicketAmount,
+    discountedMerchandiseAmount,
+    taxBreakdown,
+    taxCalculator,
+    totalAttendees,
+    bookingFeesEnabled,
+    addToCart,
+    updateQuantity,
+    promoHooks: promoCodeHooksFromEngine,
+  } = useCheckoutEngine({
+    eventData,
+    ticketTypes,
+    customQuestions,
+    promoCodeHooks,
+    groupId,
+    allocationId,
+  });
+
+  const [errors, setErrors] = useState({} as Record<string, string>);
+  const activePromoHooks = promoCodeHooks || promoCodeHooksFromEngine;
   
   // Payment state
   const [showStripeModal, setShowStripeModal] = useState(false);
@@ -319,44 +343,6 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
   
   // Event info modal state
   const [showEventInfoModal, setShowEventInfoModal] = useState(false);
-
-  // Donation state
-  const [selectedDonationAmount, setSelectedDonationAmount] = useState<number | null>(null);
-  const [customDonationAmount, setCustomDonationAmount] = useState<string>('');
-
-  // Extract theme colors from event data with proper memoization
-  const theme: Theme = useMemo(() => {
-    const themeData = eventData.widget_customization?.theme;
-    const isEnabled = themeData?.enabled === true;
-    
-    return {
-      enabled: isEnabled,
-      primaryColor: isEnabled ? (themeData?.primaryColor || '#ff4d00') : '#000000',
-      buttonTextColor: isEnabled ? (themeData?.buttonTextColor || '#ffffff') : '#ffffff',
-      secondaryColor: isEnabled ? (themeData?.secondaryColor || '#ffffff') : '#ffffff',
-      backgroundColor: isEnabled ? (themeData?.backgroundColor || '#ffffff') : '#ffffff',
-      cardBackgroundColor: isEnabled ? (themeData?.cardBackgroundColor || themeData?.backgroundColor || '#ffffff') : '#ffffff',
-      inputBackgroundColor: isEnabled ? (themeData?.inputBackgroundColor || '#ffffff') : '#ffffff',
-      borderEnabled: isEnabled ? (themeData?.borderEnabled ?? false) : false,
-      borderColor: isEnabled ? (themeData?.borderColor || '#e5e7eb') : '#e5e7eb',
-      headerTextColor: isEnabled ? (themeData?.headerTextColor || '#111827') : '#111827',
-      bodyTextColor: isEnabled ? (themeData?.bodyTextColor || '#6b7280') : '#6b7280',
-      fontFamily: isEnabled ? (themeData?.fontFamily || 'Manrope') : 'Manrope'
-    };
-  }, [
-    eventData.widget_customization?.theme?.enabled,
-    eventData.widget_customization?.theme?.primaryColor,
-    eventData.widget_customization?.theme?.buttonTextColor,
-    eventData.widget_customization?.theme?.secondaryColor,
-    eventData.widget_customization?.theme?.backgroundColor,
-    eventData.widget_customization?.theme?.cardBackgroundColor,
-    eventData.widget_customization?.theme?.inputBackgroundColor,
-    eventData.widget_customization?.theme?.borderEnabled,
-    eventData.widget_customization?.theme?.borderColor,
-    eventData.widget_customization?.theme?.headerTextColor,
-    eventData.widget_customization?.theme?.bodyTextColor,
-    eventData.widget_customization?.theme?.fontFamily
-  ]);
 
   // Donation configuration
   const crmEnabled = eventData?.organizations?.crm_enabled ?? (eventData as any)?.crm_enabled;
@@ -400,103 +386,6 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
   //   };
   // }, []);
 
-  // Cart management
-  const addToCart = (ticketType: TicketType) => {
-    setCartItems(prev => {
-      const existingItem = prev.find(item => item.id === ticketType.id);
-      
-      if (existingItem) {
-        toast({
-          title: "Ticket added",
-          description: `${ticketType.name} added to cart`,
-        });
-        return prev.map(item =>
-          item.id === ticketType.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      }
-      
-      toast({
-        title: "Ticket added",
-        description: `${ticketType.name} added to cart`,
-      });
-      
-      return [...prev, {
-        ...ticketType,
-        quantity: 1,
-        type: 'ticket' as const,
-        selectedSeats: []
-      }];
-    });
-  };
-
-  const updateQuantity = (ticketTypeId: string, quantity: number) => {
-    setCartItems(prev => {
-      if (quantity === 0) {
-        return prev.filter(item => item.id !== ticketTypeId);
-      }
-      
-      return prev.map(item =>
-        item.id === ticketTypeId ? { ...item, quantity } : item
-      );
-    });
-  };
-
-  // Calculate totals with fee breakdown and promo discount
-  const cartTotals = useMemo(() => {
-    const ticketSubtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const merchandiseSubtotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
-    const subtotal = ticketSubtotal + merchandiseSubtotal;
-    const discount = promoCodeHooks?.getTotalDiscount() || 0;
-    const discountedSubtotal = Math.max(0, subtotal - discount);
-
-    const feePercentage = eventData.organizations?.credit_card_processing_fee_percentage || 3;
-    const fees = discountedSubtotal * (feePercentage / 100);
-    const total = discountedSubtotal + fees;
-
-    return {
-      subtotal,
-      discountedSubtotal,
-      fees,
-      total,
-      discount,
-      feePercentage,
-      currency: eventData.organizations?.currency || 'USD',
-      ticketCount: cartItems.reduce((sum, item) => sum + item.quantity, 0)
-    };
-  }, [cartItems, merchandiseCart, promoCodeHooks, eventData.organizations?.credit_card_processing_fee_percentage, eventData.organizations?.currency]);
-
-  // Calculate total number of attendee forms needed (accounting for attendees_per_ticket multiplier)
-  const totalAttendees = useMemo(() => {
-    return cartItems.reduce((sum, item) => sum + (item.quantity * (item.attendees_per_ticket || 1)), 0);
-  }, [cartItems]);
-
-  // Get booking fees setting
-  const bookingFeesEnabled = eventData.organizations?.stripe_booking_fee_enabled || false;
-
-  // Apply discount to amounts BEFORE tax calculation
-  const ticketSubtotal = cartTotals.subtotal - (merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0));
-  const merchandiseSubtotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
-
-  // Calculate discounted amounts (apply discount proportionally)
-  let discountedTicketAmount = ticketSubtotal;
-  let discountedMerchandiseAmount = merchandiseSubtotal;
-
-  if (cartTotals.discount > 0 && cartTotals.subtotal > 0) {
-    const discountRatio = 1 - (cartTotals.discount / cartTotals.subtotal);
-    discountedTicketAmount = ticketSubtotal * discountRatio;
-    discountedMerchandiseAmount = merchandiseSubtotal * discountRatio;
-  }
-
-  // Calculate tax using DISCOUNTED amounts
-  const { taxBreakdown, taxCalculator } = useTaxCalculation({
-    eventId: eventData.id,
-    ticketAmount: discountedTicketAmount,
-    addonAmount: discountedMerchandiseAmount,
-    donationAmount: selectedDonationAmount || 0,
-    bookingFeePercent: bookingFeesEnabled ? 1.0 : 0,
-    enabled: true,
-  });
-
   const handleCustomerInfoChange = (field: string, value: string) => {
     setCustomerInfo(prev => ({
       ...prev,
@@ -507,6 +396,14 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
+  };
+
+  const handleAddToCart = (ticketType: TicketType) => {
+    addToCart(ticketType);
+    toast({
+      title: "Ticket added",
+      description: `${ticketType.name} added to cart`,
+    });
   };
 
   const handleCustomAnswerChange = (questionId: string, value: string) => {
@@ -774,7 +671,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                                 </div>
                               ) : (
                                 <Button
-                                  onClick={() => addToCart(ticketType)}
+                                  onClick={() => handleAddToCart(ticketType)}
                                   size="sm"
                                   className="px-4 font-semibold"
                                   style={{
@@ -1118,22 +1015,22 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                           ))}
 
                           {/* Promo Code Section */}
-                          {promoCodeHooks && (
+                          {activePromoHooks && (
                             <div className="border-t pt-4" style={{ borderColor: theme.borderColor }}>
                               <div className="space-y-3">
                                 <div className="flex gap-2">
                                   <Input
                                     type="text"
                                     placeholder="Promo code"
-                                    value={promoCodeHooks.promoCode}
-                                    onChange={(e) => promoCodeHooks.setPromoCode(e.target.value)}
+                                    value={activePromoHooks.promoCode}
+                                    onChange={(e) => activePromoHooks.setPromoCode(e.target.value)}
                                     className="flex-1 text-sm"
                                     style={{ backgroundColor: theme.inputBackgroundColor }}
-                                    disabled={promoCodeHooks.isValidating}
+                                    disabled={activePromoHooks.isValidating}
                                   />
-                                  {promoCodeHooks.promoDiscount > 0 ? (
+                                  {activePromoHooks.promoDiscount > 0 ? (
                                     <Button
-                                      onClick={promoCodeHooks.clearPromoCode}
+                                      onClick={activePromoHooks.clearPromoCode}
                                       variant="outline"
                                       size="sm"
                                     >
@@ -1141,23 +1038,23 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                                     </Button>
                                   ) : (
                                     <Button
-                                      onClick={promoCodeHooks.applyPromoCode}
+                                      onClick={activePromoHooks.applyPromoCode}
                                       variant="outline"
                                       size="sm"
-                                      disabled={promoCodeHooks.isValidating || !promoCodeHooks.promoCode.trim()}
+                                      disabled={activePromoHooks.isValidating || !activePromoHooks.promoCode.trim()}
                                     >
-                                      {promoCodeHooks.isValidating ? 'Validating...' : 'Apply'}
+                                      {activePromoHooks.isValidating ? 'Validating...' : 'Apply'}
                                     </Button>
                                   )}
                                 </div>
-                                {promoCodeHooks.promoError && (
+                                {activePromoHooks.promoError && (
                                   <p className="text-xs" style={{ color: theme.bodyTextColor }}>
-                                    {promoCodeHooks.promoError}
+                                    {activePromoHooks.promoError}
                                   </p>
                                 )}
-                                {promoCodeHooks.promoDiscount > 0 && (
+                                {activePromoHooks.promoDiscount > 0 && (
                                   <p className="text-xs" style={{ color: theme.primaryColor }}>
-                                    Promo code applied: ${promoCodeHooks.promoDiscount.toFixed(2)} off
+                                    Promo code applied: ${activePromoHooks.promoDiscount.toFixed(2)} off
                                   </p>
                                 )}
                               </div>
@@ -1405,6 +1302,10 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
           customerInfo={customerInfo as CustomerInfo}
           attendees={attendees}
           theme={theme}
+          promoCodeId={activePromoHooks?.promoCodeId || null}
+          promoDiscount={activePromoHooks?.getTotalDiscount() || 0}
+          groupId={groupId}
+          allocationId={allocationId}
         />
       )}
     </div>

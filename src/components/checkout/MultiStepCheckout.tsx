@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,12 +11,10 @@ import { Payment } from './Payment';
 import { OrderSummary } from './OrderSummary';
 import { StripePaymentModal } from './StripePaymentModal';
 import { AttendeeInfo } from './AttendeeDetailsForm';
-import { TicketType, CartItem, MerchandiseCartItem, CustomerInfo, EventData, CustomQuestion } from '@/types/widget';
-import { Theme } from '@/types/theme';
-import { usePromoCodeAndDiscounts } from '@/hooks/usePromoCodeAndDiscounts';
+import { TicketType, CustomerInfo, EventData, CustomQuestion } from '@/types/widget';
 import { useTicketReservation } from '@/hooks/useTicketReservation';
-import { useTaxCalculation, formatTaxForOrder } from '@/hooks/useTaxCalculation';
 import { supabase } from '@/integrations/supabase/client';
+import { useCheckoutEngine } from '@/hooks/useCheckoutEngine';
 
 interface PromoCodeHooks {
   promoCode: string;
@@ -71,11 +69,30 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
 }) => {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('event');
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [merchandiseCart, setMerchandiseCart] = useState<MerchandiseCartItem[]>([]);
-  const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
-  const [attendees, setAttendees] = useState<AttendeeInfo[]>([]);
   const [showStripeModal, setShowStripeModal] = useState(false);
+  const {
+    cartItems,
+    merchandiseCart,
+    setMerchandiseCart,
+    customerInfo,
+    setCustomerInfo,
+    attendees,
+    setAttendees,
+    selectedDonationAmount,
+    setSelectedDonationAmount,
+    totalAttendees,
+    theme,
+    addToCart,
+    updateQuantity,
+    promoHooks: promoHooksFromEngine,
+  } = useCheckoutEngine({
+    eventData,
+    ticketTypes,
+    customQuestions,
+    promoCodeHooks,
+    groupId,
+    allocationId,
+  });
 
   // Abandoned cart tracking refs
   const sessionId = useRef<string>("");
@@ -86,25 +103,8 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
     sessionId.current = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }, []);
 
-  // Extract theme colors and branding from event data
-            const themeData = eventData.widget_customization?.theme;
-      const brandingData = eventData.widget_customization?.branding;
-      const isEnabled = themeData?.enabled === true;
-
-      const theme: Theme = {
-        enabled: isEnabled,
-        primaryColor: isEnabled ? (themeData?.primaryColor || '#ff4d00') : '#000000',
-        buttonTextColor: isEnabled ? (themeData?.buttonTextColor || '#ffffff') : '#ffffff',
-        secondaryColor: isEnabled ? (themeData?.secondaryColor || '#ffffff') : '#ffffff',
-        backgroundColor: isEnabled ? (themeData?.backgroundColor || '#ffffff') : '#ffffff',
-        cardBackgroundColor: isEnabled ? (themeData?.cardBackgroundColor || themeData?.backgroundColor || '#ffffff') : '#ffffff',
-        inputBackgroundColor: isEnabled ? (themeData?.inputBackgroundColor || '#ffffff') : '#ffffff',
-        borderEnabled: isEnabled ? (themeData?.borderEnabled ?? false) : false,
-        borderColor: isEnabled ? (themeData?.borderColor || '#e5e7eb') : '#e5e7eb',
-        headerTextColor: isEnabled ? (themeData?.headerTextColor || '#111827') : '#111827',
-        bodyTextColor: isEnabled ? (themeData?.bodyTextColor || '#6b7280') : '#6b7280',
-        fontFamily: isEnabled ? (themeData?.fontFamily || 'Manrope') : 'Manrope'
-      };
+  // Branding
+  const brandingData = eventData.widget_customization?.branding;
 
   // Extract button text from branding
   const buttonText = brandingData?.buttonText || 'Get Tickets';
@@ -126,89 +126,22 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
 
   const currentStepData = steps.find(step => step.key === currentStep);
 
-  // Calculate totals for promo code hooks
-  // Total number of attendee forms needed (accounting for attendees_per_ticket multiplier)
-  const totalAttendees = cartItems.reduce((sum, item) => sum + (item.quantity * (item.attendees_per_ticket || 1)), 0);
-  const ticketCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const ticketTotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const merchandiseTotal = merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
-  const subtotal = ticketTotal + merchandiseTotal;
-
-  // Get booking fees setting
-  const bookingFeesEnabled = eventData.organizations?.stripe_booking_fee_enabled || false;
-
-  // Initialize promo code hooks with MultiStepCheckout's own data
-  const localPromoCodeHooks = usePromoCodeAndDiscounts({
-    eventId: eventData.id,
-    customerEmail: customerInfo?.email || '',
-    ticketCount,
-    subtotal,
-  });
-
-  // Get discount and apply it BEFORE tax calculation
-  const discount = localPromoCodeHooks.getTotalDiscount();
-
-  // Calculate discounted amounts (apply discount proportionally)
-  let discountedTicketAmount = ticketTotal;
-  let discountedMerchandiseAmount = merchandiseTotal;
-
-  if (discount > 0 && subtotal > 0) {
-    const discountRatio = 1 - (discount / subtotal);
-    discountedTicketAmount = ticketTotal * discountRatio;
-    discountedMerchandiseAmount = merchandiseTotal * discountRatio;
-  }
-
-  // Calculate tax using DISCOUNTED amounts
-  const { taxBreakdown, taxCalculator } = useTaxCalculation({
-    eventId: eventData.id,
-    ticketAmount: discountedTicketAmount,
-    addonAmount: discountedMerchandiseAmount,
-    donationAmount: customerInfo?.donationAmount || 0,
-    bookingFeePercent: bookingFeesEnabled ? 1.0 : 0,
-    enabled: true,
-  });
+  const activePromoHooks = promoCodeHooks || promoHooksFromEngine;
+  const hasCustomerInfo = Boolean(customerInfo?.email && customerInfo?.name);
 
   // Initialize reservation hooks with MultiStepCheckout's own data
   const localReservationHooks = useTicketReservation(eventData.id);
 
-  const addToCart = (ticketType: TicketType & { selectedSeats?: string[] }) => {
-    setCartItems(prev => {
-      const existingItem = prev.find(item => item.id === ticketType.id);
-      
-      if (existingItem) {
-        toast({
-          title: "Ticket added",
-          description: `${ticketType.name} added to cart`,
-        });
-        return prev.map(item =>
-          item.id === ticketType.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
-      }
-      
-      toast({
-        title: "Ticket added",
-        description: `${ticketType.name} added to cart`,
-      });
-      
-      return [...prev, {
-        ...ticketType,
-        quantity: 1,
-        type: 'ticket' as const,
-        selectedSeats: ticketType.selectedSeats || []
-      }];
+  const handleAddToCart = (ticketType: TicketType & { selectedSeats?: string[] }) => {
+    addToCart(ticketType);
+    toast({
+      title: "Ticket added",
+      description: `${ticketType.name} added to cart`,
     });
   };
 
   const updateTicketQuantity = (ticketTypeId: string, quantity: number) => {
-    setCartItems(prev => {
-      if (quantity === 0) {
-        return prev.filter(item => item.id !== ticketTypeId);
-      }
-
-      return prev.map(item =>
-        item.id === ticketTypeId ? { ...item, quantity } : item
-      );
-    });
+    updateQuantity(ticketTypeId, quantity);
   };
 
   const updateMerchandiseQuantity = (index: number, quantity: number) => {
@@ -338,6 +271,9 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   }, [eventData?.id, customerInfo?.email, cartItems]);
 
   const handleCustomerDetails = (info: CustomerInfo, attendeeData?: AttendeeInfo[]) => {
+    if (typeof info.donationAmount === 'number') {
+      setSelectedDonationAmount(info.donationAmount);
+    }
     setCustomerInfo(info);
     if (attendeeData) {
       setAttendees(attendeeData);
@@ -579,7 +515,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                     <TicketSelection
                       ticketTypes={ticketTypes}
                       cartItems={cartItems}
-                      onAddToCart={addToCart}
+                      onAddToCart={handleAddToCart}
                       onNext={() => {}} // We handle navigation manually
                       theme={theme}
                       hideHeader={true}
@@ -618,7 +554,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
               />
             )}
 
-            {currentStep === 'payment' && customerInfo && (
+            {currentStep === 'payment' && hasCustomerInfo && (
               <Payment
                 eventData={eventData}
                 cartItems={cartItems}
@@ -641,7 +577,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
               onUpdateMerchandiseQuantity={updateMerchandiseQuantity}
               onBack={prevStep}
               theme={theme}
-              promoCodeHooks={localPromoCodeHooks}
+              promoCodeHooks={activePromoHooks}
               reservationHooks={localReservationHooks}
             />
           </div>
@@ -649,7 +585,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
       </div>
 
       {/* Stripe Payment Modal */}
-      {customerInfo && (
+      {hasCustomerInfo && (
         <StripePaymentModal
           isOpen={showStripeModal}
           onClose={() => setShowStripeModal(false)}
@@ -659,8 +595,8 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
           customerInfo={customerInfo}
           attendees={attendees}
           theme={theme}
-          promoCodeId={localPromoCodeHooks.promoCodeId}
-          promoDiscount={localPromoCodeHooks.getTotalDiscount()}
+          promoCodeId={activePromoHooks?.promoCodeId || null}
+          promoDiscount={activePromoHooks?.getTotalDiscount() || 0}
           groupId={groupId}
           allocationId={allocationId}
         />
