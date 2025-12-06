@@ -48,7 +48,7 @@ CREATE POLICY "Org admins can view integration tokens"
   ON integration_tokens FOR SELECT
   USING (
     organization_id IN (
-      SELECT organization_id FROM organization_members
+      SELECT organization_id FROM organization_users
       WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
     )
   );
@@ -57,7 +57,7 @@ CREATE POLICY "Org admins can create integration tokens"
   ON integration_tokens FOR INSERT
   WITH CHECK (
     organization_id IN (
-      SELECT organization_id FROM organization_members
+      SELECT organization_id FROM organization_users
       WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
     )
   );
@@ -66,7 +66,7 @@ CREATE POLICY "Org admins can update integration tokens"
   ON integration_tokens FOR UPDATE
   USING (
     organization_id IN (
-      SELECT organization_id FROM organization_members
+      SELECT organization_id FROM organization_users
       WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
     )
   );
@@ -76,7 +76,7 @@ CREATE POLICY "Org admins can view auth codes"
   ON integration_auth_codes FOR SELECT
   USING (
     organization_id IN (
-      SELECT organization_id FROM organization_members
+      SELECT organization_id FROM organization_users
       WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
     )
   );
@@ -85,7 +85,7 @@ CREATE POLICY "Org admins can create auth codes"
   ON integration_auth_codes FOR INSERT
   WITH CHECK (
     organization_id IN (
-      SELECT organization_id FROM organization_members
+      SELECT organization_id FROM organization_users
       WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
     )
   );
