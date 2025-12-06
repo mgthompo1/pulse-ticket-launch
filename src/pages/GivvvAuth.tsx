@@ -67,7 +67,7 @@ const GivvvAuth = () => {
           .from("organization_users")
           .select("organization_id, role, organizations(id, name)")
           .eq("user_id", user.id)
-          .in("role", ["owner", "admin", "manager"]);
+          .in("role", ["owner", "admin"]);
 
         if (memberError) {
           console.error("Error loading organization membership:", memberError);
