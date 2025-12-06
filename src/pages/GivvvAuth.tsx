@@ -62,35 +62,41 @@ const GivvvAuth = () => {
       if (!user) return;
 
       try {
-        // First check if user has ANY organization membership
-        const { data: anyMember, error: anyError } = await supabase
+        // Get user's organization memberships with admin/owner role
+        const { data: memberships, error: memberError } = await supabase
           .from("organization_users")
           .select("organization_id, role, organizations(id, name)")
           .eq("user_id", user.id)
-          .maybeSingle();
+          .in("role", ["owner", "admin", "manager"]);
 
-        if (anyError) {
-          console.error("Error loading organization membership:", anyError);
+        if (memberError) {
+          console.error("Error loading organization membership:", memberError);
           setError("Failed to load your organization. Please try again.");
           return;
         }
 
-        if (!anyMember) {
-          setError("You don't have an organization yet. Please create one in TicketFlo first.");
+        if (!memberships || memberships.length === 0) {
+          // Check if they have any membership at all (just not admin)
+          const { data: anyMembership } = await supabase
+            .from("organization_users")
+            .select("role")
+            .eq("user_id", user.id)
+            .limit(1);
+
+          if (anyMembership && anyMembership.length > 0) {
+            setError(`You need to be an organization admin to connect Givvv. Your current role: ${anyMembership[0].role}`);
+          } else {
+            setError("You don't have an organization yet. Please create one in TicketFlo first.");
+          }
           return;
         }
 
-        // Check if they have admin/owner role
-        const allowedRoles = ["owner", "admin", "manager"];
-        if (!allowedRoles.includes(anyMember.role)) {
-          setError(`You need to be an organization admin to connect Givvv. Your current role: ${anyMember.role}`);
-          return;
-        }
-
-        if (anyMember?.organizations) {
+        // Use the first admin/owner organization (could add org picker later)
+        const primaryMembership = memberships[0];
+        if (primaryMembership?.organizations) {
           setOrganization({
-            id: anyMember.organization_id,
-            name: (anyMember.organizations as any).name,
+            id: primaryMembership.organization_id,
+            name: (primaryMembership.organizations as any).name,
           });
         }
       } catch (err) {
