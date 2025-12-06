@@ -125,21 +125,25 @@ export const ComparisonPageTemplate = ({
         {/* Comparison Table */}
         <section className="py-16 bg-gray-50">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-center mb-12 font-dm-sans">
+            <h2 className="text-3xl font-bold text-center mb-4 text-gray-900 font-dm-sans">
               Feature Comparison
             </h2>
+            <p className="text-gray-600 text-center mb-12 font-manrope max-w-2xl mx-auto">
+              See how TicketFlo stacks up against {competitorName}
+            </p>
 
-            {/* Table Header */}
-            <div className="bg-white rounded-t-2xl border border-gray-200 overflow-hidden">
-              <div className="grid grid-cols-3 bg-gray-900 text-white">
-                <div className="p-6 font-semibold font-dm-sans">Feature</div>
-                <div className="p-6 font-semibold font-dm-sans text-center border-l border-gray-700">
+            {/* Table */}
+            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+              {/* Table Header */}
+              <div className="grid grid-cols-3 bg-gray-50 border-b border-gray-200">
+                <div className="p-5 font-semibold text-gray-900 font-dm-sans">Feature</div>
+                <div className="p-5 font-semibold text-gray-900 font-dm-sans text-center border-l border-gray-200">
                   <div className="flex items-center justify-center gap-2">
-                    <Ticket className="h-5 w-5 text-[#ff4d00]" />
+                    <Ticket className="h-4 w-4 text-[#ff4d00]" />
                     TicketFlo
                   </div>
                 </div>
-                <div className="p-6 font-semibold font-dm-sans text-center border-l border-gray-700">
+                <div className="p-5 font-semibold text-gray-900 font-dm-sans text-center border-l border-gray-200">
                   {competitorName}
                 </div>
               </div>
@@ -148,38 +152,38 @@ export const ComparisonPageTemplate = ({
               {features.map((item, index) => (
                 <div
                   key={index}
-                  className={`grid grid-cols-3 border-t border-gray-200 ${
-                    item.highlight ? 'bg-[#ff4d00]/5' : ''
+                  className={`grid grid-cols-3 border-t border-gray-100 ${
+                    item.highlight ? 'bg-[#ff4d00]/5' : 'bg-white'
                   }`}
                 >
-                  <div className="p-5 font-medium text-gray-900 font-manrope">
+                  <div className="p-4 font-medium text-gray-900 font-manrope text-sm">
                     {item.feature}
                     {item.highlight && (
-                      <span className="ml-2 text-xs bg-[#ff4d00] text-white px-2 py-0.5 rounded-full">
+                      <span className="ml-2 text-[10px] bg-[#ff4d00] text-white px-2 py-0.5 rounded-full uppercase font-semibold">
                         Key
                       </span>
                     )}
                   </div>
-                  <div className="p-5 text-center border-l border-gray-200">
+                  <div className="p-4 text-center border-l border-gray-100">
                     {typeof item.ticketflo === 'boolean' ? (
                       item.ticketflo ? (
-                        <Check className="h-6 w-6 text-green-500 mx-auto" />
+                        <Check className="h-5 w-5 text-[#ff4d00] mx-auto" />
                       ) : (
-                        <X className="h-6 w-6 text-gray-300 mx-auto" />
+                        <X className="h-5 w-5 text-gray-300 mx-auto" />
                       )
                     ) : (
-                      <span className="text-gray-700 font-medium">{item.ticketflo}</span>
+                      <span className="text-gray-700 font-medium text-sm">{item.ticketflo}</span>
                     )}
                   </div>
-                  <div className="p-5 text-center border-l border-gray-200">
+                  <div className="p-4 text-center border-l border-gray-100">
                     {typeof item.competitor === 'boolean' ? (
                       item.competitor ? (
-                        <Check className="h-6 w-6 text-green-500 mx-auto" />
+                        <Check className="h-5 w-5 text-gray-400 mx-auto" />
                       ) : (
-                        <X className="h-6 w-6 text-gray-300 mx-auto" />
+                        <X className="h-5 w-5 text-gray-300 mx-auto" />
                       )
                     ) : (
-                      <span className="text-gray-700 font-medium">{item.competitor}</span>
+                      <span className="text-gray-500 text-sm">{item.competitor}</span>
                     )}
                   </div>
                 </div>
@@ -189,25 +193,25 @@ export const ComparisonPageTemplate = ({
         </section>
 
         {/* Benefits vs Drawbacks */}
-        <section className="py-20">
+        <section className="py-20 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid md:grid-cols-2 gap-8">
               {/* TicketFlo Benefits */}
-              <Card className="border-2 border-green-200 bg-green-50/50">
+              <Card className="border border-gray-200 bg-white">
                 <CardContent className="p-8">
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 bg-green-500 rounded-lg">
+                    <div className="p-2 bg-[#ff4d00] rounded-xl">
                       <Ticket className="h-6 w-6 text-white" />
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900 font-dm-sans">
+                    <h3 className="text-xl font-bold text-gray-900 font-dm-sans">
                       Why Choose TicketFlo
                     </h3>
                   </div>
                   <ul className="space-y-4">
                     {ticketfloBenefits.map((benefit, index) => (
                       <li key={index} className="flex items-start gap-3">
-                        <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-gray-700 font-manrope">{benefit}</span>
+                        <Check className="h-5 w-5 text-[#ff4d00] mt-0.5 flex-shrink-0" />
+                        <span className="text-gray-600 font-manrope text-sm">{benefit}</span>
                       </li>
                     ))}
                   </ul>
@@ -215,16 +219,16 @@ export const ComparisonPageTemplate = ({
               </Card>
 
               {/* Competitor Drawbacks */}
-              <Card className="border-2 border-red-200 bg-red-50/50">
+              <Card className="border border-gray-200 bg-gray-50">
                 <CardContent className="p-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6 font-dm-sans">
+                  <h3 className="text-xl font-bold text-gray-900 mb-6 font-dm-sans">
                     {competitorName} Limitations
                   </h3>
                   <ul className="space-y-4">
                     {competitorDrawbacks.map((drawback, index) => (
                       <li key={index} className="flex items-start gap-3">
-                        <X className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-gray-700 font-manrope">{drawback}</span>
+                        <X className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                        <span className="text-gray-600 font-manrope text-sm">{drawback}</span>
                       </li>
                     ))}
                   </ul>

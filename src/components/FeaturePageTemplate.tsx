@@ -122,24 +122,33 @@ export const FeaturePageTemplate = ({
         </section>
 
         {/* Benefits Grid */}
-        <section className="py-16 bg-gray-50">
+        <section className="py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-center mb-12 font-dm-sans">
+            <h2 className="text-3xl font-bold text-center mb-4 text-gray-900 font-dm-sans">
               Key Benefits
             </h2>
+            <p className="text-gray-600 text-center mb-12 font-manrope max-w-2xl mx-auto">
+              Everything you need to make the most of this feature
+            </p>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {benefits.map((benefit, index) => (
-                <Card key={index} className="border-0 shadow-lg">
+                <Card key={index} className="border border-gray-200 bg-white hover:shadow-lg transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex items-start gap-4">
-                      <div className="p-2 bg-[#ff4d00]/10 rounded-lg flex-shrink-0">
-                        {benefit.icon || <Check className="h-5 w-5 text-[#ff4d00]" />}
+                      <div className="p-3 bg-[#ff4d00] rounded-xl flex-shrink-0">
+                        {benefit.icon ? (
+                          <div className="[&>svg]:text-white [&>svg]:h-5 [&>svg]:w-5">
+                            {benefit.icon}
+                          </div>
+                        ) : (
+                          <Check className="h-5 w-5 text-white" />
+                        )}
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-2 font-dm-sans">
                           {benefit.title}
                         </h3>
-                        <p className="text-gray-600 text-sm font-manrope">
+                        <p className="text-gray-600 text-sm font-manrope leading-relaxed">
                           {benefit.description}
                         </p>
                       </div>
@@ -153,22 +162,22 @@ export const FeaturePageTemplate = ({
 
         {/* Use Cases */}
         {useCases && useCases.length > 0 && (
-          <section className="py-20">
+          <section className="py-20 bg-gray-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <h2 className="text-3xl font-bold text-center mb-4 font-dm-sans">
+              <h2 className="text-3xl font-bold text-center mb-4 text-gray-900 font-dm-sans">
                 Perfect For
               </h2>
               <p className="text-gray-600 text-center mb-12 font-manrope max-w-2xl mx-auto">
                 See how different organizations use this feature
               </p>
-              <div className="grid md:grid-cols-2 gap-8">
+              <div className="grid md:grid-cols-2 gap-6">
                 {useCases.map((useCase, index) => (
-                  <Card key={index} className="border-2 border-gray-100 hover:border-[#ff4d00]/30 transition-colors">
-                    <CardContent className="p-8">
-                      <h3 className="text-xl font-bold text-gray-900 mb-3 font-dm-sans">
+                  <Card key={index} className="border border-gray-200 bg-white hover:shadow-lg transition-shadow">
+                    <CardContent className="p-6">
+                      <h3 className="text-lg font-bold text-gray-900 mb-2 font-dm-sans">
                         {useCase.title}
                       </h3>
-                      <p className="text-gray-600 font-manrope">
+                      <p className="text-gray-600 font-manrope text-sm leading-relaxed">
                         {useCase.description}
                       </p>
                     </CardContent>

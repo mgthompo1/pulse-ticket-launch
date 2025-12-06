@@ -24,48 +24,48 @@ const features = [
     highlight: true
   },
   {
-    icon: MapPin,
-    title: "Seat Selection",
-    description: "Interactive seating charts for theaters, stadiums, and venues.",
-    badge: "Seating",
-    highlight: true
-  },
-  {
-    icon: Smartphone,
-    title: "Check-in App",
-    description: "Scan tickets, track attendance, and manage entry in real-time.",
-    badge: "Mobile",
-    highlight: true
-  },
-  {
     icon: Code,
-    title: "White Label",
-    description: "Fully branded experience on your domain with embeddable widgets.",
-    badge: "Branding",
+    title: "Checkout Builder",
+    description: "Drag-and-drop checkout designer with custom templates and branding.",
+    badge: "Design",
     highlight: true
   },
   {
     icon: UserCheck,
     title: "Built-in CRM",
-    description: "Track customers across events and segment your audience.",
-    badge: "CRM"
+    description: "Track customers across events, segment audiences, and build relationships.",
+    badge: "CRM",
+    highlight: true
+  },
+  {
+    icon: Sparkles,
+    title: "Integrations",
+    description: "Connect with HubSpot, Xero, NetSuite, Mailchimp, and more out of the box.",
+    badge: "Connect",
+    highlight: true
+  },
+  {
+    icon: Smartphone,
+    title: "Check-in App",
+    description: "Scan tickets and manage entry in real-time on any device.",
+    badge: "Mobile"
+  },
+  {
+    icon: MapPin,
+    title: "Seat Selection",
+    description: "Interactive seating charts for theaters and venues.",
+    badge: "Seating"
   },
   {
     icon: Shield,
     title: "Digital Waivers",
-    description: "Collect liability forms for camps, activities, and youth programs.",
+    description: "Collect liability forms for camps and youth programs.",
     badge: "Safety"
-  },
-  {
-    icon: BarChart3,
-    title: "Analytics",
-    description: "Real-time sales insights and event performance dashboards.",
-    badge: "Insights"
   },
   {
     icon: Gift,
     title: "Promo Codes",
-    description: "Discounts, early bird pricing, and affiliate marketing tools.",
+    description: "Discounts, early bird pricing, and affiliate tools.",
     badge: "Sales"
   }
 ];

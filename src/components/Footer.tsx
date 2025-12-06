@@ -10,9 +10,9 @@ const footerLinks = {
   ],
   Features: [
     { name: "Group Sales", href: "/features/group-sales" },
-    { name: "Seat Selection", href: "/features/seating" },
-    { name: "White Label", href: "/features/white-label" },
-    { name: "Check-in App", href: "/features/checkin" },
+    { name: "Checkout Builder", href: "/features/white-label" },
+    { name: "Built-in CRM", href: "/features/crm" },
+    { name: "Integrations", href: "/features/integrations" },
     { name: "Low Fees", href: "/features/low-fees" },
   ],
   Compare: [
