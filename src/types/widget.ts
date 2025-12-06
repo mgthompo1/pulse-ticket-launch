@@ -1,7 +1,7 @@
 export interface WidgetCustomization {
   enabled?: boolean;
   seatMaps?: Record<string, unknown>;
-  checkoutMode?: string;
+  checkoutMode?: 'onepage' | 'multistep' | 'beta' | 'modal';
   customQuestions?: CustomQuestion[];
   theme?: {
     enabled?: boolean;

@@ -1380,10 +1380,11 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
               {!(eventData?.widget_customization as any)?.useCustomTemplate && (
                 <div className="space-y-3">
                   <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Preset Templates</h4>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     {[
                       { value: 'onepage', label: 'One Page', desc: 'Single page checkout' },
                       { value: 'multistep', label: 'Multi-Step', desc: 'Progressive steps' },
+                      { value: 'modal', label: 'Modal', desc: 'Event page with modal checkout' },
                       { value: 'beta', label: 'Beta', desc: 'Mobile optimized' },
                     ].map((template) => (
                       <button

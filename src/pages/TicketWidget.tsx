@@ -31,6 +31,7 @@ import {
 import { MultiStepCheckout } from "@/components/checkout/MultiStepCheckout";
 import { BetaCheckout } from "@/components/checkout/BetaCheckout";
 import { SinglePageCheckout } from "@/components/checkout/SinglePageCheckout";
+import { ModalCheckout } from "@/components/checkout/ModalCheckout";
 import { SEOHead } from "@/components/SEOHead";
 
 // Extend the global Window interface to include WindcavePayments
@@ -1591,10 +1592,11 @@ const TicketWidget = () => {
     const localCheckoutMode = checkoutMode;
     const dataCheckoutMode = eventData?.widget_customization?.checkoutMode;
     const effectiveCheckoutMode = dataCheckoutMode || localCheckoutMode;
-    
+
     const isMultiStep = effectiveCheckoutMode === 'multistep' && eventData;
     const isBeta = effectiveCheckoutMode === 'beta' && eventData;
-    
+    const isModal = effectiveCheckoutMode === 'modal' && eventData;
+
     // Debug logging
     console.log("=== CHECKOUT MODE DECISION DEBUG ===");
     console.log("Local checkoutMode:", localCheckoutMode);
@@ -1604,17 +1606,20 @@ const TicketWidget = () => {
     console.log("widget_customization:", eventData?.widget_customization);
     console.log("isMultiStep:", isMultiStep);
     console.log("isBeta:", isBeta);
-    
+    console.log("isModal:", isModal);
+
     // Only log once when the decision changes
     if (isMultiStep) {
       console.log("✅ Rendering MultiStepCheckout component");
     } else if (isBeta) {
       console.log("✅ Rendering BetaCheckout component");
+    } else if (isModal) {
+      console.log("✅ Rendering ModalCheckout component");
     } else {
       console.log("❌ Rendering single-page checkout");
     }
-    
-    return { isMultiStep, isBeta, effectiveCheckoutMode };
+
+    return { isMultiStep, isBeta, isModal, effectiveCheckoutMode };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- specific checkoutMode path is intentional for targeted reactivity
   }, [checkoutMode, eventData?.widget_customization?.checkoutMode, eventData]);
 
@@ -1764,6 +1769,89 @@ const TicketWidget = () => {
           }}
           groupId={groupId}
           allocationId={allocationId}
+        />
+      </>
+    );
+  }
+
+  // Render modal checkout if enabled
+  if (checkoutModeDecision.isModal && eventData) {
+    // Create structured data for the event
+    const eventStructuredData = {
+      "@context": "https://schema.org",
+      "@type": "Event",
+      "name": eventData.name,
+      "description": eventData.description ? eventData.description.replace(/<[^>]*>/g, '') : `Get tickets for ${eventData.name}`,
+      "image": (eventData as any).logo_url || "https://www.ticketflo.org/og-image.jpg",
+      "startDate": eventData.event_date,
+      "location": eventData.venue ? {
+        "@type": "Place",
+        "name": eventData.venue
+      } : undefined,
+      "organizer": {
+        "@type": "Organization",
+        "name": (eventData.organizations as any)?.name || "Event Organizer"
+      },
+      "offers": ticketTypes.map(ticket => ({
+        "@type": "Offer",
+        "name": ticket.name,
+        "price": ticket.price,
+        "priceCurrency": eventData.organizations?.currency || "USD",
+        "availability": "https://schema.org/InStock",
+        "url": `https://www.ticketflo.org/widget/${eventId}`
+      }))
+    };
+
+    return (
+      <>
+        <SEOHead
+          title={`${eventData.name} - Get Tickets | TicketFlo`}
+          description={eventData.description ? eventData.description.replace(/<[^>]*>/g, '').substring(0, 155) + '...' : `Get tickets for ${eventData.name}. Secure online ticket purchasing with TicketFlo.`}
+          ogTitle={eventData.name}
+          ogDescription={eventData.description ? eventData.description.replace(/<[^>]*>/g, '').substring(0, 155) + '...' : `Get tickets for ${eventData.name}`}
+          ogImage={(eventData as any).logo_url || "https://www.ticketflo.org/og-image.jpg"}
+          structuredData={eventStructuredData}
+        />
+        <ModalCheckout
+          eventData={eventData!}
+          ticketTypes={ticketTypes}
+          customQuestions={customQuestions}
+          paymentProvider={paymentProvider}
+          stripePublishableKey={stripePublishableKey}
+          onCreateWindcaveSession={handleCheckout}
+          windcaveReady={!loading}
+          showWindcavePaymentForm={showPaymentForm}
+          onBackToTickets={handleBackToTickets}
+          dropInRef={dropInRef}
+          promoCodeHooks={{
+            promoCode,
+            setPromoCode,
+            promoCodeId,
+            promoDiscount,
+            promoError,
+            isValidating,
+            groupDiscount,
+            groupDiscountTier,
+            applyPromoCode,
+            clearPromoCode,
+            getTotalDiscount,
+            calculateFinalTotal,
+          }}
+          reservationHooks={{
+            reservations,
+            timeRemaining,
+            reserveTickets,
+            reserveMultipleTickets,
+            completeAllReservations,
+            cancelAllReservations,
+            extendReservation,
+            formatTimeRemaining,
+            hasActiveReservations,
+          }}
+          groupId={groupId}
+          allocationId={allocationId}
+          onPaymentSuccess={handlePaymentSuccess}
+          getAvailableQuantity={getAvailableQuantity}
         />
       </>
     );

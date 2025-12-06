@@ -5,7 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, CheckCircle, Shield, Calendar, Users, BarChart3, ArrowLeft, ExternalLink } from "lucide-react";
+import { Loader2, CheckCircle, Shield, Calendar, Users, BarChart3, ArrowLeft, ExternalLink, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Link } from "react-router-dom";
 
 // Givvv branding colors
@@ -16,6 +22,7 @@ const GivvvAuth = () => {
   const [authorizing, setAuthorizing] = useState(false);
   const [error, setError] = useState("");
   const [organization, setOrganization] = useState<{ id: string; name: string } | null>(null);
+  const [allOrganizations, setAllOrganizations] = useState<{ id: string; name: string }[]>([]);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
@@ -91,13 +98,19 @@ const GivvvAuth = () => {
           return;
         }
 
-        // Use the first admin/owner organization (could add org picker later)
-        const primaryMembership = memberships[0];
-        if (primaryMembership?.organizations) {
-          setOrganization({
-            id: primaryMembership.organization_id,
-            name: (primaryMembership.organizations as any).name,
-          });
+        // Build list of all organizations user can connect
+        const orgs = memberships
+          .filter(m => m.organizations)
+          .map(m => ({
+            id: m.organization_id,
+            name: (m.organizations as any).name,
+          }));
+
+        setAllOrganizations(orgs);
+
+        // Default to first org, but user can change
+        if (orgs.length > 0) {
+          setOrganization(orgs[0]);
         }
       } catch (err) {
         console.error("Error:", err);
@@ -253,11 +266,36 @@ const GivvvAuth = () => {
               </Alert>
             ) : (
               <>
-                {/* Organization info */}
+                {/* Organization info / picker */}
                 {organization && (
                   <div className="p-3 bg-white/5 rounded-lg border border-white/10">
                     <p className="text-xs text-gray-400 mb-1">Connecting organization</p>
-                    <p className="text-white font-medium">{organization.name}</p>
+                    {allOrganizations.length > 1 ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="flex items-center justify-between w-full text-left text-white font-medium hover:bg-white/5 rounded px-2 py-1 -mx-2 -my-1 transition-colors">
+                            <span>{organization.name}</span>
+                            <ChevronDown className="w-4 h-4 text-gray-400" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-64 bg-gray-900 border-white/10">
+                          {allOrganizations.map((org) => (
+                            <DropdownMenuItem
+                              key={org.id}
+                              onClick={() => setOrganization(org)}
+                              className={`cursor-pointer ${org.id === organization.id ? 'bg-white/10' : ''}`}
+                            >
+                              <span className="text-white">{org.name}</span>
+                              {org.id === organization.id && (
+                                <CheckCircle className="w-4 h-4 text-emerald-400 ml-auto" />
+                              )}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <p className="text-white font-medium">{organization.name}</p>
+                    )}
                   </div>
                 )}
 
