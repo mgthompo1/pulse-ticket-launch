@@ -1,16 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Palette,
   BarChart3,
   MapPin,
-  Mail,
   Gift,
-  MessageSquare,
   Code,
-  Infinity as InfinityIcon,
   Sparkles,
-  Zap,
   Smartphone,
   Users,
   Shield,
@@ -22,80 +17,56 @@ import { useLandingPageContent } from "@/hooks/useLandingPageContent";
 
 const features = [
   {
-    icon: Smartphone,
-    title: "Organiser App",
-    description: "Streamline event entry with our native app. Scan tickets, track attendance, and manage check-ins in real-time.",
-    badge: "Mobile",
-    highlight: true
-  },
-  {
     icon: Users,
-    title: "Group Sales & Management",
-    description: "Handle bulk bookings with ease. Perfect for schools, corporate events, and tour groups with dedicated group management tools.",
+    title: "Group Sales",
+    description: "Bulk bookings for schools, churches, and corporates with dedicated admin portals.",
     badge: "Groups",
     highlight: true
   },
   {
-    icon: UserCheck,
-    title: "Customer CRM",
-    description: "Built-in customer relationship management. Track purchase history, segment audiences, and build lasting relationships.",
-    badge: "CRM",
+    icon: MapPin,
+    title: "Seat Selection",
+    description: "Interactive seating charts for theaters, stadiums, and venues.",
+    badge: "Seating",
     highlight: true
+  },
+  {
+    icon: Smartphone,
+    title: "Check-in App",
+    description: "Scan tickets, track attendance, and manage entry in real-time.",
+    badge: "Mobile",
+    highlight: true
+  },
+  {
+    icon: Code,
+    title: "White Label",
+    description: "Fully branded experience on your domain with embeddable widgets.",
+    badge: "Branding",
+    highlight: true
+  },
+  {
+    icon: UserCheck,
+    title: "Built-in CRM",
+    description: "Track customers across events and segment your audience.",
+    badge: "CRM"
   },
   {
     icon: Shield,
     title: "Digital Waivers",
-    description: "Collect liability waivers and consent forms digitally. Perfect for camps, adventure activities, churches, and youth programs.",
-    badge: "Safety",
-    highlight: true
-  },
-  {
-    icon: InfinityIcon,
-    title: "Unlimited Ticket Types",
-    description: "Create as many ticket categories as you need with flexible pricing, quantities, and availability windows.",
-    badge: "Core"
-  },
-  {
-    icon: Palette,
-    title: "Brand Customization",
-    description: "Match your brand perfectly with our intuitive design tools. Custom colors, fonts, and layouts.",
-    badge: "Design"
+    description: "Collect liability forms for camps, activities, and youth programs.",
+    badge: "Safety"
   },
   {
     icon: BarChart3,
-    title: "Real-time Analytics",
-    description: "Deep insights into sales, customer behavior, and event performance with live dashboards.",
-    badge: "Analytics"
-  },
-  {
-    icon: MapPin,
-    title: "Reserved Seating",
-    description: "Interactive seating charts with drag-and-drop functionality for theaters, stadiums, and venues.",
-    badge: "Premium"
-  },
-  {
-    icon: Mail,
-    title: "Email Campaigns",
-    description: "Built-in email marketing tools to promote your events and engage with your audience.",
-    badge: "Marketing"
+    title: "Analytics",
+    description: "Real-time sales insights and event performance dashboards.",
+    badge: "Insights"
   },
   {
     icon: Gift,
-    title: "Promotion Tools",
-    description: "Discount codes, early bird pricing, bundle deals, and affiliate marketing capabilities.",
+    title: "Promo Codes",
+    description: "Discounts, early bird pricing, and affiliate marketing tools.",
     badge: "Sales"
-  },
-  {
-    icon: Code,
-    title: "Embed Anywhere",
-    description: "White-label ticketing widget that seamlessly integrates with your existing website.",
-    badge: "Integration"
-  },
-  {
-    icon: Zap,
-    title: "Fast Checkout",
-    description: "Optimized checkout flow with multiple payment options and mobile-first design.",
-    badge: "Performance"
   }
 ];
 
@@ -130,23 +101,19 @@ export const Features = () => {
           {highlightedFeatures.map((feature, index) => (
             <Card
               key={index}
-              className="group hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 border-2 border-[#ff4d00]/20 bg-gradient-to-br from-white to-orange-50/30 backdrop-blur-sm overflow-hidden relative"
+              className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-200 bg-white overflow-hidden"
             >
-              {/* Accent border top */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#ff4d00] to-[#ff6b2c]" />
-
               <CardHeader className="space-y-4 pb-2">
-                <div className="flex items-center justify-between">
-                  <div className="bg-[#ff4d00] p-3 rounded-xl shadow-lg shadow-[#ff4d00]/25">
+                <div className="flex items-center gap-4">
+                  <div className="bg-[#ff4d00] p-3 rounded-xl">
                     <feature.icon className="h-6 w-6 text-white" />
                   </div>
-                  <Badge className="bg-[#ff4d00] text-white border-0 font-manrope text-xs">
-                    {feature.badge}
-                  </Badge>
+                  <div>
+                    <CardTitle className="text-xl group-hover:text-[#ff4d00] transition-colors text-gray-900 font-dm-sans">
+                      {feature.title}
+                    </CardTitle>
+                  </div>
                 </div>
-                <CardTitle className="text-2xl group-hover:text-[#ff4d00] transition-colors text-gray-900 font-dm-sans">
-                  {feature.title}
-                </CardTitle>
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-gray-600 leading-relaxed font-manrope text-base">

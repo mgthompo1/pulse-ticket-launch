@@ -3,27 +3,27 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
 const footerLinks = {
-  Product: [
-    { name: "Features", href: "#features" },
+  Platform: [
+    { name: "Overview", href: "#features" },
     { name: "Pricing", href: "#pricing" },
+    { name: "Contact", href: "/contact" },
+  ],
+  Features: [
     { name: "Group Sales", href: "/features/group-sales" },
     { name: "Seat Selection", href: "/features/seating" },
     { name: "White Label", href: "/features/white-label" },
     { name: "Check-in App", href: "/features/checkin" },
+    { name: "Low Fees", href: "/features/low-fees" },
   ],
   Compare: [
     { name: "vs Eventbrite", href: "/compare/eventbrite" },
     { name: "vs Humanitix", href: "/compare/humanitix" },
     { name: "vs EventsAir", href: "/compare/eventsair" },
-    { name: "Low Fees", href: "/features/low-fees" },
-  ],
-  Support: [
-    { name: "Contact Us", href: "/contact" },
-    { name: "System Status", href: "https://kodostatus.com/status/ticketflo", external: true },
   ],
   Legal: [
     { name: "Privacy Policy", href: "/privacy-policy" },
     { name: "Terms of Service", href: "/terms" },
+    { name: "System Status", href: "https://kodostatus.com/status/ticketflo", external: true },
   ],
 };
 

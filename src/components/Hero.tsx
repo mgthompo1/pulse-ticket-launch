@@ -88,58 +88,95 @@ export const Hero = () => {
               </div>
 
               {/* Dashboard content mockup */}
-              <div className="p-3 sm:p-6 bg-zinc-950">
+              <div className="p-3 sm:p-6 bg-gradient-to-br from-zinc-950 via-zinc-950 to-zinc-900">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-4 sm:mb-6">
                   <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-[#ff4d00]" />
+                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-[#ff4d00] to-[#ff6b2c]" />
                     <div className="h-3 sm:h-4 w-20 sm:w-32 bg-zinc-800 rounded" />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
                     <div className="hidden sm:block h-9 w-24 bg-zinc-800 rounded-lg" />
-                    <div className="h-7 sm:h-9 w-20 sm:w-32 bg-[#ff4d00] rounded-lg" />
+                    <div className="h-7 sm:h-9 px-3 sm:px-4 bg-gradient-to-r from-[#ff4d00] to-[#ff6b2c] rounded-lg flex items-center gap-1.5">
+                      <span className="text-[10px] sm:text-xs font-medium text-white">+ Create Event</span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Stats cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
                   {[
-                    { label: 'Total Events', value: '12', icon: Ticket },
-                    { label: 'Tickets Sold', value: '847', icon: UserCheck },
-                    { label: 'Revenue', value: '$24,580', icon: BarChart3 },
-                    { label: 'Customers', value: '623', icon: Users },
+                    { label: 'Total Events', value: '12', icon: Ticket, color: 'from-violet-500 to-purple-600', iconBg: 'bg-violet-500/20', iconColor: 'text-violet-400' },
+                    { label: 'Tickets Sold', value: '847', icon: UserCheck, color: 'from-emerald-500 to-teal-600', iconBg: 'bg-emerald-500/20', iconColor: 'text-emerald-400' },
+                    { label: 'Revenue', value: '$24,580', icon: BarChart3, color: 'from-[#ff4d00] to-[#ff6b2c]', iconBg: 'bg-[#ff4d00]/20', iconColor: 'text-[#ff4d00]' },
+                    { label: 'Customers', value: '623', icon: Users, color: 'from-blue-500 to-cyan-500', iconBg: 'bg-blue-500/20', iconColor: 'text-blue-400' },
                   ].map((stat, i) => (
-                    <div key={i} className="p-2 sm:p-4 rounded-lg sm:rounded-xl bg-zinc-900 border border-zinc-800">
+                    <div key={i} className="p-2 sm:p-4 rounded-lg sm:rounded-xl bg-zinc-900/80 border border-zinc-800 backdrop-blur-sm">
                       <div className="flex items-center justify-between mb-1 sm:mb-2">
-                        <span className="text-[10px] sm:text-xs text-gray-500 font-manrope">{stat.label}</span>
-                        <stat.icon className="h-3 w-3 sm:h-4 sm:w-4 text-[#ff4d00]" />
+                        <span className="text-[10px] sm:text-xs text-gray-400 font-manrope">{stat.label}</span>
+                        <div className={`p-1 rounded ${stat.iconBg}`}>
+                          <stat.icon className={`h-3 w-3 sm:h-4 sm:w-4 ${stat.iconColor}`} />
+                        </div>
                       </div>
                       <div className="text-sm sm:text-xl font-bold text-white font-dm-sans">{stat.value}</div>
+                      <div className={`h-1 w-full mt-2 rounded-full bg-gradient-to-r ${stat.color} opacity-60`} />
                     </div>
                   ))}
                 </div>
 
                 {/* Chart placeholder */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
-                  <div className="sm:col-span-2 h-24 sm:h-40 rounded-lg sm:rounded-xl bg-zinc-900 border border-zinc-800 p-2 sm:p-4">
-                    <div className="h-2 sm:h-3 w-16 sm:w-24 bg-zinc-800 rounded mb-2 sm:mb-4" />
+                  <div className="sm:col-span-2 h-24 sm:h-40 rounded-lg sm:rounded-xl bg-zinc-900/80 border border-zinc-800 p-2 sm:p-4 backdrop-blur-sm">
+                    <div className="flex items-center justify-between mb-2 sm:mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] sm:text-xs font-medium text-white">Sales & Views</span>
+                        <span className="hidden sm:inline text-[10px] text-emerald-400">↑ 12%</span>
+                      </div>
+                      <div className="flex gap-2 sm:gap-3">
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 rounded-full bg-[#ff4d00]" />
+                          <span className="text-[8px] sm:text-[10px] text-gray-500">Sales</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <span className="text-[8px] sm:text-[10px] text-gray-500">Views</span>
+                        </div>
+                      </div>
+                    </div>
                     <div className="flex items-end gap-1 sm:gap-2 h-14 sm:h-24">
                       {[40, 65, 45, 80, 55, 90, 70, 85, 60, 75, 95, 80].map((h, i) => (
-                        <div
-                          key={i}
-                          className="flex-1 bg-gradient-to-t from-[#ff4d00] to-[#ff6b2c] rounded-t opacity-80"
-                          style={{ height: `${h}%` }}
-                        />
+                        <div key={i} className="flex-1 flex flex-col gap-0.5">
+                          <div
+                            className="w-full bg-gradient-to-t from-emerald-500 to-emerald-400 rounded-t opacity-40"
+                            style={{ height: `${h * 0.6}%` }}
+                          />
+                          <div
+                            className="w-full bg-gradient-to-t from-[#ff4d00] to-[#ff6b2c] rounded-t"
+                            style={{ height: `${h}%` }}
+                          />
+                        </div>
                       ))}
                     </div>
                   </div>
-                  <div className="hidden sm:block h-40 rounded-xl bg-zinc-900 border border-zinc-800 p-4">
+                  <div className="hidden sm:block h-40 rounded-xl bg-zinc-900/80 border border-zinc-800 p-4 backdrop-blur-sm">
                     <div className="h-3 w-20 bg-zinc-800 rounded mb-4" />
                     <div className="space-y-3">
-                      {['General Admission', 'VIP Pass', 'Early Bird'].map((label, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-[#ff4d00]" style={{ opacity: 1 - i * 0.25 }} />
-                          <div className="h-2 flex-1 bg-zinc-800 rounded" />
+                      {[
+                        { label: 'General Admission', color: 'bg-[#ff4d00]', percent: 65 },
+                        { label: 'VIP Pass', color: 'bg-violet-500', percent: 25 },
+                        { label: 'Early Bird', color: 'bg-emerald-500', percent: 10 },
+                      ].map((item, i) => (
+                        <div key={i} className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${item.color}`} />
+                              <span className="text-[10px] text-gray-400">{item.label}</span>
+                            </div>
+                            <span className="text-[10px] text-gray-500">{item.percent}%</span>
+                          </div>
+                          <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                            <div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.percent}%` }} />
+                          </div>
                         </div>
                       ))}
                     </div>
