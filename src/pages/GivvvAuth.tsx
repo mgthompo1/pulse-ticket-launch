@@ -62,23 +62,35 @@ const GivvvAuth = () => {
       if (!user) return;
 
       try {
-        const { data: member, error: memberError } = await supabase
-          .from("organization_members")
+        // First check if user has ANY organization membership
+        const { data: anyMember, error: anyError } = await supabase
+          .from("organization_users")
           .select("organization_id, role, organizations(id, name)")
           .eq("user_id", user.id)
-          .in("role", ["owner", "admin"])
-          .single();
+          .maybeSingle();
 
-        if (memberError) {
-          console.error("Error loading organization:", memberError);
-          setError("You must be an organization admin to connect Givvv.");
+        if (anyError) {
+          console.error("Error loading organization membership:", anyError);
+          setError("Failed to load your organization. Please try again.");
           return;
         }
 
-        if (member?.organizations) {
+        if (!anyMember) {
+          setError("You don't have an organization yet. Please create one in TicketFlo first.");
+          return;
+        }
+
+        // Check if they have admin/owner role
+        const allowedRoles = ["owner", "admin", "manager"];
+        if (!allowedRoles.includes(anyMember.role)) {
+          setError(`You need to be an organization admin to connect Givvv. Your current role: ${anyMember.role}`);
+          return;
+        }
+
+        if (anyMember?.organizations) {
           setOrganization({
-            id: member.organization_id,
-            name: (member.organizations as any).name,
+            id: anyMember.organization_id,
+            name: (anyMember.organizations as any).name,
           });
         }
       } catch (err) {
