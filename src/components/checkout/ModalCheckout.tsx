@@ -26,7 +26,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useCheckoutEngine } from "@/hooks/useCheckoutEngine";
 import { PromoCodeInput } from "@/components/checkout/PromoCodeInput";
 import { MerchandiseCartItem, TicketType, EventData, CustomQuestion, WindcaveLink } from "@/types/widget";
-import { StripeCardForm } from "@/components/payment/StripeCardForm";
+import { StripePaymentForm } from "@/components/payment/StripePaymentForm";
 import MerchandiseSelector from "@/components/MerchandiseSelector";
 import { trackBeginCheckout, trackPurchase } from "@/lib/analytics";
 import { Theme } from "@/types/theme";
@@ -245,7 +245,7 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
     setIsModalOpen(false);
   };
 
-  // Validate custom questions
+  // Validate custom questions (only call on form submission, not during render)
   const validateCustomQuestions = (): boolean => {
     const errors: Record<string, string> = {};
     customQuestions.forEach((q) => {
@@ -257,8 +257,13 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
     return Object.keys(errors).length === 0;
   };
 
+  // Check if required custom questions are answered (without setting state)
+  const areCustomQuestionsValid = useMemo(() => {
+    return customQuestions.every((q) => !q.required || customAnswers[q.id]);
+  }, [customQuestions, customAnswers]);
+
   const canProceedFromTickets = cartItems.length > 0;
-  const canProceedFromDetails = customerInfo.name && customerInfo.email && validateCustomQuestions();
+  const canProceedFromDetails = customerInfo.name && customerInfo.email && areCustomQuestionsValid;
 
   const goToNextStep = () => {
     const nextIndex = currentStepIndex + 1;
@@ -712,7 +717,8 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
 
       {/* Payment Form */}
       {paymentProvider === "stripe" && platformStripeKey && (
-        <StripeCardForm
+        <StripePaymentForm
+          publishableKey={platformStripeKey}
           eventId={eventData.id}
           cart={cartItems}
           merchandiseCart={merchandiseCart}
@@ -797,122 +803,343 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
     }
   };
 
+  // Format date nicely like Eventbrite
+  const formatEventDate = () => {
+    const date = new Date(eventData.event_date);
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
+  // Get price range text
+  const getPriceRange = () => {
+    if (ticketTypes.length === 0) return null;
+    const prices = ticketTypes.map(t => t.price);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    if (min === max) {
+      return min === 0 ? 'Free' : `$${min.toFixed(2)}`;
+    }
+    return min === 0 ? `Free – $${max.toFixed(2)}` : `$${min.toFixed(2)} – $${max.toFixed(2)}`;
+  };
+
   return (
     <div
       className="min-h-screen"
       style={{
-        backgroundColor: eventTheme.backgroundColor,
-        fontFamily: eventTheme.fontFamily,
-        color: headerTextColor,
+        backgroundColor: '#f8f7fa',
+        fontFamily: eventTheme.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}
     >
-      {/* Event Landing Page */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Event Header */}
-        <div className="text-center mb-8">
-          {eventData.widget_customization?.layout?.showEventImage !== false && (
-            <div className="mb-6">
-              {(eventData as any).logo_url ? (
-                <img
-                  src={(eventData as any).logo_url}
-                  alt={`${eventData.name} Logo`}
-                  className="mx-auto max-h-64 w-auto object-contain rounded-lg shadow-lg"
+      {/* Hero Image - Full Width */}
+      {eventData.widget_customization?.layout?.showEventImage !== false && (eventData as any).logo_url && (
+        <div className="w-full bg-gray-100">
+          <div className="max-w-5xl mx-auto">
+            <div className="aspect-[2/1] md:aspect-[2.5/1] overflow-hidden">
+              <img
+                src={(eventData as any).logo_url}
+                alt={eventData.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="max-w-5xl mx-auto px-4 py-6 md:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+          {/* Left Column - Event Details */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Event Title & Date */}
+            <div>
+              <p className="text-base font-semibold mb-2" style={{ color: primaryColor }}>
+                {formatEventDate()}
+                {(eventData as any).event_time && ` · ${(eventData as any).event_time}`}
+              </p>
+              <h1
+                className="text-2xl md:text-3xl lg:text-4xl font-bold leading-tight"
+                style={{ color: '#1e0a3c' }}
+              >
+                {eventData.name}
+              </h1>
+            </div>
+
+            {/* Event Description Card */}
+            {eventData.widget_customization?.layout?.showDescription !== false && eventData.description && (
+              <div
+                className="bg-white rounded-xl p-6 shadow-sm"
+                style={{ border: '1px solid #eeedf2' }}
+              >
+                <h2 className="text-xl font-bold mb-4" style={{ color: '#1e0a3c' }}>
+                  About this event
+                </h2>
+                <div
+                  className="prose prose-gray max-w-none text-base leading-relaxed [&>p]:mb-4 [&>ul]:mb-4 [&>ol]:mb-4"
+                  style={{ color: '#39364f' }}
+                  dangerouslySetInnerHTML={{ __html: eventData.description }}
                 />
-              ) : (
-                <div className="w-32 h-32 mx-auto bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center">
-                  <Ticket className="h-16 w-16" style={{ color: primaryColor }} />
+              </div>
+            )}
+
+            {/* Date and Time Card */}
+            <div
+              className="bg-white rounded-xl p-6 shadow-sm"
+              style={{ border: '1px solid #eeedf2' }}
+            >
+              <h2 className="text-xl font-bold mb-4" style={{ color: '#1e0a3c' }}>
+                Date and time
+              </h2>
+              <div className="flex items-start gap-4">
+                <div
+                  className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: `${primaryColor}10` }}
+                >
+                  <Calendar className="h-6 w-6" style={{ color: primaryColor }} />
                 </div>
-              )}
-            </div>
-          )}
-
-          <h1 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: headerTextColor }}>
-            {eventData.name}
-          </h1>
-
-          {/* Event Details */}
-          <div className="flex flex-wrap items-center justify-center gap-4 text-base mb-6" style={{ color: bodyTextColor }}>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" style={{ color: primaryColor }} />
-              <span>
-                {new Date(eventData.event_date).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </span>
+                <div>
+                  <p className="font-semibold text-base" style={{ color: '#1e0a3c' }}>
+                    {formatEventDate()}
+                  </p>
+                  {(eventData as any).event_time && (
+                    <p className="text-sm mt-1" style={{ color: '#6f7287' }}>
+                      {(eventData as any).event_time}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
+            {/* Location Card with Map */}
             {eventData.venue && (
-              <div className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" style={{ color: primaryColor }} />
-                <span>{eventData.venue}</span>
+              <div
+                className="bg-white rounded-xl shadow-sm overflow-hidden"
+                style={{ border: '1px solid #eeedf2' }}
+              >
+                {/* Google Maps Embed */}
+                <div className="w-full h-48 bg-gray-100">
+                  <iframe
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    loading="lazy"
+                    allowFullScreen
+                    referrerPolicy="no-referrer-when-downgrade"
+                    src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(eventData.venue + ((eventData as any).address ? ', ' + (eventData as any).address : ''))}`}
+                  />
+                </div>
+                <div className="p-6">
+                  <h2 className="text-xl font-bold mb-4" style={{ color: '#1e0a3c' }}>
+                    Location
+                  </h2>
+                  <div className="flex items-start gap-4">
+                    <div
+                      className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: `${primaryColor}10` }}
+                    >
+                      <MapPin className="h-6 w-6" style={{ color: primaryColor }} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-base" style={{ color: '#1e0a3c' }}>
+                        {eventData.venue}
+                      </p>
+                      {(eventData as any).address && (
+                        <p className="text-sm mt-1" style={{ color: '#6f7287' }}>
+                          {(eventData as any).address}
+                        </p>
+                      )}
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(eventData.venue + ((eventData as any).address ? ', ' + (eventData as any).address : ''))}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium mt-2 inline-block hover:underline"
+                        style={{ color: primaryColor }}
+                      >
+                        View on Google Maps
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Organizer Card */}
+            {eventData.organizations?.name && (
+              <div
+                className="bg-white rounded-xl p-6 shadow-sm"
+                style={{ border: '1px solid #eeedf2' }}
+              >
+                <h2 className="text-xl font-bold mb-4" style={{ color: '#1e0a3c' }}>
+                  Organised by
+                </h2>
+                <div className="flex items-center gap-4">
+                  {(eventData.organizations as any)?.logo_url ? (
+                    <img
+                      src={(eventData.organizations as any).logo_url}
+                      alt={eventData.organizations.name}
+                      className="w-14 h-14 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-white"
+                      style={{ backgroundColor: primaryColor }}
+                    >
+                      {eventData.organizations.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-semibold text-base" style={{ color: '#1e0a3c' }}>
+                      {eventData.organizations.name}
+                    </p>
+                    <p className="text-sm" style={{ color: '#6f7287' }}>
+                      Event organiser
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Get Tickets Button */}
+          {/* Right Column - Sticky Ticket Card */}
+          <div className="lg:col-span-1">
+            <div className="lg:sticky lg:top-6">
+              <div
+                className="bg-white rounded-xl shadow-lg overflow-hidden"
+                style={{ border: '1px solid #eeedf2' }}
+              >
+                {/* Price Display */}
+                <div className="p-6 border-b" style={{ borderColor: '#eeedf2' }}>
+                  <p className="text-2xl font-bold mb-1" style={{ color: '#1e0a3c' }}>
+                    {ticketTypes.length > 0 ? (
+                      ticketTypes.length === 1 ? (
+                        ticketTypes[0].price === 0 ? 'Free' : `$${ticketTypes[0].price.toFixed(2)}`
+                      ) : (
+                        (() => {
+                          const prices = ticketTypes.map(t => t.price);
+                          const min = Math.min(...prices);
+                          const max = Math.max(...prices);
+                          if (min === max) {
+                            return min === 0 ? 'Free' : `$${min.toFixed(2)}`;
+                          }
+                          return min === 0 ? `Free – $${max.toFixed(2)}` : `$${min.toFixed(2)} – $${max.toFixed(2)}`;
+                        })()
+                      )
+                    ) : (
+                      'Tickets'
+                    )}
+                  </p>
+                  {ticketTypes.length > 1 && (
+                    <p className="text-sm" style={{ color: '#6f7287' }}>
+                      {ticketTypes.length} ticket types available
+                    </p>
+                  )}
+                  {ticketTypes.length === 1 && (
+                    <p className="text-sm" style={{ color: '#6f7287' }}>
+                      {ticketTypes[0].name}
+                    </p>
+                  )}
+                </div>
+
+                {/* Ticket Preview */}
+                <div className="p-4 border-b space-y-3" style={{ borderColor: '#eeedf2' }}>
+                  {ticketTypes.slice(0, 3).map((ticket) => {
+                    const available = getAvailableQuantity(ticket);
+                    return (
+                      <div
+                        key={ticket.id}
+                        className="flex items-center justify-between py-2 px-3 rounded-lg"
+                        style={{ backgroundColor: '#f8f7fa' }}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate" style={{ color: '#1e0a3c' }}>
+                            {ticket.name}
+                          </p>
+                          {available <= 10 && available > 0 && (
+                            <p className="text-xs text-orange-600 font-medium">
+                              Only {available} left
+                            </p>
+                          )}
+                          {available === 0 && (
+                            <p className="text-xs text-red-600 font-medium">Sold out</p>
+                          )}
+                        </div>
+                        <p className="font-semibold text-sm ml-3" style={{ color: '#1e0a3c' }}>
+                          {ticket.price === 0 ? 'Free' : `$${ticket.price.toFixed(2)}`}
+                        </p>
+                      </div>
+                    );
+                  })}
+                  {ticketTypes.length > 3 && (
+                    <p className="text-xs text-center pt-1" style={{ color: '#6f7287' }}>
+                      +{ticketTypes.length - 3} more options
+                    </p>
+                  )}
+                </div>
+
+                {/* CTA Button */}
+                <div className="p-4">
+                  <Button
+                    size="lg"
+                    onClick={openModal}
+                    className="w-full text-base font-semibold py-6 rounded-lg transition-all hover:opacity-90"
+                    style={{ backgroundColor: primaryColor, color: buttonTextColor }}
+                  >
+                    Get tickets
+                  </Button>
+                </div>
+
+                {/* Trust Badge */}
+                <div className="px-4 pb-4">
+                  <div className="flex items-center justify-center gap-2 text-xs" style={{ color: '#6f7287' }}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <span>Secure checkout</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Sticky Footer */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg p-4 z-40" style={{ borderColor: '#eeedf2' }}>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            {getPriceRange() && (
+              <p className="font-bold text-lg" style={{ color: '#1e0a3c' }}>
+                {getPriceRange()}
+              </p>
+            )}
+          </div>
           <Button
             size="lg"
             onClick={openModal}
-            className="text-lg px-8 py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
+            className="px-8 font-semibold rounded-lg"
             style={{ backgroundColor: primaryColor, color: buttonTextColor }}
           >
-            <Ticket className="h-5 w-5 mr-2" />
-            Get Tickets
+            Get tickets
           </Button>
-
-          {/* Price hint */}
-          {ticketTypes.length > 0 && (
-            <p className="text-sm text-muted-foreground mt-3">
-              Starting from ${Math.min(...ticketTypes.map(t => t.price)).toFixed(2)}
-            </p>
-          )}
         </div>
-
-        {/* Event Description */}
-        {eventData.widget_customization?.layout?.showDescription !== false && eventData.description && (
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <h2 className="text-2xl font-bold mb-4" style={{ color: headerTextColor }}>
-              About This Event
-            </h2>
-            <div
-              className="prose max-w-none"
-              style={{ color: bodyTextColor }}
-              dangerouslySetInnerHTML={{ __html: eventData.description }}
-            />
-          </div>
-        )}
-
-        {/* Organization Info */}
-        {eventData.organizations?.name && (
-          <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-            <p className="text-sm text-muted-foreground mb-2">Hosted by</p>
-            <div className="flex items-center justify-center gap-3">
-              {(eventData.organizations as any)?.logo_url && (
-                <img
-                  src={(eventData.organizations as any).logo_url}
-                  alt={eventData.organizations.name}
-                  className="h-10 w-auto object-contain"
-                />
-              )}
-              <span className="font-semibold text-lg">{eventData.organizations.name}</span>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Add padding at bottom for mobile sticky footer */}
+      <div className="lg:hidden h-24" />
 
       {/* Checkout Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 [&>button]:hidden">
           {/* Modal Header */}
           <div className="flex items-center justify-between p-4 border-b">
             <div className="flex items-center gap-3">
               <Ticket className="h-5 w-5" style={{ color: primaryColor }} />
               <span className="font-semibold">{eventData.name}</span>
             </div>
-            <Button variant="ghost" size="sm" onClick={closeModal} className="h-8 w-8 p-0">
+            <Button variant="ghost" size="sm" onClick={closeModal} className="h-8 w-8 p-0 rounded-full hover:bg-gray-100">
               <X className="h-4 w-4" />
             </Button>
           </div>

@@ -1850,7 +1850,6 @@ const TicketWidget = () => {
           }}
           groupId={groupId}
           allocationId={allocationId}
-          onPaymentSuccess={handlePaymentSuccess}
           getAvailableQuantity={getAvailableQuantity}
         />
       </>
