@@ -607,61 +607,80 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
 
         {/* Donations */}
         {isDonationsEnabled && (
-          <div className="border-t pt-4 space-y-3">
-            <div>
-              <h3 className="font-semibold text-sm flex items-center gap-2">
-                <Heart className="h-4 w-4" style={{ color: primaryColor }} />
+          <Card className="border-2 overflow-hidden" style={{ borderColor: `${primaryColor}30` }}>
+            <CardHeader className="pb-3" style={{ backgroundColor: `${primaryColor}08` }}>
+              <CardTitle className="flex items-center gap-2 text-base font-bold" style={{ color: headerTextColor }}>
+                <Heart className="h-5 w-5" style={{ color: primaryColor }} />
                 {donationTitle}
-              </h3>
+              </CardTitle>
               {donationDescription && (
-                <p className="text-xs text-muted-foreground mt-1">{donationDescription}</p>
+                <p className="text-sm text-muted-foreground mt-1">{donationDescription}</p>
               )}
-            </div>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              {/* Suggested Amounts */}
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                {donationSuggestedAmounts.map((amount) => (
+                  <Button
+                    key={amount}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDonationAmountSelect(amount)}
+                    className={`transition-all ${selectedDonationAmount === amount && !customDonationAmount ? 'ring-2 ring-offset-1' : ''}`}
+                    style={{
+                      borderColor: selectedDonationAmount === amount && !customDonationAmount ? primaryColor : undefined,
+                      backgroundColor: selectedDonationAmount === amount && !customDonationAmount ? `${primaryColor}10` : undefined,
+                    }}
+                  >
+                    ${amount}
+                  </Button>
+                ))}
+              </div>
 
-            <div className="flex flex-wrap gap-2">
-              {donationSuggestedAmounts.map((amount) => (
-                <Button
-                  key={amount}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDonationAmountSelect(amount)}
-                  className={selectedDonationAmount === amount && !customDonationAmount ? 'ring-2' : ''}
-                  style={{
-                    borderColor: selectedDonationAmount === amount && !customDonationAmount ? primaryColor : undefined,
-                  }}
-                >
-                  ${amount}
-                </Button>
-              ))}
-            </div>
+              {/* Custom Amount */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Or enter custom:</span>
+                <div className="relative flex-1 max-w-32">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={customDonationAmount}
+                    onChange={(e) => handleCustomDonationChange(e.target.value)}
+                    className="pl-7"
+                  />
+                </div>
+                {selectedDonationAmount && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedDonationAmount(null);
+                      setCustomDonationAmount('');
+                    }}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-sm">$</span>
-              <Input
-                type="number"
-                min="1"
-                step="0.01"
-                placeholder="Custom amount"
-                value={customDonationAmount}
-                onChange={(e) => handleCustomDonationChange(e.target.value)}
-                className="w-32"
-              />
-              {selectedDonationAmount && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedDonationAmount(null);
-                    setCustomDonationAmount('');
-                  }}
+              {/* Selected amount feedback */}
+              {selectedDonationAmount && selectedDonationAmount > 0 && (
+                <div
+                  className="flex items-center gap-2 p-3 rounded-lg text-sm font-medium"
+                  style={{ backgroundColor: `${primaryColor}10`, color: primaryColor }}
                 >
-                  Clear
-                </Button>
+                  <Heart className="h-4 w-4 fill-current" />
+                  Thank you for adding a ${selectedDonationAmount.toFixed(2)} donation!
+                </div>
               )}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

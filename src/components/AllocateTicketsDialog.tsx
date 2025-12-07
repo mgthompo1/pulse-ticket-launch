@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -20,7 +22,18 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import {
+  Loader2,
+  Users,
+  Calendar,
+  Ticket,
+  DollarSign,
+  Check,
+  AlertCircle,
+  ChevronRight,
+  Package,
+  Info,
+} from "lucide-react";
 
 interface AllocationToEdit {
   id: string;
@@ -103,7 +116,6 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
         notes: editingAllocation.notes || "",
       });
     } else if (open && !editingAllocation) {
-      // Reset form for new allocation
       setFormData({
         groupId: preSelectedGroupId || "",
         eventId: preSelectedEventId || "",
@@ -135,7 +147,6 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
   }, [formData.eventId]);
 
   useEffect(() => {
-    // Auto-populate full price from selected ticket type (only for new allocations, not edits)
     if (formData.ticketTypeId && !isEditing) {
       const selectedTicketType = ticketTypes.find((tt) => tt.id === formData.ticketTypeId);
       if (selectedTicketType) {
@@ -209,10 +220,9 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
   };
 
   const handleSubmit = async () => {
-    // Validation
     if (!formData.groupId || !formData.eventId || !formData.ticketTypeId) {
       toast({
-        title: "Validation Error",
+        title: "Missing information",
         description: "Please select group, event, and ticket type",
         variant: "destructive",
       });
@@ -225,7 +235,7 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
 
     if (isNaN(quantity) || quantity <= 0) {
       toast({
-        title: "Validation Error",
+        title: "Invalid quantity",
         description: "Please enter a valid quantity",
         variant: "destructive",
       });
@@ -234,7 +244,7 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
 
     if (isNaN(fullPrice) || fullPrice < 0) {
       toast({
-        title: "Validation Error",
+        title: "Invalid price",
         description: "Please enter a valid full price",
         variant: "destructive",
       });
@@ -243,14 +253,13 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
 
     if (minimumPrice !== null && (isNaN(minimumPrice) || minimumPrice < 0 || minimumPrice > fullPrice)) {
       toast({
-        title: "Validation Error",
-        description: "Minimum price must be between 0 and full price",
+        title: "Invalid minimum price",
+        description: "Minimum price must be between $0 and the full price",
         variant: "destructive",
       });
       return;
     }
 
-    // For new allocations, check for duplicate allocation (same group + event + ticket type)
     if (!isEditing) {
       const { data: existingAllocation, error: checkError } = await supabase
         .from("group_ticket_allocations")
@@ -267,32 +276,31 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
 
       if (existingAllocation) {
         toast({
-          title: "Duplicate Allocation",
-          description: "This group already has an allocation for this ticket type. Please edit the existing allocation instead.",
+          title: "Allocation exists",
+          description:
+            "This group already has an allocation for this ticket type. Please edit the existing allocation instead.",
           variant: "destructive",
         });
         return;
       }
     }
 
-    // For new allocations, check if ticket type has enough inventory
     const selectedTicketType = ticketTypes.find((tt) => tt.id === formData.ticketTypeId);
     if (!isEditing && selectedTicketType && quantity > selectedTicketType.quantity_available) {
       toast({
-        title: "Validation Error",
+        title: "Not enough inventory",
         description: `Only ${selectedTicketType.quantity_available} tickets available for this type`,
         variant: "destructive",
       });
       return;
     }
 
-    // For edits, ensure new quantity isn't less than already used + reserved
     if (isEditing && editingAllocation) {
       const minRequired = editingAllocation.used_quantity + editingAllocation.reserved_quantity;
       if (quantity < minRequired) {
         toast({
-          title: "Validation Error",
-          description: `Cannot reduce allocation below ${minRequired} (${editingAllocation.used_quantity} sold + ${editingAllocation.reserved_quantity} reserved)`,
+          title: "Cannot reduce allocation",
+          description: `Minimum ${minRequired} tickets required (${editingAllocation.used_quantity} sold + ${editingAllocation.reserved_quantity} reserved)`,
           variant: "destructive",
         });
         return;
@@ -302,7 +310,6 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
     setLoading(true);
     try {
       if (isEditing && editingAllocation) {
-        // Update existing allocation
         const { error } = await supabase
           .from("group_ticket_allocations")
           .update({
@@ -316,11 +323,10 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
         if (error) throw error;
 
         toast({
-          title: "Success",
-          description: "Allocation updated successfully",
+          title: "Allocation updated",
+          description: "The allocation has been updated successfully",
         });
       } else {
-        // Create new allocation
         const { error } = await supabase.from("group_ticket_allocations").insert({
           group_id: formData.groupId,
           event_id: formData.eventId,
@@ -335,12 +341,11 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
         if (error) throw error;
 
         toast({
-          title: "Success",
-          description: `Allocated ${quantity} tickets to group`,
+          title: "Tickets allocated",
+          description: `${quantity} tickets allocated to the group`,
         });
       }
 
-      // Reset form
       setFormData({
         groupId: preSelectedGroupId || "",
         eventId: preSelectedEventId || "",
@@ -366,205 +371,332 @@ export const AllocateTicketsDialog: React.FC<AllocateTicketsDialogProps> = ({
     }
   };
 
+  const selectedGroup = groups.find((g) => g.id === formData.groupId);
+  const selectedEvent = events.find((e) => e.id === formData.eventId);
   const selectedTicketType = ticketTypes.find((tt) => tt.id === formData.ticketTypeId);
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-NZ", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const isFormValid =
+    formData.groupId &&
+    formData.eventId &&
+    formData.ticketTypeId &&
+    formData.allocatedQuantity &&
+    parseInt(formData.allocatedQuantity) > 0 &&
+    formData.fullPrice &&
+    parseFloat(formData.fullPrice) >= 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Allocation" : "Allocate Tickets to Group"}</DialogTitle>
+          <DialogTitle className="text-xl">
+            {isEditing ? "Edit Allocation" : "Allocate Tickets to Group"}
+          </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? "Update the allocation quantity and pricing. Group, event, and ticket type cannot be changed."
-              : "Assign ticket inventory from an event to a group. The group will be able to sell these tickets to their members."}
+              ? "Update the quantity and pricing for this allocation"
+              : "Assign ticket inventory from an event to a group for them to sell to their members"}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Group Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="group">Group *</Label>
+        <div className="space-y-6 py-2">
+          {/* Step 1: Group Selection */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium ${
+                  formData.groupId
+                    ? "bg-green-100 text-green-700"
+                    : "bg-primary/10 text-primary"
+                }`}
+              >
+                {formData.groupId ? <Check className="h-4 w-4" /> : "1"}
+              </div>
+              <Label className="text-base font-medium">Select Group</Label>
+            </div>
             <Select
               value={formData.groupId}
               onValueChange={(value) => setFormData((prev) => ({ ...prev, groupId: value }))}
               disabled={!!preSelectedGroupId || isEditing}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a group" />
+              <SelectTrigger className="h-11">
+                <SelectValue placeholder="Choose a group..." />
               </SelectTrigger>
               <SelectContent>
                 {groups.map((group) => (
                   <SelectItem key={group.id} value={group.id}>
-                    {group.name}
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      {group.name}
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Event Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="event">Event *</Label>
+          {/* Step 2: Event Selection */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium ${
+                  formData.eventId
+                    ? "bg-green-100 text-green-700"
+                    : formData.groupId
+                      ? "bg-primary/10 text-primary"
+                      : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {formData.eventId ? <Check className="h-4 w-4" /> : "2"}
+              </div>
+              <Label className="text-base font-medium">Select Event</Label>
+            </div>
             <Select
               value={formData.eventId}
               onValueChange={(value) => setFormData((prev) => ({ ...prev, eventId: value }))}
-              disabled={!!preSelectedEventId || isEditing}
+              disabled={!!preSelectedEventId || isEditing || !formData.groupId}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Select an event" />
+              <SelectTrigger className="h-11">
+                <SelectValue placeholder="Choose an event..." />
               </SelectTrigger>
               <SelectContent>
                 {events.map((event) => (
                   <SelectItem key={event.id} value={event.id}>
-                    {event.name} - {new Date(event.event_date).toLocaleDateString()}
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span>{event.name}</span>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="text-muted-foreground text-sm">
+                        {formatDate(event.event_date)}
+                      </span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Ticket Type Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="ticketType">Ticket Type *</Label>
+          {/* Step 3: Ticket Type Selection */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium ${
+                  formData.ticketTypeId
+                    ? "bg-green-100 text-green-700"
+                    : formData.eventId
+                      ? "bg-primary/10 text-primary"
+                      : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {formData.ticketTypeId ? <Check className="h-4 w-4" /> : "3"}
+              </div>
+              <Label className="text-base font-medium">Select Ticket Type</Label>
+            </div>
             <Select
               value={formData.ticketTypeId}
               onValueChange={(value) => setFormData((prev) => ({ ...prev, ticketTypeId: value }))}
               disabled={!formData.eventId || isEditing}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a ticket type" />
+              <SelectTrigger className="h-11">
+                <SelectValue placeholder="Choose a ticket type..." />
               </SelectTrigger>
               <SelectContent>
                 {ticketTypes.map((ticketType) => (
                   <SelectItem key={ticketType.id} value={ticketType.id}>
-                    {ticketType.name} - ${ticketType.price.toFixed(2)} ({ticketType.quantity_available}{" "}
-                    available)
+                    <div className="flex items-center gap-2">
+                      <Ticket className="h-4 w-4 text-muted-foreground" />
+                      <span>{ticketType.name}</span>
+                      <Badge variant="secondary" className="ml-1 text-xs">
+                        ${ticketType.price.toFixed(2)}
+                      </Badge>
+                      <span className="text-muted-foreground text-sm">
+                        ({ticketType.quantity_available} available)
+                      </span>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {!formData.eventId && (
-              <p className="text-xs text-muted-foreground">Select an event first</p>
-            )}
-          </div>
-
-          {/* Quantity */}
-          <div className="space-y-2">
-            <Label htmlFor="quantity">Quantity to Allocate *</Label>
-            <Input
-              id="quantity"
-              type="number"
-              min="1"
-              value={formData.allocatedQuantity}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, allocatedQuantity: e.target.value }))
-              }
-              placeholder="150"
-            />
-            {selectedTicketType && (
-              <p className="text-xs text-muted-foreground">
-                {selectedTicketType.quantity_available} tickets available
+            {!formData.eventId && formData.groupId && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Info className="h-3 w-3" />
+                Select an event first to see available ticket types
               </p>
             )}
           </div>
 
-          {/* Pricing */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullPrice">Full Price (per ticket) *</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
-                <Input
-                  id="fullPrice"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.fullPrice}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, fullPrice: e.target.value }))}
-                  placeholder="200.00"
-                  className="pl-7"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Amount the group owes back to you per ticket
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="minimumPrice">Minimum Price (optional)</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
-                <Input
-                  id="minimumPrice"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.minimumPrice}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, minimumPrice: e.target.value }))
-                  }
-                  placeholder="50.00"
-                  className="pl-7"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Minimum price groups can charge (sets discount limit)
-              </p>
-            </div>
-          </div>
-
-          {/* Price Summary */}
-          {formData.fullPrice && (
-            <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-              <p className="text-sm font-medium">Pricing Summary:</p>
-              <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                <div>
-                  <span>Full Price:</span>
-                  <span className="ml-2 font-semibold text-foreground">
-                    ${parseFloat(formData.fullPrice).toFixed(2)}
-                  </span>
+          {/* Step 4: Quantity & Pricing */}
+          {formData.ticketTypeId && (
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium ${
+                    isFormValid
+                      ? "bg-green-100 text-green-700"
+                      : "bg-primary/10 text-primary"
+                  }`}
+                >
+                  {isFormValid ? <Check className="h-4 w-4" /> : "4"}
                 </div>
-                {formData.minimumPrice && (
-                  <>
-                    <div>
-                      <span>Minimum Price:</span>
-                      <span className="ml-2 font-semibold text-foreground">
-                        ${parseFloat(formData.minimumPrice).toFixed(2)}
-                      </span>
+                <Label className="text-base font-medium">Set Quantity & Pricing</Label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Quantity */}
+                <div className="space-y-2">
+                  <Label htmlFor="quantity" className="text-sm">
+                    Quantity <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Package className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="quantity"
+                      type="number"
+                      min="1"
+                      value={formData.allocatedQuantity}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, allocatedQuantity: e.target.value }))
+                      }
+                      placeholder="100"
+                      className="pl-10 h-11"
+                    />
+                  </div>
+                  {selectedTicketType && (
+                    <p className="text-xs text-muted-foreground">
+                      Max: {selectedTicketType.quantity_available}
+                    </p>
+                  )}
+                </div>
+
+                {/* Full Price */}
+                <div className="space-y-2">
+                  <Label htmlFor="fullPrice" className="text-sm">
+                    Full Price <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="fullPrice"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.fullPrice}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, fullPrice: e.target.value }))
+                      }
+                      placeholder="150.00"
+                      className="pl-10 h-11"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Per ticket to group</p>
+                </div>
+
+                {/* Minimum Price */}
+                <div className="space-y-2">
+                  <Label htmlFor="minimumPrice" className="text-sm">
+                    Min Price <span className="text-muted-foreground">(optional)</span>
+                  </Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="minimumPrice"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.minimumPrice}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, minimumPrice: e.target.value }))
+                      }
+                      placeholder="50.00"
+                      className="pl-10 h-11"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Discount limit</p>
+                </div>
+              </div>
+
+              {/* Summary Card */}
+              {formData.allocatedQuantity && formData.fullPrice && (
+                <Card className="bg-muted/50 border-dashed">
+                  <CardContent className="py-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Summary</span>
+                      <div className="flex items-center gap-4">
+                        <span>
+                          <strong>{formData.allocatedQuantity}</strong> tickets
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        <span>
+                          <strong>${parseFloat(formData.fullPrice || "0").toFixed(2)}</strong>
+                          /ticket
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-semibold text-primary">
+                          $
+                          {(
+                            parseInt(formData.allocatedQuantity || "0") *
+                            parseFloat(formData.fullPrice || "0")
+                          ).toFixed(2)}{" "}
+                          total
+                        </span>
+                      </div>
                     </div>
-                    <div className="col-span-2">
-                      <span>Max Discount per Ticket:</span>
-                      <span className="ml-2 font-semibold text-destructive">
-                        $
+                    {formData.minimumPrice && (
+                      <div className="mt-2 pt-2 border-t text-sm text-muted-foreground">
+                        Max discount allowed: $
                         {(
                           parseFloat(formData.fullPrice) - parseFloat(formData.minimumPrice)
-                        ).toFixed(2)}
-                      </span>
-                    </div>
-                  </>
-                )}
+                        ).toFixed(2)}{" "}
+                        per ticket
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Notes */}
+              <div className="space-y-2">
+                <Label htmlFor="notes" className="text-sm">
+                  Notes <span className="text-muted-foreground">(optional)</span>
+                </Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Any special instructions or notes for this allocation..."
+                  rows={2}
+                  className="resize-none"
+                />
               </div>
             </div>
           )}
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
-              placeholder="Any special instructions or notes for this allocation"
-              rows={3}
-            />
-          </div>
+          {/* Edit mode warning */}
+          {isEditing && editingAllocation && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm">
+              <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <div className="text-amber-800">
+                <strong>Editing existing allocation.</strong> Group, event, and ticket type cannot
+                be changed. {editingAllocation.used_quantity} tickets have been sold and{" "}
+                {editingAllocation.reserved_quantity} are reserved.
+              </div>
+            </div>
+          )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
+          <Button onClick={handleSubmit} disabled={loading || !isFormValid}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isEditing ? "Save Changes" : "Allocate Tickets"}
           </Button>
