@@ -278,6 +278,28 @@ serve(async (req) => {
           });
           console.log("Xero invoice created successfully");
         }
+
+        // Track usage for platform fee billing (Windcave payments)
+        // This is needed because Windcave doesn't support automatic platform fees like Stripe Connect
+        console.log("Tracking usage for platform billing...");
+        try {
+          const { error: usageError } = await supabaseClient.functions.invoke('track-usage', {
+            body: {
+              order_id: order.id,
+              organization_id: event.organization_id,
+              transaction_amount: order.total_amount
+            }
+          });
+
+          if (usageError) {
+            console.error("Error tracking usage:", usageError);
+          } else {
+            console.log("✅ Usage tracked successfully for platform billing");
+          }
+        } catch (usageTrackError) {
+          console.error("Failed to track usage:", usageTrackError);
+          // Don't fail the order for billing tracking issues
+        }
       }
     } catch (emailError) {
       console.log("Email sending failed:", emailError);

@@ -333,20 +333,8 @@ serve(async (req) => {
         throw new Error("Failed to create order items");
       }
 
-      // Track usage for billing (platform fees) - events only
-      try {
-        await supabaseClient.functions.invoke('track-usage', {
-          body: {
-            order_id: recordId,
-            organization_id: organizationId,
-            transaction_amount: totalAmount
-          }
-        });
-        console.log('Usage tracked for billing');
-      } catch (usageError) {
-        console.error('Error tracking usage:', usageError);
-        // Don't fail the order creation if usage tracking fails
-      }
+      // Note: Usage tracking for platform fees is now done in windcave-dropin-success
+      // after payment is confirmed, to avoid tracking abandoned/failed payments
     }
 
     return new Response(JSON.stringify({
