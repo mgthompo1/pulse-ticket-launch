@@ -1463,10 +1463,10 @@ const TicketWidget = () => {
                   title: "Order Complete!",
                   description: `Your tickets have been confirmed. Check your email for details.`,
                 });
-                
-                // Redirect to success page
+
+                // Redirect to success page with sessionId for order lookup
                 setTimeout(() => {
-                  window.location.href = '/payment-success';
+                  window.location.href = `/payment-success?sessionId=${sessionId}`;
                 }, 1500);
                 
                } catch (error: any) {
@@ -1486,8 +1486,8 @@ const TicketWidget = () => {
                 title: "Payment Complete",
                 description: "Your payment has been processed successfully!",
               });
-              
-              // Redirect to success page
+
+              // Redirect to success page (no sessionId available)
               setTimeout(() => {
                 window.location.href = '/payment-success';
               }, 1500);
