@@ -79,6 +79,8 @@ type AnalyticsState = {
   salesData: { month: string; sales: number; tickets: number }[];
   eventTypesData: EventTypeDatum[];
   revenueData: RevenuePoint[];
+  // Time-series data for "Revenue Over Time" chart
+  revenueTimeSeries: { date: string; revenue: number }[];
 };
 
 interface Organization {
@@ -243,7 +245,8 @@ const OrgDashboard = () => {
     totalTickets: 0,
     salesData: [],
     eventTypesData: [],
-    revenueData: []
+    revenueData: [],
+    revenueTimeSeries: []
   });
   
   // Order data for custom answers and recent sales
@@ -828,7 +831,8 @@ const OrgDashboard = () => {
         totalTickets: 0,
         salesData: [],
         eventTypesData: [],
-        revenueData: []
+        revenueData: [],
+        revenueTimeSeries: []
       });
       return;
     }
@@ -965,25 +969,57 @@ const OrgDashboard = () => {
       }))
       .sort((a, b) => b.value - a.value); // Sort by revenue descending
     
+    // 4. Revenue Time Series (daily for last 30 days)
+    const revenueByDate = new Map<string, number>();
+    const now = new Date();
+
+    // Initialize all dates in the last 30 days with 0
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const dateKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      revenueByDate.set(dateKey, 0);
+    }
+
+    // Fill in actual revenue data
+    if (orderData) {
+      orderData.forEach(order => {
+        const orderDate = new Date(order.created_at);
+        const daysDiff = Math.floor((now.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
+        if (daysDiff <= 29 && daysDiff >= 0) {
+          const dateKey = orderDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const currentRevenue = revenueByDate.get(dateKey) || 0;
+          revenueByDate.set(dateKey, currentRevenue + (Number(order.total_amount) || 0));
+        }
+      });
+    }
+
+    // Convert to array format
+    const revenueTimeSeries = Array.from(revenueByDate.entries())
+      .map(([date, revenue]) => ({ date, revenue }));
+
     console.log("Final analytics data:", {
       totalTickets,
       weeklyRevenueData: weeklyRevenueData.length,
       monthlyRevenueData: monthlyRevenueData.length,
-      eventTypesData: eventTypesData.length
+      eventTypesData: eventTypesData.length,
+      revenueTimeSeries: revenueTimeSeries.length
     });
-    
+
     console.log("Setting analytics data with:", {
       totalTickets,
       salesData: monthlyRevenueData,
       eventTypesData,
-      revenueData: weeklyRevenueData
+      revenueData: weeklyRevenueData,
+      revenueTimeSeries
     });
-    
+
     setAnalyticsData({
       totalTickets,
       salesData: monthlyRevenueData, // Use monthly revenue data for performance trend
       eventTypesData,
-      revenueData: weeklyRevenueData // Use weekly revenue data for weekly revenue chart
+      revenueData: weeklyRevenueData, // Use weekly revenue data for weekly revenue chart
+      revenueTimeSeries // Use time series for "Revenue Over Time" chart
     });
     
     console.log("Analytics data set successfully");
@@ -1498,7 +1534,7 @@ const OrgDashboard = () => {
                             })()}
                             checkinRate={0} // TODO: Calculate from ticket check-ins
                             revenueByEvent={analyticsData.eventTypesData.map(e => ({ name: e.name, revenue: e.value }))}
-                            revenueOverTime={analyticsData.salesData.map(d => ({ date: d.month, revenue: d.sales }))}
+                            revenueOverTime={analyticsData.revenueTimeSeries}
                             weeklyRevenue={analyticsData.revenueData}
                             ticketsByType={widgetAnalytics.ticketsByType}
                             ordersOverTime={analyticsData.salesData.map(d => ({ date: d.month, orders: d.tickets || 0 }))}
@@ -1542,6 +1578,7 @@ const OrgDashboard = () => {
                                   item.item_type === 'ticket' ? sum + (item.quantity || 0) : sum, 0) || 0
                               }))}
                             isLoading={isLoadingAnalytics}
+                            timeRange={timeRange}
                           />
                         </>
                       )}

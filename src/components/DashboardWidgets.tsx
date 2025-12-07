@@ -70,6 +70,36 @@ const CHART_COLORS = [
 // Hover/active state color - lighter shade of brand orange
 const CHART_HOVER_COLOR = "#ff6b2c";
 
+// Custom tooltip component for modern look
+const CustomTooltip = ({ active, payload, label, formatter }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-popover border border-border rounded-lg shadow-lg p-3 min-w-[120px]">
+        <p className="text-xs text-muted-foreground mb-1">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="text-sm font-semibold text-foreground">
+            {formatter ? formatter(entry.value, entry.name)[0] : entry.value}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+// Common chart axis styling
+const axisStyle = {
+  fontSize: 11,
+  fill: 'hsl(var(--muted-foreground))',
+  fontFamily: 'inherit',
+};
+
+const gridStyle = {
+  stroke: 'hsl(var(--border))',
+  strokeDasharray: '3 3',
+  strokeOpacity: 0.5,
+};
+
 interface DashboardWidgetsProps {
   enabledWidgets: WidgetConfig[];
   onReorder?: (fromIndex: number, toIndex: number) => void;
@@ -94,7 +124,20 @@ interface DashboardWidgetsProps {
   groupSalesByGroup: Array<{ name: string; revenue: number; ticketsSold: number; discounts: number }>;
   outstandingInvoices: Array<{ id: string; groupName: string; invoiceNumber: string; amountOwed: number; dueDate: string | null; status: string }>;
   isLoading?: boolean;
+  // Time range for dynamic labels
+  timeRange?: string;
 }
+
+// Helper to get time range label
+const getTimeRangeLabel = (timeRange?: string): string => {
+  switch (timeRange) {
+    case "7d": return "Last 7 days";
+    case "30d": return "Last 30 days";
+    case "90d": return "Last 90 days";
+    case "1y": return "Last 12 months";
+    default: return "Selected period";
+  }
+};
 
 // Sortable widget wrapper component
 interface SortableWidgetProps {
@@ -165,6 +208,7 @@ export const DashboardWidgets = ({
   groupSalesByGroup,
   outstandingInvoices,
   isLoading = false,
+  timeRange,
 }: DashboardWidgetsProps) => {
   // Set up drag sensors
   const sensors = useSensors(
@@ -317,65 +361,102 @@ export const DashboardWidgets = ({
             className={sizeClass}
           >
             {widgetConfig.chartType === "list" ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {revenueByEvent.slice(0, 5).map((event, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <span className="font-medium truncate">{event.name}</span>
-                    <span className="font-bold text-primary">${event.revenue.toLocaleString()}</span>
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <span className="font-medium truncate text-sm">{event.name}</span>
+                    <span className="font-semibold text-foreground">${event.revenue.toLocaleString()}</span>
                   </div>
                 ))}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={revenueByEvent.slice(0, 6)}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={70} />
-                  <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />
-                  <Bar dataKey="revenue" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} activeBar={{ fill: CHART_HOVER_COLOR }} />
+                <BarChart data={revenueByEvent.slice(0, 6)} margin={{ top: 5, right: 20, left: 0, bottom: 60 }} barCategoryGap="25%">
+                  <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                  <XAxis dataKey="name" tick={axisStyle} axisLine={false} tickLine={false} angle={-45} textAnchor="end" height={70} interval={0} />
+                  <YAxis tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} tick={axisStyle} axisLine={false} tickLine={false} dx={-10} width={45} />
+                  <Tooltip content={<CustomTooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }} />
+                  <Bar dataKey="revenue" fill={CHART_COLORS[0]} radius={[2, 2, 0, 0]} maxBarSize={40} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </ChartCard>
         );
 
-      case "revenue_over_time":
+      case "revenue_over_time": {
+        // For line/area charts, we need at least 2 points to draw a line
+        const showDots = revenueOverTime.length <= 3;
+
         return (
           <ChartCard
             key={widgetConfig.widgetId}
             title="Revenue Over Time"
-            description="Revenue trend over selected period"
+            description={getTimeRangeLabel(timeRange)}
             className={sizeClass}
           >
-            <ResponsiveContainer width="100%" height={250}>
-              {widgetConfig.chartType === "line" ? (
-                <LineChart data={revenueOverTime}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                  <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />
-                  <Line type="monotone" dataKey="revenue" stroke={CHART_COLORS[0]} strokeWidth={2} dot={false} />
-                </LineChart>
-              ) : widgetConfig.chartType === "area" ? (
-                <AreaChart data={revenueOverTime}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                  <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />
-                  <Area type="monotone" dataKey="revenue" stroke={CHART_COLORS[0]} fill={CHART_COLORS[0]} fillOpacity={0.2} />
-                </AreaChart>
-              ) : (
-                <BarChart data={revenueOverTime}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                  <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />
-                  <Bar dataKey="revenue" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} activeBar={{ fill: CHART_HOVER_COLOR }} />
-                </BarChart>
-              )}
-            </ResponsiveContainer>
+            {revenueOverTime.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
+                No revenue data for this period
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                {widgetConfig.chartType === "line" ? (
+                  <LineChart data={revenueOverTime} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="revenueLineGradient" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor={CHART_COLORS[0]} />
+                        <stop offset="100%" stopColor={CHART_COLORS[3]} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
+                    <XAxis dataKey="date" tick={axisStyle} axisLine={false} tickLine={false} dy={10} />
+                    <YAxis tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} tick={axisStyle} axisLine={false} tickLine={false} dx={-10} />
+                    <Tooltip content={<CustomTooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />} cursor={{ stroke: 'hsl(var(--border))', strokeDasharray: '4 4' }} />
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="url(#revenueLineGradient)"
+                      strokeWidth={3}
+                      dot={showDots ? { r: 5, fill: CHART_COLORS[0], stroke: '#fff', strokeWidth: 2 } : false}
+                      activeDot={{ r: 6, fill: CHART_COLORS[0], stroke: '#fff', strokeWidth: 2 }}
+                    />
+                  </LineChart>
+                ) : widgetConfig.chartType === "area" ? (
+                  <AreaChart data={revenueOverTime} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="revenueAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={CHART_COLORS[0]} stopOpacity={0.3} />
+                        <stop offset="100%" stopColor={CHART_COLORS[0]} stopOpacity={0.05} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
+                    <XAxis dataKey="date" tick={axisStyle} axisLine={false} tickLine={false} dy={10} />
+                    <YAxis tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} tick={axisStyle} axisLine={false} tickLine={false} dx={-10} />
+                    <Tooltip content={<CustomTooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />} cursor={{ stroke: 'hsl(var(--border))', strokeDasharray: '4 4' }} />
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke={CHART_COLORS[0]}
+                      strokeWidth={2}
+                      fill="url(#revenueAreaGradient)"
+                      dot={showDots ? { r: 4, fill: CHART_COLORS[0], stroke: '#fff', strokeWidth: 2 } : false}
+                      activeDot={{ r: 6, fill: CHART_COLORS[0], stroke: '#fff', strokeWidth: 2 }}
+                    />
+                  </AreaChart>
+                ) : (
+                  <BarChart data={revenueOverTime} margin={{ top: 5, right: 20, left: 0, bottom: 5 }} barCategoryGap="20%">
+                    <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                    <XAxis dataKey="date" tick={axisStyle} axisLine={false} tickLine={false} dy={10} interval="preserveStartEnd" />
+                    <YAxis tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} tick={axisStyle} axisLine={false} tickLine={false} dx={-10} width={45} />
+                    <Tooltip content={<CustomTooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }} />
+                    <Bar dataKey="revenue" fill={CHART_COLORS[0]} radius={[2, 2, 0, 0]} maxBarSize={32} />
+                  </BarChart>
+                )}
+              </ResponsiveContainer>
+            )}
           </ChartCard>
         );
+      }
 
       case "revenue_by_event_list":
         return (
@@ -420,20 +501,26 @@ export const DashboardWidgets = ({
           >
             <ResponsiveContainer width="100%" height={250}>
               {widgetConfig.chartType === "line" ? (
-                <LineChart data={weeklyRevenue}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="day" tick={{ fontSize: 11 }} />
-                  <YAxis tickFormatter={(v) => `$${v}`} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />
-                  <Line type="monotone" dataKey="revenue" stroke={CHART_COLORS[0]} strokeWidth={2} />
+                <LineChart data={weeklyRevenue} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="weeklyLineGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor={CHART_COLORS[0]} />
+                      <stop offset="100%" stopColor={CHART_COLORS[3]} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
+                  <XAxis dataKey="day" tick={axisStyle} axisLine={false} tickLine={false} dy={10} />
+                  <YAxis tickFormatter={(v) => `$${v}`} tick={axisStyle} axisLine={false} tickLine={false} dx={-10} />
+                  <Tooltip content={<CustomTooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />} cursor={{ stroke: 'hsl(var(--border))', strokeDasharray: '4 4' }} />
+                  <Line type="monotone" dataKey="revenue" stroke="url(#weeklyLineGradient)" strokeWidth={3} dot={{ r: 4, fill: CHART_COLORS[0], stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 6, fill: CHART_COLORS[0], stroke: '#fff', strokeWidth: 2 }} />
                 </LineChart>
               ) : (
-                <BarChart data={weeklyRevenue}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="day" tick={{ fontSize: 11 }} />
-                  <YAxis tickFormatter={(v) => `$${v}`} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />
-                  <Bar dataKey="revenue" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} activeBar={{ fill: CHART_HOVER_COLOR }} />
+                <BarChart data={weeklyRevenue} margin={{ top: 5, right: 20, left: 0, bottom: 5 }} barCategoryGap="25%">
+                  <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                  <XAxis dataKey="day" tick={axisStyle} axisLine={false} tickLine={false} dy={10} />
+                  <YAxis tickFormatter={(v) => `$${v}`} tick={axisStyle} axisLine={false} tickLine={false} dx={-10} width={45} />
+                  <Tooltip content={<CustomTooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }} />
+                  <Bar dataKey="revenue" fill={CHART_COLORS[0]} radius={[2, 2, 0, 0]} maxBarSize={40} />
                 </BarChart>
               )}
             </ResponsiveContainer>
@@ -451,12 +538,12 @@ export const DashboardWidgets = ({
           >
             <ResponsiveContainer width="100%" height={250}>
               {widgetConfig.chartType === "bar" ? (
-                <BarChart data={ticketData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={100} />
-                  <Tooltip />
-                  <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                <BarChart data={ticketData} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }} barCategoryGap="30%">
+                  <CartesianGrid horizontal={false} vertical={true} stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                  <XAxis type="number" tick={axisStyle} axisLine={false} tickLine={false} />
+                  <YAxis dataKey="name" type="category" tick={axisStyle} axisLine={false} tickLine={false} width={100} />
+                  <Tooltip content={<CustomTooltip formatter={(value: number) => [value.toLocaleString(), "Tickets"]} />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }} />
+                  <Bar dataKey="count" radius={[0, 2, 2, 0]} maxBarSize={24}>
                     {ticketData.map((entry, index) => (
                       <Cell key={index} fill={entry.fill} />
                     ))}
@@ -470,16 +557,17 @@ export const DashboardWidgets = ({
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={widgetConfig.chartType === "donut" ? 50 : 0}
-                    outerRadius={80}
+                    innerRadius={widgetConfig.chartType === "donut" ? 60 : 0}
+                    outerRadius={90}
+                    paddingAngle={2}
                     label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                     labelLine={false}
                   >
                     {ticketData.map((entry, index) => (
-                      <Cell key={index} fill={entry.fill} />
+                      <Cell key={index} fill={entry.fill} stroke="transparent" />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<CustomTooltip formatter={(value: number) => [value.toLocaleString(), "Tickets"]} />} />
                 </PieChart>
               )}
             </ResponsiveContainer>
@@ -496,13 +584,19 @@ export const DashboardWidgets = ({
             className={sizeClass}
           >
             <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={ordersOverTime}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Line type="monotone" dataKey="orders" stroke={CHART_COLORS[2]} strokeWidth={2} />
-              </LineChart>
+              <AreaChart data={ordersOverTime} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="ordersAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={CHART_COLORS[2]} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={CHART_COLORS[2]} stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
+                <XAxis dataKey="date" tick={axisStyle} axisLine={false} tickLine={false} dy={10} />
+                <YAxis tick={axisStyle} axisLine={false} tickLine={false} dx={-10} />
+                <Tooltip content={<CustomTooltip formatter={(value: number) => [value.toLocaleString(), "Orders"]} />} cursor={{ stroke: 'hsl(var(--border))', strokeDasharray: '4 4' }} />
+                <Area type="monotone" dataKey="orders" stroke={CHART_COLORS[2]} strokeWidth={2} fill="url(#ordersAreaGradient)" activeDot={{ r: 6, fill: CHART_COLORS[2], stroke: '#fff', strokeWidth: 2 }} />
+              </AreaChart>
             </ResponsiveContainer>
           </ChartCard>
         );
@@ -528,15 +622,19 @@ export const DashboardWidgets = ({
                   const percent = totalDevices > 0 ? (device.value / totalDevices) * 100 : 0;
                   return (
                     <div key={device.name} className="flex items-center gap-3">
-                      <device.icon className="h-5 w-5 text-muted-foreground" />
-                      <div className="flex-1">
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm">{device.name}</span>
-                          <span className="text-sm font-medium">{percent.toFixed(0)}%</span>
-                        </div>
-                        <Progress value={percent} className="h-2" />
+                      <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center">
+                        <device.icon className="h-4 w-4 text-muted-foreground" />
                       </div>
-                      <span className="text-sm text-muted-foreground w-12 text-right">{device.value}</span>
+                      <div className="flex-1">
+                        <div className="flex justify-between mb-1.5">
+                          <span className="text-sm font-medium">{device.name}</span>
+                          <span className="text-sm font-semibold tabular-nums">{percent.toFixed(0)}%</span>
+                        </div>
+                        <div className="w-full h-2 rounded-full bg-muted">
+                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${percent}%`, backgroundColor: device.fill }} />
+                        </div>
+                      </div>
+                      <span className="text-sm text-muted-foreground w-12 text-right tabular-nums">{device.value}</span>
                     </div>
                   );
                 })}
@@ -550,15 +648,16 @@ export const DashboardWidgets = ({
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={widgetConfig.chartType === "donut" ? 40 : 0}
-                    outerRadius={70}
+                    innerRadius={widgetConfig.chartType === "donut" ? 50 : 0}
+                    outerRadius={80}
+                    paddingAngle={2}
                   >
                     {deviceData.map((entry, index) => (
-                      <Cell key={index} fill={entry.fill} />
+                      <Cell key={index} fill={entry.fill} stroke="transparent" />
                     ))}
                   </Pie>
-                  <Tooltip />
-                  <Legend />
+                  <Tooltip content={<CustomTooltip formatter={(value: number) => [value.toLocaleString(), "Visitors"]} />} />
+                  <Legend formatter={(value) => <span className="text-sm text-foreground">{value}</span>} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -575,32 +674,38 @@ export const DashboardWidgets = ({
             className={sizeClass}
           >
             {widgetConfig.chartType === "list" ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {visitorLocations.slice(0, 6).map((loc, i) => (
-                  <div key={i} className="flex items-center justify-between p-2 rounded bg-muted/50">
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                     <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{loc.country}</span>
+                      <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <span className="text-sm font-medium">{loc.country}</span>
                     </div>
-                    <Badge variant="secondary">{loc.count}</Badge>
+                    <Badge variant="secondary" className="tabular-nums">{loc.count}</Badge>
                   </div>
                 ))}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={visitorLocations.slice(0, 6)} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis dataKey="country" type="category" tick={{ fontSize: 11 }} width={80} />
-                  <Tooltip />
-                  <Bar dataKey="count" fill={CHART_COLORS[3]} radius={[0, 4, 4, 0]} activeBar={{ fill: "#a78bfa" }} />
+                <BarChart data={visitorLocations.slice(0, 6)} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }} barCategoryGap="30%">
+                  <CartesianGrid horizontal={false} vertical={true} stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                  <XAxis type="number" tick={axisStyle} axisLine={false} tickLine={false} />
+                  <YAxis dataKey="country" type="category" tick={axisStyle} axisLine={false} tickLine={false} width={80} />
+                  <Tooltip content={<CustomTooltip formatter={(value: number) => [value.toLocaleString(), "Visitors"]} />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }} />
+                  <Bar dataKey="count" fill={CHART_COLORS[3]} radius={[0, 2, 2, 0]} maxBarSize={20} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </ChartCard>
         );
 
-      case "visitors_funnel":
+      case "visitors_funnel": {
+        const views = conversionFunnel.find(f => f.step === "Widget Views")?.count || 0;
+        const purchases = conversionFunnel.find(f => f.step === "Purchase Completed")?.count || 0;
+        const conversionRate = views > 0 ? (purchases / views) * 100 : 0;
+
         return (
           <ChartCard
             key={widgetConfig.widgetId}
@@ -608,19 +713,48 @@ export const DashboardWidgets = ({
             description="Widget visitor conversion rates"
             className={sizeClass}
           >
-            <div className="space-y-3">
-              {conversionFunnel.map((step, i) => (
-                <div key={i}>
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm">{step.step}</span>
-                    <span className="text-sm font-medium">{step.count.toLocaleString()}</span>
-                  </div>
-                  <Progress value={step.rate} className="h-2" />
+            <div className="space-y-4">
+              {/* Conversion Rate Summary */}
+              <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50 border border-border/50">
+                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <TrendingUp className="h-6 w-6 text-primary" />
                 </div>
-              ))}
+                <div className="flex-1">
+                  <div className="text-2xl font-bold text-foreground tabular-nums">{conversionRate.toFixed(1)}%</div>
+                  <p className="text-sm text-muted-foreground">Overall conversion rate</p>
+                </div>
+                <div className="text-right space-y-0.5">
+                  <div className="text-sm text-muted-foreground">{views.toLocaleString()} views</div>
+                  <div className="text-sm font-semibold text-primary">{purchases.toLocaleString()} sales</div>
+                </div>
+              </div>
+
+              {/* Funnel Steps */}
+              <div className="space-y-3">
+                {conversionFunnel.map((step, i) => (
+                  <div key={i} className="relative">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-sm font-medium text-foreground">{step.step}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm tabular-nums text-muted-foreground">{step.count.toLocaleString()}</span>
+                        <Badge variant="secondary" className="tabular-nums text-xs px-2">
+                          {step.rate.toFixed(1)}%
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-500"
+                        style={{ width: `${step.rate}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </ChartCard>
         );
+      }
 
       case "events_upcoming":
         return (
@@ -667,24 +801,32 @@ export const DashboardWidgets = ({
                   const percent = event.capacity > 0 ? (event.sold / event.capacity) * 100 : 0;
                   return (
                     <div key={i}>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-sm truncate">{event.name}</span>
-                        <span className="text-sm font-medium">{percent.toFixed(0)}%</span>
+                      <div className="flex justify-between mb-1.5">
+                        <span className="text-sm font-medium truncate">{event.name}</span>
+                        <span className="text-sm font-semibold tabular-nums">{percent.toFixed(0)}%</span>
                       </div>
-                      <Progress value={percent} className="h-2" />
+                      <div className="w-full h-2 rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${percent}%`,
+                            backgroundColor: percent >= 90 ? CHART_COLORS[2] : percent >= 50 ? CHART_COLORS[0] : CHART_COLORS[1]
+                          }}
+                        />
+                      </div>
                     </div>
                   );
                 })}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={eventCapacity.slice(0, 5)}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-45} textAnchor="end" height={60} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Bar dataKey="sold" fill={CHART_COLORS[0]} name="Sold" radius={[4, 4, 0, 0]} activeBar={{ fill: CHART_HOVER_COLOR }} />
-                  <Bar dataKey="capacity" fill={CHART_COLORS[4]} name="Capacity" radius={[4, 4, 0, 0]} opacity={0.3} activeBar={{ fill: "#f87171" }} />
+                <BarChart data={eventCapacity.slice(0, 5)} margin={{ top: 5, right: 20, left: 0, bottom: 50 }} barCategoryGap="25%">
+                  <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                  <XAxis dataKey="name" tick={axisStyle} axisLine={false} tickLine={false} angle={-45} textAnchor="end" height={60} interval={0} />
+                  <YAxis tick={axisStyle} axisLine={false} tickLine={false} dx={-10} width={40} />
+                  <Tooltip content={<CustomTooltip formatter={(value: number) => [value.toLocaleString(), ""]} />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }} />
+                  <Bar dataKey="sold" fill={CHART_COLORS[0]} name="Sold" radius={[2, 2, 0, 0]} maxBarSize={28} />
+                  <Bar dataKey="capacity" fill={CHART_COLORS[1]} name="Capacity" radius={[2, 2, 0, 0]} maxBarSize={28} opacity={0.25} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -706,15 +848,15 @@ export const DashboardWidgets = ({
                 <p className="text-sm text-muted-foreground">No group sales data available</p>
               </div>
             ) : widgetConfig.chartType === "list" ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {groupSalesByGroup.slice(0, 6).map((group, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                     <div>
-                      <h4 className="font-semibold text-sm">{group.name}</h4>
+                      <h4 className="font-medium text-sm">{group.name}</h4>
                       <p className="text-xs text-muted-foreground">{group.ticketsSold} tickets sold</p>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-lg" style={{ color: '#ff4d00' }}>
+                      <div className="font-semibold text-foreground">
                         ${group.revenue.toLocaleString()}
                       </div>
                     </div>
@@ -723,12 +865,12 @@ export const DashboardWidgets = ({
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={groupSalesByGroup.slice(0, 6)}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={70} />
-                  <YAxis tickFormatter={(v) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />
-                  <Bar dataKey="revenue" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} activeBar={{ fill: CHART_HOVER_COLOR }} />
+                <BarChart data={groupSalesByGroup.slice(0, 6)} margin={{ top: 5, right: 20, left: 0, bottom: 60 }} barCategoryGap="25%">
+                  <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                  <XAxis dataKey="name" tick={axisStyle} axisLine={false} tickLine={false} angle={-45} textAnchor="end" height={70} interval={0} />
+                  <YAxis tickFormatter={(v) => v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`} tick={axisStyle} axisLine={false} tickLine={false} dx={-10} width={45} />
+                  <Tooltip content={<CustomTooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }} />
+                  <Bar dataKey="revenue" fill={CHART_COLORS[0]} radius={[2, 2, 0, 0]} maxBarSize={40} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -749,15 +891,15 @@ export const DashboardWidgets = ({
                 <p className="text-sm text-muted-foreground">No group ticket data available</p>
               </div>
             ) : widgetConfig.chartType === "list" ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {groupSalesByGroup.slice(0, 6).map((group, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                  <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                     <div>
-                      <h4 className="font-semibold text-sm">{group.name}</h4>
+                      <h4 className="font-medium text-sm">{group.name}</h4>
                       <p className="text-xs text-muted-foreground">${group.revenue.toLocaleString()} revenue</p>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-lg" style={{ color: '#3b82f6' }}>
+                      <div className="font-semibold text-foreground">
                         {group.ticketsSold}
                       </div>
                       <div className="text-xs text-muted-foreground">tickets</div>
@@ -767,12 +909,12 @@ export const DashboardWidgets = ({
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={groupSalesByGroup.slice(0, 6)}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={70} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value: number) => [value.toLocaleString(), "Tickets"]} />
-                  <Bar dataKey="ticketsSold" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} activeBar={{ fill: "#60a5fa" }} />
+                <BarChart data={groupSalesByGroup.slice(0, 6)} margin={{ top: 5, right: 20, left: 0, bottom: 60 }} barCategoryGap="25%">
+                  <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                  <XAxis dataKey="name" tick={axisStyle} axisLine={false} tickLine={false} angle={-45} textAnchor="end" height={70} interval={0} />
+                  <YAxis tick={axisStyle} axisLine={false} tickLine={false} dx={-10} width={40} />
+                  <Tooltip content={<CustomTooltip formatter={(value: number) => [value.toLocaleString(), "Tickets"]} />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }} />
+                  <Bar dataKey="ticketsSold" fill={CHART_COLORS[1]} radius={[2, 2, 0, 0]} maxBarSize={40} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -922,14 +1064,16 @@ interface StatCardProps {
 }
 
 const StatCard = ({ title, value, icon, description, className }: StatCardProps) => (
-  <Card className={`h-full flex flex-col min-h-[320px] ${className || ''}`}>
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 flex-shrink-0">
-      <CardTitle className="text-sm font-medium">{title}</CardTitle>
-      <div className="text-muted-foreground">{icon}</div>
+  <Card className={`group h-full flex flex-col min-h-[320px] bg-card border border-border/50 shadow-sm hover:shadow-md hover:border-border transition-all duration-200 rounded-xl ${className || ''}`}>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 flex-shrink-0">
+      <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+      <div className="h-9 w-9 rounded-lg bg-muted/50 flex items-center justify-center text-muted-foreground">
+        {icon}
+      </div>
     </CardHeader>
     <CardContent className="flex-1 flex flex-col justify-center">
-      <div className="text-2xl font-bold">{value}</div>
-      {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
+      <div className="text-3xl font-bold text-foreground tabular-nums tracking-tight">{value}</div>
+      {description && <p className="text-sm text-muted-foreground mt-2">{description}</p>}
     </CardContent>
   </Card>
 );
@@ -942,11 +1086,15 @@ interface ChartCardProps {
 }
 
 const ChartCard = ({ title, description, children, className }: ChartCardProps) => (
-  <Card className={`h-full flex flex-col min-h-[320px] ${className || ''}`}>
-    <CardHeader className="pb-2 flex-shrink-0">
-      <CardTitle className="text-base">{title}</CardTitle>
-      {description && <CardDescription>{description}</CardDescription>}
+  <Card className={`group h-full flex flex-col min-h-[320px] bg-card border border-border/50 shadow-sm hover:shadow-md hover:border-border transition-all duration-200 rounded-xl ${className || ''}`}>
+    <CardHeader className="pb-4 flex-shrink-0 border-b border-border/30">
+      <div className="flex items-center justify-between">
+        <div>
+          <CardTitle className="text-base font-semibold text-foreground">{title}</CardTitle>
+          {description && <CardDescription className="text-sm mt-1 text-muted-foreground">{description}</CardDescription>}
+        </div>
+      </div>
     </CardHeader>
-    <CardContent className="flex-1 flex flex-col">{children}</CardContent>
+    <CardContent className="flex-1 flex flex-col pt-4">{children}</CardContent>
   </Card>
 );
