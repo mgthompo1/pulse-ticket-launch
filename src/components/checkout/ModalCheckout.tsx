@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Calendar,
   MapPin,
@@ -60,13 +60,21 @@ interface ReservationHooks {
   hasActiveReservations: () => boolean;
 }
 
+interface WindcaveSessionParams {
+  cart: Array<{ id: string; name: string; price: number; quantity: number }>;
+  merchandiseCart: MerchandiseCartItem[];
+  customerInfo: { name: string; email: string; phone: string };
+  customAnswers: Record<string, any>;
+  donationAmount?: number;
+}
+
 interface ModalCheckoutProps {
   eventData: EventData;
   ticketTypes: TicketType[];
   customQuestions: CustomQuestion[];
   paymentProvider: string;
   stripePublishableKey?: string;
-  onCreateWindcaveSession?: () => Promise<void>;
+  onCreateWindcaveSession?: (params: WindcaveSessionParams) => Promise<void>;
   windcaveReady?: boolean;
   showWindcavePaymentForm?: boolean;
   onBackToTickets?: () => void;
@@ -127,6 +135,8 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
   const [currentStep, setCurrentStep] = useState<ModalStep>('tickets');
   const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
   const [customErrors, setCustomErrors] = useState<Record<string, string>>({});
+  const [windcaveInitialized, setWindcaveInitialized] = useState(false);
+  const [isInitializingWindcave, setIsInitializingWindcave] = useState(false);
 
   // Computed values
   const eventTheme: Theme = useMemo(() => theme, [theme]);
@@ -157,6 +167,50 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
     }
     return ticketType.quantity_available - ticketType.quantity_sold;
   }, [externalGetAvailableQuantity]);
+
+  // Initialize Windcave when reaching payment step
+  useEffect(() => {
+    const initializeWindcave = async () => {
+      if (
+        currentStep === 'payment' &&
+        paymentProvider === 'windcave' &&
+        !windcaveInitialized &&
+        !isInitializingWindcave &&
+        onCreateWindcaveSession &&
+        cartItems.length > 0
+      ) {
+        console.log('🔄 ModalCheckout: Initializing Windcave session...');
+        console.log('🔄 Cart items:', cartItems);
+        console.log('🔄 Customer info:', customerInfo);
+        console.log('🔄 Custom answers:', customAnswers);
+        setIsInitializingWindcave(true);
+        try {
+          await onCreateWindcaveSession({
+            cart: cartItems,
+            merchandiseCart,
+            customerInfo,
+            customAnswers,
+            donationAmount: selectedDonationAmount || undefined
+          });
+          setWindcaveInitialized(true);
+          console.log('✅ ModalCheckout: Windcave session created');
+        } catch (error) {
+          console.error('❌ ModalCheckout: Failed to create Windcave session:', error);
+        } finally {
+          setIsInitializingWindcave(false);
+        }
+      }
+    };
+
+    initializeWindcave();
+  }, [currentStep, paymentProvider, windcaveInitialized, isInitializingWindcave, onCreateWindcaveSession, cartItems, merchandiseCart, customerInfo, customAnswers, selectedDonationAmount]);
+
+  // Reset Windcave state when modal closes or step changes away from payment
+  useEffect(() => {
+    if (currentStep !== 'payment' || !isModalOpen) {
+      setWindcaveInitialized(false);
+    }
+  }, [currentStep, isModalOpen]);
 
   // Calculate totals
   const ticketCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -774,17 +828,23 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
 
       {/* Windcave Payment */}
       {paymentProvider === "windcave" && (
-        <div
-          ref={dropInRef}
-          id="windcave-drop-in"
-          className="w-full"
-        >
-          <div className="flex items-center justify-center py-8">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-sm text-muted-foreground">Loading payment form...</p>
+        <div className="w-full">
+          {/* Loading state while initializing Windcave */}
+          {(isInitializingWindcave || (!showWindcavePaymentForm && !windcaveInitialized)) && (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" style={{ borderColor: primaryColor }}></div>
+                <p className="text-sm text-muted-foreground">Loading payment form...</p>
+              </div>
             </div>
-          </div>
+          )}
+          {/* Windcave Drop-In container - this is where the form gets mounted */}
+          <div
+            ref={dropInRef}
+            id="windcave-drop-in"
+            className="w-full min-h-[200px]"
+            style={{ display: showWindcavePaymentForm ? 'block' : 'none' }}
+          />
         </div>
       )}
     </div>

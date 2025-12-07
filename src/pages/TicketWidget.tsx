@@ -1586,6 +1586,97 @@ const TicketWidget = () => {
     }
   };
 
+  // Handler for ModalCheckout Windcave session - accepts params from the modal's internal state
+  const handleModalWindcaveSession = async (params: {
+    cart: Array<{ id: string; name: string; price: number; quantity: number }>;
+    merchandiseCart: MerchandiseCartItem[];
+    customerInfo: { name: string; email: string; phone: string };
+    customAnswers: Record<string, any>;
+    donationAmount?: number;
+  }) => {
+    console.log('🔄 handleModalWindcaveSession called with:', params);
+
+    if (params.cart.length === 0 && params.merchandiseCart.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please add tickets or merchandise to your cart first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!params.customerInfo.name || !params.customerInfo.email) {
+      toast({
+        title: "Error",
+        description: "Please provide your name and email address",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Prepare items for checkout (both tickets and merchandise)
+      const allItems = [
+        ...params.cart.map(item => ({ ...item, type: 'ticket' })),
+        ...params.merchandiseCart.map(item => ({
+          ...item.merchandise,
+          quantity: item.quantity,
+          type: 'merchandise',
+          selectedSize: (item as any).selectedSize,
+          selectedColor: (item as any).selectedColor
+        }))
+      ];
+
+      // Include customAnswers and donationAmount in customerInfo
+      const fullCustomerInfo = {
+        ...params.customerInfo,
+        customAnswers: params.customAnswers,
+        donationAmount: params.donationAmount
+      };
+
+      console.log('🔄 Creating Windcave session with:', { eventId, items: allItems, customerInfo: fullCustomerInfo });
+
+      // Create Windcave session and initialize Drop-In
+      const { data, error } = await anonymousSupabase.functions.invoke("windcave-session", {
+        body: {
+          eventId,
+          items: allItems,
+          customerInfo: fullCustomerInfo
+        }
+      });
+
+      if (error) throw error;
+
+      console.log("=== WINDCAVE MODAL FRONTEND RESPONSE ===");
+      console.log("Full Windcave response received:", JSON.stringify(data, null, 2));
+      console.log("Links array:", data.links);
+
+      if (data.links && Array.isArray(data.links)) {
+        setWindcaveLinks(data.links);
+        setShowPaymentForm(true);
+
+        // Calculate total for tracking
+        const cartValue = params.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        trackPaymentInitiated(data.totalAmount || cartValue);
+
+        // Initialize Windcave Drop-In after state update
+        setTimeout(() => {
+          initializeWindcaveDropIn(data.links, data.totalAmount);
+        }, 100);
+      } else {
+        console.error("No links array found. Full response:", data);
+        throw new Error("Invalid response from Windcave: Missing links array");
+      }
+    } catch (error: any) {
+      console.error("Modal Windcave checkout error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "An error occurred during checkout",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Optimize checkout mode decision with useMemo
   const checkoutModeDecision = useMemo(() => {
     // Check both local state and event data for checkout mode
@@ -1818,7 +1909,7 @@ const TicketWidget = () => {
           customQuestions={customQuestions}
           paymentProvider={paymentProvider}
           stripePublishableKey={stripePublishableKey}
-          onCreateWindcaveSession={handleCheckout}
+          onCreateWindcaveSession={handleModalWindcaveSession}
           windcaveReady={!loading}
           showWindcavePaymentForm={showPaymentForm}
           onBackToTickets={handleBackToTickets}
