@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import Stripe from "https://esm.sh/stripe@14.21.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,12 +19,13 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { eventId, items, customerInfo } = await req.json();
+    const { eventId, items, customerInfo, platformTip } = await req.json();
 
     console.log("=== FREE REGISTRATION REQUEST ===");
     console.log("Event ID:", eventId);
     console.log("Items:", JSON.stringify(items, null, 2));
     console.log("Customer Info:", JSON.stringify(customerInfo, null, 2));
+    console.log("Platform Tip:", platformTip);
 
     if (!eventId || !items || !Array.isArray(items) || items.length === 0) {
       throw new Error("Missing required parameters: eventId, items");
@@ -125,6 +127,48 @@ serve(async (req) => {
       });
     }
 
+    // Handle platform tip payment if provided
+    let tipPaymentIntent = null;
+    if (platformTip && platformTip > 0) {
+      const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+      if (stripeSecretKey) {
+        try {
+          const stripe = new Stripe(stripeSecretKey, {
+            apiVersion: "2023-10-16",
+          });
+
+          // Create a payment intent for the tip (goes directly to platform)
+          tipPaymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(platformTip * 100), // Convert to cents
+            currency: "usd",
+            metadata: {
+              type: "platform_tip",
+              order_id: order.id,
+              event_id: eventId,
+              customer_email: customerInfo.email,
+            },
+            receipt_email: customerInfo.email,
+            description: `TicketFlo tip for ${event.name}`,
+          });
+
+          console.log("Created tip payment intent:", tipPaymentIntent.id);
+
+          // Update order with tip amount
+          await supabaseClient
+            .from("orders")
+            .update({
+              platform_tip: platformTip,
+              tip_payment_intent_id: tipPaymentIntent.id
+            })
+            .eq("id", order.id);
+
+        } catch (stripeError) {
+          console.error("Failed to create tip payment intent:", stripeError);
+          // Don't fail the registration if tip payment setup fails
+        }
+      }
+    }
+
     // Send confirmation email
     try {
       await supabaseClient.functions.invoke('send-tickets', {
@@ -139,6 +183,22 @@ serve(async (req) => {
     } catch (emailError) {
       console.error("Failed to send confirmation email:", emailError);
       // Don't fail the registration if email fails
+    }
+
+    // If there's a tip, return the client secret for payment
+    if (tipPaymentIntent) {
+      return new Response(JSON.stringify({
+        success: true,
+        orderId: order.id,
+        message: "Registration confirmed! Complete your tip payment below.",
+        ticketCount: tickets.length,
+        requiresTipPayment: true,
+        tipClientSecret: tipPaymentIntent.client_secret,
+        tipAmount: platformTip,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
     return new Response(JSON.stringify({

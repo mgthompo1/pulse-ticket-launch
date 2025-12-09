@@ -72,6 +72,7 @@ interface FreeRegistrationParams {
   cart: Array<{ id: string; name: string; price: number; quantity: number }>;
   customerInfo: { name: string; email: string; phone: string };
   customAnswers: Record<string, any>;
+  platformTip?: number;
 }
 
 interface ModalCheckoutProps {
@@ -147,6 +148,11 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
   const [isInitializingWindcave, setIsInitializingWindcave] = useState(false);
   const [isSubmittingFreeRegistration, setIsSubmittingFreeRegistration] = useState(false);
   const [freeRegistrationComplete, setFreeRegistrationComplete] = useState(false);
+
+  // Platform tip state for free events
+  const [platformTipAmount, setPlatformTipAmount] = useState<number | null>(null);
+  const [customTipAmount, setCustomTipAmount] = useState<string>('');
+  const platformTipOptions = [0, 1, 2, 5];
 
   // Computed values
   const eventTheme: Theme = useMemo(() => theme, [theme]);
@@ -347,6 +353,24 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
     }
   };
 
+  // Get the effective tip amount
+  const getEffectiveTipAmount = (): number => {
+    if (platformTipAmount !== null) return platformTipAmount;
+    const customAmount = parseFloat(customTipAmount);
+    return !isNaN(customAmount) && customAmount > 0 ? customAmount : 0;
+  };
+
+  // Handle tip selection
+  const handleTipSelect = (amount: number) => {
+    setPlatformTipAmount(amount);
+    setCustomTipAmount('');
+  };
+
+  const handleCustomTipChange = (value: string) => {
+    setCustomTipAmount(value);
+    setPlatformTipAmount(null);
+  };
+
   // Handle free event registration (no payment required)
   const handleFreeRegistration = async () => {
     if (!onFreeRegistration || !canProceedFromDetails) return;
@@ -354,17 +378,20 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
     // Validate custom questions first
     if (!validateCustomQuestions()) return;
 
+    const tipAmount = getEffectiveTipAmount();
+
     setIsSubmittingFreeRegistration(true);
     try {
       await onFreeRegistration({
         cart: cartItems,
         customerInfo,
         customAnswers,
+        platformTip: tipAmount > 0 ? tipAmount : undefined,
       });
       setFreeRegistrationComplete(true);
       // Track successful registration
       if (eventData) {
-        trackPurchase(eventData.id, eventData.name, 0, eventData.organizations?.currency || 'USD', 'free_registration');
+        trackPurchase(eventData.id, eventData.name, tipAmount, eventData.organizations?.currency || 'USD', 'free_registration');
       }
     } catch (error) {
       console.error('Free registration failed:', error);
@@ -700,6 +727,69 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
               </div>
             ))}
           </div>
+        )}
+
+        {/* Platform Tip for Free Events */}
+        {isFreeEvent && (
+          <Card className="border overflow-hidden" style={{ borderColor: '#e0e0e0' }}>
+            <CardHeader className="pb-3" style={{ backgroundColor: '#f9f9f9' }}>
+              <CardTitle className="flex items-center gap-2 text-base font-bold" style={{ color: headerTextColor }}>
+                <Heart className="h-5 w-5 text-pink-500" />
+                Support TicketFlo
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Love free ticketing? Leave a tip to help us keep the lights on!
+              </p>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              {/* Tip Amount Options */}
+              <div className="grid grid-cols-4 gap-2">
+                {platformTipOptions.map((amount) => (
+                  <Button
+                    key={amount}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleTipSelect(amount)}
+                    className={`transition-all ${platformTipAmount === amount && !customTipAmount ? 'ring-2 ring-offset-1 ring-pink-500' : ''}`}
+                    style={{
+                      borderColor: platformTipAmount === amount && !customTipAmount ? '#ec4899' : undefined,
+                      backgroundColor: platformTipAmount === amount && !customTipAmount ? '#fdf2f8' : undefined,
+                    }}
+                  >
+                    {amount === 0 ? 'No tip' : `$${amount}`}
+                  </Button>
+                ))}
+              </div>
+
+              {/* Custom Tip Amount */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Or enter custom:</span>
+                <div className="relative flex-1 max-w-28">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.50"
+                    placeholder="0.00"
+                    value={customTipAmount}
+                    onChange={(e) => handleCustomTipChange(e.target.value)}
+                    className="pl-7"
+                  />
+                </div>
+              </div>
+
+              {/* Selected tip feedback */}
+              {getEffectiveTipAmount() > 0 && (
+                <div
+                  className="flex items-center gap-2 p-3 rounded-lg text-sm font-medium bg-pink-50 text-pink-700"
+                >
+                  <Heart className="h-4 w-4 fill-current" />
+                  Thank you! Your ${getEffectiveTipAmount().toFixed(2)} tip helps keep TicketFlo free.
+                </div>
+              )}
+            </CardContent>
+          </Card>
         )}
 
         {/* Donations */}

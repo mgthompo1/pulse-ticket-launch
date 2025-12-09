@@ -1682,6 +1682,7 @@ const TicketWidget = () => {
     cart: Array<{ id: string; name: string; price: number; quantity: number }>;
     customerInfo: { name: string; email: string; phone: string };
     customAnswers: Record<string, any>;
+    platformTip?: number;
   }) => {
     console.log('🆓 handleFreeRegistration called with:', params);
 
@@ -1715,27 +1716,37 @@ const TicketWidget = () => {
         customAnswers: params.customAnswers
       };
 
-      console.log('🆓 Creating free registration with:', { eventId, items, customerInfo: fullCustomerInfo });
+      console.log('🆓 Creating free registration with:', { eventId, items, customerInfo: fullCustomerInfo, platformTip: params.platformTip });
 
       const { data, error } = await anonymousSupabase.functions.invoke("free-registration", {
         body: {
           eventId,
           items,
-          customerInfo: fullCustomerInfo
+          customerInfo: fullCustomerInfo,
+          platformTip: params.platformTip
         }
       });
 
       if (error) throw error;
 
       if (data.success) {
+        // If there's a tip, show a different message
+        const hasActiveTip = data.requiresTipPayment && data.tipClientSecret;
+
         toast({
           title: "Registration Complete!",
-          description: "Check your email for confirmation details.",
+          description: hasActiveTip
+            ? `Thank you for the $${data.tipAmount.toFixed(2)} tip! Check your email for confirmation.`
+            : "Check your email for confirmation details.",
         });
 
-        // Redirect to success page
+        // Redirect to success page (tip payment will be handled via Stripe webhook if provided)
+        // For now, tip payments are processed server-side and registration is already confirmed
         setTimeout(() => {
-          window.location.href = `/payment-success?orderId=${data.orderId}`;
+          const redirectUrl = hasActiveTip
+            ? `/payment-success?orderId=${data.orderId}&tip=${data.tipAmount}&tipClientSecret=${data.tipClientSecret}`
+            : `/payment-success?orderId=${data.orderId}`;
+          window.location.href = redirectUrl;
         }, 1500);
       } else {
         throw new Error(data.error || "Registration failed");

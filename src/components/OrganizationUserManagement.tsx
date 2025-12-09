@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2, UserPlus, Mail, Users, Copy, ExternalLink } from 'lucide-react';
+import { Trash2, UserPlus, Mail, Users, Copy, ExternalLink, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface OrganizationUser {
@@ -62,6 +62,13 @@ export const OrganizationUserManagement = ({ organizationId, organizationName, c
   const [inviteRole, setInviteRole] = useState<'admin' | 'editor' | 'viewer'>('viewer');
   const [invitePermissions, setInvitePermissions] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
+
+  // Edit user state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<OrganizationUser | null>(null);
+  const [editRole, setEditRole] = useState<'admin' | 'editor' | 'viewer'>('viewer');
+  const [editPermissions, setEditPermissions] = useState<string[]>([]);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     if (organizationId) {
@@ -264,6 +271,49 @@ export const OrganizationUserManagement = ({ organizationId, organizationName, c
     }
   };
 
+  const openEditDialog = (user: OrganizationUser) => {
+    setEditingUser(user);
+    setEditRole(user.role === 'owner' ? 'admin' : user.role);
+    setEditPermissions(user.permissions || []);
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateUser = async () => {
+    if (!editingUser) return;
+
+    setUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('organization_users')
+        .update({
+          role: editRole,
+          permissions: editPermissions,
+        })
+        .eq('user_id', editingUser.user_id)
+        .eq('organization_id', organizationId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: 'User updated successfully',
+      });
+
+      setEditDialogOpen(false);
+      setEditingUser(null);
+      loadUsers();
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update user',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case 'owner': return 'default';
@@ -442,13 +492,24 @@ export const OrganizationUserManagement = ({ organizationId, organizationName, c
                   </TableCell>
                   <TableCell>
                     {canManageUsers && orgUser.role !== 'owner' && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveUser(orgUser.user_id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditDialog(orgUser)}
+                          title="Edit user role and permissions"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveUser(orgUser.user_id)}
+                          title="Remove user"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>
@@ -457,6 +518,75 @@ export const OrganizationUserManagement = ({ organizationId, organizationName, c
           </Table>
         </CardContent>
       </Card>
+
+      {/* Edit User Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Update role and permissions for {editingUser?.users?.email}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="editRole">Role</Label>
+              <Select value={editRole} onValueChange={(value: any) => setEditRole(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="editor">Editor</SelectItem>
+                  <SelectItem value="viewer">Viewer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Permissions</Label>
+              <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-3">
+                {PERMISSIONS.map((permission) => (
+                  <div key={permission.id} className="flex items-start space-x-2">
+                    <Checkbox
+                      id={`edit-${permission.id}`}
+                      checked={editPermissions.includes(permission.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setEditPermissions([...editPermissions, permission.id]);
+                        } else {
+                          setEditPermissions(editPermissions.filter(p => p !== permission.id));
+                        }
+                      }}
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <label
+                        htmlFor={`edit-${permission.id}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        {permission.label}
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        {permission.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateUser} disabled={updating}>
+                {updating ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Pending Invitations */}
       {invitations.length > 0 && (

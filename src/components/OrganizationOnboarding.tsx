@@ -78,12 +78,14 @@ const OrganizationOnboarding: React.FC<OrganizationOnboardingProps> = ({ onCompl
       console.log("✅ Organization created:", data.id);
 
       // Step 2: Create organization membership (link user to organization)
+      // Note: Using organization_users table (not organization_members which doesn't exist)
       const { error: memberError } = await supabase
-        .from("organization_members")
+        .from("organization_users")
         .insert({
           organization_id: data.id,
           user_id: user.id,
-          role: "owner"
+          role: "owner",
+          permissions: ['manage_events', 'edit_events', 'view_events', 'manage_payments', 'view_payments', 'manage_users', 'view_analytics']
         });
 
       if (memberError) {
