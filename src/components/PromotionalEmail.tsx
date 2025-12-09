@@ -55,7 +55,7 @@ interface PromotionalEmailProps {
   selectedEvent: Event;
 }
 
-type RecipientType = "event_ticket_holders" | "ticket_type" | "all_customers" | "vip_holders";
+type RecipientType = "event_ticket_holders" | "ticket_type" | "all_customers" | "vip_holders" | "checked_in_only";
 
 export const PromotionalEmail: React.FC<PromotionalEmailProps> = ({ selectedEvent }) => {
   const { toast } = useToast();
@@ -146,6 +146,16 @@ export const PromotionalEmail: React.FC<PromotionalEmailProps> = ({ selectedEven
 
           const uniqueEmails = new Set(orders?.map(o => o.customer_email) || []);
           count = uniqueEmails.size;
+        } else if (emailData.recipient_type === "checked_in_only") {
+          // Only attendees who have checked in to this event
+          const { data: tickets } = await supabase
+            .from("tickets")
+            .select("attendee_email")
+            .eq("event_id", selectedEvent.id)
+            .eq("checked_in", true);
+
+          const uniqueEmails = new Set(tickets?.map(t => t.attendee_email).filter(Boolean) || []);
+          count = uniqueEmails.size;
         } else if (emailData.recipient_type === "all_customers") {
           // All customers from organization's contacts/orders
           const { count: contactCount } = await supabase
@@ -225,6 +235,22 @@ export const PromotionalEmail: React.FC<PromotionalEmailProps> = ({ selectedEven
       orders?.forEach(o => {
         if (!emailMap.has(o.customer_email)) {
           emailMap.set(o.customer_email, { email: o.customer_email, name: o.customer_name || "" });
+        }
+      });
+      recipients = Array.from(emailMap.values());
+    } else if (emailData.recipient_type === "checked_in_only") {
+      // Only attendees who have checked in
+      const { data: tickets } = await supabase
+        .from("tickets")
+        .select("attendee_email, attendee_first_name, attendee_last_name")
+        .eq("event_id", selectedEvent.id)
+        .eq("checked_in", true);
+
+      const emailMap = new Map<string, Recipient>();
+      tickets?.forEach(t => {
+        if (t.attendee_email && !emailMap.has(t.attendee_email)) {
+          const name = `${t.attendee_first_name || ""} ${t.attendee_last_name || ""}`.trim();
+          emailMap.set(t.attendee_email, { email: t.attendee_email, name });
         }
       });
       recipients = Array.from(emailMap.values());
@@ -585,6 +611,12 @@ export const PromotionalEmail: React.FC<PromotionalEmailProps> = ({ selectedEven
                     <div className="flex items-center gap-2">
                       <Ticket className="w-4 h-4" />
                       VIP Ticket Holders
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="checked_in_only">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Checked-In Attendees Only
                     </div>
                   </SelectItem>
                   <SelectItem value="all_customers">

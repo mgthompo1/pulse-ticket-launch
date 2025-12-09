@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Users, Calendar, DollarSign, Ticket, TrendingUp, Search, BarChart3, Eye, ShoppingCart } from "lucide-react";
+import { Download, Users, Calendar, DollarSign, Ticket, TrendingUp, Search, BarChart3, Eye, ShoppingCart, UtensilsCrossed, Accessibility, Phone, Stethoscope, Car } from "lucide-react";
 import { format } from "date-fns";
 import { WidgetFunnelAnalytics } from "./WidgetFunnelAnalytics";
 import { RecoveryAnalytics } from "./RecoveryAnalytics";
@@ -89,7 +89,7 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
   const [orders, setOrders] = useState<OrderDetails[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<OrderDetails[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [customQuestions, setCustomQuestions] = useState<Array<{ id: string; label: string }>>([]);
+  const [customQuestions, setCustomQuestions] = useState<Array<{ id: string; label: string; category?: string }>>([]);
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasDonations, setHasDonations] = useState(false);
@@ -115,6 +115,46 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
   const truncateQuestion = (question: string, maxLength: number = 30): string => {
     if (question.length <= maxLength) return question;
     return question.substring(0, maxLength) + '...';
+  };
+
+  // Helper to aggregate responses by category
+  const getCategorizedResponseSummary = () => {
+    const categorizedQuestions = customQuestions.filter(q => q.category && q.category !== 'general');
+    if (categorizedQuestions.length === 0) return null;
+
+    const summary: Record<string, Record<string, number>> = {};
+
+    categorizedQuestions.forEach(question => {
+      const category = question.category || 'general';
+      if (!summary[category]) {
+        summary[category] = {};
+      }
+
+      // Aggregate answers from all orders
+      filteredOrders.forEach(order => {
+        const answer = getAnswerForQuestion(order, question.id);
+        if (answer && answer !== '-' && answer.trim() !== '') {
+          // For checkbox/multi-select, split by comma
+          const answers = answer.includes(',') ? answer.split(',').map(a => a.trim()) : [answer.trim()];
+          answers.forEach(ans => {
+            if (ans) {
+              summary[category][ans] = (summary[category][ans] || 0) + 1;
+            }
+          });
+        }
+      });
+    });
+
+    return summary;
+  };
+
+  // Category display config
+  const categoryConfig: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+    dietary: { label: 'Dietary Requirements', icon: <UtensilsCrossed className="h-4 w-4" />, color: 'text-orange-600 bg-orange-500/10' },
+    accessibility: { label: 'Accessibility Needs', icon: <Accessibility className="h-4 w-4" />, color: 'text-blue-600 bg-blue-500/10' },
+    emergency_contact: { label: 'Emergency Contact', icon: <Phone className="h-4 w-4" />, color: 'text-red-600 bg-red-500/10' },
+    medical: { label: 'Medical Information', icon: <Stethoscope className="h-4 w-4" />, color: 'text-pink-600 bg-pink-500/10' },
+    transport: { label: 'Transport/Parking', icon: <Car className="h-4 w-4" />, color: 'text-green-600 bg-green-500/10' },
   };
 
   const loadEventAnalytics = async (eventId: string) => {
@@ -246,7 +286,7 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
       setFilteredOrders(enhancedOrders || []);
 
       // Get custom questions from widget customization
-      const eventCustomQuestions: Array<{ id: string; label: string }> = [];
+      const eventCustomQuestions: Array<{ id: string; label: string; category?: string }> = [];
 
       if (eventData.widget_customization?.customQuestions?.questions &&
           Array.isArray(eventData.widget_customization.customQuestions.questions)) {
@@ -254,7 +294,7 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
           if (q.id && q.label) {
             // Filter out the __group_purchase__ question
             if (q.id !== '__group_purchase__') {
-              eventCustomQuestions.push({ id: q.id, label: q.label });
+              eventCustomQuestions.push({ id: q.id, label: q.label, category: q.category || 'general' });
             }
           }
         });
@@ -314,7 +354,12 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
     // Add remaining headers
     baseHeaders.push('Ticket Type', 'Quantity', 'Ticket Code', 'Checked In', 'Check-in Date');
 
-    const customQuestionHeaders = customQuestions.map((question) => `"${question.label}"`);
+    const customQuestionHeaders = customQuestions.map((question) => {
+      const categoryLabel = question.category && question.category !== 'general'
+        ? ` [${categoryConfig[question.category]?.label || question.category}]`
+        : '';
+      return `"${question.label}${categoryLabel}"`;
+    });
     const headers = [...baseHeaders, ...customQuestionHeaders];
 
     const csvContent = [
@@ -633,6 +678,67 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
               </CardContent>
             </Card>
           </div>
+
+          {/* Categorized Response Summary */}
+          {(() => {
+            const categorizedSummary = getCategorizedResponseSummary();
+            if (!categorizedSummary || Object.keys(categorizedSummary).length === 0) return null;
+
+            return (
+              <Card className="rounded-2xl border-border shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <div className="p-2 rounded-lg bg-violet-500/10">
+                      <Users className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                    </div>
+                    Response Summary
+                  </CardTitle>
+                  <CardDescription>Aggregated responses from categorized questions</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {Object.entries(categorizedSummary).map(([category, responses]) => {
+                      const config = categoryConfig[category];
+                      if (!config || Object.keys(responses).length === 0) return null;
+
+                      const sortedResponses = Object.entries(responses)
+                        .sort((a, b) => b[1] - a[1]);
+                      const totalResponses = sortedResponses.reduce((sum, [_, count]) => sum + count, 0);
+
+                      return (
+                        <div key={category} className="border rounded-xl p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-2 rounded-lg ${config.color.split(' ')[1]}`}>
+                              <span className={config.color.split(' ')[0]}>{config.icon}</span>
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-sm">{config.label}</h4>
+                              <p className="text-xs text-muted-foreground">{totalResponses} total responses</p>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            {sortedResponses.slice(0, 8).map(([response, count]) => (
+                              <div key={response} className="flex items-center justify-between text-sm">
+                                <span className="truncate flex-1 mr-2" title={response}>{response}</span>
+                                <Badge variant="secondary" className="rounded-full text-xs">
+                                  {count}
+                                </Badge>
+                              </div>
+                            ))}
+                            {sortedResponses.length > 8 && (
+                              <p className="text-xs text-muted-foreground pt-1">
+                                +{sortedResponses.length - 8} more responses
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* Orders Table */}
           <Card className="rounded-2xl border-border shadow-sm overflow-hidden">

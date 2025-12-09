@@ -2022,6 +2022,8 @@ export type Database = {
           currency: string | null
           custom_css: string | null
           email: string
+          group_auto_invoice_frequency: string | null
+          group_auto_invoice_last_run: string | null
           groups_enabled: boolean | null
           id: string
           logo_url: string | null
@@ -2053,6 +2055,8 @@ export type Database = {
           currency?: string | null
           custom_css?: string | null
           email: string
+          group_auto_invoice_frequency?: string | null
+          group_auto_invoice_last_run?: string | null
           groups_enabled?: boolean | null
           id?: string
           logo_url?: string | null
@@ -2084,6 +2088,8 @@ export type Database = {
           currency?: string | null
           custom_css?: string | null
           email?: string
+          group_auto_invoice_frequency?: string | null
+          group_auto_invoice_last_run?: string | null
           groups_enabled?: boolean | null
           id?: string
           logo_url?: string | null

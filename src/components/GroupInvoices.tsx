@@ -15,6 +15,7 @@ import {
   DollarSign,
   XCircle,
   MoreVertical,
+  Zap,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -97,6 +98,7 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
   });
 
   const [availableEvents, setAvailableEvents] = useState<Array<{ id: string; name: string }>>([]);
+  const [autoInvoiceFrequency, setAutoInvoiceFrequency] = useState<string | null>(null);
 
   const [paymentForm, setPaymentForm] = useState({
     amountPaid: "",
@@ -106,8 +108,33 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
   useEffect(() => {
     loadInvoices();
     loadEvents();
+    loadAutoInvoiceSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId]);
+
+  const loadAutoInvoiceSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("organizations")
+        .select("group_auto_invoice_frequency")
+        .eq("id", organizationId)
+        .single();
+
+      if (!error && data) {
+        setAutoInvoiceFrequency(data.group_auto_invoice_frequency);
+      }
+    } catch (error) {
+      console.error("Error loading auto-invoice settings:", error);
+    }
+  };
+
+  const frequencyLabels: Record<string, string> = {
+    daily: "Daily",
+    "3_days": "Every 3 Days",
+    weekly: "Weekly",
+    biweekly: "Every 2 Weeks",
+    monthly: "Monthly",
+  };
 
   const loadEvents = async () => {
     try {
@@ -532,7 +559,15 @@ export const GroupInvoices: React.FC<GroupInvoicesProps> = ({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-xl font-bold">Invoices</h3>
+          <div className="flex items-center gap-3">
+            <h3 className="text-xl font-bold">Invoices</h3>
+            {autoInvoiceFrequency && !readOnly && (
+              <Badge variant="secondary" className="gap-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                <Zap className="h-3 w-3" />
+                Auto: {frequencyLabels[autoInvoiceFrequency] || autoInvoiceFrequency}
+              </Badge>
+            )}
+          </div>
           <p className="text-muted-foreground">
             {readOnly ? `Invoices for ${groupName}` : `Manage invoices for ${groupName}`}
           </p>

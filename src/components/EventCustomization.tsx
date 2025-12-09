@@ -1493,7 +1493,8 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                             label: `Question ${currentCount + 1}`,
                             type: "text",
                             required: false,
-                            options: ""
+                            options: "",
+                            category: "general"
                           };
                           updateWidgetCustomization(['customQuestions', 'questions'], [...currentQuestions, newQuestion]);
                         }}
@@ -1566,6 +1567,36 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                                 </SelectContent>
                               </Select>
                             </div>
+                          </div>
+
+                          {/* Category tag for aggregation */}
+                          <div className="space-y-2">
+                            <Label>Category (for reporting)</Label>
+                            <Select
+                              value={question.category || "general"}
+                              onValueChange={(value) => {
+                                const currentQuestions = widgetCustomization.customQuestions?.questions || [];
+                                const updatedQuestions = currentQuestions.map((q: any) =>
+                                  q.id === question.id ? { ...q, category: value } : q
+                                );
+                                updateWidgetCustomization(['customQuestions', 'questions'], updatedQuestions);
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="general">General</SelectItem>
+                                <SelectItem value="dietary">Dietary Requirements</SelectItem>
+                                <SelectItem value="accessibility">Accessibility Needs</SelectItem>
+                                <SelectItem value="emergency_contact">Emergency Contact</SelectItem>
+                                <SelectItem value="medical">Medical Information</SelectItem>
+                                <SelectItem value="transport">Transport/Parking</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                              Categorized questions can be summarized in event reports
+                            </p>
                           </div>
 
                           {/* Options field for select/radio/checkbox types */}

@@ -12,7 +12,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import {
   Building2, Mail, Globe, Phone, MapPin, Upload, Save, Settings,
   Calendar, MapPin as Attraction, Users, UserCog, Calculator,
-  CreditCard, Palette, Moon, Sun, Monitor, ChevronRight, Target
+  CreditCard, Palette, Moon, Sun, Monitor, ChevronRight, Target, FileText
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { TaxSettings } from "@/components/TaxSettings";
@@ -31,6 +31,7 @@ interface OrganizationData {
   phone: string | null;
   system_type: string | null;
   groups_enabled: boolean;
+  group_auto_invoice_frequency: string | null;
   crm_enabled: boolean;
   issuing_enabled: boolean;
   playbooks_enabled: boolean;
@@ -67,6 +68,7 @@ const OrganizationSettings: React.FC = () => {
     phone: "",
     system_type: "EVENTS",
     groups_enabled: false,
+    group_auto_invoice_frequency: null,
     crm_enabled: false,
     issuing_enabled: false,
     playbooks_enabled: false,
@@ -108,6 +110,7 @@ const OrganizationSettings: React.FC = () => {
           phone: orgData.phone || "",
           system_type: orgData.system_type || "EVENTS",
           groups_enabled: orgData.groups_enabled || false,
+          group_auto_invoice_frequency: orgData.group_auto_invoice_frequency || null,
           crm_enabled: orgData.crm_enabled || false,
           issuing_enabled: orgData.issuing_enabled || false,
           playbooks_enabled: orgData.playbooks_enabled || false,
@@ -211,6 +214,7 @@ const OrganizationSettings: React.FC = () => {
           phone: organizationData.phone,
           system_type: organizationData.system_type,
           groups_enabled: organizationData.groups_enabled,
+          group_auto_invoice_frequency: organizationData.group_auto_invoice_frequency,
           crm_enabled: organizationData.crm_enabled,
           issuing_enabled: organizationData.issuing_enabled,
           playbooks_enabled: organizationData.playbooks_enabled,
@@ -515,6 +519,44 @@ const OrganizationSettings: React.FC = () => {
               }
             />
           </div>
+
+          {/* Auto-Invoice Frequency - Only show when groups enabled */}
+          {organizationData.groups_enabled && (
+            <div className="flex items-center justify-between py-4 border-b ml-8 bg-muted/20 rounded-lg px-4 -mr-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-amber-500/10">
+                  <FileText className="h-5 w-5 text-amber-500" />
+                </div>
+                <div>
+                  <div className="font-medium">Auto-Invoice Groups</div>
+                  <p className="text-sm text-muted-foreground">
+                    Automatically generate invoices for group sales
+                  </p>
+                </div>
+              </div>
+              <Select
+                value={organizationData.group_auto_invoice_frequency || "manual"}
+                onValueChange={(value) =>
+                  setOrganizationData(prev => ({
+                    ...prev,
+                    group_auto_invoice_frequency: value === "manual" ? null : value
+                  }))
+                }
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Manual</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="3_days">Every 3 Days</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="biweekly">Every 2 Weeks</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* CRM */}
           <div className="flex items-center justify-between py-4 border-b">
