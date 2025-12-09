@@ -1677,6 +1677,79 @@ const TicketWidget = () => {
     }
   };
 
+  // Handler for free event registration (no payment required)
+  const handleFreeRegistration = async (params: {
+    cart: Array<{ id: string; name: string; price: number; quantity: number }>;
+    customerInfo: { name: string; email: string; phone: string };
+    customAnswers: Record<string, any>;
+  }) => {
+    console.log('🆓 handleFreeRegistration called with:', params);
+
+    if (params.cart.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one ticket",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!params.customerInfo.name || !params.customerInfo.email) {
+      toast({
+        title: "Error",
+        description: "Please provide your name and email address",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const items = params.cart.map(item => ({
+        ...item,
+        ticket_type_id: item.id,
+        type: 'ticket'
+      }));
+
+      const fullCustomerInfo = {
+        ...params.customerInfo,
+        customAnswers: params.customAnswers
+      };
+
+      console.log('🆓 Creating free registration with:', { eventId, items, customerInfo: fullCustomerInfo });
+
+      const { data, error } = await anonymousSupabase.functions.invoke("free-registration", {
+        body: {
+          eventId,
+          items,
+          customerInfo: fullCustomerInfo
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: "Registration Complete!",
+          description: "Check your email for confirmation details.",
+        });
+
+        // Redirect to success page
+        setTimeout(() => {
+          window.location.href = `/payment-success?orderId=${data.orderId}`;
+        }, 1500);
+      } else {
+        throw new Error(data.error || "Registration failed");
+      }
+    } catch (error: any) {
+      console.error("Free registration error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "An error occurred during registration",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Optimize checkout mode decision with useMemo
   const checkoutModeDecision = useMemo(() => {
     // Check both local state and event data for checkout mode
@@ -1910,6 +1983,7 @@ const TicketWidget = () => {
           paymentProvider={paymentProvider}
           stripePublishableKey={stripePublishableKey}
           onCreateWindcaveSession={handleModalWindcaveSession}
+          onFreeRegistration={handleFreeRegistration}
           windcaveReady={!loading}
           showWindcavePaymentForm={showPaymentForm}
           onBackToTickets={handleBackToTickets}

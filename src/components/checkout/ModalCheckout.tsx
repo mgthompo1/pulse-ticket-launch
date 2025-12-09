@@ -68,6 +68,12 @@ interface WindcaveSessionParams {
   donationAmount?: number;
 }
 
+interface FreeRegistrationParams {
+  cart: Array<{ id: string; name: string; price: number; quantity: number }>;
+  customerInfo: { name: string; email: string; phone: string };
+  customAnswers: Record<string, any>;
+}
+
 interface ModalCheckoutProps {
   eventData: EventData;
   ticketTypes: TicketType[];
@@ -75,6 +81,7 @@ interface ModalCheckoutProps {
   paymentProvider: string;
   stripePublishableKey?: string;
   onCreateWindcaveSession?: (params: WindcaveSessionParams) => Promise<void>;
+  onFreeRegistration?: (params: FreeRegistrationParams) => Promise<void>;
   windcaveReady?: boolean;
   showWindcavePaymentForm?: boolean;
   onBackToTickets?: () => void;
@@ -94,6 +101,7 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
   paymentProvider,
   stripePublishableKey,
   onCreateWindcaveSession,
+  onFreeRegistration,
   windcaveReady,
   showWindcavePaymentForm,
   onBackToTickets,
@@ -137,6 +145,8 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
   const [customErrors, setCustomErrors] = useState<Record<string, string>>({});
   const [windcaveInitialized, setWindcaveInitialized] = useState(false);
   const [isInitializingWindcave, setIsInitializingWindcave] = useState(false);
+  const [isSubmittingFreeRegistration, setIsSubmittingFreeRegistration] = useState(false);
+  const [freeRegistrationComplete, setFreeRegistrationComplete] = useState(false);
 
   // Computed values
   const eventTheme: Theme = useMemo(() => theme, [theme]);
@@ -237,23 +247,30 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
     return Math.max(0, total);
   };
 
-  // Step configuration
+  // Check if this is a free event
+  const isFreeEvent = eventData?.pricing_type === 'free';
+
+  // Step configuration - free events skip payment step
   const steps: { key: ModalStep; label: string; icon: React.ReactNode }[] = useMemo(() => {
     const baseSteps: { key: ModalStep; label: string; icon: React.ReactNode }[] = [
-      { key: 'tickets', label: 'Tickets', icon: <Ticket className="h-4 w-4" /> },
+      { key: 'tickets', label: isFreeEvent ? 'RSVP' : 'Tickets', icon: <Ticket className="h-4 w-4" /> },
     ];
 
-    if (hasMerchandise) {
+    if (hasMerchandise && !isFreeEvent) {
       baseSteps.push({ key: 'merchandise', label: 'Extras', icon: <ShoppingBag className="h-4 w-4" /> });
     }
 
     baseSteps.push(
-      { key: 'details', label: 'Details', icon: <User className="h-4 w-4" /> },
-      { key: 'payment', label: 'Payment', icon: <CreditCard className="h-4 w-4" /> }
+      { key: 'details', label: 'Details', icon: <User className="h-4 w-4" /> }
     );
 
+    // Only add payment step for paid events
+    if (!isFreeEvent) {
+      baseSteps.push({ key: 'payment', label: 'Payment', icon: <CreditCard className="h-4 w-4" /> });
+    }
+
     return baseSteps;
-  }, [hasMerchandise]);
+  }, [hasMerchandise, isFreeEvent]);
 
   const currentStepIndex = steps.findIndex(s => s.key === currentStep);
 
@@ -327,6 +344,32 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
         trackBeginCheckout(eventData.id, eventData.name, getTotalAmount(), eventData.organizations?.currency || 'USD');
       }
       setCurrentStep(steps[nextIndex].key);
+    }
+  };
+
+  // Handle free event registration (no payment required)
+  const handleFreeRegistration = async () => {
+    if (!onFreeRegistration || !canProceedFromDetails) return;
+
+    // Validate custom questions first
+    if (!validateCustomQuestions()) return;
+
+    setIsSubmittingFreeRegistration(true);
+    try {
+      await onFreeRegistration({
+        cart: cartItems,
+        customerInfo,
+        customAnswers,
+      });
+      setFreeRegistrationComplete(true);
+      // Track successful registration
+      if (eventData) {
+        trackPurchase(eventData.id, eventData.name, 0, eventData.organizations?.currency || 'USD', 'free_registration');
+      }
+    } catch (error) {
+      console.error('Free registration failed:', error);
+    } finally {
+      setIsSubmittingFreeRegistration(false);
     }
   };
 
@@ -1248,19 +1291,43 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
               <div className="flex items-center gap-4">
                 {cartItems.length > 0 && (
                   <span className="text-sm font-medium">
-                    {ticketCount} ticket{ticketCount !== 1 ? 's' : ''} • ${getTotalAmount().toFixed(2)}
+                    {ticketCount} {isFreeEvent ? 'spot' : 'ticket'}{ticketCount !== 1 ? 's' : ''}
+                    {!isFreeEvent && ` • $${getTotalAmount().toFixed(2)}`}
+                    {isFreeEvent && ' • Free'}
                   </span>
                 )}
 
-                <Button
-                  onClick={goToNextStep}
-                  disabled={!canProceed()}
-                  className="flex items-center gap-2"
-                  style={{ backgroundColor: primaryColor, color: buttonTextColor }}
-                >
-                  {currentStep === 'details' ? 'Continue to Payment' : 'Continue'}
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
+                {/* For free events on details step, show Register button */}
+                {isFreeEvent && currentStep === 'details' ? (
+                  <Button
+                    onClick={handleFreeRegistration}
+                    disabled={!canProceed() || isSubmittingFreeRegistration}
+                    className="flex items-center gap-2"
+                    style={{ backgroundColor: primaryColor, color: buttonTextColor }}
+                  >
+                    {isSubmittingFreeRegistration ? (
+                      <>
+                        <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+                        Registering...
+                      </>
+                    ) : (
+                      <>
+                        Complete Registration
+                        <Check className="h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={goToNextStep}
+                    disabled={!canProceed()}
+                    className="flex items-center gap-2"
+                    style={{ backgroundColor: primaryColor, color: buttonTextColor }}
+                  >
+                    {currentStep === 'details' ? 'Continue to Payment' : 'Continue'}
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
           )}

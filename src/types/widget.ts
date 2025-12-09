@@ -93,6 +93,7 @@ export interface EventData {
   logo_url?: string | null;
   featured_image_url?: string | null;
   organization_id: string;
+  pricing_type?: 'paid' | 'free' | 'donation' | null;
   widget_customization?: WidgetCustomization;
   ticket_customization?: Record<string, unknown>;
   email_customization?: Record<string, unknown>;
