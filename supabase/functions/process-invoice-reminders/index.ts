@@ -95,7 +95,8 @@ serve(async (req) => {
         const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         const remainingBalance = invoice.amount_owed - invoice.amount_paid;
 
-        const group = invoice.groups as { name: string; contact_email: string; billing_contact_email: string };
+        const groupData = invoice.groups as unknown as { name: string; contact_email: string; billing_contact_email: string }[] | { name: string; contact_email: string; billing_contact_email: string };
+        const group = Array.isArray(groupData) ? groupData[0] : groupData;
         if (!group) continue;
 
         // Check if we already sent a reminder for this date

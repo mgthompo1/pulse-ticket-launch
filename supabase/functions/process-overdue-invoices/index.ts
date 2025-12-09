@@ -107,7 +107,8 @@ serve(async (req) => {
         });
 
         // Send overdue notification
-        const group = invoice.groups as { name: string; contact_email: string; billing_contact_email: string };
+        const groupData = invoice.groups as unknown as { name: string; contact_email: string; billing_contact_email: string }[] | { name: string; contact_email: string; billing_contact_email: string };
+        const group = Array.isArray(groupData) ? groupData[0] : groupData;
         if (group) {
           try {
             await supabaseClient.functions.invoke('send-group-notification', {
