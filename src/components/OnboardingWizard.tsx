@@ -44,6 +44,9 @@ import {
   QrCode,
   LayoutGrid,
   Smartphone,
+  ClipboardList,
+  Heart,
+  Gift,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -54,9 +57,11 @@ interface OnboardingWizardProps {
   onNavigate?: (tab: string) => void;
 }
 
-type Step = "welcome" | "event-type" | "event-basics" | "tickets" | "payment" | "success";
+type Step = "welcome" | "event-type" | "pricing-type" | "event-basics" | "tickets" | "payment" | "success";
 
 type EventType = "church" | "conference" | "customer" | "partner" | "performance" | "graduation" | null;
+
+type PricingType = "paid" | "free" | "donation" | null;
 
 interface FeatureItem {
   icon: React.ElementType;
@@ -165,9 +170,10 @@ interface TicketData {
   description: string;
 }
 
-const STEPS: { id: Step; title: string; icon: React.ElementType }[] = [
+const ALL_STEPS: { id: Step; title: string; icon: React.ElementType }[] = [
   { id: "welcome", title: "Welcome", icon: Rocket },
   { id: "event-type", title: "Event Type", icon: LayoutGrid },
+  { id: "pricing-type", title: "Pricing", icon: DollarSign },
   { id: "event-basics", title: "Event Details", icon: Calendar },
   { id: "tickets", title: "Tickets", icon: Ticket },
   { id: "payment", title: "Payments", icon: CreditCard },
@@ -180,8 +186,18 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete, onNavigate }: On
   const [createdEventId, setCreatedEventId] = useState<string | null>(null);
   const [eventUrl, setEventUrl] = useState<string>("");
   const [selectedEventType, setSelectedEventType] = useState<EventType>(null);
+  const [selectedPricingType, setSelectedPricingType] = useState<PricingType>(null);
   const { toast } = useToast();
   const { currentOrganization: organization } = useOrganizations();
+
+  // Filter steps based on pricing type - free events skip tickets and payment steps
+  const STEPS = ALL_STEPS.filter(step => {
+    if (selectedPricingType === 'free') {
+      // Free events skip tickets and payment steps
+      return step.id !== 'tickets' && step.id !== 'payment';
+    }
+    return true;
+  });
 
   const [eventData, setEventData] = useState<EventData>({
     name: "",
@@ -251,21 +267,28 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete, onNavigate }: On
           capacity: parseInt(eventData.capacity) || 100,
           description: eventData.description,
           status: "draft",
+          pricing_type: selectedPricingType || "paid",
         })
         .select()
         .single();
 
       if (eventError) throw eventError;
 
-      // Create the ticket type
+      // Create the ticket type (for free events, create a free "RSVP" ticket)
+      const ticketName = selectedPricingType === 'free' ? 'RSVP' : ticketData.name;
+      const ticketPrice = selectedPricingType === 'free' ? 0 : (parseFloat(ticketData.price) || 0);
+      const ticketQuantity = selectedPricingType === 'free'
+        ? (parseInt(eventData.capacity) || 100)
+        : (parseInt(ticketData.quantity) || 100);
+
       const { error: ticketError } = await supabase
         .from("ticket_types")
         .insert({
           event_id: event.id,
-          name: ticketData.name,
-          price: parseFloat(ticketData.price) || 0,
-          quantity_available: parseInt(ticketData.quantity) || 100,
-          description: ticketData.description || null,
+          name: ticketName,
+          price: ticketPrice,
+          quantity_available: ticketQuantity,
+          description: selectedPricingType === 'free' ? 'Free registration' : (ticketData.description || null),
         });
 
       if (ticketError) throw ticketError;
@@ -298,19 +321,22 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete, onNavigate }: On
 
     setIsLoading(true);
     try {
-      // Check billing setup first
-      const { data: billingData } = await supabase.rpc('check_billing_setup', {
-        p_organization_id: organization.id
-      });
-
-      if (!billingData) {
-        toast({
-          title: "Billing Setup Required",
-          description: "Please set up billing and add a payment method before publishing events",
-          variant: "destructive",
+      // Free events don't require billing setup
+      if (selectedPricingType !== 'free') {
+        // Check billing setup first for paid/donation events
+        const { data: billingData } = await supabase.rpc('check_billing_setup', {
+          p_organization_id: organization.id
         });
-        setIsLoading(false);
-        return;
+
+        if (!billingData) {
+          toast({
+            title: "Billing Setup Required",
+            description: "Please set up billing and add a payment method before publishing paid events",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
       }
 
       const { error } = await supabase
@@ -322,7 +348,9 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete, onNavigate }: On
 
       toast({
         title: "Event Published!",
-        description: "Your event is now live and ready to sell tickets.",
+        description: selectedPricingType === 'free'
+          ? "Your event is now live and ready for registrations."
+          : "Your event is now live and ready to sell tickets.",
       });
     } catch (error) {
       console.error("Error publishing:", error);
@@ -521,6 +549,136 @@ export const OnboardingWizard = ({ isOpen, onClose, onComplete, onNavigate }: On
                 Back
               </Button>
               <Button onClick={goToNext} disabled={!selectedEventType}>
+                Continue
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Pricing Type Step */}
+        {currentStep === "pricing-type" && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-indigo-600" />
+                How will attendees register?
+              </DialogTitle>
+              <DialogDescription>
+                Choose how you want to handle registrations for your event.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3 my-4">
+              {/* Paid Event Option */}
+              <Card
+                className={`cursor-pointer transition-all hover:border-indigo-400 ${
+                  selectedPricingType === "paid" ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20" : ""
+                }`}
+                onClick={() => setSelectedPricingType("paid")}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${selectedPricingType === "paid" ? "bg-indigo-600" : "bg-muted"}`}>
+                      <Ticket className={`w-5 h-5 ${selectedPricingType === "paid" ? "text-white" : "text-muted-foreground"}`} />
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-medium ${selectedPricingType === "paid" ? "text-indigo-700 dark:text-indigo-300" : ""}`}>
+                        Paid Event
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Sell tickets with multiple price tiers
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <span className="text-xs bg-muted px-2 py-0.5 rounded">Credit cards</span>
+                        <span className="text-xs bg-muted px-2 py-0.5 rounded">Multiple tiers</span>
+                        <span className="text-xs bg-muted px-2 py-0.5 rounded">Promo codes</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Free Event Option */}
+              <Card
+                className={`cursor-pointer transition-all hover:border-green-400 ${
+                  selectedPricingType === "free" ? "border-green-600 bg-green-50 dark:bg-green-900/20" : ""
+                }`}
+                onClick={() => setSelectedPricingType("free")}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${selectedPricingType === "free" ? "bg-green-600" : "bg-muted"}`}>
+                      <ClipboardList className={`w-5 h-5 ${selectedPricingType === "free" ? "text-white" : "text-muted-foreground"}`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className={`font-medium ${selectedPricingType === "free" ? "text-green-700 dark:text-green-300" : ""}`}>
+                          Free Event / RSVP
+                        </p>
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                          FREE
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Collect registrations without payment
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <span className="text-xs bg-muted px-2 py-0.5 rounded">Simple signup</span>
+                        <span className="text-xs bg-muted px-2 py-0.5 rounded">Email confirmations</span>
+                        <span className="text-xs bg-muted px-2 py-0.5 rounded">QR check-in</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Donation Option */}
+              <Card
+                className={`cursor-pointer transition-all hover:border-purple-400 ${
+                  selectedPricingType === "donation" ? "border-purple-600 bg-purple-50 dark:bg-purple-900/20" : ""
+                }`}
+                onClick={() => setSelectedPricingType("donation")}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${selectedPricingType === "donation" ? "bg-purple-600" : "bg-muted"}`}>
+                      <Heart className={`w-5 h-5 ${selectedPricingType === "donation" ? "text-white" : "text-muted-foreground"}`} />
+                    </div>
+                    <div className="flex-1">
+                      <p className={`font-medium ${selectedPricingType === "donation" ? "text-purple-700 dark:text-purple-300" : ""}`}>
+                        Pay What You Want / Donation
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Let attendees contribute optional amounts
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <span className="text-xs bg-muted px-2 py-0.5 rounded">Suggested amounts</span>
+                        <span className="text-xs bg-muted px-2 py-0.5 rounded">Optional payment</span>
+                        <span className="text-xs bg-muted px-2 py-0.5 rounded">Great for fundraising</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Info box for free events */}
+            {selectedPricingType === "free" && (
+              <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <p className="text-sm text-green-800 dark:text-green-200">
+                  <strong>Free tier includes:</strong> Up to 100 attendees, email confirmations, and QR check-in.
+                  No payment setup required!
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-between">
+              <Button variant="outline" onClick={goToPrevious}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+              <Button onClick={goToNext} disabled={!selectedPricingType}>
                 Continue
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
