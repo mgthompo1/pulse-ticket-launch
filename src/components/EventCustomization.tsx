@@ -121,6 +121,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     abandoned_cart_discount_enabled?: boolean;
     abandoned_cart_discount_code?: string | null;
     abandoned_cart_discount_percent?: number;
+    pricing_type?: 'paid' | 'free' | 'donation';
   } | null>(null);
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
   const [eventVenue, setEventVenue] = useState<string>("");
@@ -304,7 +305,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       
       const { data, error} = await supabase
         .from("events")
-        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, venue_address, venue_lat, venue_lng, venue_place_id, organization_id, description, event_date, event_end_date, capacity, requires_approval, ticket_delivery_method, donations_enabled, donation_title, donation_description, donation_suggested_amounts, abandoned_cart_enabled, abandoned_cart_delay_minutes, abandoned_cart_email_subject, abandoned_cart_email_content, abandoned_cart_discount_enabled, abandoned_cart_discount_code, abandoned_cart_discount_percent")
+        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, venue_address, venue_lat, venue_lng, venue_place_id, organization_id, description, event_date, event_end_date, capacity, requires_approval, ticket_delivery_method, donations_enabled, donation_title, donation_description, donation_suggested_amounts, abandoned_cart_enabled, abandoned_cart_delay_minutes, abandoned_cart_email_subject, abandoned_cart_email_content, abandoned_cart_discount_enabled, abandoned_cart_discount_code, abandoned_cart_discount_percent, pricing_type")
         .eq("id", eventId)
         .single();
 
@@ -357,7 +358,8 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         abandoned_cart_email_content: data.abandoned_cart_email_content,
         abandoned_cart_discount_enabled: data.abandoned_cart_discount_enabled || false,
         abandoned_cart_discount_code: data.abandoned_cart_discount_code,
-        abandoned_cart_discount_percent: data.abandoned_cart_discount_percent || 10
+        abandoned_cart_discount_percent: data.abandoned_cart_discount_percent || 10,
+        pricing_type: data.pricing_type || 'paid'
       });
       setCurrentLogoUrl(data?.logo_url || null);
 
@@ -587,10 +589,11 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           donations_enabled: eventData?.donations_enabled || false,
           donation_title: eventData?.donation_title,
           donation_description: eventData?.donation_description,
-          donation_suggested_amounts: eventData?.donation_suggested_amounts
+          donation_suggested_amounts: eventData?.donation_suggested_amounts,
+          pricing_type: eventData?.pricing_type || 'paid'
         })
         .eq("id", eventId)
-        .select("id, widget_customization, ticket_customization, email_customization, donations_enabled, donation_title, donation_description, donation_suggested_amounts");
+        .select("id, widget_customization, ticket_customization, email_customization, donations_enabled, donation_title, donation_description, donation_suggested_amounts, pricing_type");
 
       if (updateError) {
         console.error("❌ Error updating event:", updateError);
@@ -3022,8 +3025,8 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   checked={eventData?.status === 'published'}
                   onCheckedChange={async (checked) => {
                     try {
-                      // If publishing, check billing setup first
-                      if (checked) {
+                      // If publishing, check billing setup first (skip for free events)
+                      if (checked && eventData?.pricing_type !== 'free') {
                         const { data: billingData } = await supabase.rpc('check_billing_setup', {
                           p_organization_id: organizationId
                         });
@@ -3031,7 +3034,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                         if (!billingData) {
                           toast({
                             title: "Billing Setup Required",
-                            description: "Please set up billing and add a payment method before publishing events",
+                            description: "Please set up billing and add a payment method before publishing paid events",
                             variant: "destructive"
                           });
                           return;
@@ -3063,6 +3066,52 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     }
                   }}
                 />
+              </div>
+
+              {/* Pricing Type */}
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${eventData?.pricing_type === 'free' ? 'bg-green-500/10' : eventData?.pricing_type === 'donation' ? 'bg-purple-500/10' : 'bg-blue-500/10'}`}>
+                    <Ticket className={`h-4 w-4 ${eventData?.pricing_type === 'free' ? 'text-green-500' : eventData?.pricing_type === 'donation' ? 'text-purple-500' : 'text-blue-500'}`} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">Pricing Type</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        eventData?.pricing_type === 'free'
+                          ? 'bg-green-500/20 text-green-600'
+                          : eventData?.pricing_type === 'donation'
+                          ? 'bg-purple-500/20 text-purple-600'
+                          : 'bg-blue-500/20 text-blue-600'
+                      }`}>
+                        {eventData?.pricing_type === 'free' ? 'Free' : eventData?.pricing_type === 'donation' ? 'Donation' : 'Paid'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {eventData?.pricing_type === 'free'
+                        ? 'Free registration - no payment required'
+                        : eventData?.pricing_type === 'donation'
+                        ? 'Pay what you want / donation-based'
+                        : 'Standard paid ticketing'
+                      }
+                    </p>
+                  </div>
+                </div>
+                <Select
+                  value={eventData?.pricing_type || 'paid'}
+                  onValueChange={(value: 'paid' | 'free' | 'donation') => {
+                    setEventData(prev => prev ? { ...prev, pricing_type: value } : null);
+                  }}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="free">Free</SelectItem>
+                    <SelectItem value="donation">Donation</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Event URL and Widget Embedding */}
