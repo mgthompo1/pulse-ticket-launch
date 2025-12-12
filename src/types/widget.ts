@@ -164,6 +164,12 @@ export interface WindcaveLink {
   method: string;
 }
 
+export interface ConditionalDisplay {
+  dependsOn: string;                           // ID of the question this depends on
+  showWhen: string | string[];                 // Value(s) that trigger display
+  operator?: 'equals' | 'notEquals' | 'contains' | 'notContains' | 'isEmpty' | 'isNotEmpty';
+}
+
 export interface CustomQuestion {
   id: string;
   question: string;
@@ -171,4 +177,5 @@ export interface CustomQuestion {
   type: 'text' | 'select' | 'textarea' | 'radio' | 'checkbox' | 'email' | 'phone';
   required: boolean;
   options?: string[] | string;
+  conditionalDisplay?: ConditionalDisplay;     // Show/hide based on other question answers
 }

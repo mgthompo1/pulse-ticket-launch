@@ -42,6 +42,10 @@ interface UseCheckoutEngineOptions {
   // Group purchase context for promo code validation
   groupId?: string | null;
   allocationId?: string | null;
+  // Pre-populated customer info (from URL params, etc.)
+  initialCustomerInfo?: Partial<CustomerInfo>;
+  initialCustomAnswers?: Record<string, string>;
+  initialPromoCode?: string | null;
   enableAbandonedCart?: {
     supabaseClient: any;
     eventId: string | null;
@@ -59,6 +63,9 @@ export const useCheckoutEngine = ({
   promoCodeHooks,
   groupId,
   allocationId,
+  initialCustomerInfo,
+  initialCustomAnswers,
+  initialPromoCode,
   enableAbandonedCart,
 }: UseCheckoutEngineOptions) => {
   // Note: ticketTypes is available for future cart validation if needed
@@ -68,10 +75,10 @@ export const useCheckoutEngine = ({
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [merchandiseCart, setMerchandiseCart] = useState<MerchandiseCartItem[]>([]);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
-    name: '',
-    email: '',
-    phone: '',
-    customAnswers: {},
+    name: initialCustomerInfo?.name || '',
+    email: initialCustomerInfo?.email || '',
+    phone: initialCustomerInfo?.phone || '',
+    customAnswers: { ...initialCustomAnswers, ...initialCustomerInfo?.customAnswers },
   });
   const [attendees, setAttendees] = useState<AttendeeInfo[]>([]);
   const [selectedDonationAmount, setSelectedDonationAmount] = useState<number | null>(null);
@@ -287,6 +294,19 @@ export const useCheckoutEngine = ({
 
     return () => clearTimeout(timer);
   }, [saveAbandonedCart, customerInfo.email, cartItems, enableAbandonedCart?.enabled]);
+
+  // Auto-apply initial promo code from URL params
+  const initialPromoApplied = useRef(false);
+  useEffect(() => {
+    if (initialPromoCode && !initialPromoApplied.current && promoHooks?.setPromoCode) {
+      promoHooks.setPromoCode(initialPromoCode);
+      initialPromoApplied.current = true;
+      // Auto-validate after a short delay to allow state to settle
+      setTimeout(() => {
+        promoHooks.applyPromoCode?.();
+      }, 100);
+    }
+  }, [initialPromoCode, promoHooks]);
 
   return {
     // state

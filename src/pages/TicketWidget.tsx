@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePromoCodeAndDiscounts } from "@/hooks/usePromoCodeAndDiscounts";
 import { useTicketReservation } from "@/hooks/useTicketReservation";
 import { useWidgetTracking } from "@/hooks/useWidgetTracking";
+import { useUrlPrepopulation } from "@/hooks/useUrlPrepopulation";
 import { PromoCodeInput } from "@/components/checkout/PromoCodeInput";
 // Stripe will be loaded dynamically when needed
 import {
@@ -114,6 +115,9 @@ const TicketWidget = () => {
   const { eventId } = useParams();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+
+  // URL pre-population for form fields (name, email, phone, promo, custom questions)
+  const urlPrepopulation = useUrlPrepopulation();
 
   // Group purchase context from URL params
   const groupId = searchParams.get('groupId');
@@ -247,9 +251,10 @@ const TicketWidget = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [merchandiseCart, setMerchandiseCart] = useState<MerchandiseCartItem[]>([]);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
-    name: "",
-    email: "",
-    phone: ""
+    name: urlPrepopulation.customerInfo.name || "",
+    email: urlPrepopulation.customerInfo.email || "",
+    phone: urlPrepopulation.customerInfo.phone || "",
+    customAnswers: urlPrepopulation.customAnswers || {},
   });
   const [selectedDonationAmount, setSelectedDonationAmount] = useState<number | null>(null);
   const [customDonationAmount, setCustomDonationAmount] = useState<string>('');
@@ -548,6 +553,19 @@ const TicketWidget = () => {
     formatTimeRemaining,
     hasActiveReservations,
   } = useTicketReservation(eventId || '');
+
+  // Auto-apply promo code from URL params
+  const initialPromoApplied = useRef(false);
+  useEffect(() => {
+    if (urlPrepopulation.promoCode && !initialPromoApplied.current && setPromoCode) {
+      setPromoCode(urlPrepopulation.promoCode);
+      initialPromoApplied.current = true;
+      // Auto-validate after a short delay to allow state to settle
+      setTimeout(() => {
+        applyPromoCode?.();
+      }, 500);
+    }
+  }, [urlPrepopulation.promoCode, setPromoCode, applyPromoCode]);
 
   const loadEventData = useCallback(async () => {
     try {

@@ -71,7 +71,18 @@ import {
   DollarSign,
   MessageSquare,
   Users,
+  FolderOpen,
+  Utensils,
+  AlertCircle,
+  Accessibility,
+  Shield,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Sparkles,
+  Search,
 } from "lucide-react";
+import { CustomQuestion, ConditionalDisplay } from "@/types/widget";
 
 // Types
 export interface CheckoutElement {
@@ -104,11 +115,26 @@ interface TemplateSettings {
   sidebarPosition: "left" | "right";
 }
 
+// Question template preset type
+interface QuestionTemplate {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  questions: Omit<CustomQuestion, 'id'>[];
+}
+
 interface ElementConfig {
   required?: boolean;
   label?: string;
   placeholder?: string;
   helpText?: string;
+  // For custom_questions and question_group elements
+  questions?: CustomQuestion[];
+  // For question_group
+  groupTitle?: string;
+  collapsible?: boolean;
+  defaultExpanded?: boolean;
   [key: string]: unknown;
 }
 
@@ -122,11 +148,132 @@ type ElementType =
   | "order_summary"
   | "promo_code"
   | "custom_questions"
+  | "question_group"
+  | "question_template"
   | "terms_checkbox"
   | "timer"
   | "text_block"
   | "divider"
   | "info_modal";
+
+// Pre-built question templates
+const QUESTION_TEMPLATES: QuestionTemplate[] = [
+  {
+    id: "dietary",
+    name: "Dietary Requirements",
+    description: "Allergies and dietary restrictions",
+    icon: <Utensils className="h-4 w-4" />,
+    questions: [
+      {
+        question: "Do you have any dietary requirements?",
+        label: "Dietary Requirements",
+        type: "checkbox",
+        required: false,
+        options: ["Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Halal", "Kosher", "None"],
+      },
+      {
+        question: "Please list any food allergies",
+        label: "Food Allergies",
+        type: "textarea",
+        required: false,
+        conditionalDisplay: {
+          dependsOn: "dietary_requirements",
+          showWhen: ["Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Halal", "Kosher"],
+          operator: "contains",
+        },
+      },
+    ],
+  },
+  {
+    id: "emergency",
+    name: "Emergency Contact",
+    description: "Emergency contact information",
+    icon: <AlertCircle className="h-4 w-4" />,
+    questions: [
+      {
+        question: "Emergency contact name",
+        label: "Emergency Contact Name",
+        type: "text",
+        required: true,
+      },
+      {
+        question: "Emergency contact phone",
+        label: "Emergency Contact Phone",
+        type: "phone",
+        required: true,
+      },
+      {
+        question: "Relationship to attendee",
+        label: "Relationship",
+        type: "select",
+        required: false,
+        options: ["Parent/Guardian", "Spouse/Partner", "Sibling", "Friend", "Other"],
+      },
+    ],
+  },
+  {
+    id: "accessibility",
+    name: "Accessibility Needs",
+    description: "Mobility, hearing, and vision requirements",
+    icon: <Accessibility className="h-4 w-4" />,
+    questions: [
+      {
+        question: "Do you require any accessibility accommodations?",
+        label: "Accessibility Needs",
+        type: "radio",
+        required: true,
+        options: ["Yes", "No"],
+      },
+      {
+        question: "Please select the accommodations you need",
+        label: "Accommodation Type",
+        type: "checkbox",
+        required: false,
+        options: ["Wheelchair Access", "Sign Language Interpreter", "Audio Description", "Reserved Seating", "Service Animal", "Other"],
+        conditionalDisplay: {
+          dependsOn: "accessibility_needs",
+          showWhen: "Yes",
+          operator: "equals",
+        },
+      },
+      {
+        question: "Please describe any other accessibility needs",
+        label: "Other Accessibility Details",
+        type: "textarea",
+        required: false,
+        conditionalDisplay: {
+          dependsOn: "accessibility_needs",
+          showWhen: "Yes",
+          operator: "equals",
+        },
+      },
+    ],
+  },
+  {
+    id: "marketing",
+    name: "Marketing Consent",
+    description: "GDPR-compliant opt-in checkboxes",
+    icon: <Shield className="h-4 w-4" />,
+    questions: [
+      {
+        question: "I agree to receive email updates about future events",
+        label: "Email Marketing",
+        type: "checkbox",
+        required: false,
+        options: ["Yes, send me updates"],
+      },
+      {
+        question: "I agree to receive SMS notifications",
+        label: "SMS Marketing",
+        type: "checkbox",
+        required: false,
+        options: ["Yes, send me SMS updates"],
+      },
+    ],
+  },
+];
+
+type ElementCategory = 'core' | 'forms' | 'content' | 'advanced';
 
 interface ElementDefinition {
   type: ElementType;
@@ -135,26 +282,20 @@ interface ElementDefinition {
   description: string;
   required: boolean;
   defaultConfig: ElementConfig;
+  category: ElementCategory;
+  keywords?: string[]; // For search
 }
 
-// Element definitions
+const CATEGORY_INFO: Record<ElementCategory, { label: string; icon: React.ReactNode; description: string }> = {
+  core: { label: 'Core', icon: <Ticket className="h-4 w-4" />, description: 'Essential checkout elements' },
+  forms: { label: 'Forms & Data', icon: <HelpCircle className="h-4 w-4" />, description: 'Collect customer information' },
+  content: { label: 'Content', icon: <Type className="h-4 w-4" />, description: 'Text, images, and layout' },
+  advanced: { label: 'Advanced', icon: <Settings className="h-4 w-4" />, description: 'Extra features and widgets' },
+};
+
+// Element definitions with categories and search keywords
 const AVAILABLE_ELEMENTS: ElementDefinition[] = [
-  {
-    type: "logo",
-    label: "Logo",
-    icon: <Image className="h-4 w-4" />,
-    description: "Your event or organization logo",
-    required: false,
-    defaultConfig: { size: "medium", alignment: "center", showOrgLogo: false },
-  },
-  {
-    type: "event_header",
-    label: "Event Header",
-    icon: <FileText className="h-4 w-4" />,
-    description: "Event name, image, and date",
-    required: false,
-    defaultConfig: { showImage: true, showDate: true, showVenue: true },
-  },
+  // CORE elements
   {
     type: "ticket_selector",
     label: "Ticket Selector",
@@ -162,6 +303,8 @@ const AVAILABLE_ELEMENTS: ElementDefinition[] = [
     description: "Ticket types and quantities",
     required: true,
     defaultConfig: { showDescription: true, showAvailability: true },
+    category: 'core',
+    keywords: ['tickets', 'select', 'buy', 'purchase', 'quantity'],
   },
   {
     type: "customer_info",
@@ -170,7 +313,30 @@ const AVAILABLE_ELEMENTS: ElementDefinition[] = [
     description: "Name, email, phone fields",
     required: true,
     defaultConfig: { requirePhone: false, requireName: true },
+    category: 'core',
+    keywords: ['customer', 'contact', 'name', 'email', 'phone', 'buyer'],
   },
+  {
+    type: "payment_form",
+    label: "Payment",
+    icon: <CreditCard className="h-4 w-4" />,
+    description: "Payment method input",
+    required: true,
+    defaultConfig: { showSavedCards: true },
+    category: 'core',
+    keywords: ['payment', 'card', 'credit', 'stripe', 'checkout', 'pay'],
+  },
+  {
+    type: "order_summary",
+    label: "Order Summary",
+    icon: <ShoppingCart className="h-4 w-4" />,
+    description: "Cart and total breakdown",
+    required: false,
+    defaultConfig: { showItemized: true, collapsible: false },
+    category: 'core',
+    keywords: ['cart', 'total', 'summary', 'order', 'price', 'breakdown'],
+  },
+  // FORMS elements
   {
     type: "attendee_details",
     label: "Attendee Details",
@@ -184,30 +350,8 @@ const AVAILABLE_ELEMENTS: ElementDefinition[] = [
       requirePhone: false,
       showCustomQuestions: true,
     },
-  },
-  {
-    type: "payment_form",
-    label: "Payment",
-    icon: <CreditCard className="h-4 w-4" />,
-    description: "Payment method input",
-    required: true,
-    defaultConfig: { showSavedCards: true },
-  },
-  {
-    type: "order_summary",
-    label: "Order Summary",
-    icon: <ShoppingCart className="h-4 w-4" />,
-    description: "Cart and total breakdown",
-    required: false,
-    defaultConfig: { showItemized: true, collapsible: false },
-  },
-  {
-    type: "promo_code",
-    label: "Promo Code",
-    icon: <Tag className="h-4 w-4" />,
-    description: "Discount code input",
-    required: false,
-    defaultConfig: { autoExpand: false },
+    category: 'forms',
+    keywords: ['attendee', 'guest', 'participant', 'details', 'each', 'per ticket'],
   },
   {
     type: "custom_questions",
@@ -215,7 +359,34 @@ const AVAILABLE_ELEMENTS: ElementDefinition[] = [
     icon: <HelpCircle className="h-4 w-4" />,
     description: "Your custom form fields",
     required: false,
-    defaultConfig: {},
+    defaultConfig: { questions: [] },
+    category: 'forms',
+    keywords: ['questions', 'custom', 'form', 'fields', 'survey', 'input'],
+  },
+  {
+    type: "question_group",
+    label: "Question Group",
+    icon: <FolderOpen className="h-4 w-4" />,
+    description: "Group related questions together",
+    required: false,
+    defaultConfig: {
+      groupTitle: "Additional Information",
+      collapsible: true,
+      defaultExpanded: true,
+      questions: [],
+    },
+    category: 'forms',
+    keywords: ['group', 'section', 'collapse', 'organize', 'questions'],
+  },
+  {
+    type: "question_template",
+    label: "Quick Add Templates",
+    icon: <Sparkles className="h-4 w-4" />,
+    description: "Pre-built question sets",
+    required: false,
+    defaultConfig: { templateId: "" },
+    category: 'forms',
+    keywords: ['template', 'preset', 'dietary', 'emergency', 'accessibility', 'quick'],
   },
   {
     type: "terms_checkbox",
@@ -224,14 +395,29 @@ const AVAILABLE_ELEMENTS: ElementDefinition[] = [
     description: "Acceptance checkbox",
     required: false,
     defaultConfig: { termsUrl: "", privacyUrl: "" },
+    category: 'forms',
+    keywords: ['terms', 'conditions', 'privacy', 'checkbox', 'agree', 'consent'],
+  },
+  // CONTENT elements
+  {
+    type: "logo",
+    label: "Logo",
+    icon: <Image className="h-4 w-4" />,
+    description: "Your event or organization logo",
+    required: false,
+    defaultConfig: { size: "medium", alignment: "center", showOrgLogo: false },
+    category: 'content',
+    keywords: ['logo', 'image', 'brand', 'header'],
   },
   {
-    type: "timer",
-    label: "Timer / Urgency",
-    icon: <Clock className="h-4 w-4" />,
-    description: "Countdown or availability",
+    type: "event_header",
+    label: "Event Header",
+    icon: <FileText className="h-4 w-4" />,
+    description: "Event name, image, and date",
     required: false,
-    defaultConfig: { showCountdown: true, showAvailability: true },
+    defaultConfig: { showImage: true, showDate: true, showVenue: true },
+    category: 'content',
+    keywords: ['event', 'header', 'title', 'date', 'venue', 'banner'],
   },
   {
     type: "text_block",
@@ -240,6 +426,8 @@ const AVAILABLE_ELEMENTS: ElementDefinition[] = [
     description: "Custom text or HTML",
     required: false,
     defaultConfig: { content: "" },
+    category: 'content',
+    keywords: ['text', 'paragraph', 'html', 'content', 'description', 'info'],
   },
   {
     type: "divider",
@@ -248,6 +436,29 @@ const AVAILABLE_ELEMENTS: ElementDefinition[] = [
     description: "Visual separator",
     required: false,
     defaultConfig: { style: "line" },
+    category: 'content',
+    keywords: ['divider', 'line', 'separator', 'space', 'break'],
+  },
+  // ADVANCED elements
+  {
+    type: "promo_code",
+    label: "Promo Code",
+    icon: <Tag className="h-4 w-4" />,
+    description: "Discount code input",
+    required: false,
+    defaultConfig: { autoExpand: false },
+    category: 'advanced',
+    keywords: ['promo', 'discount', 'coupon', 'code', 'voucher'],
+  },
+  {
+    type: "timer",
+    label: "Timer / Urgency",
+    icon: <Clock className="h-4 w-4" />,
+    description: "Countdown or availability",
+    required: false,
+    defaultConfig: { showCountdown: true, showAvailability: true },
+    category: 'advanced',
+    keywords: ['timer', 'countdown', 'urgency', 'limited', 'time'],
   },
   {
     type: "info_modal",
@@ -259,13 +470,15 @@ const AVAILABLE_ELEMENTS: ElementDefinition[] = [
       triggerText: "Learn More",
       modalTitle: "Additional Information",
       modalContent: "Add your content here...",
-      triggerStyle: "link" // "link" | "button" | "icon"
+      triggerStyle: "link"
     },
+    category: 'advanced',
+    keywords: ['modal', 'popup', 'info', 'learn more', 'dialog', 'help'],
   },
 ];
 
-// Draggable Element from Palette
-function DraggableElement({ element }: { element: ElementDefinition }) {
+// Draggable Element from Palette - with larger touch-friendly drag handle
+function DraggableElement({ element, compact = false }: { element: ElementDefinition; compact?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useSortable({
     id: `palette-${element.type}`,
     data: { type: "palette", element },
@@ -276,15 +489,39 @@ function DraggableElement({ element }: { element: ElementDefinition }) {
     opacity: isDragging ? 0.5 : 1,
   };
 
+  if (compact) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        className="flex items-center gap-2 p-2 rounded-lg border bg-card hover:bg-muted/50 hover:border-primary/50 cursor-grab active:cursor-grabbing transition-all group"
+        title={element.description}
+      >
+        <div className="p-1.5 rounded-md bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
+          {element.icon}
+        </div>
+        <span className="font-medium text-xs truncate flex-1">{element.label}</span>
+        {element.required && (
+          <Badge variant="secondary" className="text-[9px] px-1 py-0">
+            Req
+          </Badge>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 cursor-grab active:cursor-grabbing transition-colors"
+      className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 hover:border-primary/50 cursor-grab active:cursor-grabbing transition-all group"
     >
-      <div className="p-2 rounded-md bg-primary/10 text-primary">
+      {/* Large touch-friendly drag handle area */}
+      <div className="p-2 rounded-md bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
         {element.icon}
       </div>
       <div className="flex-1 min-w-0">
@@ -300,24 +537,32 @@ function DraggableElement({ element }: { element: ElementDefinition }) {
           {element.description}
         </p>
       </div>
-      <GripVertical className="h-4 w-4 text-muted-foreground" />
+      <div className="p-2 rounded-md hover:bg-muted transition-colors">
+        <GripVertical className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+      </div>
     </div>
   );
 }
 
-// Sortable Element on Canvas
+// Sortable Element on Canvas - with duplicate button and better drag handles
 function SortableElement({
   element,
   isSelected,
   onSelect,
   onRemove,
+  onDuplicate,
   canDelete,
+  isOverTop,
+  isOverBottom,
 }: {
   element: CheckoutElement;
   isSelected: boolean;
   onSelect: () => void;
   onRemove: () => void;
+  onDuplicate: () => void;
   canDelete: boolean;
+  isOverTop?: boolean;
+  isOverBottom?: boolean;
 }) {
   const {
     attributes,
@@ -331,57 +576,100 @@ function SortableElement({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.3 : 1,
   };
 
   const elementDef = AVAILABLE_ELEMENTS.find((e) => e.type === element.type);
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`group flex items-center gap-2 p-3 rounded-lg border transition-all ${
-        isSelected
-          ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-          : "bg-card hover:border-muted-foreground/30"
-      }`}
-      onClick={onSelect}
-    >
+    <div className="relative">
+      {/* Drop indicator line - top */}
+      {isOverTop && (
+        <div className="absolute -top-1 left-0 right-0 h-0.5 bg-primary rounded-full z-10">
+          <div className="absolute -left-1 -top-1 w-2.5 h-2.5 rounded-full bg-primary" />
+          <div className="absolute -right-1 -top-1 w-2.5 h-2.5 rounded-full bg-primary" />
+        </div>
+      )}
+
       <div
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded"
+        ref={setNodeRef}
+        style={style}
+        className={`group flex items-center gap-2 p-3 rounded-lg border transition-all ${
+          isDragging ? "shadow-lg scale-[1.02]" : ""
+        } ${
+          isSelected
+            ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+            : "bg-card hover:border-muted-foreground/30"
+        }`}
+        onClick={onSelect}
       >
-        <GripVertical className="h-4 w-4 text-muted-foreground" />
-      </div>
-      <div className="p-2 rounded-md bg-primary/10 text-primary">
-        {elementDef?.icon}
-      </div>
-      <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-sm">{element.label}</span>
-          {elementDef?.required && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-              Required
-            </Badge>
-          )}
+        {/* Large touch-friendly drag handle */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-2 -m-1 hover:bg-muted rounded-md transition-colors touch-manipulation"
+          title="Drag to reorder"
+        >
+          <GripVertical className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+        </div>
+
+        <div className="p-2 rounded-md bg-primary/10 text-primary">
+          {elementDef?.icon}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-sm truncate">{element.label}</span>
+            {elementDef?.required && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
+                Required
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Duplicate button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 hover:bg-muted"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDuplicate();
+            }}
+            title="Duplicate element"
+          >
+            <Copy className="h-4 w-4 text-muted-foreground" />
+          </Button>
+
+          {/* Delete button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`h-8 w-8 p-0 ${!canDelete ? 'opacity-30 cursor-not-allowed' : 'hover:bg-destructive/10'} transition-opacity`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (canDelete) {
+                onRemove();
+              }
+            }}
+            disabled={!canDelete}
+            title={!canDelete ? "Last required element cannot be removed" : "Remove element"}
+          >
+            <Trash2 className={`h-4 w-4 ${!canDelete ? 'text-muted-foreground' : 'text-destructive'}`} />
+          </Button>
         </div>
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className={`h-8 w-8 p-0 ${!canDelete ? 'opacity-30 cursor-not-allowed' : 'opacity-60 hover:opacity-100 hover:bg-destructive/10'} transition-opacity`}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (canDelete) {
-            onRemove();
-          }
-        }}
-        disabled={!canDelete}
-        title={!canDelete ? "Last required element cannot be removed" : "Remove element"}
-      >
-        <Trash2 className={`h-4 w-4 ${!canDelete ? 'text-muted-foreground' : 'text-destructive'}`} />
-      </Button>
+
+      {/* Drop indicator line - bottom */}
+      {isOverBottom && (
+        <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full z-10">
+          <div className="absolute -left-1 -top-1 w-2.5 h-2.5 rounded-full bg-primary" />
+          <div className="absolute -right-1 -top-1 w-2.5 h-2.5 rounded-full bg-primary" />
+        </div>
+      )}
     </div>
   );
 }
@@ -394,6 +682,7 @@ function PageCanvas({
   selectedElement,
   onSelectElement,
   onRemoveElement,
+  onDuplicateElement,
   onUpdatePageTitle,
   onRemovePage,
   canDeleteElement,
@@ -404,6 +693,7 @@ function PageCanvas({
   selectedElement: string | null;
   onSelectElement: (id: string) => void;
   onRemoveElement: (elementId: string) => void;
+  onDuplicateElement: (elementId: string) => void;
   onUpdatePageTitle: (title: string) => void;
   onRemovePage: () => void;
   canDeleteElement: (elementId: string) => boolean;
@@ -465,6 +755,7 @@ function PageCanvas({
                   element={element}
                   isSelected={selectedElement === element.id}
                   onSelect={() => onSelectElement(element.id)}
+                  onDuplicate={() => onDuplicateElement(element.id)}
                   onRemove={() => onRemoveElement(element.id)}
                   canDelete={canDeleteElement(element.id)}
                 />
@@ -769,7 +1060,451 @@ function ElementProperties({
             </div>
           </>
         )}
+
+        {/* Custom Questions Builder */}
+        {element.type === "custom_questions" && (
+          <CustomQuestionsEditor
+            questions={(element.config.questions as CustomQuestion[]) || []}
+            onUpdate={(questions) => onUpdate({ questions })}
+          />
+        )}
+
+        {/* Question Group */}
+        {element.type === "question_group" && (
+          <>
+            <div className="space-y-2">
+              <Label className="text-xs">Group Title</Label>
+              <Input
+                value={(element.config.groupTitle as string) || "Additional Information"}
+                onChange={(e) => onUpdate({ groupTitle: e.target.value })}
+                className="h-9"
+                placeholder="Section title..."
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">Collapsible</Label>
+              <Switch
+                checked={element.config.collapsible as boolean}
+                onCheckedChange={(checked) => onUpdate({ collapsible: checked })}
+              />
+            </div>
+            {element.config.collapsible && (
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Start Expanded</Label>
+                <Switch
+                  checked={element.config.defaultExpanded as boolean}
+                  onCheckedChange={(checked) => onUpdate({ defaultExpanded: checked })}
+                />
+              </div>
+            )}
+            <div className="border-t pt-4 mt-4">
+              <CustomQuestionsEditor
+                questions={(element.config.questions as CustomQuestion[]) || []}
+                onUpdate={(questions) => onUpdate({ questions })}
+              />
+            </div>
+          </>
+        )}
+
+        {/* Question Template Selector */}
+        {element.type === "question_template" && (
+          <QuestionTemplateSelector
+            onSelectTemplate={(template) => {
+              const questionsWithIds = template.questions.map((q, idx) => ({
+                ...q,
+                id: `${template.id}_${idx}_${Date.now()}`,
+              }));
+              onUpdate({
+                templateId: template.id,
+                questions: questionsWithIds,
+                label: template.name,
+              });
+            }}
+            selectedTemplateId={(element.config.templateId as string) || ""}
+          />
+        )}
       </div>
+    </div>
+  );
+}
+
+// Custom Questions Editor Component
+function CustomQuestionsEditor({
+  questions,
+  onUpdate,
+}: {
+  questions: CustomQuestion[];
+  onUpdate: (questions: CustomQuestion[]) => void;
+}) {
+  const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
+  const [showNewQuestion, setShowNewQuestion] = useState(false);
+
+  const addQuestion = (type: CustomQuestion['type']) => {
+    const newQuestion: CustomQuestion = {
+      id: `q_${Date.now()}`,
+      question: "",
+      label: "",
+      type,
+      required: false,
+      options: type === 'select' || type === 'radio' || type === 'checkbox' ? [] : undefined,
+    };
+    onUpdate([...questions, newQuestion]);
+    setEditingQuestion(newQuestion.id);
+    setShowNewQuestion(false);
+  };
+
+  const updateQuestion = (id: string, updates: Partial<CustomQuestion>) => {
+    onUpdate(
+      questions.map((q) => (q.id === id ? { ...q, ...updates } : q))
+    );
+  };
+
+  const removeQuestion = (id: string) => {
+    onUpdate(questions.filter((q) => q.id !== id));
+    if (editingQuestion === id) setEditingQuestion(null);
+  };
+
+  const moveQuestion = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= questions.length) return;
+    const newQuestions = [...questions];
+    [newQuestions[index], newQuestions[newIndex]] = [newQuestions[newIndex], newQuestions[index]];
+    onUpdate(newQuestions);
+  };
+
+  const questionTypeIcons: Record<CustomQuestion['type'], React.ReactNode> = {
+    text: <Type className="h-3 w-3" />,
+    email: <Mail className="h-3 w-3" />,
+    phone: <Phone className="h-3 w-3" />,
+    textarea: <FileText className="h-3 w-3" />,
+    select: <ChevronDown className="h-3 w-3" />,
+    radio: <CheckSquare className="h-3 w-3" />,
+    checkbox: <CheckSquare className="h-3 w-3" />,
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <Label className="text-sm font-medium">Questions ({questions.length})</Label>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowNewQuestion(!showNewQuestion)}
+          className="h-7 text-xs"
+        >
+          <Plus className="h-3 w-3 mr-1" />
+          Add
+        </Button>
+      </div>
+
+      {/* Add Question Type Selector */}
+      {showNewQuestion && (
+        <div className="p-3 rounded-lg border bg-muted/30 space-y-2">
+          <p className="text-xs text-muted-foreground">Select field type:</p>
+          <div className="grid grid-cols-2 gap-1">
+            {(['text', 'email', 'phone', 'textarea', 'select', 'radio', 'checkbox'] as const).map((type) => (
+              <Button
+                key={type}
+                variant="ghost"
+                size="sm"
+                className="h-8 justify-start text-xs"
+                onClick={() => addQuestion(type)}
+              >
+                {questionTypeIcons[type]}
+                <span className="ml-2 capitalize">{type}</span>
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Questions List */}
+      <div className="space-y-2">
+        {questions.map((question, index) => (
+          <div
+            key={question.id}
+            className={`p-3 rounded-lg border transition-all ${
+              editingQuestion === question.id
+                ? "border-primary bg-primary/5"
+                : "bg-card hover:border-muted-foreground/30"
+            }`}
+          >
+            <div className="flex items-start gap-2">
+              <div className="flex flex-col gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 p-0"
+                  onClick={() => moveQuestion(index, 'up')}
+                  disabled={index === 0}
+                >
+                  <ChevronUp className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 p-0"
+                  onClick={() => moveQuestion(index, 'down')}
+                  disabled={index === questions.length - 1}
+                >
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </div>
+              <div
+                className="flex-1 cursor-pointer"
+                onClick={() => setEditingQuestion(editingQuestion === question.id ? null : question.id)}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded bg-muted">
+                    {questionTypeIcons[question.type]}
+                  </div>
+                  <span className="text-sm font-medium truncate">
+                    {question.label || question.question || "Untitled Question"}
+                  </span>
+                  {question.required && (
+                    <Badge variant="secondary" className="text-[10px] px-1">Required</Badge>
+                  )}
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                onClick={() => removeQuestion(question.id)}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+
+            {/* Expanded Question Editor */}
+            {editingQuestion === question.id && (
+              <div className="mt-3 pt-3 border-t space-y-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Question Label</Label>
+                  <Input
+                    value={question.label}
+                    onChange={(e) => updateQuestion(question.id, { label: e.target.value })}
+                    className="h-8 text-sm"
+                    placeholder="e.g., Dietary Requirements"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Question Text (optional)</Label>
+                  <Input
+                    value={question.question}
+                    onChange={(e) => updateQuestion(question.id, { question: e.target.value })}
+                    className="h-8 text-sm"
+                    placeholder="e.g., Do you have any dietary requirements?"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Required</Label>
+                  <Switch
+                    checked={question.required}
+                    onCheckedChange={(checked) => updateQuestion(question.id, { required: checked })}
+                  />
+                </div>
+
+                {/* Options for select/radio/checkbox */}
+                {(question.type === 'select' || question.type === 'radio' || question.type === 'checkbox') && (
+                  <div className="space-y-2">
+                    <Label className="text-xs">Options (one per line)</Label>
+                    <textarea
+                      value={Array.isArray(question.options) ? question.options.join('\n') : question.options || ''}
+                      onChange={(e) => updateQuestion(question.id, { options: e.target.value.split('\n').filter(o => o.trim()) })}
+                      className="w-full h-20 p-2 text-xs rounded-md border bg-background resize-none"
+                      placeholder="Option 1&#10;Option 2&#10;Option 3"
+                    />
+                  </div>
+                )}
+
+                {/* Conditional Logic */}
+                <ConditionalLogicEditor
+                  question={question}
+                  allQuestions={questions}
+                  onUpdate={(conditionalDisplay) => updateQuestion(question.id, { conditionalDisplay })}
+                />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {questions.length === 0 && !showNewQuestion && (
+        <div className="p-4 text-center text-muted-foreground border-2 border-dashed rounded-lg">
+          <HelpCircle className="h-6 w-6 mx-auto mb-2 opacity-50" />
+          <p className="text-xs">No questions yet. Click "Add" to create one.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Conditional Logic Editor Component
+function ConditionalLogicEditor({
+  question,
+  allQuestions,
+  onUpdate,
+}: {
+  question: CustomQuestion;
+  allQuestions: CustomQuestion[];
+  onUpdate: (conditionalDisplay: ConditionalDisplay | undefined) => void;
+}) {
+  const [enabled, setEnabled] = useState(!!question.conditionalDisplay);
+  const otherQuestions = allQuestions.filter((q) => q.id !== question.id);
+
+  const handleToggle = (checked: boolean) => {
+    setEnabled(checked);
+    if (!checked) {
+      onUpdate(undefined);
+    } else if (otherQuestions.length > 0) {
+      onUpdate({
+        dependsOn: otherQuestions[0].id,
+        showWhen: "",
+        operator: "equals",
+      });
+    }
+  };
+
+  if (otherQuestions.length === 0) {
+    return null; // Can't add conditional logic without other questions
+  }
+
+  return (
+    <div className="space-y-2 pt-2 border-t">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs flex items-center gap-1">
+          <Eye className="h-3 w-3" />
+          Conditional Display
+        </Label>
+        <Switch checked={enabled} onCheckedChange={handleToggle} />
+      </div>
+
+      {enabled && question.conditionalDisplay && (
+        <div className="space-y-2 p-2 rounded bg-muted/50">
+          <div className="space-y-1">
+            <Label className="text-[10px] text-muted-foreground">Show this question when...</Label>
+            <Select
+              value={question.conditionalDisplay.dependsOn}
+              onValueChange={(value) =>
+                onUpdate({ ...question.conditionalDisplay!, dependsOn: value })
+              }
+            >
+              <SelectTrigger className="h-7 text-xs">
+                <SelectValue placeholder="Select question" />
+              </SelectTrigger>
+              <SelectContent>
+                {otherQuestions.map((q) => (
+                  <SelectItem key={q.id} value={q.id} className="text-xs">
+                    {q.label || q.question || "Untitled"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Select
+              value={question.conditionalDisplay.operator || "equals"}
+              onValueChange={(value) =>
+                onUpdate({
+                  ...question.conditionalDisplay!,
+                  operator: value as ConditionalDisplay['operator'],
+                })
+              }
+            >
+              <SelectTrigger className="h-7 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="equals" className="text-xs">equals</SelectItem>
+                <SelectItem value="notEquals" className="text-xs">does not equal</SelectItem>
+                <SelectItem value="contains" className="text-xs">contains</SelectItem>
+                <SelectItem value="notContains" className="text-xs">does not contain</SelectItem>
+                <SelectItem value="isNotEmpty" className="text-xs">is answered</SelectItem>
+                <SelectItem value="isEmpty" className="text-xs">is empty</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {question.conditionalDisplay.operator !== 'isEmpty' && question.conditionalDisplay.operator !== 'isNotEmpty' && (
+            <div className="space-y-1">
+              <Input
+                value={
+                  Array.isArray(question.conditionalDisplay.showWhen)
+                    ? question.conditionalDisplay.showWhen.join(', ')
+                    : question.conditionalDisplay.showWhen
+                }
+                onChange={(e) =>
+                  onUpdate({
+                    ...question.conditionalDisplay!,
+                    showWhen: e.target.value,
+                  })
+                }
+                className="h-7 text-xs"
+                placeholder="Value to match..."
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Separate multiple values with commas
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Question Template Selector Component
+function QuestionTemplateSelector({
+  onSelectTemplate,
+  selectedTemplateId,
+}: {
+  onSelectTemplate: (template: QuestionTemplate) => void;
+  selectedTemplateId: string;
+}) {
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Choose a pre-built question set to quickly add common form fields.
+      </p>
+      <div className="space-y-2">
+        {QUESTION_TEMPLATES.map((template) => (
+          <div
+            key={template.id}
+            className={`p-3 rounded-lg border cursor-pointer transition-all ${
+              selectedTemplateId === template.id
+                ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                : "hover:border-muted-foreground/30"
+            }`}
+            onClick={() => onSelectTemplate(template)}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-md bg-primary/10 text-primary">
+                {template.icon}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm">{template.name}</span>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {template.questions.length} questions
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">{template.description}</p>
+              </div>
+              {selectedTemplateId === template.id && (
+                <CheckSquare className="h-4 w-4 text-primary" />
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      {selectedTemplateId && (
+        <p className="text-xs text-green-600 flex items-center gap-1">
+          <CheckSquare className="h-3 w-3" />
+          Template applied! Questions will be added to checkout.
+        </p>
+      )}
     </div>
   );
 }
@@ -1122,31 +1857,153 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
       );
     }
 
-    case "custom_questions":
+    case "custom_questions": {
+      const questions = (element.config.questions as CustomQuestion[]) || [];
       return (
         <div className="space-y-4">
           <h3 className="font-semibold">{element.config.label || element.label}</h3>
           <div className="space-y-3 p-4 rounded-lg border border-dashed">
-            <div className="space-y-2">
-              <Label className="text-sm">Dietary Requirements</Label>
-              <Input placeholder="e.g., Vegetarian, Gluten-free" className="bg-muted/50" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm">T-Shirt Size</Label>
-              <Select>
-                <SelectTrigger className="bg-muted/50">
-                  <SelectValue placeholder="Select size" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="s">Small</SelectItem>
-                  <SelectItem value="m">Medium</SelectItem>
-                  <SelectItem value="l">Large</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {questions.length > 0 ? (
+              questions.slice(0, 3).map((q, idx) => (
+                <div key={idx} className="space-y-2">
+                  <Label className="text-sm flex items-center gap-1">
+                    {q.label || q.question}
+                    {q.required && <span className="text-destructive">*</span>}
+                    {q.conditionalDisplay && (
+                      <Badge variant="outline" className="text-[10px] ml-1">Conditional</Badge>
+                    )}
+                  </Label>
+                  {(q.type === 'text' || q.type === 'email' || q.type === 'phone') && (
+                    <Input placeholder={`Enter ${q.label || 'response'}...`} className="bg-muted/50" disabled />
+                  )}
+                  {q.type === 'textarea' && (
+                    <div className="h-16 bg-muted/50 rounded-md border" />
+                  )}
+                  {q.type === 'select' && (
+                    <Select disabled>
+                      <SelectTrigger className="bg-muted/50">
+                        <SelectValue placeholder="Select an option" />
+                      </SelectTrigger>
+                    </Select>
+                  )}
+                  {(q.type === 'radio' || q.type === 'checkbox') && (
+                    <div className="space-y-1">
+                      {(Array.isArray(q.options) ? q.options.slice(0, 3) : []).map((opt, i) => (
+                        <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <div className={`h-4 w-4 rounded${q.type === 'radio' ? '-full' : ''} border`} />
+                          <span>{opt}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-sm">Dietary Requirements</Label>
+                  <Input placeholder="e.g., Vegetarian, Gluten-free" className="bg-muted/50" disabled />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">T-Shirt Size</Label>
+                  <Select disabled>
+                    <SelectTrigger className="bg-muted/50">
+                      <SelectValue placeholder="Select size" />
+                    </SelectTrigger>
+                  </Select>
+                </div>
+              </>
+            )}
+            {questions.length > 3 && (
+              <p className="text-xs text-muted-foreground text-center">
+                + {questions.length - 3} more questions
+              </p>
+            )}
           </div>
         </div>
       );
+    }
+
+    case "question_group": {
+      const questions = (element.config.questions as CustomQuestion[]) || [];
+      const isCollapsible = element.config.collapsible as boolean;
+      const isExpanded = element.config.defaultExpanded as boolean;
+      return (
+        <div className="space-y-2">
+          <div
+            className={`flex items-center justify-between p-3 rounded-lg border ${
+              isCollapsible ? "cursor-pointer hover:bg-muted/30" : ""
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <FolderOpen className="h-4 w-4 text-primary" />
+              <h3 className="font-semibold">
+                {(element.config.groupTitle as string) || "Additional Information"}
+              </h3>
+              <Badge variant="secondary" className="text-[10px]">
+                {questions.length} questions
+              </Badge>
+            </div>
+            {isCollapsible && (
+              isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+            )}
+          </div>
+          {(!isCollapsible || isExpanded) && questions.length > 0 && (
+            <div className="ml-4 pl-4 border-l-2 border-primary/20 space-y-3">
+              {questions.slice(0, 2).map((q, idx) => (
+                <div key={idx} className="space-y-1">
+                  <Label className="text-sm">{q.label || q.question}</Label>
+                  <Input placeholder="..." className="bg-muted/50 h-8" disabled />
+                </div>
+              ))}
+              {questions.length > 2 && (
+                <p className="text-xs text-muted-foreground">+ {questions.length - 2} more</p>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    case "question_template": {
+      const templateId = element.config.templateId as string;
+      const template = QUESTION_TEMPLATES.find(t => t.id === templateId);
+      return (
+        <div className="space-y-3">
+          {template ? (
+            <>
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-md bg-primary/10 text-primary">
+                  {template.icon}
+                </div>
+                <div>
+                  <h3 className="font-semibold">{template.name}</h3>
+                  <p className="text-xs text-muted-foreground">{template.description}</p>
+                </div>
+              </div>
+              <div className="space-y-2 p-3 rounded-lg border border-dashed">
+                {template.questions.slice(0, 2).map((q, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <Label className="text-sm">{q.label}</Label>
+                    <Input placeholder="..." className="bg-muted/50 h-8" disabled />
+                  </div>
+                ))}
+                {template.questions.length > 2 && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    + {template.questions.length - 2} more questions
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="p-4 text-center border-2 border-dashed rounded-lg">
+              <Sparkles className="h-6 w-6 mx-auto mb-2 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">Select a template in the properties panel</p>
+            </div>
+          )}
+        </div>
+      );
+    }
 
     default:
       return (
@@ -1180,6 +2037,13 @@ export function CheckoutTemplateBuilder({
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
   const [currentPreviewPage, setCurrentPreviewPage] = useState(0);
+  const [elementSearch, setElementSearch] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState<Record<ElementCategory, boolean>>({
+    core: true,
+    forms: true,
+    content: false,
+    advanced: false,
+  });
 
   // Initialize template
   const [template, setTemplate] = useState<CheckoutTemplate>(() => {
@@ -1494,6 +2358,37 @@ export function CheckoutTemplateBuilder({
     }
   };
 
+  // Duplicate an element
+  const duplicateElement = (pageIndex: number, elementId: string) => {
+    const element = template.pages[pageIndex].elements.find((e) => e.id === elementId);
+    if (!element) return;
+
+    const elementIndex = template.pages[pageIndex].elements.findIndex((e) => e.id === elementId);
+    const newElement: CheckoutElement = {
+      ...element,
+      id: `el-${Date.now()}`,
+      label: `${element.label} (Copy)`,
+      config: JSON.parse(JSON.stringify(element.config)), // Deep clone config
+    };
+
+    setTemplate((prev) => {
+      const newPages = [...prev.pages];
+      const newElements = [...newPages[pageIndex].elements];
+      newElements.splice(elementIndex + 1, 0, newElement);
+      newPages[pageIndex] = {
+        ...newPages[pageIndex],
+        elements: newElements,
+      };
+      return { ...prev, pages: newPages };
+    });
+
+    setSelectedElement(newElement.id);
+    toast({
+      title: "Element Duplicated",
+      description: `${element.label} has been duplicated`,
+    });
+  };
+
   const updateElementConfig = useCallback(
     (elementId: string, config: Partial<ElementConfig>) => {
       setTemplate((prev) => ({
@@ -1794,21 +2689,98 @@ export function CheckoutTemplateBuilder({
             <div className="flex flex-1 overflow-hidden">
               {/* Left Panel - Elements Palette */}
               <div className="w-64 border-r bg-muted/20 flex flex-col">
-                <div className="p-3 border-b">
+                <div className="p-3 border-b space-y-2">
                   <h3 className="font-medium text-sm">Elements</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Drag to add to your checkout
-                  </p>
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Search elements..."
+                      value={elementSearch}
+                      onChange={(e) => setElementSearch(e.target.value)}
+                      className="h-8 pl-8 text-xs"
+                    />
+                    {elementSearch && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-5 w-5 p-0"
+                        onClick={() => setElementSearch('')}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <ScrollArea className="flex-1 p-3">
+                <ScrollArea className="flex-1">
                   <SortableContext
                     items={AVAILABLE_ELEMENTS.map((e) => `palette-${e.type}`)}
                     strategy={verticalListSortingStrategy}
                   >
-                    <div className="space-y-2">
-                      {AVAILABLE_ELEMENTS.map((element) => (
-                        <DraggableElement key={element.type} element={element} />
-                      ))}
+                    <div className="p-2">
+                      {elementSearch ? (
+                        // Search results - flat list
+                        <div className="space-y-1">
+                          {AVAILABLE_ELEMENTS.filter((el) => {
+                            const search = elementSearch.toLowerCase();
+                            return (
+                              el.label.toLowerCase().includes(search) ||
+                              el.description.toLowerCase().includes(search) ||
+                              el.keywords?.some(k => k.toLowerCase().includes(search))
+                            );
+                          }).map((element) => (
+                            <DraggableElement key={element.type} element={element} compact />
+                          ))}
+                          {AVAILABLE_ELEMENTS.filter((el) => {
+                            const search = elementSearch.toLowerCase();
+                            return (
+                              el.label.toLowerCase().includes(search) ||
+                              el.description.toLowerCase().includes(search) ||
+                              el.keywords?.some(k => k.toLowerCase().includes(search))
+                            );
+                          }).length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-4">
+                              No elements match "{elementSearch}"
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        // Categorized view
+                        <div className="space-y-2">
+                          {(Object.keys(CATEGORY_INFO) as ElementCategory[]).map((category) => {
+                            const categoryElements = AVAILABLE_ELEMENTS.filter(el => el.category === category);
+                            const isExpanded = expandedCategories[category];
+                            const info = CATEGORY_INFO[category];
+
+                            return (
+                              <div key={category} className="rounded-lg border bg-background">
+                                <button
+                                  onClick={() => setExpandedCategories(prev => ({
+                                    ...prev,
+                                    [category]: !prev[category],
+                                  }))}
+                                  className="w-full flex items-center justify-between p-2 hover:bg-muted/50 rounded-t-lg transition-colors"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    {info.icon}
+                                    <span className="text-xs font-medium">{info.label}</span>
+                                    <Badge variant="secondary" className="h-4 text-[10px] px-1">
+                                      {categoryElements.length}
+                                    </Badge>
+                                  </div>
+                                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? '' : '-rotate-90'}`} />
+                                </button>
+                                {isExpanded && (
+                                  <div className="p-1.5 pt-0 space-y-1">
+                                    {categoryElements.map((element) => (
+                                      <DraggableElement key={element.type} element={element} compact />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </SortableContext>
                 </ScrollArea>
@@ -1877,6 +2849,7 @@ export function CheckoutTemplateBuilder({
                                 selectedElement={selectedElement}
                                 onSelectElement={setSelectedElement}
                                 onRemoveElement={(elementId) => removeElement(pageIndex, elementId)}
+                                onDuplicateElement={(elementId) => duplicateElement(pageIndex, elementId)}
                                 onUpdatePageTitle={(title) => updatePageTitle(pageIndex, title)}
                                 onRemovePage={() => removePage(pageIndex)}
                                 canDeleteElement={canDeleteElement}

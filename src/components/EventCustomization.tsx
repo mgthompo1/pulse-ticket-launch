@@ -14,7 +14,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound, Heart, Share2, FileText, Calendar, Send, ShoppingCart, ClipboardList, Target, BarChart3 } from "lucide-react";
+import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound, Heart, Share2, FileText, Calendar, Send, ShoppingCart, ClipboardList, Target, BarChart3, Link2, Unlink } from "lucide-react";
+import { ConditionalDisplay } from "@/types/widget";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import MerchandiseManager from "@/components/MerchandiseManager";
@@ -630,7 +631,8 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
   const updateWidgetCustomization = (path: string[], value: any) => {
     console.log("🔍 Updating widget customization:", { path, value });
     setWidgetCustomization(prev => {
-      const updated = { ...prev } as any;
+      // Deep clone to ensure React detects changes at all levels
+      const updated = JSON.parse(JSON.stringify(prev || {}));
       let current = updated;
       for (let i = 0; i < path.length - 1; i++) {
         if (!current[path[i]]) {
@@ -1480,6 +1482,8 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                     <div className="flex items-center justify-between mb-4">
                       <h4 className="font-medium">Question Management</h4>
                       <Button
+                        type="button"
+                        variant="default"
                         onClick={() => {
                           const currentQuestions = widgetCustomization.customQuestions?.questions || [];
                           if (currentQuestions.length >= 10) {
@@ -1500,6 +1504,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                             category: "general"
                           };
                           updateWidgetCustomization(['customQuestions', 'questions'], [...currentQuestions, newQuestion]);
+                          toast({
+                            title: "Question Added",
+                            description: `Question ${currentCount + 1} has been added. Don't forget to save your changes.`,
+                          });
                         }}
                         size="sm"
                         disabled={(widgetCustomization.customQuestions?.questions || []).length >= 10}
@@ -1638,6 +1646,143 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                             />
                             <Label htmlFor={`required-${question.id}`}>Required field</Label>
                           </div>
+
+                          {/* Conditional Display Logic */}
+                          {(() => {
+                            const allQuestions = widgetCustomization.customQuestions?.questions || [];
+                            const otherQuestions = allQuestions.filter((q: any) => q.id !== question.id);
+
+                            if (otherQuestions.length === 0) return null;
+
+                            const hasCondition = !!question.conditionalDisplay;
+
+                            return (
+                              <div className="border-t pt-4 mt-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    {hasCondition ? (
+                                      <Link2 className="h-4 w-4 text-primary" />
+                                    ) : (
+                                      <Unlink className="h-4 w-4 text-muted-foreground" />
+                                    )}
+                                    <Label className="text-sm font-medium">Conditional Display</Label>
+                                  </div>
+                                  <Switch
+                                    checked={hasCondition}
+                                    onCheckedChange={(checked) => {
+                                      const currentQuestions = widgetCustomization.customQuestions?.questions || [];
+                                      const updatedQuestions = currentQuestions.map((q: any) => {
+                                        if (q.id !== question.id) return q;
+                                        if (checked) {
+                                          return {
+                                            ...q,
+                                            conditionalDisplay: {
+                                              dependsOn: otherQuestions[0]?.id || '',
+                                              showWhen: '',
+                                              operator: 'equals'
+                                            }
+                                          };
+                                        } else {
+                                          const { conditionalDisplay, ...rest } = q;
+                                          return rest;
+                                        }
+                                      });
+                                      updateWidgetCustomization(['customQuestions', 'questions'], updatedQuestions);
+                                    }}
+                                  />
+                                </div>
+
+                                {hasCondition && question.conditionalDisplay && (
+                                  <div className="p-3 rounded-lg bg-muted/50 space-y-3">
+                                    <p className="text-xs text-muted-foreground">Show this question when...</p>
+
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Question</Label>
+                                      <Select
+                                        value={question.conditionalDisplay.dependsOn}
+                                        onValueChange={(value) => {
+                                          const currentQuestions = widgetCustomization.customQuestions?.questions || [];
+                                          const updatedQuestions = currentQuestions.map((q: any) =>
+                                            q.id === question.id
+                                              ? { ...q, conditionalDisplay: { ...q.conditionalDisplay, dependsOn: value } }
+                                              : q
+                                          );
+                                          updateWidgetCustomization(['customQuestions', 'questions'], updatedQuestions);
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-9">
+                                          <SelectValue placeholder="Select a question" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {otherQuestions.map((q: any) => (
+                                            <SelectItem key={q.id} value={q.id}>
+                                              {q.label || 'Untitled Question'}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                      <Label className="text-xs">Condition</Label>
+                                      <Select
+                                        value={question.conditionalDisplay.operator || 'equals'}
+                                        onValueChange={(value) => {
+                                          const currentQuestions = widgetCustomization.customQuestions?.questions || [];
+                                          const updatedQuestions = currentQuestions.map((q: any) =>
+                                            q.id === question.id
+                                              ? { ...q, conditionalDisplay: { ...q.conditionalDisplay, operator: value } }
+                                              : q
+                                          );
+                                          updateWidgetCustomization(['customQuestions', 'questions'], updatedQuestions);
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-9">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="equals">equals</SelectItem>
+                                          <SelectItem value="notEquals">does not equal</SelectItem>
+                                          <SelectItem value="contains">contains</SelectItem>
+                                          <SelectItem value="notContains">does not contain</SelectItem>
+                                          <SelectItem value="isNotEmpty">is answered</SelectItem>
+                                          <SelectItem value="isEmpty">is empty</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+
+                                    {question.conditionalDisplay.operator !== 'isEmpty' &&
+                                     question.conditionalDisplay.operator !== 'isNotEmpty' && (
+                                      <div className="space-y-2">
+                                        <Label className="text-xs">Value</Label>
+                                        <Input
+                                          value={
+                                            Array.isArray(question.conditionalDisplay.showWhen)
+                                              ? question.conditionalDisplay.showWhen.join(', ')
+                                              : question.conditionalDisplay.showWhen || ''
+                                          }
+                                          onChange={(e) => {
+                                            const currentQuestions = widgetCustomization.customQuestions?.questions || [];
+                                            const updatedQuestions = currentQuestions.map((q: any) =>
+                                              q.id === question.id
+                                                ? { ...q, conditionalDisplay: { ...q.conditionalDisplay, showWhen: e.target.value } }
+                                                : q
+                                            );
+                                            updateWidgetCustomization(['customQuestions', 'questions'], updatedQuestions);
+                                          }}
+                                          placeholder="Value to match..."
+                                          className="h-9"
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                          Separate multiple values with commas
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       ))}
 

@@ -14,6 +14,7 @@ import { CustomerInfo, CustomQuestion, EventData } from '@/types/widget';
 import { Theme } from '@/types/theme';
 import { Heart } from 'lucide-react';
 import { AttendeeDetailsForm, AttendeeInfo } from './AttendeeDetailsForm';
+import { isQuestionVisible } from '@/hooks/useConditionalField';
 
 interface CustomerDetailsProps {
   customQuestions: CustomQuestion[];
@@ -385,7 +386,14 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
                 <CardTitle style={{ color: theme.headerTextColor }}>Additional Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {safeCustomQuestions.map((question, index) => renderCustomQuestion(question, index))}
+                {safeCustomQuestions.map((question, index) => {
+                  // Check conditional display logic
+                  const currentAnswers = form.watch('customAnswers') || {};
+                  if (!isQuestionVisible(question, currentAnswers)) {
+                    return null;
+                  }
+                  return renderCustomQuestion(question, index);
+                })}
               </CardContent>
             </Card>
            )}

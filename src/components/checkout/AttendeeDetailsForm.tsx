@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Users } from "lucide-react";
 import { CustomQuestion } from '@/types/widget';
+import { isQuestionVisible } from '@/hooks/useConditionalField';
 
 export interface AttendeeInfo {
   attendee_name: string;
@@ -242,6 +243,12 @@ export const AttendeeDetailsForm: React.FC<AttendeeDetailsFormProps> = ({
                 <div className="space-y-3 pt-2 border-t border-slate-200">
                   <p className="text-sm font-medium text-slate-700">Additional Information</p>
                   {safeCustomQuestions.map((question) => {
+                    // Check conditional display logic
+                    const currentAnswers = attendee.custom_answers || {};
+                    if (!isQuestionVisible(question, currentAnswers)) {
+                      return null;
+                    }
+
                     const questionId = question.id || question.question;
                     const currentValue = attendee.custom_answers?.[questionId] || '';
 
