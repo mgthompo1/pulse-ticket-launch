@@ -81,6 +81,12 @@ import {
   Copy,
   Sparkles,
   Search,
+  Heading,
+  Square,
+  Columns,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from "lucide-react";
 import { CustomQuestion, ConditionalDisplay } from "@/types/widget";
 
@@ -90,6 +96,7 @@ export interface CheckoutElement {
   type: ElementType;
   label: string;
   config: ElementConfig;
+  column?: "left" | "right"; // For two-column layout
 }
 
 export interface CheckoutPage {
@@ -111,8 +118,12 @@ interface TemplateSettings {
   mobileLayout: "stack" | "accordion";
   showOrderSummaryOnAllPages: boolean;
   themeMode: "light" | "dark" | "system";
-  layout: "single" | "sidebar";
+  layout: "single" | "sidebar" | "two_column";
   sidebarPosition: "left" | "right";
+  // Two-column specific settings
+  twoColumnLeftWidth: "1/3" | "1/2" | "2/3";
+  twoColumnGap: "sm" | "md" | "lg";
+  twoColumnStackOnMobile: boolean;
 }
 
 // Question template preset type
@@ -154,7 +165,9 @@ type ElementType =
   | "timer"
   | "text_block"
   | "divider"
-  | "info_modal";
+  | "info_modal"
+  | "section_header"
+  | "container";
 
 // Pre-built question templates
 const QUESTION_TEMPLATES: QuestionTemplate[] = [
@@ -435,9 +448,29 @@ const AVAILABLE_ELEMENTS: ElementDefinition[] = [
     icon: <Minus className="h-4 w-4" />,
     description: "Visual separator",
     required: false,
-    defaultConfig: { style: "line" },
+    defaultConfig: { style: "line", thickness: "thin", width: "full", spacing: "md" },
     category: 'content',
     keywords: ['divider', 'line', 'separator', 'space', 'break'],
+  },
+  {
+    type: "section_header",
+    label: "Section Header",
+    icon: <Heading className="h-4 w-4" />,
+    description: "Styled heading for sections",
+    required: false,
+    defaultConfig: { text: "Section Title", size: "lg", alignment: "left", showDivider: false },
+    category: 'content',
+    keywords: ['header', 'heading', 'title', 'section', 'h1', 'h2'],
+  },
+  {
+    type: "container",
+    label: "Container",
+    icon: <Square className="h-4 w-4" />,
+    description: "Style wrapper for elements below",
+    required: false,
+    defaultConfig: { padding: "md", borderRadius: "md", border: false },
+    category: 'content',
+    keywords: ['container', 'wrapper', 'section', 'box', 'background', 'group'],
   },
   // ADVANCED elements
   {
@@ -544,7 +577,115 @@ function DraggableElement({ element, compact = false }: { element: ElementDefini
   );
 }
 
-// Sortable Element on Canvas - with duplicate button and better drag handles
+// Visual Element Canvas Item - shows actual preview of element
+function VisualCanvasElement({
+  element,
+  isSelected,
+  onSelect,
+  onRemove,
+  onDuplicate,
+  canDelete,
+  renderPreview,
+  allElements,
+  onUpdateElementConfig,
+}: {
+  element: CheckoutElement;
+  isSelected: boolean;
+  onSelect: () => void;
+  onRemove: () => void;
+  onDuplicate: () => void;
+  canDelete: boolean;
+  renderPreview: (element: CheckoutElement) => React.ReactNode;
+  allElements?: CheckoutElement[];
+  onUpdateElementConfig?: (elementId: string, config: Record<string, unknown>) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: element.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+  };
+
+  const elementDef = AVAILABLE_ELEMENTS.find((e) => e.type === element.type);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group relative rounded-lg transition-all ${
+        isDragging ? "shadow-lg scale-[1.01] z-10" : ""
+      } ${
+        isSelected
+          ? "ring-2 ring-primary ring-offset-2"
+          : "hover:ring-1 hover:ring-muted-foreground/30"
+      }`}
+      onClick={onSelect}
+    >
+      {/* Floating toolbar on hover/select */}
+      <div className={`absolute -top-3 right-2 z-20 flex items-center gap-1 bg-background border rounded-md shadow-sm px-1 py-0.5 transition-opacity ${
+        isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+      }`}>
+        {/* Element type label */}
+        <div className="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground">
+          {elementDef?.icon}
+          <span>{element.label}</span>
+        </div>
+        <div className="w-px h-4 bg-border" />
+        {/* Drag handle */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded transition-colors"
+          title="Drag to reorder"
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
+        {/* Duplicate */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 hover:bg-muted"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDuplicate();
+          }}
+          title="Duplicate"
+        >
+          <Copy className="h-3 w-3 text-muted-foreground" />
+        </Button>
+        {/* Delete */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`h-6 w-6 p-0 ${!canDelete ? 'opacity-30' : 'hover:bg-destructive/10'}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (canDelete) onRemove();
+          }}
+          disabled={!canDelete}
+          title="Delete"
+        >
+          <Trash2 className={`h-3 w-3 ${!canDelete ? 'text-muted-foreground' : 'text-destructive'}`} />
+        </Button>
+      </div>
+
+      {/* Visual Preview of Element */}
+      <div className="p-3">
+        {renderPreview(element)}
+      </div>
+    </div>
+  );
+}
+
+// Legacy card-style element (for compact view)
 function SortableElement({
   element,
   isSelected,
@@ -674,7 +815,7 @@ function SortableElement({
   );
 }
 
-// Page Canvas
+// Page Canvas - WYSIWYG visual canvas
 function PageCanvas({
   page,
   pageIndex,
@@ -686,6 +827,12 @@ function PageCanvas({
   onUpdatePageTitle,
   onRemovePage,
   canDeleteElement,
+  renderPreview,
+  visualMode = true,
+  allElements,
+  onUpdateElementConfig,
+  layout = "single",
+  twoColumnSettings,
 }: {
   page: CheckoutPage;
   pageIndex: number;
@@ -697,11 +844,82 @@ function PageCanvas({
   onUpdatePageTitle: (title: string) => void;
   onRemovePage: () => void;
   canDeleteElement: (elementId: string) => boolean;
+  renderPreview: (element: CheckoutElement) => React.ReactNode;
+  visualMode?: boolean;
+  allElements: CheckoutElement[];
+  onUpdateElementConfig: (elementId: string, config: Record<string, unknown>) => void;
+  layout?: "single" | "sidebar" | "two_column";
+  twoColumnSettings?: {
+    leftWidth: "1/3" | "1/2" | "2/3";
+    gap: "sm" | "md" | "lg";
+  };
 }) {
   // Make the page itself a droppable target
   const { setNodeRef, isOver } = useDroppable({
     id: `page-drop-${pageIndex}`,
   });
+
+  // Droppable zones for two-column layout
+  const { setNodeRef: setLeftRef, isOver: isOverLeft } = useDroppable({
+    id: `page-${pageIndex}-left`,
+  });
+  const { setNodeRef: setRightRef, isOver: isOverRight } = useDroppable({
+    id: `page-${pageIndex}-right`,
+  });
+
+  // Filter elements by column for two-column layout
+  // Unassigned elements default to left column (same as preview)
+  const leftElements = page.elements.filter((e) => e.column === "left" || !e.column);
+  const rightElements = page.elements.filter((e) => e.column === "right");
+
+  // Column width classes
+  const getColumnWidthClasses = () => {
+    if (!twoColumnSettings) return { left: "w-1/2", right: "w-1/2" };
+    switch (twoColumnSettings.leftWidth) {
+      case "1/3": return { left: "w-1/3", right: "w-2/3" };
+      case "2/3": return { left: "w-2/3", right: "w-1/3" };
+      default: return { left: "w-1/2", right: "w-1/2" };
+    }
+  };
+  const columnWidths = getColumnWidthClasses();
+
+  // Gap classes
+  const gapClasses = {
+    sm: "gap-2",
+    md: "gap-4",
+    lg: "gap-8",
+  };
+  const gapClass = twoColumnSettings ? gapClasses[twoColumnSettings.gap] : "gap-4";
+
+  const renderElementsList = (elements: CheckoutElement[]) => {
+    if (visualMode) {
+      return elements.map((element) => (
+        <VisualCanvasElement
+          key={element.id}
+          element={element}
+          isSelected={selectedElement === element.id}
+          onSelect={() => onSelectElement(element.id)}
+          onDuplicate={() => onDuplicateElement(element.id)}
+          onRemove={() => onRemoveElement(element.id)}
+          canDelete={canDeleteElement(element.id)}
+          renderPreview={renderPreview}
+          allElements={allElements}
+          onUpdateElementConfig={onUpdateElementConfig}
+        />
+      ));
+    }
+    return elements.map((element) => (
+      <SortableElement
+        key={element.id}
+        element={element}
+        isSelected={selectedElement === element.id}
+        onSelect={() => onSelectElement(element.id)}
+        onDuplicate={() => onDuplicateElement(element.id)}
+        onRemove={() => onRemoveElement(element.id)}
+        canDelete={canDeleteElement(element.id)}
+      />
+    ));
+  };
 
   return (
     <Card className="flex-1">
@@ -731,40 +949,134 @@ function PageCanvas({
         </div>
       </CardHeader>
       <CardContent>
-        <SortableContext
-          items={page.elements.map((e) => e.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          <div
-            ref={setNodeRef}
-            className={`space-y-2 min-h-[200px] p-4 rounded-lg border-2 border-dashed transition-colors ${
-              isOver
-                ? "border-primary bg-primary/10"
-                : "border-muted-foreground/20 bg-muted/30"
-            }`}
-          >
-            {page.elements.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
-                <Layers className="h-8 w-8 mb-2 opacity-50" />
-                <p className="text-sm">Drag elements here</p>
+        {layout === "two_column" ? (
+          // Two-column layout
+          <div className={`flex ${gapClass} min-h-[300px]`}>
+            {/* Left Column */}
+            <div
+              ref={setLeftRef}
+              className={`${columnWidths.left} rounded-lg border-2 border-dashed transition-colors ${
+                isOverLeft
+                  ? "border-primary bg-primary/10"
+                  : "border-muted-foreground/20"
+              } ${visualMode ? "p-4 space-y-4 bg-white dark:bg-gray-950" : "p-3 space-y-2 bg-muted/30"}`}
+            >
+              <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                <PanelLeft className="h-3 w-3" />
+                Left Column
               </div>
-            ) : (
-              page.elements.map((element) => (
-                <SortableElement
-                  key={element.id}
-                  element={element}
-                  isSelected={selectedElement === element.id}
-                  onSelect={() => onSelectElement(element.id)}
-                  onDuplicate={() => onDuplicateElement(element.id)}
-                  onRemove={() => onRemoveElement(element.id)}
-                  canDelete={canDeleteElement(element.id)}
-                />
-              ))
-            )}
+              <SortableContext
+                items={leftElements.map((e) => e.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {leftElements.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-[150px] text-muted-foreground">
+                    <Layers className="h-6 w-6 mb-2 opacity-50" />
+                    <p className="text-xs">Drop elements here</p>
+                  </div>
+                ) : (
+                  renderElementsList(leftElements)
+                )}
+              </SortableContext>
+            </div>
+
+            {/* Right Column */}
+            <div
+              ref={setRightRef}
+              className={`${columnWidths.right} rounded-lg border-2 border-dashed transition-colors ${
+                isOverRight
+                  ? "border-primary bg-primary/10"
+                  : "border-muted-foreground/20"
+              } ${visualMode ? "p-4 space-y-4 bg-white dark:bg-gray-950" : "p-3 space-y-2 bg-muted/30"}`}
+            >
+              <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                <PanelRight className="h-3 w-3" />
+                Right Column
+              </div>
+              <SortableContext
+                items={rightElements.map((e) => e.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {rightElements.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-[150px] text-muted-foreground">
+                    <Layers className="h-6 w-6 mb-2 opacity-50" />
+                    <p className="text-xs">Drop elements here</p>
+                  </div>
+                ) : (
+                  renderElementsList(rightElements)
+                )}
+              </SortableContext>
+            </div>
           </div>
-        </SortableContext>
+        ) : (
+          // Single column or sidebar layout
+          <SortableContext
+            items={page.elements.map((e) => e.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div
+              ref={setNodeRef}
+              className={`min-h-[200px] rounded-lg border-2 border-dashed transition-colors ${
+                isOver
+                  ? "border-primary bg-primary/10"
+                  : "border-muted-foreground/20"
+              } ${visualMode ? "p-6 space-y-4 bg-white dark:bg-gray-950" : "p-4 space-y-2 bg-muted/30"}`}
+            >
+              {page.elements.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+                  <Layers className="h-8 w-8 mb-2 opacity-50" />
+                  <p className="text-sm">Drag elements here</p>
+                  <p className="text-xs mt-1">Build your checkout visually</p>
+                </div>
+              ) : (
+                renderElementsList(page.elements)
+              )}
+            </div>
+          </SortableContext>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+// Color Picker Component
+function ColorPicker({
+  value,
+  onChange,
+  label
+}: {
+  value?: string;
+  onChange: (color: string) => void;
+  label: string;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label className="text-xs">{label}</Label>
+      <div className="flex gap-2">
+        <input
+          type="color"
+          value={value || "#ffffff"}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-10 h-9 rounded border cursor-pointer bg-background"
+        />
+        <Input
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="#ffffff"
+          className="h-9 flex-1 font-mono text-sm"
+        />
+        {value && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 px-2"
+            onClick={() => onChange("")}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -917,25 +1229,82 @@ function ElementProperties({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="small">Small</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="large">Large</SelectItem>
+                  <SelectItem value="small">Small (48px)</SelectItem>
+                  <SelectItem value="medium">Medium (64px)</SelectItem>
+                  <SelectItem value="large">Large (96px)</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {(element.config.size as string) === "custom" && (
+              <div className="space-y-2">
+                <Label className="text-xs">Custom Height (px)</Label>
+                <Input
+                  type="number"
+                  value={(element.config.customHeight as number) || 64}
+                  onChange={(e) => onUpdate({ customHeight: parseInt(e.target.value) || 64 })}
+                  className="h-9"
+                  min={16}
+                  max={300}
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label className="text-xs">Max Width (px)</Label>
+              <Input
+                type="number"
+                value={(element.config.maxWidth as number) || ""}
+                onChange={(e) => onUpdate({ maxWidth: e.target.value ? parseInt(e.target.value) : undefined })}
+                className="h-9"
+                placeholder="No limit"
+                min={50}
+                max={800}
+              />
+              <p className="text-xs text-muted-foreground">Leave empty for no limit</p>
+            </div>
             <div className="space-y-2">
               <Label className="text-xs">Alignment</Label>
+              <div className="flex gap-1">
+                <Button
+                  variant={(element.config.alignment as string) === "left" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1 h-9"
+                  onClick={() => onUpdate({ alignment: "left" })}
+                >
+                  <AlignLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={(element.config.alignment as string) === "center" || !(element.config.alignment as string) ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1 h-9"
+                  onClick={() => onUpdate({ alignment: "center" })}
+                >
+                  <AlignCenter className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={(element.config.alignment as string) === "right" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1 h-9"
+                  onClick={() => onUpdate({ alignment: "right" })}
+                >
+                  <AlignRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Vertical Padding</Label>
               <Select
-                value={(element.config.alignment as string) || "center"}
-                onValueChange={(value) => onUpdate({ alignment: value })}
+                value={(element.config.verticalPadding as string) || "none"}
+                onValueChange={(value) => onUpdate({ verticalPadding: value })}
               >
                 <SelectTrigger className="h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="left">Left</SelectItem>
-                  <SelectItem value="center">Center</SelectItem>
-                  <SelectItem value="right">Right</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="sm">Small</SelectItem>
+                  <SelectItem value="md">Medium</SelectItem>
+                  <SelectItem value="lg">Large</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1122,6 +1491,274 @@ function ElementProperties({
             }}
             selectedTemplateId={(element.config.templateId as string) || ""}
           />
+        )}
+
+        {/* Section Header */}
+        {element.type === "section_header" && (
+          <>
+            <div className="space-y-2">
+              <Label className="text-xs">Header Text</Label>
+              <Input
+                value={(element.config.text as string) || ""}
+                onChange={(e) => onUpdate({ text: e.target.value })}
+                className="h-9"
+                placeholder="Section Title"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Size</Label>
+              <Select
+                value={(element.config.size as string) || "lg"}
+                onValueChange={(value) => onUpdate({ size: value })}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sm">Small</SelectItem>
+                  <SelectItem value="md">Medium</SelectItem>
+                  <SelectItem value="lg">Large</SelectItem>
+                  <SelectItem value="xl">Extra Large</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Alignment</Label>
+              <div className="flex gap-1">
+                <Button
+                  variant={(element.config.alignment as string) === "left" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1 h-9"
+                  onClick={() => onUpdate({ alignment: "left" })}
+                >
+                  <AlignLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={(element.config.alignment as string) === "center" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1 h-9"
+                  onClick={() => onUpdate({ alignment: "center" })}
+                >
+                  <AlignCenter className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={(element.config.alignment as string) === "right" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1 h-9"
+                  onClick={() => onUpdate({ alignment: "right" })}
+                >
+                  <AlignRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <ColorPicker
+              label="Text Color"
+              value={element.config.textColor as string}
+              onChange={(color) => onUpdate({ textColor: color })}
+            />
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">Show Underline</Label>
+              <Switch
+                checked={element.config.showDivider as boolean}
+                onCheckedChange={(checked) => onUpdate({ showDivider: checked })}
+              />
+            </div>
+          </>
+        )}
+
+        {/* Container */}
+        {element.type === "container" && (
+          <>
+            <div className="p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground mb-3">
+              Styles all elements below until the next container, divider, or two-column layout.
+            </div>
+            <ColorPicker
+              label="Background Color"
+              value={element.config.backgroundColor as string}
+              onChange={(color) => onUpdate({ backgroundColor: color })}
+            />
+            <div className="space-y-2">
+              <Label className="text-xs">Padding</Label>
+              <Select
+                value={(element.config.padding as string) || "md"}
+                onValueChange={(value) => onUpdate({ padding: value })}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="sm">Small</SelectItem>
+                  <SelectItem value="md">Medium</SelectItem>
+                  <SelectItem value="lg">Large</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Border Radius</Label>
+              <Select
+                value={(element.config.borderRadius as string) || "md"}
+                onValueChange={(value) => onUpdate({ borderRadius: value })}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="sm">Small</SelectItem>
+                  <SelectItem value="md">Medium</SelectItem>
+                  <SelectItem value="lg">Large</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">Show Border</Label>
+              <Switch
+                checked={element.config.border as boolean}
+                onCheckedChange={(checked) => onUpdate({ border: checked })}
+              />
+            </div>
+            {element.config.border && (
+              <ColorPicker
+                label="Border Color"
+                value={element.config.borderColor as string}
+                onChange={(color) => onUpdate({ borderColor: color })}
+              />
+            )}
+          </>
+        )}
+
+        {/* Two Column Layout */}
+        {element.type === "two_column" && (
+          <>
+            <div className="p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground mb-3">
+              Drag elements into the left or right column on the canvas. Perfect for putting event info on one side and payment on the other.
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Left Column Width</Label>
+              <Select
+                value={(element.config.leftWidth as string) || "1/2"}
+                onValueChange={(value) => onUpdate({ leftWidth: value })}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1/3">1/3 - 2/3</SelectItem>
+                  <SelectItem value="1/2">1/2 - 1/2</SelectItem>
+                  <SelectItem value="2/3">2/3 - 1/3</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Gap Size</Label>
+              <Select
+                value={(element.config.gap as string) || "md"}
+                onValueChange={(value) => onUpdate({ gap: value })}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sm">Small</SelectItem>
+                  <SelectItem value="md">Medium</SelectItem>
+                  <SelectItem value="lg">Large</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">Stack on Mobile</Label>
+              <Switch
+                checked={element.config.stackOnMobile as boolean}
+                onCheckedChange={(checked) => onUpdate({ stackOnMobile: checked })}
+              />
+            </div>
+            <ColorPicker
+              label="Left Column Background"
+              value={element.config.leftBackgroundColor as string}
+              onChange={(color) => onUpdate({ leftBackgroundColor: color })}
+            />
+            <ColorPicker
+              label="Right Column Background"
+              value={element.config.rightBackgroundColor as string}
+              onChange={(color) => onUpdate({ rightBackgroundColor: color })}
+            />
+          </>
+        )}
+
+        {/* Enhanced Divider */}
+        {element.type === "divider" && (
+          <>
+            <div className="space-y-2">
+              <Label className="text-xs">Style</Label>
+              <Select
+                value={(element.config.style as string) || "line"}
+                onValueChange={(value) => onUpdate({ style: value })}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="line">Solid Line</SelectItem>
+                  <SelectItem value="dashed">Dashed</SelectItem>
+                  <SelectItem value="dotted">Dotted</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Thickness</Label>
+              <Select
+                value={(element.config.thickness as string) || "thin"}
+                onValueChange={(value) => onUpdate({ thickness: value })}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="thin">Thin</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="thick">Thick</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Width</Label>
+              <Select
+                value={(element.config.width as string) || "full"}
+                onValueChange={(value) => onUpdate({ width: value })}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">Full Width</SelectItem>
+                  <SelectItem value="half">Half Width</SelectItem>
+                  <SelectItem value="third">Third Width</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Spacing</Label>
+              <Select
+                value={(element.config.spacing as string) || "md"}
+                onValueChange={(value) => onUpdate({ spacing: value })}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sm">Small</SelectItem>
+                  <SelectItem value="md">Medium</SelectItem>
+                  <SelectItem value="lg">Large</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <ColorPicker
+              label="Color"
+              value={element.config.color as string}
+              onChange={(color) => onUpdate({ color: color })}
+            />
+          </>
         )}
       </div>
     </div>
@@ -1819,8 +2456,95 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
         </div>
       );
 
-    case "divider":
-      return <div className="border-t my-4" />;
+    case "divider": {
+      const styleClasses: Record<string, string> = {
+        line: "border-solid",
+        dashed: "border-dashed",
+        dotted: "border-dotted"
+      };
+      const thicknessClasses: Record<string, string> = {
+        thin: "border-t",
+        medium: "border-t-2",
+        thick: "border-t-4"
+      };
+      const widthClasses: Record<string, string> = {
+        full: "w-full",
+        half: "w-1/2 mx-auto",
+        third: "w-1/3 mx-auto"
+      };
+      const spacingClasses: Record<string, string> = {
+        sm: "my-2",
+        md: "my-4",
+        lg: "my-8"
+      };
+      const style = (element.config.style as string) || "line";
+      const thickness = (element.config.thickness as string) || "thin";
+      const width = (element.config.width as string) || "full";
+      const spacing = (element.config.spacing as string) || "md";
+      return (
+        <div
+          className={`${widthClasses[width]} ${thicknessClasses[thickness]} ${styleClasses[style]} ${spacingClasses[spacing]}`}
+          style={{ borderColor: (element.config.color as string) || undefined }}
+        />
+      );
+    }
+
+    case "section_header": {
+      const sizeClasses: Record<string, string> = {
+        sm: "text-lg",
+        md: "text-xl",
+        lg: "text-2xl",
+        xl: "text-3xl"
+      };
+      const alignClasses: Record<string, string> = {
+        left: "text-left",
+        center: "text-center",
+        right: "text-right"
+      };
+      const size = (element.config.size as string) || "lg";
+      const alignment = (element.config.alignment as string) || "left";
+      return (
+        <div className={`${alignClasses[alignment]} ${element.config.showDivider ? 'border-b pb-2' : ''}`}>
+          <h2
+            className={`font-semibold ${sizeClasses[size]}`}
+            style={{ color: (element.config.textColor as string) || undefined }}
+          >
+            {(element.config.text as string) || element.label}
+          </h2>
+        </div>
+      );
+    }
+
+    case "container": {
+      const paddingClasses: Record<string, string> = {
+        none: "p-0",
+        sm: "p-2",
+        md: "p-4",
+        lg: "p-6"
+      };
+      const radiusClasses: Record<string, string> = {
+        none: "rounded-none",
+        sm: "rounded-sm",
+        md: "rounded-md",
+        lg: "rounded-lg"
+      };
+      const padding = (element.config.padding as string) || "md";
+      const borderRadius = (element.config.borderRadius as string) || "md";
+      return (
+        <div
+          className={`${paddingClasses[padding]} ${radiusClasses[borderRadius]} ${element.config.border ? 'border' : ''} min-h-[60px]`}
+          style={{
+            backgroundColor: (element.config.backgroundColor as string) || '#f8fafc',
+            borderColor: (element.config.borderColor as string) || undefined
+          }}
+        >
+          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+            <Square className="h-4 w-4 mr-2 opacity-50" />
+            Container - styles elements below
+          </div>
+        </div>
+      );
+    }
 
     case "info_modal": {
       const triggerStyle = element.config.triggerStyle as string || "link";
@@ -2085,9 +2809,17 @@ export function CheckoutTemplateBuilder({
         themeMode: "system",
         layout: "single",
         sidebarPosition: "right",
+        twoColumnLeftWidth: "1/2",
+        twoColumnGap: "md",
+        twoColumnStackOnMobile: true,
       },
     };
   });
+
+  // Helper function to render element preview for WYSIWYG canvas
+  const renderPreviewElement = (element: CheckoutElement): React.ReactNode => {
+    return <PreviewElement element={element} />;
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -2110,6 +2842,121 @@ export function CheckoutTemplateBuilder({
 
     const activeIdStr = String(active.id);
     const overIdStr = String(over.id);
+
+    // Helper to find element and its position within a column
+    const findElementPositionInColumn = (elementId: string, pageIndex: number, targetColumn: "left" | "right") => {
+      const pageElements = template.pages[pageIndex]?.elements || [];
+      const columnElements = pageElements.filter(e =>
+        e.column === targetColumn || (targetColumn === "left" && !e.column)
+      );
+      const index = columnElements.findIndex(e => e.id === elementId);
+      if (index === -1) return -1;
+
+      // Find the actual index in the full elements array
+      const element = columnElements[index];
+      return pageElements.findIndex(e => e.id === element.id);
+    };
+
+    // Check if dropping onto a two-column zone (e.g., "page-0-left" or "page-0-right")
+    const twoColumnPageMatch = overIdStr.match(/^page-(\d+)-(left|right)$/);
+
+    // Also check if dropping onto an element that's in a column (for position-aware drops)
+    let targetColumn: "left" | "right" | null = null;
+    let targetPageIndex = -1;
+    let insertPosition = -1;
+
+    if (template.settings.layout === "two_column") {
+      if (twoColumnPageMatch) {
+        // Dropping onto the column zone itself
+        const [, pageIndexStr, side] = twoColumnPageMatch;
+        targetPageIndex = parseInt(pageIndexStr, 10);
+        targetColumn = side as "left" | "right";
+        // Insert at end of column
+        insertPosition = template.pages[targetPageIndex]?.elements.length || 0;
+      } else {
+        // Check if dropping onto an existing element - find which column it's in
+        for (let i = 0; i < template.pages.length; i++) {
+          const element = template.pages[i].elements.find(e => e.id === overIdStr);
+          if (element) {
+            targetPageIndex = i;
+            targetColumn = element.column || "left"; // Default to left if no column
+            // Insert at this element's position
+            insertPosition = template.pages[i].elements.findIndex(e => e.id === overIdStr);
+            break;
+          }
+        }
+      }
+    }
+
+    if (targetColumn && targetPageIndex >= 0) {
+      // Handle dropping from palette into column
+      if (activeIdStr.startsWith("palette-")) {
+        const elementType = activeIdStr.replace("palette-", "") as ElementType;
+        const elementDef = AVAILABLE_ELEMENTS.find((e) => e.type === elementType);
+        if (!elementDef) return;
+
+        // Create new element with column assignment
+        const newElement: CheckoutElement = {
+          id: `el-${Date.now()}`,
+          type: elementType,
+          label: elementDef.label,
+          config: { ...elementDef.defaultConfig },
+          column: targetColumn,
+        };
+
+        // Add element at the correct position
+        setTemplate((prev) => {
+          const newPages = [...prev.pages];
+          const newElements = [...newPages[targetPageIndex].elements];
+          newElements.splice(insertPosition, 0, newElement);
+          newPages[targetPageIndex] = {
+            ...newPages[targetPageIndex],
+            elements: newElements,
+          };
+          return { ...prev, pages: newPages };
+        });
+
+        setSelectedElement(newElement.id);
+        return;
+      }
+
+      // Handle dropping an EXISTING element into a column
+      const existingElement = template.pages
+        .flatMap(p => p.elements)
+        .find(el => el.id === activeIdStr);
+
+      if (existingElement) {
+        // Update the element's column property and reorder
+        setTemplate((prev) => {
+          const newPages = prev.pages.map((page, idx) => {
+            if (idx !== targetPageIndex) {
+              // Remove from other pages if present
+              return {
+                ...page,
+                elements: page.elements.filter(el => el.id !== activeIdStr)
+              };
+            }
+
+            // For target page, remove element first then insert at position
+            const elementsWithoutActive = page.elements.filter(el => el.id !== activeIdStr);
+            const updatedElement = { ...existingElement, column: targetColumn };
+
+            // Adjust insert position if we removed an element before it
+            const originalIndex = page.elements.findIndex(el => el.id === activeIdStr);
+            let adjustedPosition = insertPosition;
+            if (originalIndex !== -1 && originalIndex < insertPosition) {
+              adjustedPosition = insertPosition - 1;
+            }
+
+            elementsWithoutActive.splice(adjustedPosition, 0, updatedElement);
+            return { ...page, elements: elementsWithoutActive };
+          });
+          return { ...prev, pages: newPages };
+        });
+        return;
+      }
+      return;
+    }
 
     // Check if dropping onto a page drop zone (for empty pages or adding to end)
     const isPageDrop = overIdStr.startsWith("page-drop-");
@@ -2170,10 +3017,10 @@ export function CheckoutTemplateBuilder({
     }
 
     // Find source page/position for existing element being moved
-    let sourcePageIndex = -1;
-    let sourceElementIndex = -1;
-    let targetPageIndex = -1;
-    let targetElementIndex = -1;
+    let srcPageIdx = -1;
+    let srcElementIdx = -1;
+    let tgtPageIdx = -1;
+    let tgtElementIdx = -1;
 
     for (let i = 0; i < template.pages.length; i++) {
       const page = template.pages[i];
@@ -2181,31 +3028,31 @@ export function CheckoutTemplateBuilder({
       const overIdx = page.elements.findIndex((e) => e.id === overIdStr);
 
       if (activeIdx !== -1) {
-        sourcePageIndex = i;
-        sourceElementIndex = activeIdx;
+        srcPageIdx = i;
+        srcElementIdx = activeIdx;
       }
       if (overIdx !== -1) {
-        targetPageIndex = i;
-        targetElementIndex = overIdx;
+        tgtPageIdx = i;
+        tgtElementIdx = overIdx;
       }
     }
 
     // If we couldn't find the element being dragged, exit
-    if (sourcePageIndex === -1 || sourceElementIndex === -1) return;
+    if (srcPageIdx === -1 || srcElementIdx === -1) return;
 
     // Handle drop onto page drop zone (moving element to a different page)
-    if (isPageDrop && dropPageIndex >= 0 && dropPageIndex !== sourcePageIndex) {
+    if (isPageDrop && dropPageIndex >= 0 && dropPageIndex !== srcPageIdx) {
       setTemplate((prev) => {
         const newPages = [...prev.pages];
 
         // Get the element being moved
-        const elementToMove = prev.pages[sourcePageIndex].elements[sourceElementIndex];
+        const elementToMove = prev.pages[srcPageIdx].elements[srcElementIdx];
 
         // Remove from source page
-        const sourceElements = [...prev.pages[sourcePageIndex].elements];
-        sourceElements.splice(sourceElementIndex, 1);
-        newPages[sourcePageIndex] = {
-          ...newPages[sourcePageIndex],
+        const sourceElements = [...prev.pages[srcPageIdx].elements];
+        sourceElements.splice(srcElementIdx, 1);
+        newPages[srcPageIdx] = {
+          ...newPages[srcPageIdx],
           elements: sourceElements,
         };
 
@@ -2223,13 +3070,13 @@ export function CheckoutTemplateBuilder({
     }
 
     // Same page reordering
-    if (sourcePageIndex === targetPageIndex && targetElementIndex !== -1) {
-      if (sourceElementIndex !== targetElementIndex) {
+    if (srcPageIdx === tgtPageIdx && tgtElementIdx !== -1) {
+      if (srcElementIdx !== tgtElementIdx) {
         setTemplate((prev) => {
           const newPages = [...prev.pages];
-          newPages[sourcePageIndex] = {
-            ...newPages[sourcePageIndex],
-            elements: arrayMove(prev.pages[sourcePageIndex].elements, sourceElementIndex, targetElementIndex),
+          newPages[srcPageIdx] = {
+            ...newPages[srcPageIdx],
+            elements: arrayMove(prev.pages[srcPageIdx].elements, srcElementIdx, tgtElementIdx),
           };
           return { ...prev, pages: newPages };
         });
@@ -2238,26 +3085,26 @@ export function CheckoutTemplateBuilder({
     }
 
     // Cross-page move (dropping on an element in another page)
-    if (targetPageIndex !== -1 && sourcePageIndex !== targetPageIndex) {
+    if (tgtPageIdx !== -1 && srcPageIdx !== tgtPageIdx) {
       setTemplate((prev) => {
         const newPages = [...prev.pages];
 
         // Get the element being moved
-        const elementToMove = prev.pages[sourcePageIndex].elements[sourceElementIndex];
+        const elementToMove = prev.pages[srcPageIdx].elements[srcElementIdx];
 
         // Remove from source page
-        const sourceElements = [...prev.pages[sourcePageIndex].elements];
-        sourceElements.splice(sourceElementIndex, 1);
-        newPages[sourcePageIndex] = {
-          ...newPages[sourcePageIndex],
+        const sourceElements = [...prev.pages[srcPageIdx].elements];
+        sourceElements.splice(srcElementIdx, 1);
+        newPages[srcPageIdx] = {
+          ...newPages[srcPageIdx],
           elements: sourceElements,
         };
 
         // Add to target page at specific position
-        const targetElements = [...prev.pages[targetPageIndex].elements];
-        targetElements.splice(targetElementIndex, 0, elementToMove);
-        newPages[targetPageIndex] = {
-          ...newPages[targetPageIndex],
+        const targetElements = [...prev.pages[tgtPageIdx].elements];
+        targetElements.splice(tgtElementIdx, 0, elementToMove);
+        newPages[tgtPageIdx] = {
+          ...newPages[tgtPageIdx],
           elements: targetElements,
         };
 
@@ -2520,6 +3367,7 @@ export function CheckoutTemplateBuilder({
             const promoCodeElement = allElements.find(e => e.type === "promo_code");
             const showSidebar = template.settings.layout === "sidebar" && hasOrderSummary;
             const sidebarOnLeft = template.settings.sidebarPosition === "left";
+            const isTwoColumn = template.settings.layout === "two_column";
 
             // Filter out sidebar elements from inline when showing in sidebar
             const getElementsToShow = (elements: CheckoutElement[]) => {
@@ -2529,9 +3377,19 @@ export function CheckoutTemplateBuilder({
               return elements;
             };
 
+            // Two-column layout settings
+            const twoColWidthClasses: Record<string, { left: string; right: string }> = {
+              "1/3": { left: "w-1/3", right: "w-2/3" },
+              "1/2": { left: "w-1/2", right: "w-1/2" },
+              "2/3": { left: "w-2/3", right: "w-1/3" },
+            };
+            const twoColGapClasses: Record<string, string> = { sm: "gap-3", md: "gap-4", lg: "gap-6" };
+            const twoColLeftWidth = template.settings.twoColumnLeftWidth || "1/2";
+            const twoColGap = template.settings.twoColumnGap || "md";
+
             return (
               <div className="flex-1 p-6 bg-muted/30 overflow-auto">
-                <div className={`mx-auto ${showSidebar ? "max-w-4xl" : "max-w-md"}`}>
+                <div className={`mx-auto ${showSidebar ? "max-w-4xl" : isTwoColumn ? "max-w-3xl" : "max-w-md"}`}>
                   {/* Progress Bar */}
                   {template.pages.length > 1 && template.settings.showProgressBar && (
                     <div className="mb-6">
@@ -2577,9 +3435,47 @@ export function CheckoutTemplateBuilder({
                           <CardTitle>{template.pages[currentPreviewPage]?.title || "Checkout"}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                          {getElementsToShow(template.pages[currentPreviewPage]?.elements || []).map((element) => (
-                            <PreviewElement key={element.id} element={element} />
-                          ))}
+                          {isTwoColumn ? (
+                            // Two-column preview layout
+                            (() => {
+                              const pageElements = template.pages[currentPreviewPage]?.elements || [];
+                              // Unassigned elements default to left column
+                              const leftElements = pageElements.filter(e => e.column === "left" || !e.column);
+                              const rightElements = pageElements.filter(e => e.column === "right");
+
+                              return (
+                                <div className={`flex ${twoColGapClasses[twoColGap]}`}>
+                                  <div className={`${twoColWidthClasses[twoColLeftWidth].left} space-y-4`}>
+                                    {leftElements.length > 0 ? (
+                                      leftElements.map((element) => (
+                                        <PreviewElement key={element.id} element={element} />
+                                      ))
+                                    ) : (
+                                      <div className="rounded-lg border-2 border-dashed border-muted-foreground/20 p-6 text-center text-muted-foreground text-sm">
+                                        Left Column
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className={`${twoColWidthClasses[twoColLeftWidth].right} space-y-4`}>
+                                    {rightElements.length > 0 ? (
+                                      rightElements.map((element) => (
+                                        <PreviewElement key={element.id} element={element} />
+                                      ))
+                                    ) : (
+                                      <div className="rounded-lg border-2 border-dashed border-muted-foreground/20 p-6 text-center text-muted-foreground text-sm">
+                                        Right Column
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()
+                          ) : (
+                            // Single column or sidebar layout
+                            getElementsToShow(template.pages[currentPreviewPage]?.elements || []).map((element) => (
+                              <PreviewElement key={element.id} element={element} />
+                            ))
+                          )}
                         </CardContent>
                       </Card>
 
@@ -2833,10 +3729,11 @@ export function CheckoutTemplateBuilder({
                         {/* Main Pages Area */}
                         <div className="flex-1 space-y-4">
                           {template.pages.map((page, pageIndex) => {
-                            // Filter out sidebar elements when showing in sidebar
-                            const elementsToShow = showSidebarLayout && hasOrderSummary
-                              ? page.elements.filter(e => e.type !== "order_summary" && e.type !== "promo_code")
-                              : page.elements;
+                            // Filter out sidebar elements for sidebar layout
+                            let elementsToShow = page.elements;
+                            if (showSidebarLayout && hasOrderSummary) {
+                              elementsToShow = elementsToShow.filter(e => e.type !== "order_summary" && e.type !== "promo_code");
+                            }
 
                             const filteredPage = { ...page, elements: elementsToShow };
 
@@ -2853,6 +3750,15 @@ export function CheckoutTemplateBuilder({
                                 onUpdatePageTitle={(title) => updatePageTitle(pageIndex, title)}
                                 onRemovePage={() => removePage(pageIndex)}
                                 canDeleteElement={canDeleteElement}
+                                renderPreview={renderPreviewElement}
+                                visualMode={true}
+                                allElements={template.pages.flatMap(p => p.elements)}
+                                onUpdateElementConfig={updateElementConfig}
+                                layout={template.settings.layout}
+                                twoColumnSettings={{
+                                  leftWidth: template.settings.twoColumnLeftWidth,
+                                  gap: template.settings.twoColumnGap,
+                                }}
                               />
                             );
                           })}
@@ -2990,7 +3896,7 @@ export function CheckoutTemplateBuilder({
                       {/* Layout Selector */}
                       <div className="space-y-2">
                         <Label className="text-sm">Layout</Label>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           <Button
                             variant={template.settings.layout === "single" ? "default" : "outline"}
                             size="sm"
@@ -3003,7 +3909,7 @@ export function CheckoutTemplateBuilder({
                             }
                           >
                             <LayoutTemplate className="h-4 w-4" />
-                            <span className="text-xs">Single Column</span>
+                            <span className="text-xs">Single</span>
                           </Button>
                           <Button
                             variant={template.settings.layout === "sidebar" ? "default" : "outline"}
@@ -3017,7 +3923,21 @@ export function CheckoutTemplateBuilder({
                             }
                           >
                             <PanelRight className="h-4 w-4" />
-                            <span className="text-xs">With Sidebar</span>
+                            <span className="text-xs">Sidebar</span>
+                          </Button>
+                          <Button
+                            variant={template.settings.layout === "two_column" ? "default" : "outline"}
+                            size="sm"
+                            className="flex flex-col gap-1 h-auto py-3"
+                            onClick={() =>
+                              setTemplate((prev) => ({
+                                ...prev,
+                                settings: { ...prev.settings, layout: "two_column" },
+                              }))
+                            }
+                          >
+                            <Columns className="h-4 w-4" />
+                            <span className="text-xs">Two Col</span>
                           </Button>
                         </div>
                       </div>
@@ -3055,6 +3975,89 @@ export function CheckoutTemplateBuilder({
                               <PanelLeft className="h-4 w-4" />
                               Left
                             </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Two Column Settings - only show if two_column layout */}
+                      {template.settings.layout === "two_column" && (
+                        <div className="space-y-3">
+                          <div className="space-y-2">
+                            <Label className="text-xs">Column Split</Label>
+                            <div className="grid grid-cols-3 gap-2">
+                              <Button
+                                variant={template.settings.twoColumnLeftWidth === "1/3" ? "default" : "outline"}
+                                size="sm"
+                                className="text-xs"
+                                onClick={() =>
+                                  setTemplate((prev) => ({
+                                    ...prev,
+                                    settings: { ...prev.settings, twoColumnLeftWidth: "1/3" },
+                                  }))
+                                }
+                              >
+                                1/3 - 2/3
+                              </Button>
+                              <Button
+                                variant={template.settings.twoColumnLeftWidth === "1/2" ? "default" : "outline"}
+                                size="sm"
+                                className="text-xs"
+                                onClick={() =>
+                                  setTemplate((prev) => ({
+                                    ...prev,
+                                    settings: { ...prev.settings, twoColumnLeftWidth: "1/2" },
+                                  }))
+                                }
+                              >
+                                1/2 - 1/2
+                              </Button>
+                              <Button
+                                variant={template.settings.twoColumnLeftWidth === "2/3" ? "default" : "outline"}
+                                size="sm"
+                                className="text-xs"
+                                onClick={() =>
+                                  setTemplate((prev) => ({
+                                    ...prev,
+                                    settings: { ...prev.settings, twoColumnLeftWidth: "2/3" },
+                                  }))
+                                }
+                              >
+                                2/3 - 1/3
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">Gap</Label>
+                            <Select
+                              value={template.settings.twoColumnGap}
+                              onValueChange={(v: "sm" | "md" | "lg") =>
+                                setTemplate((prev) => ({
+                                  ...prev,
+                                  settings: { ...prev.settings, twoColumnGap: v },
+                                }))
+                              }
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="sm">Small</SelectItem>
+                                <SelectItem value="md">Medium</SelectItem>
+                                <SelectItem value="lg">Large</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-xs">Stack on Mobile</Label>
+                            <Switch
+                              checked={template.settings.twoColumnStackOnMobile}
+                              onCheckedChange={(checked) =>
+                                setTemplate((prev) => ({
+                                  ...prev,
+                                  settings: { ...prev.settings, twoColumnStackOnMobile: checked },
+                                }))
+                              }
+                            />
                           </div>
                         </div>
                       )}

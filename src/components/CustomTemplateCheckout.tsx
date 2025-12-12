@@ -68,6 +68,7 @@ interface CheckoutElement {
   type: string;
   label: string;
   config: Record<string, unknown>;
+  column?: "left" | "right"; // For two-column layout
 }
 
 interface CheckoutPage {
@@ -86,8 +87,11 @@ interface CheckoutTemplate {
     mobileLayout: string;
     showOrderSummaryOnAllPages: boolean;
     themeMode?: "light" | "dark" | "system";
-    layout?: "single" | "sidebar";
+    layout?: "single" | "sidebar" | "two_column";
     sidebarPosition?: "left" | "right";
+    twoColumnLeftWidth?: "1/3" | "1/2" | "2/3";
+    twoColumnGap?: "sm" | "md" | "lg";
+    twoColumnStackOnMobile?: boolean;
   };
 }
 
@@ -614,36 +618,62 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
     }
   };
 
+  // Helper to find element by ID across all pages
+  const findElementById = (id: string): CheckoutElement | null => {
+    if (!template) return null;
+    for (const page of template.pages) {
+      const element = page.elements.find(e => e.id === id);
+      if (element) return element;
+    }
+    return null;
+  };
+
   // Render individual elements
   const renderElement = (element: CheckoutElement) => {
     switch (element.type) {
-      case "logo":
+      case "logo": {
+        const alignmentClasses: Record<string, string> = {
+          left: "justify-start",
+          center: "justify-center",
+          right: "justify-end"
+        };
+        const paddingClasses: Record<string, string> = {
+          none: "",
+          sm: "py-2",
+          md: "py-4",
+          lg: "py-6"
+        };
+        const sizeClasses: Record<string, string> = {
+          small: "h-12",
+          medium: "h-16",
+          large: "h-24",
+          custom: ""
+        };
+        const alignment = (element.config.alignment as string) || "center";
+        const verticalPadding = (element.config.verticalPadding as string) || "none";
+        const size = (element.config.size as string) || "medium";
+        const customHeight = element.config.customHeight as number;
+        const maxWidth = element.config.maxWidth as number;
+
         return (
           <div
             key={element.id}
-            className={`flex ${
-              element.config.alignment === "left"
-                ? "justify-start"
-                : element.config.alignment === "right"
-                ? "justify-end"
-                : "justify-center"
-            }`}
+            className={`flex ${alignmentClasses[alignment]} ${paddingClasses[verticalPadding]}`}
           >
             {eventData?.logo_url && (
               <img
                 src={eventData.logo_url}
                 alt={eventData.name}
-                className={`object-contain ${
-                  element.config.size === "small"
-                    ? "h-12"
-                    : element.config.size === "large"
-                    ? "h-24"
-                    : "h-16"
-                }`}
+                className={`object-contain ${sizeClasses[size]}`}
+                style={{
+                  height: size === "custom" && customHeight ? `${customHeight}px` : undefined,
+                  maxWidth: maxWidth ? `${maxWidth}px` : undefined
+                }}
               />
             )}
           </div>
         );
+      }
 
       case "event_header":
         return (
@@ -1002,8 +1032,130 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
           </div>
         );
 
-      case "divider":
-        return <Separator key={element.id} className="my-4" />;
+      case "divider": {
+        const styleClasses: Record<string, string> = {
+          line: "border-solid",
+          dashed: "border-dashed",
+          dotted: "border-dotted"
+        };
+        const thicknessClasses: Record<string, string> = {
+          thin: "border-t",
+          medium: "border-t-2",
+          thick: "border-t-4"
+        };
+        const widthClasses: Record<string, string> = {
+          full: "w-full",
+          half: "w-1/2 mx-auto",
+          third: "w-1/3 mx-auto"
+        };
+        const spacingClasses: Record<string, string> = {
+          sm: "my-2",
+          md: "my-4",
+          lg: "my-8"
+        };
+        const style = (element.config.style as string) || "line";
+        const thickness = (element.config.thickness as string) || "thin";
+        const width = (element.config.width as string) || "full";
+        const spacing = (element.config.spacing as string) || "md";
+        return (
+          <div
+            key={element.id}
+            className={`${widthClasses[width]} ${thicknessClasses[thickness]} ${styleClasses[style]} ${spacingClasses[spacing]}`}
+            style={{ borderColor: (element.config.color as string) || undefined }}
+          />
+        );
+      }
+
+      case "section_header": {
+        const sizeClasses: Record<string, string> = {
+          sm: "text-lg",
+          md: "text-xl",
+          lg: "text-2xl",
+          xl: "text-3xl"
+        };
+        const alignClasses: Record<string, string> = {
+          left: "text-left",
+          center: "text-center",
+          right: "text-right"
+        };
+        const size = (element.config.size as string) || "lg";
+        const alignment = (element.config.alignment as string) || "left";
+        return (
+          <div
+            key={element.id}
+            className={`${alignClasses[alignment]} ${element.config.showDivider ? 'border-b pb-2 mb-4' : 'mb-4'}`}
+          >
+            <h2
+              className={`font-semibold ${sizeClasses[size]}`}
+              style={{ color: (element.config.textColor as string) || undefined }}
+            >
+              {(element.config.text as string) || element.label}
+            </h2>
+          </div>
+        );
+      }
+
+      case "container": {
+        // Container styles elements - this is handled at the page level
+        // This case returns null as containers are processed during page rendering
+        return null;
+      }
+
+      case "two_column": {
+        const widthConfig = (element.config.leftWidth as string) || "1/2";
+        const gapClasses: Record<string, string> = { sm: "gap-2", md: "gap-4", lg: "gap-6" };
+        const gap = (element.config.gap as string) || "md";
+        const stackOnMobile = element.config.stackOnMobile !== false;
+
+        // Grid column classes based on left width
+        const gridClasses: Record<string, string> = {
+          "1/3": "md:grid-cols-[1fr_2fr]",
+          "1/2": "md:grid-cols-2",
+          "2/3": "md:grid-cols-[2fr_1fr]",
+        };
+
+        const leftElements = (element.config.leftElements as string[]) || [];
+        const rightElements = (element.config.rightElements as string[]) || [];
+
+        return (
+          <div
+            key={element.id}
+            className={`grid ${stackOnMobile ? 'grid-cols-1' : ''} ${gridClasses[widthConfig]} ${gapClasses[gap]}`}
+          >
+            <div
+              className="space-y-4 p-4 rounded-lg"
+              style={{ backgroundColor: (element.config.leftBackgroundColor as string) || undefined }}
+            >
+              {leftElements.length > 0 ? (
+                leftElements.map(id => {
+                  // Find element by ID and render it
+                  const el = findElementById(id);
+                  return el ? renderElement(el) : null;
+                })
+              ) : (
+                <div className="text-center text-muted-foreground py-8">
+                  <p className="text-sm">Left column</p>
+                </div>
+              )}
+            </div>
+            <div
+              className="space-y-4 p-4 rounded-lg"
+              style={{ backgroundColor: (element.config.rightBackgroundColor as string) || undefined }}
+            >
+              {rightElements.length > 0 ? (
+                rightElements.map(id => {
+                  const el = findElementById(id);
+                  return el ? renderElement(el) : null;
+                })
+              ) : (
+                <div className="text-center text-muted-foreground py-8">
+                  <p className="text-sm">Right column</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
 
       case "attendee_details":
         return (
@@ -1414,7 +1566,39 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
               <CardTitle>{currentPageData?.title || `Step ${currentPage + 1}`}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {getPageElementsToRender(currentPageData?.elements || []).map((element) => renderElement(element))}
+              {template.settings.layout === "two_column" ? (
+                // Two-column layout
+                (() => {
+                  const elements = getPageElementsToRender(currentPageData?.elements || []);
+                  // Unassigned elements default to left column
+                  const leftElements = elements.filter(e => e.column === "left" || !e.column);
+                  const rightElements = elements.filter(e => e.column === "right");
+
+                  const widthClasses = {
+                    "1/3": { left: "w-1/3", right: "w-2/3" },
+                    "1/2": { left: "w-1/2", right: "w-1/2" },
+                    "2/3": { left: "w-2/3", right: "w-1/3" },
+                  };
+                  const gapClasses = { sm: "gap-4", md: "gap-6", lg: "gap-8" };
+                  const leftWidth = template.settings.twoColumnLeftWidth || "1/2";
+                  const gap = template.settings.twoColumnGap || "md";
+                  const stackOnMobile = template.settings.twoColumnStackOnMobile !== false;
+
+                  return (
+                    <div className={`flex ${gapClasses[gap]} ${stackOnMobile ? "flex-col md:flex-row" : "flex-row"}`}>
+                      <div className={`${stackOnMobile ? "w-full md:" + widthClasses[leftWidth].left : widthClasses[leftWidth].left} space-y-6`}>
+                        {leftElements.map((element) => renderElement(element))}
+                      </div>
+                      <div className={`${stackOnMobile ? "w-full md:" + widthClasses[leftWidth].right : widthClasses[leftWidth].right} space-y-6`}>
+                        {rightElements.map((element) => renderElement(element))}
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                // Single column or sidebar layout
+                getPageElementsToRender(currentPageData?.elements || []).map((element) => renderElement(element))
+              )}
             </CardContent>
           </Card>
 
