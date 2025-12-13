@@ -374,7 +374,6 @@ const [analytics, setAnalytics] = useState<{
 
     // Only load lanyard templates if user is authenticated
     if (!user) {
-      console.log("User not authenticated, skipping lanyard template loading");
       return;
     }
 
@@ -400,11 +399,6 @@ const [analytics, setAnalytics] = useState<{
         setCurrentLanyardTemplate(template);
       } else {
         // If no template exists, RLS policy blocks access, or table doesn't exist, create a default one
-        if (templateError) {
-          console.log("Template loading failed:", templateError);
-        } else {
-          console.log("No default template found for organization, creating default");
-        }
         const defaultTemplate = createDefaultLanyardTemplate();
         const newTemplate = {
           id: `template-${defaultTemplate.name?.toLowerCase().replace(/\s+/g, '-')}`,
@@ -475,7 +469,6 @@ const [analytics, setAnalytics] = useState<{
         return;
       }
 
-      console.log("Windcave HIT config loaded:", credentials);
       setOrganizationConfig({
         windcave_enabled: credentials.windcave_enabled || false,
         windcave_hit_username: credentials.windcave_hit_username,
@@ -677,30 +670,21 @@ const handleCreateConcessionItem = async () => {
   };
 
   const handleCheckIn = async () => {
-    console.log("=== Starting check-in process ===");
-
     // Get the actual input value from the ref (for barcode scanners that type too fast)
     const actualTicketCode = ticketCodeInputRef.current?.value || ticketCode;
-    console.log("Ticket code from state:", ticketCode);
-    console.log("Ticket code from input:", ticketCodeInputRef.current?.value);
-    console.log("Using ticket code:", actualTicketCode);
 
     if (!actualTicketCode.trim()) {
-      console.warn("⚠️ Check-in aborted - empty ticket code");
       toast({ title: "Please enter a ticket code", variant: "destructive" });
       return;
     }
 
     // Prevent duplicate submissions
     if (loading) {
-      console.warn("⚠️ Check-in already in progress");
       return;
     }
 
     setLoading(true);
     try {
-      console.log("Querying for ticket:", actualTicketCode.trim());
-
       // First, look up the ticket with customer info from related tables
       const { data: ticketData, error: ticketError } = await supabase
         .from("tickets")
@@ -719,8 +703,6 @@ const handleCreateConcessionItem = async () => {
         .eq("ticket_code", actualTicketCode.trim())
         .single();
 
-      console.log("Ticket query result:", { ticketData, ticketError });
-
       if (ticketError || !ticketData) {
         console.error("Ticket lookup failed:", ticketError);
         toast({ title: "Ticket not found", variant: "destructive" });
@@ -733,10 +715,7 @@ const handleCreateConcessionItem = async () => {
       const customerEmail = ticketData.order_items?.orders?.customer_email || "";
       const isAlreadyCheckedIn = ticketData.status === "used" || !!ticketData.used_at;
 
-      console.log("Customer info:", { customerName, customerEmail, isAlreadyCheckedIn });
-
       // Check if there are active waivers that need to be signed
-      console.log("Checking for active waivers...");
       if (eventData?.organizations && !isAlreadyCheckedIn) {
         const { data: activeWaivers } = await supabase
           .from("waiver_templates")
@@ -746,8 +725,6 @@ const handleCreateConcessionItem = async () => {
           .or(`event_id.eq.${eventId},event_id.is.null`)
           .limit(1);
 
-        console.log("Active waivers found:", activeWaivers);
-
         if (activeWaivers && activeWaivers.length > 0) {
           // Check if waivers already signed
           const { data: existingSignatures } = await supabase
@@ -756,10 +733,7 @@ const handleCreateConcessionItem = async () => {
             .eq("ticket_id", ticketData.id)
             .limit(1);
 
-          console.log("Existing signatures:", existingSignatures);
-
           if (!existingSignatures || existingSignatures.length === 0) {
-            console.log("No signatures found - showing waiver modal");
             // Show waiver modal before checking in
             setWaiverTicketInfo({
               ticketId: ticketData.id,
@@ -775,7 +749,6 @@ const handleCreateConcessionItem = async () => {
       }
 
       // Proceed with check-in
-      console.log("Proceeding to call edge function...");
       const { data, error } = await supabase.functions.invoke("check-in-guest", {
         body: {
           ticketCode: actualTicketCode.trim(),
@@ -784,15 +757,8 @@ const handleCreateConcessionItem = async () => {
         },
       });
 
-      console.log("Check-in response - Success:", data?.success);
-      console.log("Check-in response - Data:", data);
-      console.log("Check-in response - Error:", error);
-
       if (error) {
-        console.error("Edge function error:", error);
-        console.error("Error name:", error.name);
-        console.error("Error message:", error.message);
-        console.error("Error context:", error.context);
+        console.error("Check-in edge function error:", error);
 
         // Try to get more details from the response
         let errorMessage = error.message || "Unknown error";
@@ -813,7 +779,6 @@ const handleCreateConcessionItem = async () => {
       }
 
       if (data?.success) {
-        console.log("✅ Check-in successful!");
         toast({ title: "Guest checked in successfully!" });
         setTicketCode("");
         if (ticketCodeInputRef.current) {
@@ -831,8 +796,7 @@ const handleCreateConcessionItem = async () => {
           setShowNotesPanel(true);
         }
       } else {
-        console.error("❌ Check-in failed with data:", data);
-        console.error("Error message from server:", data?.error);
+        console.error("Check-in failed:", data?.error);
         toast({
           title: "Check-in failed",
           description: data?.error || "Unknown error occurred",
@@ -865,13 +829,8 @@ const handleCreateConcessionItem = async () => {
         },
       });
 
-      console.log("Check-in response after waiver:", { data, error });
-
       if (error) {
-        console.error("Edge function error:", error);
-        console.error("Error name:", error.name);
-        console.error("Error message:", error.message);
-        console.error("Error context:", error.context);
+        console.error("Check-in after waiver error:", error);
 
         // Try to get more details from the response
         let errorMessage = error.message || "Unknown error";
@@ -879,7 +838,6 @@ const handleCreateConcessionItem = async () => {
         // If it's a FunctionsHttpError, the actual error might be in data
         if (data && typeof data === 'object' && 'error' in data) {
           errorMessage = data.error;
-          console.error("Server error message:", data.error);
         }
 
         toast({
@@ -947,14 +905,12 @@ const handleCreateConcessionItem = async () => {
 
       if (error) throw error;
 
-      console.log("✅ Template saved:", template.name);
       toast({
         title: "Template saved",
         description: `${template.name} template saved successfully`
       });
     } catch (error) {
-      console.error("❌ Error saving template:", error);
-      console.error("Error details:", JSON.stringify(error, null, 2));
+      console.error("Error saving template:", error);
       toast({
         title: "Error saving template",
         description: "Failed to save template to database",
@@ -966,9 +922,6 @@ const handleCreateConcessionItem = async () => {
   const handlePrintLanyard = async (guest: GuestStatus) => {
     setLoading(true);
     try {
-      console.log("🖨️ Printing lanyard with template:", currentLanyardTemplate?.name);
-      console.log("📋 Template data:", currentLanyardTemplate);
-
       const { data, error } = await supabase.functions.invoke("print-lanyard", {
         body: {
           ticketId: guest.ticket_id,
@@ -982,9 +935,6 @@ const handleCreateConcessionItem = async () => {
       if (error) throw error;
 
       if (data.success) {
-        console.log("📄 Received HTML length:", data.printHTML?.length);
-        console.log("🔍 First 500 chars:", data.printHTML?.substring(0, 500));
-
         // Open print dialog with the generated HTML that matches preview exactly
         const printWindow = window.open("", "_blank");
         if (printWindow) {

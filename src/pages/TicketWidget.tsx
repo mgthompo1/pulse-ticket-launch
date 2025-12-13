@@ -128,19 +128,6 @@ const TicketWidget = () => {
   // Use useMemo to ensure the client is only created once
   const anonymousSupabase = useMemo(() => createAnonymousSupabaseClient(), []);
   
-  // Client-side only debugging - moved to useEffect to avoid hydration mismatch
-  useEffect(() => {
-    console.log("=== URL DEBUG ===");
-    console.log("Current URL:", window.location.href);
-    console.log("Event ID from params:", eventId);
-    console.log("🎯 Group Purchase Context:", {
-      isGroupPurchase,
-      groupId,
-      allocationId,
-      source
-    });
-  }, [eventId, isGroupPurchase, groupId, allocationId, source]);
-
   // Force light mode on widget - continuously enforce light mode
   useEffect(() => {
     const root = document.documentElement;
@@ -217,16 +204,8 @@ const TicketWidget = () => {
       };
     }
     
-    // Client-side only logging to avoid hydration issues
-    if (typeof window !== 'undefined') {
-      console.log("🎨 Theme recalculated:", newTheme);
-      console.log("🎨 Event data widget_customization:", eventData?.widget_customization);
-      console.log("🎨 Raw theme data:", themeData);
-      console.log("🎨 Theme customization enabled:", isEnabled);
-    }
-    
     return newTheme;
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- we only want to recalculate when theme changes, not all widget_customization
+   
   }, [eventData?.widget_customization?.theme]);
 
   // Destructure theme colors for easier use
@@ -351,7 +330,6 @@ const TicketWidget = () => {
         console.error("Error saving abandoned cart:", error);
       } else {
         abandonedCartSaved.current = true;
-        console.log("Abandoned cart saved for recovery");
       }
     } catch (err) {
       console.error("Error in saveAbandonedCart:", err);
@@ -389,24 +367,14 @@ const TicketWidget = () => {
   }, [eventId, customerInfo.email, cart]);
 
   // Apple Pay / Google Pay removed
-  
-  // Debug effect to monitor Stripe key changes
-  useEffect(() => {
-    console.log("🔑 Stripe publishable key changed:", stripePublishableKey ? "Key loaded" : "No key");
-  }, [stripePublishableKey]);
 
   // Function to refresh widget data
   const refreshWidgetData = useCallback(async () => {
     if (!eventId) return;
-    
+
     try {
-      console.log("🔄 Refreshing widget data...");
-      console.log("🔄 Current checkout mode:", checkoutMode);
-      console.log("🔄 Current widget customization:", eventData?.widget_customization);
-      
       // Add timestamp to bypass any caching (client-side only)
       const timestamp = typeof window !== 'undefined' ? Date.now() : 0;
-      console.log("🔄 Refresh timestamp:", timestamp);
       
       // Small delay to ensure database changes are propagated
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -430,21 +398,13 @@ const TicketWidget = () => {
         .maybeSingle();
 
       if (!eventError && eventUpdate) {
-        console.log("🔄 Fresh event data loaded:", eventUpdate);
-        console.log("🔄 Fresh widget customization:", eventUpdate.widget_customization);
-        console.log("🔄 Fresh checkout mode:", (eventUpdate.widget_customization as any)?.checkoutMode);
-
         setEventData(eventUpdate as any);
-        console.log("✅ Widget data refreshed successfully");
       } else if (eventError) {
-        console.error("❌ Error refreshing widget data:", eventError);
-      } else {
-        console.log("⚠️ Event not found or not published - skipping refresh");
+        console.error("Error refreshing widget data:", eventError);
       }
     } catch (error) {
       console.error("Error refreshing widget data:", error);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- checkoutMode is only used for logging, not logic
   }, [eventId, eventData?.widget_customization]);
 
   // Auto-refresh widget data every 30 seconds
@@ -458,10 +418,9 @@ const TicketWidget = () => {
     if (eventData?.widget_customization?.checkoutMode) {
       // Small delay to ensure state updates properly
       const timer = setTimeout(() => {
-        console.log("⏰ Delayed checkout mode update for:", eventData.widget_customization?.checkoutMode);
         setCheckoutMode((eventData.widget_customization?.checkoutMode as 'onepage' | 'multistep') || 'onepage');
       }, 100);
-      
+
       return () => clearTimeout(timer);
     }
   }, [eventData?.widget_customization?.checkoutMode]);
@@ -569,13 +528,9 @@ const TicketWidget = () => {
 
   const loadEventData = useCallback(async () => {
     try {
-      console.log("=== LOADING EVENT DATA ===");
-      console.log("Event ID:", eventId);
-      
       // Load event details with safe payment configuration
-              // Add timestamp to ensure we get fresh data and bypass any caching (client-side only)
-        const timestamp = typeof window !== 'undefined' ? Date.now() : 0;
-        console.log("🔄 Loading event data with timestamp:", timestamp);
+      // Add timestamp to ensure we get fresh data and bypass any caching (client-side only)
+      const timestamp = typeof window !== 'undefined' ? Date.now() : 0;
       
       const { data: event, error: eventError } = await supabase
         .from("events")
@@ -603,17 +558,6 @@ const TicketWidget = () => {
         throw new Error("Event not found or not published");
       }
 
-      console.log("=== LOADED EVENT DATA ===");
-      console.log("Full event object:", event);
-      console.log("Event status:", event.status);
-      console.log("Event published?", event.status === 'published');
-      console.log("Widget customization:", event.widget_customization);
-      console.log("Widget customization type:", typeof event.widget_customization);
-      console.log("Widget customization keys:", event.widget_customization ? Object.keys(event.widget_customization) : 'none');
-      const widgetCustomization = event.widget_customization as any;
-      console.log("Widget customization theme:", widgetCustomization?.theme);
-      console.log("Widget customization theme keys:", widgetCustomization?.theme ? Object.keys(widgetCustomization.theme) : 'none');
-
       setEventData(event as any);
 
       // Track event view in GA4
@@ -621,44 +565,25 @@ const TicketWidget = () => {
 
       // Get safe payment configuration from organization data
       if (event.organizations) {
-        console.log("🔍 Organization payment provider:", (event.organizations as any)?.payment_provider);
-        console.log("🔍 Organization data:", event.organizations);
-        console.log("🔍 Stripe booking fee enabled:", (event.organizations as any)?.stripe_booking_fee_enabled);
         setPaymentProvider((event.organizations as any)?.payment_provider || "stripe");
         setCreditCardProcessingFee((event.organizations as any)?.credit_card_processing_fee_percentage || 0);
-        
+
         // Load payment configuration including Stripe publishable key
         try {
-          console.log("🔍 Loading payment config for event:", eventId);
           const { data: paymentConfig, error: configError } = await supabase
-            .rpc('get_public_payment_config', { 
+            .rpc('get_public_payment_config', {
               p_event_id: eventId as string
             });
 
-          console.log("🔍 Payment config result:", { paymentConfig, configError });
-
           if (!configError && paymentConfig && paymentConfig.length > 0) {
             const config = paymentConfig[0];
-            console.log("🔍 Payment config details:", config);
             if (config.stripe_publishable_key) {
               setStripePublishableKey(config.stripe_publishable_key);
-              console.log("✅ Stripe publishable key loaded successfully");
-            } else {
-              console.warn("⚠️ No Stripe publishable key found in payment config");
             }
-            
-            // Load Apple Pay and Google Pay configuration
-            // Apple Pay / Google Pay removed from product; ignore related flags
-          } else {
-            console.warn("⚠️ No payment config found or error occurred:", configError);
           }
         } catch (configError) {
           console.error("Error loading payment config:", configError);
         }
-
-        // Note: Widget customization is already loaded in the initial event data above
-        console.log("🔍 Widget customization from initial load:", event.widget_customization);
-        console.log("🔍 Checkout mode from initial load:", (event.widget_customization as any)?.checkoutMode);
       }
 
       // Load ticket types
@@ -676,8 +601,6 @@ const TicketWidget = () => {
       // Filter ticket types for group purchases
       let filteredTypes = types || [];
       if (isGroupPurchase && allocationId) {
-        console.log("🎯 Loading allocation data for filtering...");
-
         // Load the allocation to get the allocated ticket_type_id
         const { data: allocation, error: allocationError } = await supabase
           .from("group_ticket_allocations")
@@ -688,19 +611,14 @@ const TicketWidget = () => {
         if (allocationError) {
           console.error("Error loading allocation:", allocationError);
         } else if (allocation) {
-          console.log("🎯 Allocation data:", allocation);
-          console.log("🎯 Allocated ticket_type_id:", allocation.ticket_type_id);
-
           // Store allocation data in state for quantity limiting
           setGroupAllocation(allocation);
 
           // Filter to only show the allocated ticket type
           filteredTypes = types?.filter(t => t.id === allocation.ticket_type_id) || [];
-          console.log("🎯 Filtered ticket types:", filteredTypes);
 
           // Check if there are remaining tickets
           const remaining = allocation.allocated_quantity - allocation.used_quantity - allocation.reserved_quantity;
-          console.log("🎯 Remaining tickets in allocation:", remaining);
 
           if (remaining <= 0) {
             toast({
@@ -734,8 +652,7 @@ const TicketWidget = () => {
 
   useEffect(() => {
     if (eventId) {
-      console.log("=== TicketWidget mounting or eventId changed ===");
-              loadEventData();
+      loadEventData();
     }
   }, [eventId, loadEventData]);
 
@@ -744,42 +661,24 @@ const TicketWidget = () => {
     if (isGroupPurchase && groupAllocation && ticketType.id === groupAllocation.ticket_type_id) {
       // For group purchases, use allocation's remaining quantity
       const remaining = groupAllocation.allocated_quantity - groupAllocation.used_quantity - groupAllocation.reserved_quantity;
-      console.log(`🎯 Group allocation remaining for ${ticketType.name}:`, remaining);
       return Math.max(0, remaining);
     }
     // For normal purchases, use ticket type's availability
     return ticketType.quantity_available - ticketType.quantity_sold;
   };
 
-  // Debug effect to log theme changes
-  useEffect(() => {
-    console.log("🎨 Theme effect triggered - Current theme:", theme);
-    console.log("🎨 Event data widget_customization:", eventData?.widget_customization);
-  }, [theme, eventData?.widget_customization]);
-
   // Check if multi-step checkout should be used based on widget customization
   useEffect(() => {
-    console.log("=== CHECKOUT MODE UPDATE EFFECT ===");
-    console.log("Event data:", eventData);
-    console.log("Widget customization:", eventData?.widget_customization);
-    console.log("CheckoutMode from data:", eventData?.widget_customization?.checkoutMode);
-    console.log("Current checkoutMode state:", checkoutMode);
-    
     if (eventData?.widget_customization?.checkoutMode) {
       const newMode = eventData.widget_customization.checkoutMode as 'onepage' | 'multistep' | 'beta';
-      console.log("🔄 Setting checkout mode to:", newMode);
-      console.log("Previous checkout mode was:", checkoutMode);
-      
+
       // Always update if the mode is different or if we're initializing
       if (checkoutMode !== newMode) {
         setCheckoutMode(newMode);
-        console.log("✅ Checkout mode updated to:", newMode);
       }
     } else if (eventData) {
       // If no checkout mode is explicitly set in widget customization, default to onepage
-      console.log("No checkoutMode found in widget_customization, defaulting to onepage");
       if (checkoutMode !== 'onepage') {
-        console.log("🔄 CHECKOUT MODE CHANGING FROM", checkoutMode, "TO onepage (default)");
         setCheckoutMode('onepage');
       }
     }
@@ -792,51 +691,37 @@ const TicketWidget = () => {
     const baseUrl = endpoint === "SEC" ? "https://sec.windcave.com" : "https://uat.windcave.com";
     const scripts = [
       "/js/lib/drop-in-v1.js",
-      "/js/windcavepayments-dropin-v1.js", 
+      "/js/windcavepayments-dropin-v1.js",
       "/js/lib/hosted-fields-v1.js",
       "/js/windcavepayments-hostedfields-v1.js",
       "/js/windcavepayments-applepay-v1.js",
       "/js/windcavepayments-googlepay-v1.js"
     ];
 
-    console.log(`Loading Windcave scripts for ${endpoint} endpoint from:`, baseUrl);
-    
     // Check if scripts are already loaded
     const existingScripts = Array.from(document.head.querySelectorAll('script'))
       .filter(script => script.src.includes('windcave'));
-    
+
     if (existingScripts.length > 0) {
-      console.log("Windcave scripts already loaded:", existingScripts.map(s => s.src));
       return;
     }
-    
+
     let loadedCount = 0;
     const totalScripts = scripts.length;
-    
+
     scripts.forEach((scriptPath) => {
       const script = document.createElement('script');
       script.src = baseUrl + scriptPath;
       script.async = true;
       script.onload = () => {
-        console.log(`✅ Windcave script loaded successfully: ${scriptPath}`);
         loadedCount++;
-        
-        if (scriptPath === "/js/windcavepayments-dropin-v1.js") {
-          setTimeout(() => {
-            console.log("Drop-in script loaded, WindcavePayments available:", !!window.WindcavePayments);
-            if (window.WindcavePayments) {
-              console.log("WindcavePayments object:", window.WindcavePayments);
-              console.log("DropIn available:", !!window.WindcavePayments.DropIn);
-            }
-          }, 500);
-        }
-        
+
         if (loadedCount === totalScripts) {
           resolve();
         }
       };
       script.onerror = (error) => {
-        console.error(`❌ Failed to load Windcave script: ${scriptPath}`, error);
+        console.error("Failed to load Windcave script:", scriptPath, error);
         toast({
           title: "Script Loading Error", 
           description: `Failed to load ${scriptPath}. Please check your internet connection.`,
@@ -851,46 +736,25 @@ const TicketWidget = () => {
 
   // Function to check if all required Windcave components are loaded
   const checkWindcaveReadiness = () => {
-    const checks = {
-      "window.WindcavePayments": !!window.WindcavePayments,
-      "WindcavePayments.DropIn": !!(window.WindcavePayments?.DropIn),
-      "WindcavePayments.DropIn.create": !!(window.WindcavePayments?.DropIn?.create),
-    };
-    
-    console.log("Windcave readiness check:", checks);
-    return Object.values(checks).every(Boolean);
+    return !!window.WindcavePayments?.DropIn?.create;
   };
 
   const addToCart = async (ticketType: TicketType) => {
-    console.log("=== ADD TO CART DEBUG ===");
-    console.log("Event ID:", eventId);
-    console.log("Ticket Type:", ticketType);
-    console.log("Ticket Type use_assigned_seating:", ticketType.use_assigned_seating);
-
     // Check if THIS ticket type requires assigned seating
     const ticketTypeRequiresSeating = ticketType.use_assigned_seating === true;
-    console.log("Ticket type requires assigned seating:", ticketTypeRequiresSeating);
 
     // First check if seat maps are enabled in event customization
     const seatMapsEnabled = eventData?.widget_customization?.seatMaps?.enabled;
-    console.log("Seat maps enabled in customization:", seatMapsEnabled);
 
     // Only check for seat maps if they're enabled AND this ticket type requires assigned seating
     if (seatMapsEnabled && ticketTypeRequiresSeating) {
-      console.log("Checking for seat maps in database...");
-
       const { data: seatMaps, error: seatMapError } = await anonymousSupabase
         .from('seat_maps')
         .select('id, name, total_seats')
         .eq('event_id', eventId as string);
 
-      console.log("Seat maps query result:", seatMaps);
-      console.log("Seat maps query error:", seatMapError);
-      console.log("Number of seat maps found:", seatMaps?.length || 0);
-
       if (seatMaps && seatMaps.length > 0) {
         // Event has seating - show seat selector
-        console.log("🎫 Found seat maps, showing seat selection");
         setPendingSeatSelection({
           id: ticketType.id,
           name: ticketType.name,
@@ -902,13 +766,11 @@ const TicketWidget = () => {
           event_id: eventId as string,
           type: 'ticket'
         });
-        console.log("Setting showSeatSelection to true");
         setShowSeatSelection(true);
         return;
       }
     }
 
-    console.log("❌ Seat maps disabled or not found, adding directly to cart");
     // No seating or seat maps disabled - add directly to cart
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.id === ticketType.id);
@@ -1047,15 +909,6 @@ const TicketWidget = () => {
     const customQuestionsConfig = eventData?.widget_customization?.customQuestions;
     const questions = customQuestionsConfig?.questions || [];
 
-    // Debug logging
-    console.log("=== CUSTOM QUESTIONS DEBUG ===");
-    console.log("Custom questions config:", customQuestionsConfig);
-    console.log("Custom questions enabled:", customQuestionsConfig?.enabled);
-    console.log("Custom questions count:", questions.length);
-    if (questions.length > 0) {
-      console.log("First question:", questions[0]);
-    }
-
     // Only return questions if custom questions are enabled
     return customQuestionsConfig?.enabled ? questions : [];
   }, [eventData?.widget_customization?.customQuestions]);
@@ -1137,10 +990,6 @@ const TicketWidget = () => {
 
         if (error) throw error;
 
-        console.log("=== WINDCAVE FRONTEND RESPONSE ===");
-        console.log("Full Windcave response received:", JSON.stringify(data, null, 2));
-        console.log("Links array:", data.links);
-
         if (data.links && Array.isArray(data.links)) {
           setWindcaveLinks(data.links);
           setShowPaymentForm(true);
@@ -1155,34 +1004,17 @@ const TicketWidget = () => {
           throw new Error("Invalid response from Windcave: Missing links array");
         }
       } else {
-        // Handle Stripe payment (existing logic)
-        console.log("🔍 Starting Stripe checkout with key:", stripePublishableKey ? "Key available" : "No key");
-        
+        // Handle Stripe payment
         // Calculate booking fee breakdown for Stripe
         const ticketTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         const merchandiseTotal = getMerchandiseTotal();
         const subtotal = ticketTotal + merchandiseTotal;
         const bookingFeesEnabled = eventData?.organizations?.stripe_booking_fee_enabled || false;
-        const bookingFee = bookingFeesEnabled && eventData?.organizations?.payment_provider === 'stripe' 
+        const bookingFee = bookingFeesEnabled && eventData?.organizations?.payment_provider === 'stripe'
           ? (subtotal * 0.01) + 0.50
           : 0;
         const processingFeeAmount = creditCardProcessingFee > 0 ? (subtotal * creditCardProcessingFee / 100) : 0;
         const total = subtotal + processingFeeAmount + bookingFee;
-
-        console.log("🔍 Payment breakdown:", {
-          subtotal,
-          bookingFee,
-          processingFeeAmount,
-          total,
-          bookingFeesEnabled
-        });
-
-        console.log('🎯 About to create payment intent with group tracking:', {
-          groupId,
-          allocationId,
-          isGroupPurchase,
-          promoCodeId
-        });
 
         const { data, error } = await supabase.functions.invoke("create-payment-intent", {
           body: {
@@ -1234,20 +1066,11 @@ const TicketWidget = () => {
 
 
   const initializeWindcaveDropIn = (links: WindcaveLink[], totalAmount: number) => {
-    console.log("=== INITIALIZING WINDCAVE DROP-IN ===");
-    console.log("Links received:", links);
-    console.log("Total amount:", totalAmount);
-    console.log("Event data:", eventData);
-    console.log("Window WindcavePayments available:", !!window.WindcavePayments);
-    
     // Check if WindcavePayments is available
     if (typeof window !== 'undefined' && checkWindcaveReadiness()) {
-      console.log("✅ All Windcave components are ready");
-      console.log("WindcavePayments object:", window.WindcavePayments);
-      
       const dropInContainer = dropInRef.current;
       if (!dropInContainer) {
-        console.error("Drop-in container not found - dropInRef.current is null");
+        console.error("Drop-in container not found");
         toast({
           title: "Payment System Error",
           description: "Payment container not found. Please refresh the page.",
@@ -1255,14 +1078,8 @@ const TicketWidget = () => {
         });
         return;
       }
-      
-      console.log("Drop-in container found:", dropInContainer);
-      console.log("Container ID:", dropInContainer.id);
 
       try {
-        console.log("=== CREATING DROP-IN CONFIGURATION ===");
-        console.log("Organization config:", eventData?.organizations);
-        console.log("Apple Pay Merchant ID:", eventData?.organizations?.apple_pay_merchant_id);
         const data = {
           container: "windcave-drop-in",
           links: links,
@@ -1297,22 +1114,17 @@ const TicketWidget = () => {
             applePay: {
               merchantId: eventData.organizations.apple_pay_merchant_id,
                onSuccess: function(status: string) {
-                console.log("=== APPLE PAY SUCCESS CALLBACK ===");
-                console.log("Apple Pay status:", status);
-                
                 if (status === "done") {
-                  console.log("Apple Pay transaction finished");
                   if (window.windcaveDropIn) {
                     window.windcaveDropIn.close();
                     window.windcaveDropIn = null;
                   }
                   return;
                 }
-                
+
                 // Return Promise for non-done status as per sample
                 return (async () => {
                   try {
-                    console.log("Processing Apple Pay transaction...");
 
                     // Extract session ID from links for completion
                     const sessionId = links[0]?.href?.split('/').pop();
@@ -1357,17 +1169,15 @@ const TicketWidget = () => {
                 })();
               },
               onError: function(stage: any, error: any) {
-                console.error("=== APPLE PAY ERROR CALLBACK ===");
-                console.error("Stage:", stage, "Error:", error);
-                
+                console.error("Apple Pay error:", stage, error);
+
                 if (stage === "submit" || stage === "transaction") {
-                  console.log("Apple Pay transaction failed");
                   if (window.windcaveDropIn) {
                     window.windcaveDropIn.close();
                     window.windcaveDropIn = null;
                   }
                 }
-                
+
                 toast({
                   title: "Apple Pay Failed",
                   description: `Payment failed at ${stage} stage`,
@@ -1382,9 +1192,7 @@ const TicketWidget = () => {
               supportPANOnly: true,
               supportTokens: true,
               onSuccess: function(status: any) {
-                console.log("=== GOOGLE PAY SUCCESS CALLBACK ===");
                 if (status === "done") {
-                  console.log("Google Pay transaction finished");
                   if (window.windcaveDropIn) {
                     window.windcaveDropIn.close();
                     window.windcaveDropIn = null;
@@ -1392,11 +1200,9 @@ const TicketWidget = () => {
                 }
               },
               onError: function(stage: any, error: any) {
-                console.error("=== GOOGLE PAY ERROR CALLBACK ===");
-                console.error("Stage:", stage, "Error:", error);
-                
+                console.error("Google Pay error:", stage, error);
+
                 if (stage === "submit" || stage === "transaction") {
-                  console.log("Google Pay transaction failed");
                   if (window.windcaveDropIn) {
                     window.windcaveDropIn.close();
                     window.windcaveDropIn = null;
@@ -1407,75 +1213,45 @@ const TicketWidget = () => {
           } : undefined,
           // Optional callback triggered when payment starts
           onPaymentStart: (paymentMethod: string, next: () => void) => {
-            console.log("=== PAYMENT START CALLBACK ===");
-            console.log("Payment method selected:", paymentMethod);
-            
             // Perform any pre-payment validation or preparation here
             // For now, just proceed with the payment
             next();
           },
           // General onSuccess callback (for non-Apple Pay payments)
           onSuccess: async (status: string, data?: any) => {
-            console.log("=== WINDCAVE SUCCESS CALLBACK ===");
-            console.log("Success status:", status);
-            console.log("Success data:", data);
-            
             // Critical: Handle 3DSecure authentication flow
             if (status == "3DSecure") {
-              console.log("3DSecure authentication in progress...");
               return;
             }
-            
-            console.log("Transaction finished");
-            
+
             // Close the drop-in widget
             if (window.windcaveDropIn) {
               window.windcaveDropIn.close();
               window.windcaveDropIn = null;
             }
-            
+
             // Extract session ID from links for completion
             const sessionId = links[0]?.href?.split('/').pop();
-            console.log("=== DEBUG INFO ===");
-            console.log("Full link:", links[0]?.href);
-            console.log("Extracted sessionId:", sessionId);
-            console.log("Event ID:", eventData?.id);
-            
+
             if (sessionId && eventData) {
               toast({
                 title: "Payment Successful!",
                 description: "Finalizing your order...",
               });
-              
+
               try {
-                console.log("=== CALLING WINDCAVE DROPIN SUCCESS ===");
-                console.log("About to call function with:", {
-                  sessionId: sessionId,
-                  eventId: eventData.id
-                });
-                
                 // Call the Drop In success function to finalize the order
                 const { data, error } = await anonymousSupabase.functions.invoke('windcave-dropin-success', {
-                  body: { 
+                  body: {
                     sessionId: sessionId,
                     eventId: eventData.id
                   }
                 });
 
-                console.log("=== FUNCTION RESPONSE ===");
-                console.log("Data:", data);
-                console.log("Error:", error);
-
                 if (error) {
-                  console.error("=== WINDCAVE DROPIN SUCCESS ERROR ===");
-                  console.error("Full error object:", error);
-                  console.error("Error message:", error.message);
-                  console.error("Error details:", error.details);
+                  console.error("Windcave dropin success error:", error);
                   throw error;
                 }
-
-                console.log("=== WINDCAVE DROPIN SUCCESS DATA ===");
-                console.log("Response data:", data);
 
                 toast({
                   title: "Order Complete!",
@@ -1539,8 +1315,6 @@ const TicketWidget = () => {
           }
         };
 
-        console.log("Initializing Windcave Drop-In with data:", data);
-        
         // Create the drop-in using the simpler approach from the example
         window.windcaveDropIn = window.WindcavePayments?.DropIn.create({
           ...data,
@@ -1553,18 +1327,10 @@ const TicketWidget = () => {
             enableCardFormatting: true
           }
         } as any);
-        
+
       } catch (error: any) {
-        console.error("=== DROP-IN INITIALIZATION ERROR ===");
-        console.error("Error:", error);
-        console.error("Error type:", typeof error);
-        console.error("Error message:", error?.message);
-        console.error("Error stack:", error?.stack);
-        console.error("Links provided:", links);
-        console.error("Total amount:", totalAmount);
-        console.error("Event data:", eventData);
-        console.error("WindcavePayments available:", !!window.WindcavePayments);
-        
+        console.error("Drop-in initialization error:", error);
+
         toast({
           title: "Payment System Error",
           description: `Failed to initialize payment form: ${error?.message || 'Unknown error'}. Please refresh and try again.`,
@@ -1573,17 +1339,12 @@ const TicketWidget = () => {
         setShowPaymentForm(false);
       }
     } else {
-      console.log("WindcavePayments not available yet, retrying...");
-      console.log("Available properties on window:", Object.keys(window).filter(k => k.toLowerCase().includes('wind')));
       const retryCount = (window as any).windcaveRetryCount || 0;
       if (retryCount < 10) {
         (window as any).windcaveRetryCount = retryCount + 1;
-        console.log(`Retry attempt ${retryCount + 1}/10 in 1 second...`);
         setTimeout(() => initializeWindcaveDropIn(links, totalAmount), 1000);
       } else {
         console.error("WindcavePayments failed to load after multiple retries");
-        console.error("Final check - window.WindcavePayments:", window.WindcavePayments);
-        console.error("Scripts in head:", Array.from(document.head.querySelectorAll('script')).map(s => s.src));
         toast({
           title: "Payment System Unavailable",
           description: "Unable to load payment system. Please refresh the page and try again.",
@@ -1612,8 +1373,6 @@ const TicketWidget = () => {
     customAnswers: Record<string, any>;
     donationAmount?: number;
   }) => {
-    console.log('🔄 handleModalWindcaveSession called with:', params);
-
     if (params.cart.length === 0 && params.merchandiseCart.length === 0) {
       toast({
         title: "Error",
@@ -1652,8 +1411,6 @@ const TicketWidget = () => {
         donationAmount: params.donationAmount
       };
 
-      console.log('🔄 Creating Windcave session with:', { eventId, items: allItems, customerInfo: fullCustomerInfo });
-
       // Create Windcave session and initialize Drop-In
       const { data, error } = await anonymousSupabase.functions.invoke("windcave-session", {
         body: {
@@ -1664,10 +1421,6 @@ const TicketWidget = () => {
       });
 
       if (error) throw error;
-
-      console.log("=== WINDCAVE MODAL FRONTEND RESPONSE ===");
-      console.log("Full Windcave response received:", JSON.stringify(data, null, 2));
-      console.log("Links array:", data.links);
 
       if (data.links && Array.isArray(data.links)) {
         setWindcaveLinks(data.links);
@@ -1702,8 +1455,6 @@ const TicketWidget = () => {
     customAnswers: Record<string, any>;
     platformTip?: number;
   }) => {
-    console.log('🆓 handleFreeRegistration called with:', params);
-
     if (params.cart.length === 0) {
       toast({
         title: "Error",
@@ -1733,8 +1484,6 @@ const TicketWidget = () => {
         ...params.customerInfo,
         customAnswers: params.customAnswers
       };
-
-      console.log('🆓 Creating free registration with:', { eventId, items, customerInfo: fullCustomerInfo, platformTip: params.platformTip });
 
       const { data, error } = await anonymousSupabase.functions.invoke("free-registration", {
         body: {
@@ -1782,38 +1531,14 @@ const TicketWidget = () => {
   // Optimize checkout mode decision with useMemo
   const checkoutModeDecision = useMemo(() => {
     // Check both local state and event data for checkout mode
-    const localCheckoutMode = checkoutMode;
     const dataCheckoutMode = eventData?.widget_customization?.checkoutMode;
-    const effectiveCheckoutMode = dataCheckoutMode || localCheckoutMode;
+    const effectiveCheckoutMode = dataCheckoutMode || checkoutMode;
 
     const isMultiStep = effectiveCheckoutMode === 'multistep' && eventData;
     const isBeta = effectiveCheckoutMode === 'beta' && eventData;
     const isModal = effectiveCheckoutMode === 'modal' && eventData;
 
-    // Debug logging
-    console.log("=== CHECKOUT MODE DECISION DEBUG ===");
-    console.log("Local checkoutMode:", localCheckoutMode);
-    console.log("Data checkoutMode:", dataCheckoutMode);
-    console.log("Effective checkoutMode:", effectiveCheckoutMode);
-    console.log("eventData exists:", !!eventData);
-    console.log("widget_customization:", eventData?.widget_customization);
-    console.log("isMultiStep:", isMultiStep);
-    console.log("isBeta:", isBeta);
-    console.log("isModal:", isModal);
-
-    // Only log once when the decision changes
-    if (isMultiStep) {
-      console.log("✅ Rendering MultiStepCheckout component");
-    } else if (isBeta) {
-      console.log("✅ Rendering BetaCheckout component");
-    } else if (isModal) {
-      console.log("✅ Rendering ModalCheckout component");
-    } else {
-      console.log("❌ Rendering single-page checkout");
-    }
-
     return { isMultiStep, isBeta, isModal, effectiveCheckoutMode };
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- specific checkoutMode path is intentional for targeted reactivity
   }, [checkoutMode, eventData?.widget_customization?.checkoutMode, eventData]);
 
   // Legacy support for shouldRenderMultiStep
@@ -2060,21 +1785,7 @@ const TicketWidget = () => {
                    eventData.widget_customization.theme.secondaryColor &&
                    eventData.widget_customization.theme.backgroundColor &&
                    (eventData.widget_customization.theme.headerTextColor || eventData.widget_customization.theme.textColor)));
-                 
-  // Debug logging for theme readiness
-  console.log("🎯 Theme readiness check:", {
-    hasEventData: !!eventData,
-    hasWidgetCustomization: !!eventData?.widget_customization,
-    hasTheme: !!eventData?.widget_customization?.theme,
-    themeEnabled: eventData?.widget_customization?.theme?.enabled,
-    hasPrimaryColor: !!eventData?.widget_customization?.theme?.primaryColor,
-    hasSecondaryColor: !!eventData?.widget_customization?.theme?.secondaryColor,
-    hasBackgroundColor: !!eventData?.widget_customization?.theme?.backgroundColor,
-    hasHeaderTextColor: !!eventData?.widget_customization?.theme?.headerTextColor,
-    hasOldTextColor: !!eventData?.widget_customization?.theme?.textColor,
-    isReady: isReady
-  });
-  
+
   // Feature flag for new SinglePageCheckout component
   // Set to true to use the new refactored component, false for legacy inline checkout
   const useNewSinglePageCheckout = true;
@@ -3110,7 +2821,6 @@ const TicketWidget = () => {
                                 const groupIdMatch = promoCode.description.match(/^GROUP:([a-f0-9-]+)/);
                                 if (groupIdMatch) {
                                   finalGroupId = groupIdMatch[1];
-                                  console.log('🎯 Detected group discount code for group:', finalGroupId);
 
                                   // Fetch tickets to get ticket type IDs
                                   const { data: orderTickets } = await supabase
@@ -3132,20 +2842,17 @@ const TicketWidget = () => {
 
                                     if (allocation) {
                                       finalAllocationId = allocation.id;
-                                      console.log('🎯 Found allocation:', finalAllocationId);
                                     }
                                   }
                                 }
                               }
                             } catch (error) {
-                              console.error('❌ Error checking for group discount code:', error);
+                              console.error('Error checking for group discount code:', error);
                             }
                           }
 
                           // Track group sale if we have group and allocation IDs
                           if (finalGroupId && finalAllocationId) {
-                            console.log('🎯 Tracking group sale...', { orderId, groupId: finalGroupId, allocationId: finalAllocationId });
-
                             try {
                               // Fetch the tickets that were just created for this order
                               const { data: tickets, error: ticketsError } = await supabase
@@ -3154,12 +2861,10 @@ const TicketWidget = () => {
                                 .eq('order_id', orderId);
 
                               if (ticketsError) {
-                                console.error('❌ Error fetching tickets:', ticketsError);
+                                console.error('Error fetching tickets for group sale:', ticketsError);
                               } else if (tickets && tickets.length > 0) {
-                                console.log('🎯 Found tickets for order:', tickets);
-
                                 // Call edge function to track group sale
-                                const { data, error } = await supabase.functions.invoke('track-group-sale', {
+                                const { error } = await supabase.functions.invoke('track-group-sale', {
                                   body: {
                                     orderId,
                                     groupId: finalGroupId,
@@ -3173,14 +2878,12 @@ const TicketWidget = () => {
                                 });
 
                                 if (error) {
-                                  console.error('❌ Error tracking group sale:', error);
+                                  console.error('Error tracking group sale:', error);
                                   // Don't fail the purchase, just log the error
-                                } else {
-                                  console.log('✅ Group sale tracked successfully:', data);
                                 }
                               }
                             } catch (error) {
-                              console.error('❌ Exception tracking group sale:', error);
+                              console.error('Exception tracking group sale:', error);
                               // Don't fail the purchase, just log the error
                             }
                           }
@@ -3265,19 +2968,9 @@ const TicketWidget = () => {
           )}
 
           {/* Seat Selection Modal */}
-          {(() => {
-            console.log("=== SEAT SELECTION MODAL RENDER CHECK ===");
-            console.log("showSeatSelection:", showSeatSelection);
-            console.log("pendingSeatSelection:", pendingSeatSelection);
-            return null;
-          })()}
           {showSeatSelection && pendingSeatSelection && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
               <div className="w-full max-w-6xl max-h-[90vh] overflow-hidden">
-                {(() => {
-                  console.log("🎪 Rendering GuestSeatSelector component");
-                  return null;
-                })()}
                 <GuestSeatSelector
                   eventId={eventId!}
                   ticketTypeId={pendingSeatSelection.id}
