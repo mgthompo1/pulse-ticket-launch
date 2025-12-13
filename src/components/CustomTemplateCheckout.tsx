@@ -92,6 +92,13 @@ interface CheckoutTemplate {
     twoColumnLeftWidth?: "1/3" | "1/2" | "2/3";
     twoColumnGap?: "sm" | "md" | "lg";
     twoColumnStackOnMobile?: boolean;
+    // Two-column styling
+    twoColumnLeftBgColor?: string;
+    twoColumnRightBgColor?: string;
+    twoColumnLeftTextColor?: string;
+    twoColumnRightTextColor?: string;
+    twoColumnLeftContent?: string;
+    twoColumnRightContent?: string;
   };
 }
 
@@ -629,7 +636,27 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
   };
 
   // Render individual elements
+  // Note: isDark is determined after template is loaded, but we can compute it here
+  const computeIsDark = () => {
+    const themeMode = template?.settings.themeMode || "system";
+    if (themeMode === "dark") return true;
+    if (themeMode === "light") return false;
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      return true;
+    }
+    return false;
+  };
+
   const renderElement = (element: CheckoutElement) => {
+    const isDarkMode = computeIsDark();
+
+    // Theme-aware class helpers
+    const cardBg = isDarkMode ? "bg-zinc-800 border-zinc-700" : "bg-white border-gray-200";
+    const inputBg = isDarkMode ? "bg-zinc-700 border-zinc-600 text-white" : "bg-white border-gray-300";
+    const mutedText = isDarkMode ? "text-zinc-400" : "text-gray-500";
+    const headingText = isDarkMode ? "text-white" : "text-gray-900";
+    const bodyText = isDarkMode ? "text-zinc-200" : "text-gray-700";
+
     switch (element.type) {
       case "logo": {
         const alignmentClasses: Record<string, string> = {
@@ -685,15 +712,15 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                 className="w-full h-48 object-cover rounded-lg"
               />
             )}
-            <h1 className="text-2xl font-bold">{eventData?.name}</h1>
+            <h1 className={`text-2xl font-bold ${headingText}`}>{eventData?.name}</h1>
             {element.config.showDate && eventData?.event_date && (
-              <div className="flex items-center gap-2 text-muted-foreground">
+              <div className={`flex items-center gap-2 ${mutedText}`}>
                 <Calendar className="h-4 w-4" />
                 <span>{format(new Date(eventData.event_date), "EEEE, MMMM d, yyyy 'at' h:mm a")}</span>
               </div>
             )}
             {element.config.showVenue && eventData?.venue && (
-              <div className="flex items-center gap-2 text-muted-foreground">
+              <div className={`flex items-center gap-2 ${mutedText}`}>
                 <MapPin className="h-4 w-4" />
                 <span>{eventData.venue}</span>
               </div>
@@ -704,22 +731,22 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
       case "ticket_selector":
         return (
           <div key={element.id} className="space-y-4">
-            <h3 className="font-semibold">{element.config.label || element.label}</h3>
+            <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
             {ticketTypes.map((ticket) => (
               <div
                 key={ticket.id}
-                className="flex items-center justify-between p-4 rounded-lg border bg-card"
+                className={`flex items-center justify-between p-4 rounded-lg border ${cardBg}`}
               >
                 <div className="flex-1">
-                  <div className="font-medium">{ticket.name}</div>
+                  <div className={`font-medium ${bodyText}`}>{ticket.name}</div>
                   {element.config.showDescription && ticket.description && (
-                    <p className="text-sm text-muted-foreground">{ticket.description}</p>
+                    <p className={`text-sm ${mutedText}`}>{ticket.description}</p>
                   )}
-                  <div className="text-lg font-bold mt-1">
+                  <div className={`text-lg font-bold mt-1 ${headingText}`}>
                     ${ticket.price.toFixed(2)}
                   </div>
                   {element.config.showAvailability && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className={`text-xs ${mutedText}`}>
                       {ticket.quantity_available} available
                     </p>
                   )}
@@ -728,7 +755,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-8 w-8"
+                    className={`h-8 w-8 ${isDarkMode ? "border-zinc-600 hover:bg-zinc-700" : ""}`}
                     disabled={(selectedTickets[ticket.id] || 0) === 0}
                     onClick={() =>
                       setSelectedTickets((prev) => ({
@@ -739,13 +766,13 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
-                  <span className="w-8 text-center font-medium">
+                  <span className={`w-8 text-center font-medium ${bodyText}`}>
                     {selectedTickets[ticket.id] || 0}
                   </span>
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-8 w-8"
+                    className={`h-8 w-8 ${isDarkMode ? "border-zinc-600 hover:bg-zinc-700" : ""}`}
                     disabled={
                       (selectedTickets[ticket.id] || 0) >= ticket.quantity_available ||
                       (ticket.max_per_order && (selectedTickets[ticket.id] || 0) >= ticket.max_per_order)
@@ -768,31 +795,33 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
       case "customer_info":
         return (
           <div key={element.id} className="space-y-4">
-            <h3 className="font-semibold">{element.config.label || element.label}</h3>
+            <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>First Name *</Label>
+                <Label className={bodyText}>First Name *</Label>
                 <Input
                   value={customerInfo.firstName}
                   onChange={(e) =>
                     setCustomerInfo((prev) => ({ ...prev, firstName: e.target.value }))
                   }
                   placeholder="John"
+                  className={inputBg}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Last Name *</Label>
+                <Label className={bodyText}>Last Name *</Label>
                 <Input
                   value={customerInfo.lastName}
                   onChange={(e) =>
                     setCustomerInfo((prev) => ({ ...prev, lastName: e.target.value }))
                   }
                   placeholder="Doe"
+                  className={inputBg}
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Email *</Label>
+              <Label className={bodyText}>Email *</Label>
               <Input
                 type="email"
                 value={customerInfo.email}
@@ -800,11 +829,12 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                   setCustomerInfo((prev) => ({ ...prev, email: e.target.value }))
                 }
                 placeholder="john@example.com"
+                className={inputBg}
               />
             </div>
             {(element.config.requirePhone || element.config.showPhone !== false) && (
               <div className="space-y-2">
-                <Label>Phone {element.config.requirePhone ? "*" : "(optional)"}</Label>
+                <Label className={bodyText}>Phone {element.config.requirePhone ? "*" : "(optional)"}</Label>
                 <Input
                   type="tel"
                   value={customerInfo.phone}
@@ -812,6 +842,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                     setCustomerInfo((prev) => ({ ...prev, phone: e.target.value }))
                   }
                   placeholder="+1 (555) 000-0000"
+                  className={inputBg}
                 />
               </div>
             )}
@@ -823,7 +854,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
 
         if (!stripePublishableKey) {
           return (
-            <div key={element.id} className="p-4 rounded-lg bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+            <div key={element.id} className={`p-4 rounded-lg ${isDarkMode ? "bg-amber-900/20 text-amber-200" : "bg-amber-50 text-amber-800"}`}>
               <p className="text-sm font-medium">Payment not configured</p>
               <p className="text-xs mt-1">Stripe publishable key is missing from environment</p>
             </div>
@@ -834,10 +865,10 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
         if (!customerInfo.email || !customerInfo.firstName) {
           return (
             <div key={element.id} className="space-y-4">
-              <h3 className="font-semibold">{element.config.label || element.label}</h3>
-              <Card className="border-amber-200 bg-amber-50/50">
+              <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
+              <Card className={isDarkMode ? "bg-amber-900/20 border-amber-800" : "border-amber-200 bg-amber-50/50"}>
                 <CardContent className="pt-6">
-                  <div className="text-center space-y-2 text-amber-800">
+                  <div className={`text-center space-y-2 ${isDarkMode ? "text-amber-200" : "text-amber-800"}`}>
                     <CreditCard className="h-8 w-8 mx-auto opacity-50" />
                     <p className="font-medium">Complete your details first</p>
                     <p className="text-sm">Please fill in your name and email to proceed with payment</p>
@@ -851,10 +882,10 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
         if (totals.ticketCount === 0) {
           return (
             <div key={element.id} className="space-y-4">
-              <h3 className="font-semibold">{element.config.label || element.label}</h3>
-              <Card className="border-amber-200 bg-amber-50/50">
+              <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
+              <Card className={isDarkMode ? "bg-amber-900/20 border-amber-800" : "border-amber-200 bg-amber-50/50"}>
                 <CardContent className="pt-6">
-                  <div className="text-center space-y-2 text-amber-800">
+                  <div className={`text-center space-y-2 ${isDarkMode ? "text-amber-200" : "text-amber-800"}`}>
                     <CreditCard className="h-8 w-8 mx-auto opacity-50" />
                     <p className="font-medium">Select tickets first</p>
                     <p className="text-sm">Please select at least one ticket to proceed</p>
@@ -868,12 +899,12 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
         // Show the Stripe payment form directly (inline mode - default)
         return (
           <div key={element.id} className="space-y-4">
-            <h3 className="font-semibold">{element.config.label || element.label}</h3>
-            <Card>
+            <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
+            <Card className={cardBg}>
               <CardContent className="pt-6">
                 <div className="flex justify-between text-sm mb-4 px-1">
-                  <span className="text-muted-foreground">Total to pay</span>
-                  <span className="font-bold text-lg">${totals.total.toFixed(2)}</span>
+                  <span className={mutedText}>Total to pay</span>
+                  <span className={`font-bold text-lg ${headingText}`}>${totals.total.toFixed(2)}</span>
                 </div>
                 <StripePaymentForm
                   publishableKey={stripePublishableKey}
@@ -903,8 +934,8 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
       case "order_summary":
         return (
           <div key={element.id} className="space-y-4">
-            <h3 className="font-semibold">{element.config.label || element.label}</h3>
-            <Card>
+            <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
+            <Card className={cardBg}>
               <CardContent className="pt-4 space-y-3">
                 {element.config.showItemized &&
                   Object.entries(selectedTickets)
@@ -913,7 +944,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                       const ticket = ticketTypes.find((t) => t.id === ticketId);
                       if (!ticket) return null;
                       return (
-                        <div key={ticketId} className="flex justify-between text-sm">
+                        <div key={ticketId} className={`flex justify-between text-sm ${bodyText}`}>
                           <span>
                             {ticket.name} x {qty}
                           </span>
@@ -921,19 +952,19 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                         </div>
                       );
                     })}
-                <Separator />
-                <div className="flex justify-between text-sm">
+                <Separator className={isDarkMode ? "bg-zinc-700" : ""} />
+                <div className={`flex justify-between text-sm ${bodyText}`}>
                   <span>Subtotal</span>
                   <span>${totals.subtotal.toFixed(2)}</span>
                 </div>
                 {appliedPromo && (
-                  <div className="flex justify-between text-sm text-green-600">
+                  <div className="flex justify-between text-sm text-green-500">
                     <span>Discount ({appliedPromo.discountType === "percent" ? `${appliedPromo.discount}%` : `$${appliedPromo.discount.toFixed(2)}`})</span>
                     <span>-${totals.discount.toFixed(2)}</span>
                   </div>
                 )}
-                <Separator />
-                <div className="flex justify-between font-bold">
+                <Separator className={isDarkMode ? "bg-zinc-700" : ""} />
+                <div className={`flex justify-between font-bold ${headingText}`}>
                   <span>Total</span>
                   <span>${totals.total.toFixed(2)}</span>
                 </div>
@@ -945,24 +976,26 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
       case "promo_code":
         return (
           <div key={element.id} className="space-y-3">
-            <h3 className="font-semibold">{element.config.label || element.label}</h3>
+            <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
             <div className="flex gap-2">
               <Input
                 value={promoCode}
                 onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                 placeholder="Enter promo code"
                 disabled={!!appliedPromo}
+                className={inputBg}
               />
               <Button
                 variant="outline"
                 onClick={applyPromoCode}
                 disabled={!!appliedPromo || !promoCode.trim()}
+                className={isDarkMode ? "border-zinc-600 hover:bg-zinc-700" : ""}
               >
                 {appliedPromo ? <CheckCircle className="h-4 w-4" /> : "Apply"}
               </Button>
             </div>
             {appliedPromo && (
-              <Badge variant="secondary" className="bg-green-100 text-green-800">
+              <Badge variant="secondary" className={isDarkMode ? "bg-green-900/30 text-green-400" : "bg-green-100 text-green-800"}>
                 <Tag className="h-3 w-3 mr-1" />
                 {appliedPromo.code} - {appliedPromo.discountType === "percent" ? `${appliedPromo.discount}% off` : `$${appliedPromo.discount.toFixed(2)} off`}
               </Badge>
@@ -972,20 +1005,21 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
 
       case "terms_checkbox":
         return (
-          <div key={element.id} className="flex items-start gap-3 p-4 rounded-lg border">
+          <div key={element.id} className={`flex items-start gap-3 p-4 rounded-lg border ${cardBg}`}>
             <Checkbox
               id="terms"
               checked={termsAccepted}
               onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+              className={isDarkMode ? "border-zinc-600 data-[state=checked]:bg-zinc-600" : ""}
             />
-            <Label htmlFor="terms" className="text-sm leading-relaxed cursor-pointer">
+            <Label htmlFor="terms" className={`text-sm leading-relaxed cursor-pointer ${bodyText}`}>
               I agree to the{" "}
               {element.config.termsUrl ? (
                 <a
                   href={element.config.termsUrl as string}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary underline"
+                  className={isDarkMode ? "text-blue-400 underline" : "text-primary underline"}
                 >
                   Terms and Conditions
                 </a>
@@ -1000,7 +1034,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                     href={element.config.privacyUrl as string}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-primary underline"
+                    className={isDarkMode ? "text-blue-400 underline" : "text-primary underline"}
                   >
                     Privacy Policy
                   </a>
@@ -1012,7 +1046,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
 
       case "timer":
         return (
-          <div key={element.id} className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+          <div key={element.id} className={`flex items-center gap-2 p-3 rounded-lg ${isDarkMode ? "bg-amber-900/20 text-amber-200" : "bg-amber-50 text-amber-800"}`}>
             <Clock className="h-4 w-4" />
             <span className="text-sm font-medium">
               {element.config.showAvailability
@@ -1026,9 +1060,9 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
         return (
           <div
             key={element.id}
-            className="prose prose-sm dark:prose-invert max-w-none p-3 rounded-lg bg-muted/30"
+            className={`prose prose-sm max-w-none p-3 rounded-lg ${isDarkMode ? "prose-invert bg-zinc-800/50" : "bg-gray-100/50"}`}
           >
-            <p className="whitespace-pre-wrap">{sanitizeHtml((element.config.content as string) || "")}</p>
+            <p className={`whitespace-pre-wrap ${bodyText}`}>{sanitizeHtml((element.config.content as string) || "")}</p>
           </div>
         );
 
@@ -1057,11 +1091,12 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
         const thickness = (element.config.thickness as string) || "thin";
         const width = (element.config.width as string) || "full";
         const spacing = (element.config.spacing as string) || "md";
+        const defaultColor = isDarkMode ? "#52525b" : "#e5e7eb";
         return (
           <div
             key={element.id}
             className={`${widthClasses[width]} ${thicknessClasses[thickness]} ${styleClasses[style]} ${spacingClasses[spacing]}`}
-            style={{ borderColor: (element.config.color as string) || undefined }}
+            style={{ borderColor: (element.config.color as string) || defaultColor }}
           />
         );
       }
@@ -1080,14 +1115,15 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
         };
         const size = (element.config.size as string) || "lg";
         const alignment = (element.config.alignment as string) || "left";
+        const defaultTextColor = isDarkMode ? "#ffffff" : "#111827";
         return (
           <div
             key={element.id}
-            className={`${alignClasses[alignment]} ${element.config.showDivider ? 'border-b pb-2 mb-4' : 'mb-4'}`}
+            className={`${alignClasses[alignment]} ${element.config.showDivider ? `border-b pb-2 mb-4 ${isDarkMode ? "border-zinc-700" : "border-gray-200"}` : 'mb-4'}`}
           >
             <h2
               className={`font-semibold ${sizeClasses[size]}`}
-              style={{ color: (element.config.textColor as string) || undefined }}
+              style={{ color: (element.config.textColor as string) || defaultTextColor }}
             >
               {(element.config.text as string) || element.label}
             </h2>
@@ -1117,6 +1153,10 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
         const leftElements = (element.config.leftElements as string[]) || [];
         const rightElements = (element.config.rightElements as string[]) || [];
 
+        // Default background colors based on theme
+        const defaultLeftBg = isDarkMode ? "#27272a" : undefined;
+        const defaultRightBg = isDarkMode ? "#18181b" : undefined;
+
         return (
           <div
             key={element.id}
@@ -1124,7 +1164,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
           >
             <div
               className="space-y-4 p-4 rounded-lg"
-              style={{ backgroundColor: (element.config.leftBackgroundColor as string) || undefined }}
+              style={{ backgroundColor: (element.config.leftBackgroundColor as string) || defaultLeftBg }}
             >
               {leftElements.length > 0 ? (
                 leftElements.map(id => {
@@ -1133,14 +1173,14 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                   return el ? renderElement(el) : null;
                 })
               ) : (
-                <div className="text-center text-muted-foreground py-8">
+                <div className={`text-center py-8 ${mutedText}`}>
                   <p className="text-sm">Left column</p>
                 </div>
               )}
             </div>
             <div
               className="space-y-4 p-4 rounded-lg"
-              style={{ backgroundColor: (element.config.rightBackgroundColor as string) || undefined }}
+              style={{ backgroundColor: (element.config.rightBackgroundColor as string) || defaultRightBg }}
             >
               {rightElements.length > 0 ? (
                 rightElements.map(id => {
@@ -1148,7 +1188,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                   return el ? renderElement(el) : null;
                 })
               ) : (
-                <div className="text-center text-muted-foreground py-8">
+                <div className={`text-center py-8 ${mutedText}`}>
                   <p className="text-sm">Right column</p>
                 </div>
               )}
@@ -1161,31 +1201,31 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
         return (
           <div key={element.id} className="space-y-4">
             <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">{element.config.label || element.label}</h3>
+              <Users className={`h-5 w-5 ${isDarkMode ? "text-blue-400" : "text-primary"}`} />
+              <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
             </div>
             {totals.ticketCount === 0 ? (
-              <p className="text-sm text-muted-foreground">
+              <p className={`text-sm ${mutedText}`}>
                 Select tickets above to add attendee details
               </p>
             ) : (
               <div className="space-y-4">
                 {attendeeDetails.map((attendee, index) => (
-                  <Card key={index} className={index === 0 ? "border-primary/30" : ""}>
+                  <Card key={index} className={`${cardBg} ${index === 0 ? (isDarkMode ? "border-blue-500/30" : "border-primary/30") : ""}`}>
                     <CardHeader className="pb-2">
                       <div className="flex items-center gap-2">
-                        <Badge variant={index === 0 ? "secondary" : "outline"} className="text-xs">
+                        <Badge variant={index === 0 ? "secondary" : "outline"} className={`text-xs ${isDarkMode ? (index === 0 ? "bg-zinc-700 text-zinc-200" : "border-zinc-600 text-zinc-300") : ""}`}>
                           Ticket {index + 1}
                         </Badge>
                         {index === 0 && (
-                          <span className="text-xs text-muted-foreground">(Primary Ticket Holder)</span>
+                          <span className={`text-xs ${mutedText}`}>(Primary Ticket Holder)</span>
                         )}
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div className="space-y-1">
-                          <Label className="text-xs">Name *</Label>
+                          <Label className={`text-xs ${bodyText}`}>Name *</Label>
                           <Input
                             value={attendee.name}
                             onChange={(e) => {
@@ -1194,11 +1234,11 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                               setAttendeeDetails(newDetails);
                             }}
                             placeholder="Full name"
-                            className="h-9"
+                            className={`h-9 ${inputBg}`}
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">
+                          <Label className={`text-xs ${bodyText}`}>
                             Email {element.config.requireEmail ? "*" : ""}
                           </Label>
                           <Input
@@ -1210,13 +1250,13 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                               setAttendeeDetails(newDetails);
                             }}
                             placeholder="email@example.com"
-                            className="h-9"
+                            className={`h-9 ${inputBg}`}
                           />
                         </div>
                       </div>
                       {element.config.requirePhone && (
                         <div className="space-y-1">
-                          <Label className="text-xs">Phone *</Label>
+                          <Label className={`text-xs ${bodyText}`}>Phone *</Label>
                           <Input
                             type="tel"
                             value={attendee.phone}
@@ -1226,7 +1266,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                               setAttendeeDetails(newDetails);
                             }}
                             placeholder="+1 (555) 000-0000"
-                            className="h-9"
+                            className={`h-9 ${inputBg}`}
                           />
                         </div>
                       )}
@@ -1244,28 +1284,28 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
             <Dialog>
               <DialogTrigger asChild>
                 {(element.config.triggerStyle as string) === "button" ? (
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className={isDarkMode ? "border-zinc-600 text-zinc-200 hover:bg-zinc-700" : ""}>
                     <HelpCircle className="h-4 w-4 mr-2" />
                     {(element.config.triggerText as string) || "Learn More"}
                   </Button>
                 ) : (element.config.triggerStyle as string) === "icon" ? (
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full">
-                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                  <Button variant="ghost" size="sm" className={`h-8 w-8 p-0 rounded-full ${isDarkMode ? "hover:bg-zinc-700" : ""}`}>
+                    <HelpCircle className={`h-4 w-4 ${mutedText}`} />
                   </Button>
                 ) : (
-                  <button className="text-primary underline text-sm hover:text-primary/80">
+                  <button className={`underline text-sm ${isDarkMode ? "text-blue-400 hover:text-blue-300" : "text-primary hover:text-primary/80"}`}>
                     {(element.config.triggerText as string) || "Learn More"}
                   </button>
                 )}
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className={isDarkMode ? "bg-zinc-900 border-zinc-700 text-white" : ""}>
                 <DialogHeader>
-                  <DialogTitle>
+                  <DialogTitle className={headingText}>
                     {(element.config.modalTitle as string) || "Information"}
                   </DialogTitle>
                 </DialogHeader>
-                <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <p className="whitespace-pre-wrap">
+                <div className={`prose prose-sm max-w-none ${isDarkMode ? "prose-invert" : ""}`}>
+                  <p className={`whitespace-pre-wrap ${bodyText}`}>
                     {sanitizeHtml((element.config.modalContent as string) || "")}
                   </p>
                 </div>
@@ -1280,10 +1320,10 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
         }
         return (
           <div key={element.id} className="space-y-4">
-            <h3 className="font-semibold">{element.config.label || element.label}</h3>
+            <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
             {customQuestions.map((q) => (
               <div key={q.id} className="space-y-2">
-                <Label className="text-sm">
+                <Label className={`text-sm ${bodyText}`}>
                   {q.question} {q.required && "*"}
                 </Label>
                 {q.type === "select" && q.options ? (
@@ -1293,12 +1333,12 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                       setCustomAnswers((prev) => ({ ...prev, [q.id]: value }))
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={inputBg}>
                       <SelectValue placeholder="Select an option" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className={isDarkMode ? "bg-zinc-800 border-zinc-700" : ""}>
                       {q.options.map((opt) => (
-                        <SelectItem key={opt} value={opt}>
+                        <SelectItem key={opt} value={opt} className={isDarkMode ? "focus:bg-zinc-700" : ""}>
                           {opt}
                         </SelectItem>
                       ))}
@@ -1310,7 +1350,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                     onChange={(e) =>
                       setCustomAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
                     }
-                    className="w-full h-24 p-2 text-sm rounded-md border bg-background resize-none"
+                    className={`w-full h-24 p-2 text-sm rounded-md border resize-none ${isDarkMode ? "bg-zinc-700 border-zinc-600 text-white placeholder:text-zinc-400" : "bg-white border-gray-300"}`}
                     placeholder="Enter your answer..."
                   />
                 ) : (
@@ -1320,6 +1360,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                       setCustomAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
                     }
                     placeholder="Enter your answer"
+                    className={inputBg}
                   />
                 )}
               </div>
@@ -1391,7 +1432,9 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
   };
 
   const themeClass = getThemeClass();
+  const isDark = themeClass === "dark";
   const isSidebarLayout = template.settings.layout === "sidebar";
+  const isTwoColumn = template.settings.layout === "two_column";
   const sidebarOnLeft = template.settings.sidebarPosition === "left";
 
   // Check if user has added sidebar elements anywhere in the template
@@ -1407,18 +1450,24 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
   const renderSidebarContent = () => {
     if (!orderSummaryElement) return null;
 
+    // Theme-aware classes for sidebar
+    const sidebarCardBg = isDark ? "bg-zinc-800 border-zinc-700" : "bg-white border-gray-200";
+    const sidebarInputBg = isDark ? "bg-zinc-700 border-zinc-600 text-white" : "bg-white border-gray-300";
+    const sidebarMutedText = isDark ? "text-zinc-400" : "text-gray-500";
+    const sidebarHeadingText = isDark ? "text-white" : "text-gray-900";
+
     return (
       <div className="w-80 flex-shrink-0 space-y-4">
         {/* Promo Code in Sidebar */}
         {promoCodeElement && (
-          <Card>
+          <Card className={sidebarCardBg}>
             <CardContent className="pt-4">
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Tag className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${sidebarMutedText}`} />
                   <Input
                     placeholder="Enter promo code"
-                    className="pl-9"
+                    className={`pl-9 ${sidebarInputBg}`}
                     value={promoCode}
                     onChange={(e) => setPromoCode(e.target.value)}
                     disabled={!!appliedPromo}
@@ -1428,6 +1477,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                   <Button
                     variant="outline"
                     size="sm"
+                    className={isDark ? "border-zinc-600 hover:bg-zinc-700" : ""}
                     onClick={() => {
                       setAppliedPromo(null);
                       setPromoCode("");
@@ -1439,6 +1489,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                   <Button
                     variant="outline"
                     size="sm"
+                    className={isDark ? "border-zinc-600 hover:bg-zinc-700" : ""}
                     onClick={applyPromoCode}
                     disabled={applyingPromo || !promoCode}
                   >
@@ -1447,7 +1498,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                 )}
               </div>
               {appliedPromo && (
-                <p className="text-xs text-green-600 mt-2">
+                <p className="text-xs text-green-500 mt-2">
                   {appliedPromo.discountType === "percent" ? `${appliedPromo.discount}%` : `$${appliedPromo.discount.toFixed(2)}`} discount applied!
                 </p>
               )}
@@ -1456,9 +1507,9 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
         )}
 
         {/* Order Summary */}
-        <Card className="sticky top-4">
+        <Card className={`sticky top-4 ${sidebarCardBg}`}>
           <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
+            <CardTitle className={`text-lg flex items-center gap-2 ${sidebarHeadingText}`}>
               <ShoppingCart className="h-5 w-5" />
               {orderSummaryElement.config.label || orderSummaryElement.label}
             </CardTitle>
@@ -1473,7 +1524,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                     const ticket = ticketTypes.find((t) => t.id === ticketId);
                     if (!ticket) return null;
                     return (
-                      <div key={ticketId} className="flex justify-between text-sm">
+                      <div key={ticketId} className={`flex justify-between text-sm ${isDark ? "text-zinc-200" : "text-gray-700"}`}>
                         <span>{ticket.name} x{qty}</span>
                         <span className="font-medium">${(ticket.price * qty).toFixed(2)}</span>
                       </div>
@@ -1481,28 +1532,28 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                   })}
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground text-center py-4">
+              <div className={`text-sm text-center py-4 ${sidebarMutedText}`}>
                 No tickets selected
               </div>
             )}
 
             {totals.ticketCount > 0 && (
               <>
-                <Separator />
+                <Separator className={isDark ? "bg-zinc-700" : ""} />
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm text-muted-foreground">
+                  <div className={`flex justify-between text-sm ${sidebarMutedText}`}>
                     <span>Subtotal</span>
                     <span>${totals.subtotal.toFixed(2)}</span>
                   </div>
                   {appliedPromo && (
-                    <div className="flex justify-between text-sm text-green-600">
+                    <div className="flex justify-between text-sm text-green-500">
                       <span>Discount ({appliedPromo.discountType === "percent" ? `${appliedPromo.discount}%` : `$${appliedPromo.discount.toFixed(2)}`})</span>
                       <span>-${totals.discount.toFixed(2)}</span>
                     </div>
                   )}
                 </div>
-                <Separator />
-                <div className="flex justify-between font-bold text-lg">
+                <Separator className={isDark ? "bg-zinc-700" : ""} />
+                <div className={`flex justify-between font-bold text-lg ${sidebarHeadingText}`}>
                   <span>Total</span>
                   <span>${totals.total.toFixed(2)}</span>
                 </div>
@@ -1523,8 +1574,120 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
     return elements;
   };
 
+  // For two-column full-page layout
+  if (isTwoColumn) {
+    const elements = getPageElementsToRender(currentPageData?.elements || []);
+    const leftElements = elements.filter(e => e.column === "left" || !e.column);
+    const rightElements = elements.filter(e => e.column === "right");
+
+    const widthClasses = {
+      "1/3": { left: "w-1/3", right: "w-2/3" },
+      "1/2": { left: "w-1/2", right: "w-1/2" },
+      "2/3": { left: "w-2/3", right: "w-1/3" },
+    };
+    const leftWidth = template.settings.twoColumnLeftWidth || "1/2";
+    const stackOnMobile = template.settings.twoColumnStackOnMobile !== false;
+
+    // Get column colors with defaults
+    const leftBgColor = template.settings.twoColumnLeftBgColor || (isDark ? "#27272a" : "#ffffff");
+    const rightBgColor = template.settings.twoColumnRightBgColor || (isDark ? "#18181b" : "#f4f4f5");
+    const leftTextColor = template.settings.twoColumnLeftTextColor || (isDark ? "#ffffff" : "#000000");
+    const rightTextColor = template.settings.twoColumnRightTextColor || (isDark ? "#ffffff" : "#000000");
+    const leftContent = template.settings.twoColumnLeftContent || "";
+    const rightContent = template.settings.twoColumnRightContent || "";
+
+    return (
+      <div className={`min-h-screen ${themeClass}`}>
+        <div className={`flex min-h-screen ${stackOnMobile ? "flex-col md:flex-row" : "flex-row"}`}>
+          {/* Left Column - Full height */}
+          <div
+            className={`${stackOnMobile ? "w-full md:" + widthClasses[leftWidth].left : widthClasses[leftWidth].left} flex flex-col p-6 md:p-8 lg:p-12`}
+            style={{ backgroundColor: leftBgColor, color: leftTextColor }}
+          >
+            {/* Progress Bar in left column for multi-page */}
+            {template.settings.showProgressBar && template.pages.length > 1 && (
+              <div className="mb-6">
+                <div className="flex justify-between mb-2">
+                  {template.pages.map((page, i) => (
+                    <span
+                      key={page.id}
+                      className={`flex-1 text-center text-sm ${
+                        i === currentPage ? "font-medium" : "opacity-60"
+                      }`}
+                    >
+                      {page.title || `Step ${i + 1}`}
+                    </span>
+                  ))}
+                </div>
+                <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)" }}>
+                  <div
+                    className="h-full transition-all"
+                    style={{
+                      width: `${((currentPage + 1) / template.pages.length) * 100}%`,
+                      backgroundColor: isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.4)",
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Left column content text */}
+            {leftContent && (
+              <div className="whitespace-pre-wrap text-base leading-relaxed mb-6">
+                {leftContent}
+              </div>
+            )}
+
+            {/* Left column elements */}
+            <div className="space-y-6 flex-1">
+              {leftElements.map((element) => renderElement(element))}
+            </div>
+          </div>
+
+          {/* Right Column - Full height */}
+          <div
+            className={`${stackOnMobile ? "w-full md:" + widthClasses[leftWidth].right : widthClasses[leftWidth].right} flex flex-col p-6 md:p-8 lg:p-12`}
+            style={{ backgroundColor: rightBgColor, color: rightTextColor }}
+          >
+            {/* Right column content text */}
+            {rightContent && (
+              <div className="whitespace-pre-wrap text-base leading-relaxed mb-6">
+                {rightContent}
+              </div>
+            )}
+
+            {/* Right column elements */}
+            <div className="space-y-6 flex-1">
+              {rightElements.map((element) => renderElement(element))}
+            </div>
+
+            {/* Navigation buttons at bottom of right column */}
+            {!hasPaymentOnCurrentPage && template.pages.length > 1 && (
+              <div className="flex justify-between mt-6 pt-6" style={{ borderTopColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)", borderTopWidth: "1px" }}>
+                <Button
+                  variant="outline"
+                  onClick={goToPrevPage}
+                  disabled={currentPage === 0 || !template.settings.allowBackNavigation}
+                  style={{ borderColor: isDark ? "rgba(255,255,255,0.3)" : undefined, color: rightTextColor }}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+                <Button onClick={goToNextPage} disabled={paymentProcessing}>
+                  {isLastPage ? "Complete" : "Continue"}
+                  {!isLastPage && <ChevronRight className="h-4 w-4 ml-2" />}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Single column and sidebar layouts
   return (
-    <div className={`min-h-screen ${themeClass} ${themeClass === "dark" ? "bg-background text-foreground" : ""}`}>
+    <div className={`min-h-screen ${themeClass} ${isDark ? "bg-zinc-900 text-white" : "bg-white"}`}>
     <div className={`mx-auto p-4 ${showSidebar ? "max-w-5xl" : "max-w-2xl"}`}>
       {/* Progress Bar */}
       {template.settings.showProgressBar && template.pages.length > 1 && (
@@ -1535,19 +1698,19 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                 key={page.id}
                 className={`flex-1 text-center ${
                   i === currentPage
-                    ? "text-primary font-medium"
+                    ? isDark ? "text-blue-400 font-medium" : "text-primary font-medium"
                     : i < currentPage
-                    ? "text-muted-foreground"
-                    : "text-muted-foreground/50"
+                    ? isDark ? "text-zinc-400" : "text-muted-foreground"
+                    : isDark ? "text-zinc-600" : "text-muted-foreground/50"
                 }`}
               >
                 {page.title || `Step ${i + 1}`}
               </span>
             ))}
           </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
+          <div className={`h-2 rounded-full overflow-hidden ${isDark ? "bg-zinc-700" : "bg-muted"}`}>
             <div
-              className="h-full bg-primary transition-all duration-300"
+              className={`h-full transition-all duration-300 ${isDark ? "bg-blue-500" : "bg-primary"}`}
               style={{
                 width: `${((currentPage + 1) / template.pages.length) * 100}%`,
               }}
@@ -1561,44 +1724,12 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
         {/* Main Content */}
         <div className="flex-1 space-y-6">
           {/* Page Content */}
-          <Card>
+          <Card className={isDark ? "bg-zinc-800 border-zinc-700" : "bg-white border-gray-200"}>
             <CardHeader>
-              <CardTitle>{currentPageData?.title || `Step ${currentPage + 1}`}</CardTitle>
+              <CardTitle className={isDark ? "text-white" : "text-gray-900"}>{currentPageData?.title || `Step ${currentPage + 1}`}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {template.settings.layout === "two_column" ? (
-                // Two-column layout
-                (() => {
-                  const elements = getPageElementsToRender(currentPageData?.elements || []);
-                  // Unassigned elements default to left column
-                  const leftElements = elements.filter(e => e.column === "left" || !e.column);
-                  const rightElements = elements.filter(e => e.column === "right");
-
-                  const widthClasses = {
-                    "1/3": { left: "w-1/3", right: "w-2/3" },
-                    "1/2": { left: "w-1/2", right: "w-1/2" },
-                    "2/3": { left: "w-2/3", right: "w-1/3" },
-                  };
-                  const gapClasses = { sm: "gap-4", md: "gap-6", lg: "gap-8" };
-                  const leftWidth = template.settings.twoColumnLeftWidth || "1/2";
-                  const gap = template.settings.twoColumnGap || "md";
-                  const stackOnMobile = template.settings.twoColumnStackOnMobile !== false;
-
-                  return (
-                    <div className={`flex ${gapClasses[gap]} ${stackOnMobile ? "flex-col md:flex-row" : "flex-row"}`}>
-                      <div className={`${stackOnMobile ? "w-full md:" + widthClasses[leftWidth].left : widthClasses[leftWidth].left} space-y-6`}>
-                        {leftElements.map((element) => renderElement(element))}
-                      </div>
-                      <div className={`${stackOnMobile ? "w-full md:" + widthClasses[leftWidth].right : widthClasses[leftWidth].right} space-y-6`}>
-                        {rightElements.map((element) => renderElement(element))}
-                      </div>
-                    </div>
-                  );
-                })()
-              ) : (
-                // Single column or sidebar layout
-                getPageElementsToRender(currentPageData?.elements || []).map((element) => renderElement(element))
-              )}
+              {getPageElementsToRender(currentPageData?.elements || []).map((element) => renderElement(element))}
             </CardContent>
           </Card>
 
@@ -1607,13 +1738,13 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
             template.settings.showOrderSummaryOnAllPages &&
             !currentPageData?.elements.some((e) => e.type === "order_summary") &&
             totals.ticketCount > 0 && (
-              <Card>
+              <Card className={isDark ? "bg-zinc-800 border-zinc-700" : "bg-white border-gray-200"}>
                 <CardContent className="pt-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">
+                    <span className={`text-sm ${isDark ? "text-zinc-400" : "text-gray-500"}`}>
                       {totals.ticketCount} ticket{totals.ticketCount !== 1 ? "s" : ""}
                     </span>
-                    <span className="font-bold">${totals.total.toFixed(2)}</span>
+                    <span className={`font-bold ${isDark ? "text-white" : "text-gray-900"}`}>${totals.total.toFixed(2)}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -1626,6 +1757,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                 variant="outline"
                 onClick={goToPrevPage}
                 disabled={currentPage === 0 || !template.settings.allowBackNavigation}
+                className={isDark ? "border-zinc-600 text-zinc-200 hover:bg-zinc-700" : ""}
               >
                 <ChevronLeft className="h-4 w-4 mr-2" />
                 Back

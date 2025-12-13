@@ -1,8 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   DndContext,
   DragOverlay,
   closestCenter,
+  pointerWithin,
+  rectIntersection,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -12,6 +14,7 @@ import {
   DragOverEvent,
   UniqueIdentifier,
   useDroppable,
+  CollisionDetection,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -29,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -124,6 +128,13 @@ interface TemplateSettings {
   twoColumnLeftWidth: "1/3" | "1/2" | "2/3";
   twoColumnGap: "sm" | "md" | "lg";
   twoColumnStackOnMobile: boolean;
+  // Two-column styling
+  twoColumnLeftBgColor?: string;
+  twoColumnRightBgColor?: string;
+  twoColumnLeftTextColor?: string;
+  twoColumnRightTextColor?: string;
+  twoColumnLeftContent?: string;
+  twoColumnRightContent?: string;
 }
 
 // Question template preset type
@@ -586,6 +597,7 @@ function VisualCanvasElement({
   onDuplicate,
   canDelete,
   renderPreview,
+  isDark = false,
   allElements,
   onUpdateElementConfig,
 }: {
@@ -595,7 +607,8 @@ function VisualCanvasElement({
   onRemove: () => void;
   onDuplicate: () => void;
   canDelete: boolean;
-  renderPreview: (element: CheckoutElement) => React.ReactNode;
+  renderPreview: (element: CheckoutElement, isDark: boolean) => React.ReactNode;
+  isDark?: boolean;
   allElements?: CheckoutElement[];
   onUpdateElementConfig?: (elementId: string, config: Record<string, unknown>) => void;
 }) {
@@ -679,7 +692,7 @@ function VisualCanvasElement({
 
       {/* Visual Preview of Element */}
       <div className="p-3">
-        {renderPreview(element)}
+        {renderPreview(element, isDark)}
       </div>
     </div>
   );
@@ -833,6 +846,8 @@ function PageCanvas({
   onUpdateElementConfig,
   layout = "single",
   twoColumnSettings,
+  twoColumnStyling,
+  themeMode = "system",
 }: {
   page: CheckoutPage;
   pageIndex: number;
@@ -844,7 +859,7 @@ function PageCanvas({
   onUpdatePageTitle: (title: string) => void;
   onRemovePage: () => void;
   canDeleteElement: (elementId: string) => boolean;
-  renderPreview: (element: CheckoutElement) => React.ReactNode;
+  renderPreview: (element: CheckoutElement, isDark: boolean) => React.ReactNode;
   visualMode?: boolean;
   allElements: CheckoutElement[];
   onUpdateElementConfig: (elementId: string, config: Record<string, unknown>) => void;
@@ -853,6 +868,15 @@ function PageCanvas({
     leftWidth: "1/3" | "1/2" | "2/3";
     gap: "sm" | "md" | "lg";
   };
+  twoColumnStyling?: {
+    leftBgColor?: string;
+    rightBgColor?: string;
+    leftTextColor?: string;
+    rightTextColor?: string;
+    leftContent?: string;
+    rightContent?: string;
+  };
+  themeMode?: "light" | "dark" | "system";
 }) {
   // Make the page itself a droppable target
   const { setNodeRef, isOver } = useDroppable({
@@ -891,6 +915,15 @@ function PageCanvas({
   };
   const gapClass = twoColumnSettings ? gapClasses[twoColumnSettings.gap] : "gap-4";
 
+  // Two-column styling
+  const leftBgColor = twoColumnStyling?.leftBgColor || "transparent";
+  const rightBgColor = twoColumnStyling?.rightBgColor || "transparent";
+  const leftTextColor = twoColumnStyling?.leftTextColor || "";
+  const rightTextColor = twoColumnStyling?.rightTextColor || "";
+  const leftContent = twoColumnStyling?.leftContent || "";
+  const rightContent = twoColumnStyling?.rightContent || "";
+  const isDarkMode = themeMode === "dark";
+
   const renderElementsList = (elements: CheckoutElement[]) => {
     if (visualMode) {
       return elements.map((element) => (
@@ -903,6 +936,7 @@ function PageCanvas({
           onRemove={() => onRemoveElement(element.id)}
           canDelete={canDeleteElement(element.id)}
           renderPreview={renderPreview}
+          isDark={isDarkMode}
           allElements={allElements}
           onUpdateElementConfig={onUpdateElementConfig}
         />
@@ -921,8 +955,11 @@ function PageCanvas({
     ));
   };
 
+  // Theme mode for card styling
+  const isDarkTheme = themeMode === "dark";
+
   return (
-    <Card className="flex-1">
+    <Card className={`flex-1 ${isDarkTheme ? "bg-zinc-800 border-zinc-700 text-white" : ""}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -950,7 +987,7 @@ function PageCanvas({
       </CardHeader>
       <CardContent>
         {layout === "two_column" ? (
-          // Two-column layout
+          // Two-column layout with styling
           <div className={`flex ${gapClass} min-h-[300px]`}>
             {/* Left Column */}
             <div
@@ -958,19 +995,28 @@ function PageCanvas({
               className={`${columnWidths.left} rounded-lg border-2 border-dashed transition-colors ${
                 isOverLeft
                   ? "border-primary bg-primary/10"
-                  : "border-muted-foreground/20"
-              } ${visualMode ? "p-4 space-y-4 bg-white dark:bg-gray-950" : "p-3 space-y-2 bg-muted/30"}`}
+                  : leftBgColor !== "transparent" ? "border-transparent" : "border-muted-foreground/20"
+              } ${visualMode ? "p-4 space-y-4" : "p-3 space-y-2"}`}
+              style={{
+                backgroundColor: leftBgColor !== "transparent" ? leftBgColor : (isDarkMode ? "#18181b" : visualMode ? "white" : undefined),
+                color: leftTextColor || (isDarkMode ? "white" : undefined)
+              }}
             >
-              <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+              <div className="text-xs font-medium opacity-60 mb-2 flex items-center gap-1">
                 <PanelLeft className="h-3 w-3" />
                 Left Column
               </div>
+              {leftContent && (
+                <div className="whitespace-pre-wrap text-sm leading-relaxed mb-4 p-2 rounded bg-black/5">
+                  {leftContent}
+                </div>
+              )}
               <SortableContext
                 items={leftElements.map((e) => e.id)}
                 strategy={verticalListSortingStrategy}
               >
-                {leftElements.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-[150px] text-muted-foreground">
+                {leftElements.length === 0 && !leftContent ? (
+                  <div className="flex flex-col items-center justify-center h-[150px] opacity-50">
                     <Layers className="h-6 w-6 mb-2 opacity-50" />
                     <p className="text-xs">Drop elements here</p>
                   </div>
@@ -986,19 +1032,28 @@ function PageCanvas({
               className={`${columnWidths.right} rounded-lg border-2 border-dashed transition-colors ${
                 isOverRight
                   ? "border-primary bg-primary/10"
-                  : "border-muted-foreground/20"
-              } ${visualMode ? "p-4 space-y-4 bg-white dark:bg-gray-950" : "p-3 space-y-2 bg-muted/30"}`}
+                  : rightBgColor !== "transparent" ? "border-transparent" : "border-muted-foreground/20"
+              } ${visualMode ? "p-4 space-y-4" : "p-3 space-y-2"}`}
+              style={{
+                backgroundColor: rightBgColor !== "transparent" ? rightBgColor : (isDarkMode ? "#18181b" : visualMode ? "white" : undefined),
+                color: rightTextColor || (isDarkMode ? "white" : undefined)
+              }}
             >
-              <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+              <div className="text-xs font-medium opacity-60 mb-2 flex items-center gap-1">
                 <PanelRight className="h-3 w-3" />
                 Right Column
               </div>
+              {rightContent && (
+                <div className="whitespace-pre-wrap text-sm leading-relaxed mb-4 p-2 rounded bg-black/5">
+                  {rightContent}
+                </div>
+              )}
               <SortableContext
                 items={rightElements.map((e) => e.id)}
                 strategy={verticalListSortingStrategy}
               >
-                {rightElements.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-[150px] text-muted-foreground">
+                {rightElements.length === 0 && !rightContent ? (
+                  <div className="flex flex-col items-center justify-center h-[150px] opacity-50">
                     <Layers className="h-6 w-6 mb-2 opacity-50" />
                     <p className="text-xs">Drop elements here</p>
                   </div>
@@ -1020,10 +1075,14 @@ function PageCanvas({
                 isOver
                   ? "border-primary bg-primary/10"
                   : "border-muted-foreground/20"
-              } ${visualMode ? "p-6 space-y-4 bg-white dark:bg-gray-950" : "p-4 space-y-2 bg-muted/30"}`}
+              } ${visualMode ? "p-6 space-y-4" : "p-4 space-y-2"}`}
+              style={{
+                backgroundColor: isDarkMode ? "#18181b" : (visualMode ? "white" : undefined),
+                color: isDarkMode ? "white" : undefined
+              }}
             >
               {page.elements.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+                <div className={`flex flex-col items-center justify-center h-[200px] ${isDarkMode ? "text-zinc-400" : "text-muted-foreground"}`}>
                   <Layers className="h-8 w-8 mb-2 opacity-50" />
                   <p className="text-sm">Drag elements here</p>
                   <p className="text-xs mt-1">Build your checkout visually</p>
@@ -2147,8 +2206,15 @@ function QuestionTemplateSelector({
 }
 
 // Preview Element Component - Renders realistic mockups
-function PreviewElement({ element }: { element: CheckoutElement }) {
+function PreviewElement({ element, isDark = false }: { element: CheckoutElement; isDark?: boolean }) {
   const elementDef = AVAILABLE_ELEMENTS.find((e) => e.type === element.type);
+
+  // Theme-aware classes
+  const cardBg = isDark ? "bg-zinc-700 border-zinc-600" : "bg-white border-gray-200";
+  const inputBg = isDark ? "bg-zinc-600 border-zinc-500 text-white placeholder:text-zinc-400" : "bg-gray-50 border-gray-200";
+  const mutedText = isDark ? "text-zinc-400" : "text-gray-500";
+  const headingText = isDark ? "text-white" : "text-gray-900";
+  const bodyText = isDark ? "text-zinc-200" : "text-gray-700";
 
   switch (element.type) {
     case "logo":
@@ -2168,15 +2234,15 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
               <Image className="h-8 w-8 text-primary/30" />
             </div>
           )}
-          <h2 className="text-xl font-bold">Summer Music Festival 2024</h2>
+          <h2 className={`text-xl font-bold ${headingText}`}>Summer Music Festival 2024</h2>
           {element.config.showDate && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className={`flex items-center gap-2 text-sm ${mutedText}`}>
               <Clock className="h-4 w-4" />
               <span>Saturday, August 15, 2024 at 7:00 PM</span>
             </div>
           )}
           {element.config.showVenue && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className={`flex items-center gap-2 text-sm ${mutedText}`}>
               <FileText className="h-4 w-4" />
               <span>Central Park Amphitheater</span>
             </div>
@@ -2187,47 +2253,47 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
     case "ticket_selector":
       return (
         <div className="space-y-3">
-          <h3 className="font-semibold">{element.config.label || element.label}</h3>
+          <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
           {/* Mock Ticket 1 */}
-          <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+          <div className={`flex items-center justify-between p-4 rounded-lg border ${cardBg}`}>
             <div>
-              <div className="font-medium">General Admission</div>
+              <div className={`font-medium ${bodyText}`}>General Admission</div>
               {element.config.showDescription && (
-                <p className="text-sm text-muted-foreground">Standard entry to the event</p>
+                <p className={`text-sm ${mutedText}`}>Standard entry to the event</p>
               )}
-              <div className="text-lg font-bold mt-1">$25.00</div>
+              <div className={`text-lg font-bold mt-1 ${headingText}`}>$25.00</div>
               {element.config.showAvailability && (
-                <p className="text-xs text-muted-foreground">142 available</p>
+                <p className={`text-xs ${mutedText}`}>142 available</p>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="h-8 w-8">
+              <Button variant="outline" size="icon" className={`h-8 w-8 ${isDark ? "border-zinc-600 text-zinc-200 hover:bg-zinc-700" : ""}`}>
                 <Minus className="h-4 w-4" />
               </Button>
-              <span className="w-8 text-center font-medium">2</span>
-              <Button variant="outline" size="icon" className="h-8 w-8">
+              <span className={`w-8 text-center font-medium ${bodyText}`}>2</span>
+              <Button variant="outline" size="icon" className={`h-8 w-8 ${isDark ? "border-zinc-600 text-zinc-200 hover:bg-zinc-700" : ""}`}>
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
           </div>
           {/* Mock Ticket 2 */}
-          <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
+          <div className={`flex items-center justify-between p-4 rounded-lg border ${cardBg}`}>
             <div>
-              <div className="font-medium">VIP Pass</div>
+              <div className={`font-medium ${bodyText}`}>VIP Pass</div>
               {element.config.showDescription && (
-                <p className="text-sm text-muted-foreground">Includes backstage access</p>
+                <p className={`text-sm ${mutedText}`}>Includes backstage access</p>
               )}
-              <div className="text-lg font-bold mt-1">$75.00</div>
+              <div className={`text-lg font-bold mt-1 ${headingText}`}>$75.00</div>
               {element.config.showAvailability && (
-                <p className="text-xs text-muted-foreground">23 available</p>
+                <p className={`text-xs ${mutedText}`}>23 available</p>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="h-8 w-8">
+              <Button variant="outline" size="icon" className={`h-8 w-8 ${isDark ? "border-zinc-600 text-zinc-200 hover:bg-zinc-700" : ""}`}>
                 <Minus className="h-4 w-4" />
               </Button>
-              <span className="w-8 text-center font-medium">0</span>
-              <Button variant="outline" size="icon" className="h-8 w-8">
+              <span className={`w-8 text-center font-medium ${bodyText}`}>0</span>
+              <Button variant="outline" size="icon" className={`h-8 w-8 ${isDark ? "border-zinc-600 text-zinc-200 hover:bg-zinc-700" : ""}`}>
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
@@ -2238,29 +2304,29 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
     case "customer_info":
       return (
         <div className="space-y-4">
-          <h3 className="font-semibold">{element.config.label || element.label}</h3>
+          <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label className="text-sm">First Name *</Label>
-              <Input placeholder="John" className="bg-muted/50" />
+              <Label className={`text-sm ${bodyText}`}>First Name *</Label>
+              <Input placeholder="John" className={inputBg} />
             </div>
             <div className="space-y-2">
-              <Label className="text-sm">Last Name *</Label>
-              <Input placeholder="Doe" className="bg-muted/50" />
+              <Label className={`text-sm ${bodyText}`}>Last Name *</Label>
+              <Input placeholder="Doe" className={inputBg} />
             </div>
           </div>
           <div className="space-y-2">
-            <Label className="text-sm flex items-center gap-2">
+            <Label className={`text-sm flex items-center gap-2 ${bodyText}`}>
               <Mail className="h-3 w-3" /> Email *
             </Label>
-            <Input placeholder="john@example.com" className="bg-muted/50" />
+            <Input placeholder="john@example.com" className={inputBg} />
           </div>
           {(element.config.requirePhone || element.config.showPhone !== false) && (
             <div className="space-y-2">
-              <Label className="text-sm flex items-center gap-2">
+              <Label className={`text-sm flex items-center gap-2 ${bodyText}`}>
                 <Phone className="h-3 w-3" /> Phone {element.config.requirePhone ? "*" : "(optional)"}
               </Label>
-              <Input placeholder="+1 (555) 000-0000" className="bg-muted/50" />
+              <Input placeholder="+1 (555) 000-0000" className={inputBg} />
             </div>
           )}
         </div>
@@ -2270,58 +2336,58 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
       return (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold">{element.config.label || element.label}</h3>
+            <Users className={`h-5 w-5 ${isDark ? "text-blue-400" : "text-primary"}`} />
+            <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className={`text-sm ${mutedText}`}>
             Please provide details for each ticket holder
           </p>
           {/* Mock Attendee 1 */}
-          <Card className="border-primary/30">
-            <CardHeader className="pb-2">
+          <div className={`rounded-lg border p-4 ${isDark ? "border-blue-500/30 bg-zinc-700/50" : "border-primary/30 bg-white"}`}>
+            <div className="pb-2">
               <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-xs">Ticket 1</Badge>
-                <span className="text-xs text-muted-foreground">(Primary Ticket Holder)</span>
+                <Badge variant="secondary" className={`text-xs ${isDark ? "bg-zinc-600 text-zinc-200" : ""}`}>Ticket 1</Badge>
+                <span className={`text-xs ${mutedText}`}>(Primary Ticket Holder)</span>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
+            </div>
+            <div className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <Label className="text-xs">Name *</Label>
-                  <Input placeholder="John Doe" className="h-8 bg-muted/50 text-sm" disabled />
+                  <Label className={`text-xs ${bodyText}`}>Name *</Label>
+                  <Input placeholder="John Doe" className={`h-8 text-sm ${inputBg}`} disabled />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Email {element.config.requireEmail ? "*" : ""}</Label>
-                  <Input placeholder="john@example.com" className="h-8 bg-muted/50 text-sm" disabled />
+                  <Label className={`text-xs ${bodyText}`}>Email {element.config.requireEmail ? "*" : ""}</Label>
+                  <Input placeholder="john@example.com" className={`h-8 text-sm ${inputBg}`} disabled />
                 </div>
               </div>
               {element.config.requirePhone && (
                 <div className="space-y-1">
-                  <Label className="text-xs">Phone *</Label>
-                  <Input placeholder="+1 (555) 000-0000" className="h-8 bg-muted/50 text-sm" disabled />
+                  <Label className={`text-xs ${bodyText}`}>Phone *</Label>
+                  <Input placeholder="+1 (555) 000-0000" className={`h-8 text-sm ${inputBg}`} disabled />
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
           {/* Mock Attendee 2 */}
-          <Card>
-            <CardHeader className="pb-2">
-              <Badge variant="outline" className="text-xs w-fit">Ticket 2</Badge>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <div className={`rounded-lg border p-4 ${cardBg}`}>
+            <div className="pb-2">
+              <Badge variant="outline" className={`text-xs w-fit ${isDark ? "border-zinc-500 text-zinc-300" : ""}`}>Ticket 2</Badge>
+            </div>
+            <div className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <Label className="text-xs">Name *</Label>
-                  <Input placeholder="Guest name" className="h-8 bg-muted/50 text-sm" />
+                  <Label className={`text-xs ${bodyText}`}>Name *</Label>
+                  <Input placeholder="Guest name" className={`h-8 text-sm ${inputBg}`} />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Email {element.config.requireEmail ? "*" : ""}</Label>
-                  <Input placeholder="guest@example.com" className="h-8 bg-muted/50 text-sm" />
+                  <Label className={`text-xs ${bodyText}`}>Email {element.config.requireEmail ? "*" : ""}</Label>
+                  <Input placeholder="guest@example.com" className={`h-8 text-sm ${inputBg}`} />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-          <p className="text-xs text-muted-foreground text-center">
+            </div>
+          </div>
+          <p className={`text-xs text-center ${mutedText}`}>
             + more attendees based on ticket quantity
           </p>
         </div>
@@ -2330,30 +2396,30 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
     case "payment_form":
       return (
         <div className="space-y-4">
-          <h3 className="font-semibold">{element.config.label || element.label}</h3>
-          <div className="p-4 rounded-lg border bg-card space-y-4">
-            <div className="flex items-center gap-3 pb-3 border-b">
-              <CreditCard className="h-5 w-5 text-primary" />
-              <span className="font-medium">Pay with Card</span>
+          <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
+          <div className={`p-4 rounded-lg border space-y-4 ${cardBg}`}>
+            <div className={`flex items-center gap-3 pb-3 border-b ${isDark ? "border-zinc-600" : ""}`}>
+              <CreditCard className={`h-5 w-5 ${isDark ? "text-blue-400" : "text-primary"}`} />
+              <span className={`font-medium ${bodyText}`}>Pay with Card</span>
             </div>
             <div className="space-y-3">
               <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Card Number</Label>
-                <div className="h-10 bg-muted/50 rounded-md border flex items-center px-3">
-                  <span className="text-sm text-muted-foreground">4242 4242 4242 4242</span>
+                <Label className={`text-xs ${mutedText}`}>Card Number</Label>
+                <div className={`h-10 rounded-md border flex items-center px-3 ${inputBg}`}>
+                  <span className={`text-sm ${mutedText}`}>4242 4242 4242 4242</span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Expiry</Label>
-                  <div className="h-10 bg-muted/50 rounded-md border flex items-center px-3">
-                    <span className="text-sm text-muted-foreground">MM / YY</span>
+                  <Label className={`text-xs ${mutedText}`}>Expiry</Label>
+                  <div className={`h-10 rounded-md border flex items-center px-3 ${inputBg}`}>
+                    <span className={`text-sm ${mutedText}`}>MM / YY</span>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">CVC</Label>
-                  <div className="h-10 bg-muted/50 rounded-md border flex items-center px-3">
-                    <span className="text-sm text-muted-foreground">123</span>
+                  <Label className={`text-xs ${mutedText}`}>CVC</Label>
+                  <div className={`h-10 rounded-md border flex items-center px-3 ${inputBg}`}>
+                    <span className={`text-sm ${mutedText}`}>123</span>
                   </div>
                 </div>
               </div>
@@ -2369,47 +2435,47 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
     case "order_summary":
       return (
         <div className="space-y-3">
-          <h3 className="font-semibold">{element.config.label || element.label}</h3>
-          <Card>
-            <CardContent className="pt-4 space-y-3">
+          <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
+          <div className={`rounded-lg border p-4 ${cardBg}`}>
+            <div className="space-y-3">
               {element.config.showItemized && (
                 <>
-                  <div className="flex justify-between text-sm">
+                  <div className={`flex justify-between text-sm ${bodyText}`}>
                     <span>General Admission x2</span>
                     <span>$50.00</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className={`flex justify-between text-sm ${bodyText}`}>
                     <span>VIP Pass x1</span>
                     <span>$75.00</span>
                   </div>
                 </>
               )}
-              <div className="border-t pt-2 flex justify-between text-sm">
+              <div className={`border-t pt-2 flex justify-between text-sm ${isDark ? "border-zinc-600" : ""} ${bodyText}`}>
                 <span>Subtotal</span>
                 <span>$125.00</span>
               </div>
-              <div className="flex justify-between text-sm text-green-600">
+              <div className={`flex justify-between text-sm ${isDark ? "text-green-400" : "text-green-600"}`}>
                 <span>Discount (10%)</span>
                 <span>-$12.50</span>
               </div>
-              <div className="border-t pt-2 flex justify-between font-bold">
+              <div className={`border-t pt-2 flex justify-between font-bold ${isDark ? "border-zinc-600" : ""} ${headingText}`}>
                 <span>Total</span>
                 <span>$112.50</span>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       );
 
     case "promo_code":
       return (
         <div className="space-y-3">
-          <h3 className="font-semibold">{element.config.label || element.label}</h3>
+          <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
           <div className="flex gap-2">
-            <Input placeholder="Enter promo code" className="bg-muted/50" />
-            <Button variant="outline">Apply</Button>
+            <Input placeholder="Enter promo code" className={inputBg} />
+            <Button variant="outline" className={isDark ? "border-zinc-600 text-zinc-200 hover:bg-zinc-700" : ""}>Apply</Button>
           </div>
-          <Badge variant="secondary" className="bg-green-100 text-green-800">
+          <Badge variant="secondary" className={isDark ? "bg-green-900/50 text-green-300" : "bg-green-100 text-green-800"}>
             <Tag className="h-3 w-3 mr-1" />
             SAVE10 - 10% off applied
           </Badge>
@@ -2418,17 +2484,17 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
 
     case "terms_checkbox":
       return (
-        <div className="flex items-start gap-3 p-4 rounded-lg border">
-          <div className="h-4 w-4 mt-0.5 rounded border-2 border-primary bg-primary flex items-center justify-center">
-            <CheckSquare className="h-3 w-3 text-primary-foreground" />
+        <div className={`flex items-start gap-3 p-4 rounded-lg border ${isDark ? "border-zinc-600" : ""}`}>
+          <div className={`h-4 w-4 mt-0.5 rounded border-2 flex items-center justify-center ${isDark ? "border-blue-400 bg-blue-500" : "border-primary bg-primary"}`}>
+            <CheckSquare className={`h-3 w-3 ${isDark ? "text-white" : "text-primary-foreground"}`} />
           </div>
-          <Label className="text-sm leading-relaxed cursor-pointer">
+          <Label className={`text-sm leading-relaxed cursor-pointer ${bodyText}`}>
             I agree to the{" "}
-            <span className="text-primary underline">Terms and Conditions</span>
+            <span className={`underline ${isDark ? "text-blue-400" : "text-primary"}`}>Terms and Conditions</span>
             {element.config.privacyUrl && (
               <>
                 {" "}and{" "}
-                <span className="text-primary underline">Privacy Policy</span>
+                <span className={`underline ${isDark ? "text-blue-400" : "text-primary"}`}>Privacy Policy</span>
               </>
             )}
           </Label>
@@ -2437,7 +2503,7 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
 
     case "timer":
       return (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+        <div className={`flex items-center gap-2 p-3 rounded-lg ${isDark ? "bg-amber-900/30 text-amber-200" : "bg-amber-50 text-amber-800"}`}>
           <Clock className="h-4 w-4" />
           <span className="text-sm font-medium">
             {element.config.showAvailability
@@ -2449,9 +2515,9 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
 
     case "text_block":
       return (
-        <div className="prose prose-sm dark:prose-invert max-w-none p-3 rounded-lg bg-muted/30">
+        <div className={`prose prose-sm max-w-none p-3 rounded-lg ${isDark ? "prose-invert bg-zinc-800/50" : "bg-gray-100/50"}`}>
           {(element.config.content as string) || (
-            <p className="text-muted-foreground italic">Custom text content will appear here...</p>
+            <p className={`italic ${mutedText}`}>Custom text content will appear here...</p>
           )}
         </div>
       );
@@ -2530,15 +2596,16 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
       };
       const padding = (element.config.padding as string) || "md";
       const borderRadius = (element.config.borderRadius as string) || "md";
+      const defaultBg = isDark ? '#27272a' : '#f8fafc';
       return (
         <div
-          className={`${paddingClasses[padding]} ${radiusClasses[borderRadius]} ${element.config.border ? 'border' : ''} min-h-[60px]`}
+          className={`${paddingClasses[padding]} ${radiusClasses[borderRadius]} ${element.config.border ? 'border' : ''} ${isDark && element.config.border ? 'border-zinc-600' : ''} min-h-[60px]`}
           style={{
-            backgroundColor: (element.config.backgroundColor as string) || '#f8fafc',
+            backgroundColor: (element.config.backgroundColor as string) || defaultBg,
             borderColor: (element.config.borderColor as string) || undefined
           }}
         >
-          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+          <div className={`flex items-center justify-center h-full text-sm ${mutedText}`}>
             <Square className="h-4 w-4 mr-2 opacity-50" />
             Container - styles elements below
           </div>
@@ -2552,28 +2619,28 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             {triggerStyle === "link" && (
-              <span className="text-primary underline cursor-pointer text-sm hover:text-primary/80">
+              <span className={`underline cursor-pointer text-sm ${isDark ? "text-blue-400 hover:text-blue-300" : "text-primary hover:text-primary/80"}`}>
                 {(element.config.triggerText as string) || "Learn More"}
               </span>
             )}
             {triggerStyle === "button" && (
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className={isDark ? "border-zinc-600 text-zinc-200 hover:bg-zinc-700" : ""}>
                 <MessageSquare className="h-4 w-4 mr-2" />
                 {(element.config.triggerText as string) || "Learn More"}
               </Button>
             )}
             {triggerStyle === "icon" && (
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 rounded-full">
-                <HelpCircle className="h-4 w-4 text-muted-foreground" />
+              <Button variant="ghost" size="sm" className={`h-8 w-8 p-0 rounded-full ${isDark ? "hover:bg-zinc-700" : ""}`}>
+                <HelpCircle className={`h-4 w-4 ${mutedText}`} />
               </Button>
             )}
           </div>
           {/* Mini modal preview */}
-          <div className="ml-4 p-3 rounded-lg border bg-muted/30 text-xs">
-            <div className="font-medium mb-1">
+          <div className={`ml-4 p-3 rounded-lg border text-xs ${isDark ? "bg-zinc-800/50 border-zinc-600" : "bg-gray-100/50"}`}>
+            <div className={`font-medium mb-1 ${bodyText}`}>
               {(element.config.modalTitle as string) || "Modal Title"}
             </div>
-            <div className="text-muted-foreground line-clamp-2">
+            <div className={`line-clamp-2 ${mutedText}`}>
               {(element.config.modalContent as string) || "Modal content preview..."}
             </div>
           </div>
@@ -2585,27 +2652,27 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
       const questions = (element.config.questions as CustomQuestion[]) || [];
       return (
         <div className="space-y-4">
-          <h3 className="font-semibold">{element.config.label || element.label}</h3>
-          <div className="space-y-3 p-4 rounded-lg border border-dashed">
+          <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
+          <div className={`space-y-3 p-4 rounded-lg border border-dashed ${isDark ? "border-zinc-600" : ""}`}>
             {questions.length > 0 ? (
               questions.slice(0, 3).map((q, idx) => (
                 <div key={idx} className="space-y-2">
-                  <Label className="text-sm flex items-center gap-1">
+                  <Label className={`text-sm flex items-center gap-1 ${bodyText}`}>
                     {q.label || q.question}
                     {q.required && <span className="text-destructive">*</span>}
                     {q.conditionalDisplay && (
-                      <Badge variant="outline" className="text-[10px] ml-1">Conditional</Badge>
+                      <Badge variant="outline" className={`text-[10px] ml-1 ${isDark ? "border-zinc-500 text-zinc-300" : ""}`}>Conditional</Badge>
                     )}
                   </Label>
                   {(q.type === 'text' || q.type === 'email' || q.type === 'phone') && (
-                    <Input placeholder={`Enter ${q.label || 'response'}...`} className="bg-muted/50" disabled />
+                    <Input placeholder={`Enter ${q.label || 'response'}...`} className={inputBg} disabled />
                   )}
                   {q.type === 'textarea' && (
-                    <div className="h-16 bg-muted/50 rounded-md border" />
+                    <div className={`h-16 rounded-md border ${inputBg}`} />
                   )}
                   {q.type === 'select' && (
                     <Select disabled>
-                      <SelectTrigger className="bg-muted/50">
+                      <SelectTrigger className={inputBg}>
                         <SelectValue placeholder="Select an option" />
                       </SelectTrigger>
                     </Select>
@@ -2613,8 +2680,8 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
                   {(q.type === 'radio' || q.type === 'checkbox') && (
                     <div className="space-y-1">
                       {(Array.isArray(q.options) ? q.options.slice(0, 3) : []).map((opt, i) => (
-                        <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <div className={`h-4 w-4 rounded${q.type === 'radio' ? '-full' : ''} border`} />
+                        <div key={i} className={`flex items-center gap-2 text-sm ${mutedText}`}>
+                          <div className={`h-4 w-4 rounded${q.type === 'radio' ? '-full' : ''} border ${isDark ? "border-zinc-500" : ""}`} />
                           <span>{opt}</span>
                         </div>
                       ))}
@@ -2625,13 +2692,13 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
             ) : (
               <>
                 <div className="space-y-2">
-                  <Label className="text-sm">Dietary Requirements</Label>
-                  <Input placeholder="e.g., Vegetarian, Gluten-free" className="bg-muted/50" disabled />
+                  <Label className={`text-sm ${bodyText}`}>Dietary Requirements</Label>
+                  <Input placeholder="e.g., Vegetarian, Gluten-free" className={inputBg} disabled />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm">T-Shirt Size</Label>
+                  <Label className={`text-sm ${bodyText}`}>T-Shirt Size</Label>
                   <Select disabled>
-                    <SelectTrigger className="bg-muted/50">
+                    <SelectTrigger className={inputBg}>
                       <SelectValue placeholder="Select size" />
                     </SelectTrigger>
                   </Select>
@@ -2639,7 +2706,7 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
               </>
             )}
             {questions.length > 3 && (
-              <p className="text-xs text-muted-foreground text-center">
+              <p className={`text-xs text-center ${mutedText}`}>
                 + {questions.length - 3} more questions
               </p>
             )}
@@ -2655,33 +2722,33 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
       return (
         <div className="space-y-2">
           <div
-            className={`flex items-center justify-between p-3 rounded-lg border ${
-              isCollapsible ? "cursor-pointer hover:bg-muted/30" : ""
+            className={`flex items-center justify-between p-3 rounded-lg border ${isDark ? "border-zinc-600" : ""} ${
+              isCollapsible ? `cursor-pointer ${isDark ? "hover:bg-zinc-700/30" : "hover:bg-muted/30"}` : ""
             }`}
           >
             <div className="flex items-center gap-2">
-              <FolderOpen className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold">
+              <FolderOpen className={`h-4 w-4 ${isDark ? "text-blue-400" : "text-primary"}`} />
+              <h3 className={`font-semibold ${headingText}`}>
                 {(element.config.groupTitle as string) || "Additional Information"}
               </h3>
-              <Badge variant="secondary" className="text-[10px]">
+              <Badge variant="secondary" className={`text-[10px] ${isDark ? "bg-zinc-600 text-zinc-200" : ""}`}>
                 {questions.length} questions
               </Badge>
             </div>
             {isCollapsible && (
-              isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+              isExpanded ? <ChevronUp className={`h-4 w-4 ${bodyText}`} /> : <ChevronDown className={`h-4 w-4 ${bodyText}`} />
             )}
           </div>
           {(!isCollapsible || isExpanded) && questions.length > 0 && (
-            <div className="ml-4 pl-4 border-l-2 border-primary/20 space-y-3">
+            <div className={`ml-4 pl-4 border-l-2 space-y-3 ${isDark ? "border-blue-500/30" : "border-primary/20"}`}>
               {questions.slice(0, 2).map((q, idx) => (
                 <div key={idx} className="space-y-1">
-                  <Label className="text-sm">{q.label || q.question}</Label>
-                  <Input placeholder="..." className="bg-muted/50 h-8" disabled />
+                  <Label className={`text-sm ${bodyText}`}>{q.label || q.question}</Label>
+                  <Input placeholder="..." className={`h-8 ${inputBg}`} disabled />
                 </div>
               ))}
               {questions.length > 2 && (
-                <p className="text-xs text-muted-foreground">+ {questions.length - 2} more</p>
+                <p className={`text-xs ${mutedText}`}>+ {questions.length - 2} more</p>
               )}
             </div>
           )}
@@ -2697,32 +2764,32 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
           {template ? (
             <>
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-md bg-primary/10 text-primary">
+                <div className={`p-2 rounded-md ${isDark ? "bg-blue-500/20 text-blue-400" : "bg-primary/10 text-primary"}`}>
                   {template.icon}
                 </div>
                 <div>
-                  <h3 className="font-semibold">{template.name}</h3>
-                  <p className="text-xs text-muted-foreground">{template.description}</p>
+                  <h3 className={`font-semibold ${headingText}`}>{template.name}</h3>
+                  <p className={`text-xs ${mutedText}`}>{template.description}</p>
                 </div>
               </div>
-              <div className="space-y-2 p-3 rounded-lg border border-dashed">
+              <div className={`space-y-2 p-3 rounded-lg border border-dashed ${isDark ? "border-zinc-600" : ""}`}>
                 {template.questions.slice(0, 2).map((q, idx) => (
                   <div key={idx} className="space-y-1">
-                    <Label className="text-sm">{q.label}</Label>
-                    <Input placeholder="..." className="bg-muted/50 h-8" disabled />
+                    <Label className={`text-sm ${bodyText}`}>{q.label}</Label>
+                    <Input placeholder="..." className={`h-8 ${inputBg}`} disabled />
                   </div>
                 ))}
                 {template.questions.length > 2 && (
-                  <p className="text-xs text-muted-foreground text-center">
+                  <p className={`text-xs text-center ${mutedText}`}>
                     + {template.questions.length - 2} more questions
                   </p>
                 )}
               </div>
             </>
           ) : (
-            <div className="p-4 text-center border-2 border-dashed rounded-lg">
-              <Sparkles className="h-6 w-6 mx-auto mb-2 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">Select a template in the properties panel</p>
+            <div className={`p-4 text-center border-2 border-dashed rounded-lg ${isDark ? "border-zinc-600" : ""}`}>
+              <Sparkles className={`h-6 w-6 mx-auto mb-2 ${isDark ? "text-zinc-500" : "text-muted-foreground/50"}`} />
+              <p className={`text-sm ${mutedText}`}>Select a template in the properties panel</p>
             </div>
           )}
         </div>
@@ -2731,12 +2798,12 @@ function PreviewElement({ element }: { element: CheckoutElement }) {
 
     default:
       return (
-        <div className="p-4 rounded-lg border bg-muted/30">
-          <div className="flex items-center gap-2 text-sm font-medium mb-2">
+        <div className={`p-4 rounded-lg border ${isDark ? "bg-zinc-800/50 border-zinc-600" : "bg-gray-100/50"}`}>
+          <div className={`flex items-center gap-2 text-sm font-medium mb-2 ${bodyText}`}>
             {elementDef?.icon}
             {element.config.label || element.label}
           </div>
-          <div className="h-12 bg-muted rounded animate-pulse" />
+          <div className={`h-12 rounded animate-pulse ${isDark ? "bg-zinc-700" : "bg-gray-200"}`} />
         </div>
       );
   }
@@ -2769,56 +2836,71 @@ export function CheckoutTemplateBuilder({
     advanced: false,
   });
 
-  // Initialize template
-  const [template, setTemplate] = useState<CheckoutTemplate>(() => {
-    if (initialTemplate) return initialTemplate;
-    return {
-      id: `template-${Date.now()}`,
-      name: "Custom Checkout",
-      pages: [
-        {
-          id: `page-${Date.now()}`,
-          title: "Checkout",
-          elements: [
-            {
-              id: `el-${Date.now()}-1`,
-              type: "ticket_selector",
-              label: "Select Tickets",
-              config: { showDescription: true, showAvailability: true },
-            },
-            {
-              id: `el-${Date.now()}-2`,
-              type: "customer_info",
-              label: "Your Details",
-              config: { requirePhone: false, requireName: true },
-            },
-            {
-              id: `el-${Date.now()}-3`,
-              type: "payment_form",
-              label: "Payment",
-              config: { showSavedCards: true },
-            },
-          ],
-        },
-      ],
-      settings: {
-        showProgressBar: true,
-        allowBackNavigation: true,
-        mobileLayout: "stack",
-        showOrderSummaryOnAllPages: false,
-        themeMode: "system",
-        layout: "single",
-        sidebarPosition: "right",
-        twoColumnLeftWidth: "1/2",
-        twoColumnGap: "md",
-        twoColumnStackOnMobile: true,
+  // Default template factory
+  const createDefaultTemplate = (): CheckoutTemplate => ({
+    id: `template-${Date.now()}`,
+    name: "Custom Checkout",
+    pages: [
+      {
+        id: `page-${Date.now()}`,
+        title: "Checkout",
+        elements: [
+          {
+            id: `el-${Date.now()}-1`,
+            type: "ticket_selector",
+            label: "Select Tickets",
+            config: { showDescription: true, showAvailability: true },
+          },
+          {
+            id: `el-${Date.now()}-2`,
+            type: "customer_info",
+            label: "Your Details",
+            config: { requirePhone: false, requireName: true },
+          },
+          {
+            id: `el-${Date.now()}-3`,
+            type: "payment_form",
+            label: "Payment",
+            config: { showSavedCards: true },
+          },
+        ],
       },
-    };
+    ],
+    settings: {
+      showProgressBar: true,
+      allowBackNavigation: true,
+      mobileLayout: "stack",
+      showOrderSummaryOnAllPages: false,
+      themeMode: "system",
+      layout: "single",
+      sidebarPosition: "right",
+      twoColumnLeftWidth: "1/2",
+      twoColumnGap: "md",
+      twoColumnStackOnMobile: true,
+    },
   });
 
+  // Initialize template state
+  const [template, setTemplate] = useState<CheckoutTemplate>(() =>
+    initialTemplate || createDefaultTemplate()
+  );
+
+  // Sync template with initialTemplate when modal opens
+  useEffect(() => {
+    if (open) {
+      if (initialTemplate) {
+        setTemplate(initialTemplate);
+      }
+      // Reset preview state
+      setPreviewMode(false);
+      setCurrentPreviewPage(0);
+      setSelectedElement(null);
+    }
+  }, [open, initialTemplate]);
+
   // Helper function to render element preview for WYSIWYG canvas
-  const renderPreviewElement = (element: CheckoutElement): React.ReactNode => {
-    return <PreviewElement element={element} />;
+  const renderPreviewElement = (element: CheckoutElement, isDark: boolean): React.ReactNode => {
+    return <PreviewElement element={element} isDark={isDark} />;
   };
 
   const sensors = useSensors(
@@ -3387,97 +3469,191 @@ export function CheckoutTemplateBuilder({
             const twoColLeftWidth = template.settings.twoColumnLeftWidth || "1/2";
             const twoColGap = template.settings.twoColumnGap || "md";
 
+            // Determine theme class for preview
+            const themeMode = template.settings.themeMode || "system";
+            const isDark = themeMode === "dark";
+            const isLight = themeMode === "light";
+            const previewThemeClass = isDark ? "dark" : isLight ? "" : "";
+            const previewBgClass = isDark ? "bg-zinc-900" : isLight ? "bg-white" : "bg-muted/30";
+
             return (
-              <div className="flex-1 p-6 bg-muted/30 overflow-auto">
-                <div className={`mx-auto ${showSidebar ? "max-w-4xl" : isTwoColumn ? "max-w-3xl" : "max-w-md"}`}>
-                  {/* Progress Bar */}
-                  {template.pages.length > 1 && template.settings.showProgressBar && (
-                    <div className="mb-6">
-                      <div className="flex justify-between mb-2">
-                        {template.pages.map((page, i) => (
-                          <div
-                            key={page.id}
-                            className={`flex-1 text-center text-sm ${
-                              i === currentPreviewPage
-                                ? "text-primary font-medium"
-                                : "text-muted-foreground"
-                            }`}
-                          >
-                            {page.title || `Step ${i + 1}`}
-                          </div>
-                        ))}
-                      </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div className={`flex-1 overflow-auto ${isTwoColumn ? "" : "p-6"} ${previewBgClass} ${previewThemeClass}`}>
+                {/* Full-page two-column layout */}
+                {isTwoColumn ? (
+                  (() => {
+                    const pageElements = template.pages[currentPreviewPage]?.elements || [];
+                    const leftElements = pageElements.filter(e => e.column === "left" || !e.column);
+                    const rightElements = pageElements.filter(e => e.column === "right");
+
+                    const leftBgColor = template.settings.twoColumnLeftBgColor || (isDark ? "#27272a" : "#ffffff");
+                    const rightBgColor = template.settings.twoColumnRightBgColor || (isDark ? "#18181b" : "#f4f4f5");
+                    const leftTextColor = template.settings.twoColumnLeftTextColor || (isDark ? "#ffffff" : "#000000");
+                    const rightTextColor = template.settings.twoColumnRightTextColor || (isDark ? "#ffffff" : "#000000");
+                    const leftContent = template.settings.twoColumnLeftContent || "";
+                    const rightContent = template.settings.twoColumnRightContent || "";
+
+                    return (
+                      <div className="flex min-h-full">
+                        {/* Left Column - Full height */}
                         <div
-                          className="h-full bg-primary transition-all"
+                          className={`${twoColWidthClasses[twoColLeftWidth].left} flex flex-col p-8 lg:p-12`}
                           style={{
-                            width: `${((currentPreviewPage + 1) / template.pages.length) * 100}%`,
+                            backgroundColor: leftBgColor,
+                            color: leftTextColor
                           }}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Hint when sidebar layout but no order summary */}
-                  {template.settings.layout === "sidebar" && !hasOrderSummary && (
-                    <div className="mb-4 p-3 rounded-lg bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-200 text-sm">
-                      <p className="font-medium">Sidebar Layout Selected</p>
-                      <p className="text-xs mt-1">Add an "Order Summary" element to enable the sidebar view</p>
-                    </div>
-                  )}
-
-                  {/* Main Content with Optional Sidebar */}
-                  <div className={`${showSidebar ? "flex gap-6" : ""} ${showSidebar && sidebarOnLeft ? "flex-row-reverse" : ""}`}>
-                    {/* Main Content */}
-                    <div className="flex-1">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>{template.pages[currentPreviewPage]?.title || "Checkout"}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          {isTwoColumn ? (
-                            // Two-column preview layout
-                            (() => {
-                              const pageElements = template.pages[currentPreviewPage]?.elements || [];
-                              // Unassigned elements default to left column
-                              const leftElements = pageElements.filter(e => e.column === "left" || !e.column);
-                              const rightElements = pageElements.filter(e => e.column === "right");
-
-                              return (
-                                <div className={`flex ${twoColGapClasses[twoColGap]}`}>
-                                  <div className={`${twoColWidthClasses[twoColLeftWidth].left} space-y-4`}>
-                                    {leftElements.length > 0 ? (
-                                      leftElements.map((element) => (
-                                        <PreviewElement key={element.id} element={element} />
-                                      ))
-                                    ) : (
-                                      <div className="rounded-lg border-2 border-dashed border-muted-foreground/20 p-6 text-center text-muted-foreground text-sm">
-                                        Left Column
-                                      </div>
-                                    )}
+                        >
+                          {/* Progress Bar in left column for multi-page */}
+                          {template.pages.length > 1 && template.settings.showProgressBar && (
+                            <div className="mb-6">
+                              <div className="flex justify-between mb-2">
+                                {template.pages.map((page, i) => (
+                                  <div
+                                    key={page.id}
+                                    className={`flex-1 text-center text-sm ${
+                                      i === currentPreviewPage ? "font-medium" : "opacity-60"
+                                    }`}
+                                  >
+                                    {page.title || `Step ${i + 1}`}
                                   </div>
-                                  <div className={`${twoColWidthClasses[twoColLeftWidth].right} space-y-4`}>
-                                    {rightElements.length > 0 ? (
-                                      rightElements.map((element) => (
-                                        <PreviewElement key={element.id} element={element} />
-                                      ))
-                                    ) : (
-                                      <div className="rounded-lg border-2 border-dashed border-muted-foreground/20 p-6 text-center text-muted-foreground text-sm">
-                                        Right Column
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })()
-                          ) : (
-                            // Single column or sidebar layout
-                            getElementsToShow(template.pages[currentPreviewPage]?.elements || []).map((element) => (
-                              <PreviewElement key={element.id} element={element} />
-                            ))
+                                ))}
+                              </div>
+                              <div className="h-2 bg-current/20 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-current/60 transition-all"
+                                  style={{
+                                    width: `${((currentPreviewPage + 1) / template.pages.length) * 100}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
                           )}
-                        </CardContent>
-                      </Card>
+
+                          {/* Left column content text */}
+                          {leftContent && (
+                            <div className="whitespace-pre-wrap text-base leading-relaxed mb-6">
+                              {leftContent}
+                            </div>
+                          )}
+
+                          {/* Left column elements */}
+                          <div className="space-y-6 flex-1">
+                            {leftElements.length > 0 ? (
+                              leftElements.map((element) => (
+                                <PreviewElement key={element.id} element={element} isDark={isDark} />
+                              ))
+                            ) : !leftContent ? (
+                              <div className="rounded-lg border-2 border-dashed border-current/20 p-8 text-center opacity-50 h-full flex items-center justify-center">
+                                <span>Left Column Content</span>
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {/* Right Column - Full height */}
+                        <div
+                          className={`${twoColWidthClasses[twoColLeftWidth].right} flex flex-col p-8 lg:p-12`}
+                          style={{
+                            backgroundColor: rightBgColor,
+                            color: rightTextColor
+                          }}
+                        >
+                          {/* Right column content text */}
+                          {rightContent && (
+                            <div className="whitespace-pre-wrap text-base leading-relaxed mb-6">
+                              {rightContent}
+                            </div>
+                          )}
+
+                          {/* Right column elements */}
+                          <div className="space-y-6 flex-1">
+                            {rightElements.length > 0 ? (
+                              rightElements.map((element) => (
+                                <PreviewElement key={element.id} element={element} isDark={isDark} />
+                              ))
+                            ) : !rightContent ? (
+                              <div className="rounded-lg border-2 border-dashed border-current/20 p-8 text-center opacity-50 h-full flex items-center justify-center">
+                                <span>Right Column Content</span>
+                              </div>
+                            ) : null}
+                          </div>
+
+                          {/* Navigation buttons at bottom of right column */}
+                          {template.pages.length > 1 && (
+                            <div className="flex justify-between mt-6 pt-6 border-t border-current/10">
+                              <Button
+                                variant="outline"
+                                disabled={currentPreviewPage === 0}
+                                onClick={() => setCurrentPreviewPage((p) => p - 1)}
+                                className={isDark ? "border-zinc-600 text-zinc-200 hover:bg-zinc-700" : ""}
+                              >
+                                <ChevronLeft className="h-4 w-4 mr-2" />
+                                Back
+                              </Button>
+                              <Button
+                                disabled={currentPreviewPage === template.pages.length - 1}
+                                onClick={() => setCurrentPreviewPage((p) => p + 1)}
+                              >
+                                Next
+                                <ChevronRight className="h-4 w-4 ml-2" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <div className={`mx-auto ${showSidebar ? "max-w-4xl" : "max-w-md"}`}>
+                    {/* Progress Bar */}
+                    {template.pages.length > 1 && template.settings.showProgressBar && (
+                      <div className="mb-6">
+                        <div className="flex justify-between mb-2">
+                          {template.pages.map((page, i) => (
+                            <div
+                              key={page.id}
+                              className={`flex-1 text-center text-sm ${
+                                i === currentPreviewPage
+                                  ? "text-primary font-medium"
+                                  : "text-muted-foreground"
+                              }`}
+                            >
+                              {page.title || `Step ${i + 1}`}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary transition-all"
+                            style={{
+                              width: `${((currentPreviewPage + 1) / template.pages.length) * 100}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Hint when sidebar layout but no order summary */}
+                    {template.settings.layout === "sidebar" && !hasOrderSummary && (
+                      <div className="mb-4 p-3 rounded-lg bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-200 text-sm">
+                        <p className="font-medium">Sidebar Layout Selected</p>
+                        <p className="text-xs mt-1">Add an "Order Summary" element to enable the sidebar view</p>
+                      </div>
+                    )}
+
+                    {/* Main Content with Optional Sidebar */}
+                    <div className={`${showSidebar ? "flex gap-6" : ""} ${showSidebar && sidebarOnLeft ? "flex-row-reverse" : ""}`}>
+                      {/* Main Content */}
+                      <div className="flex-1">
+                        <Card className={isDark ? "bg-zinc-800 border-zinc-700 text-white" : ""}>
+                          <CardHeader>
+                            <CardTitle className={isDark ? "text-white" : ""}>{template.pages[currentPreviewPage]?.title || "Checkout"}</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-6">
+                            {getElementsToShow(template.pages[currentPreviewPage]?.elements || []).map((element) => (
+                              <PreviewElement key={element.id} element={element} isDark={isDark} />
+                            ))}
+                          </CardContent>
+                        </Card>
 
                       {template.pages.length > 1 && (
                         <div className="flex justify-between mt-4">
@@ -3570,6 +3746,7 @@ export function CheckoutTemplateBuilder({
                     )}
                   </div>
                 </div>
+                )}
               </div>
             );
           })()
@@ -3577,14 +3754,14 @@ export function CheckoutTemplateBuilder({
           // Edit Mode
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCenter}
+            collisionDetection={pointerWithin}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1 overflow-hidden h-full">
               {/* Left Panel - Elements Palette */}
-              <div className="w-64 border-r bg-muted/20 flex flex-col">
+              <div className="w-64 border-r bg-muted/20 flex flex-col h-full">
                 <div className="p-3 border-b space-y-2">
                   <h3 className="font-medium text-sm">Elements</h3>
                   <div className="relative">
@@ -3759,6 +3936,15 @@ export function CheckoutTemplateBuilder({
                                   leftWidth: template.settings.twoColumnLeftWidth,
                                   gap: template.settings.twoColumnGap,
                                 }}
+                                twoColumnStyling={{
+                                  leftBgColor: template.settings.twoColumnLeftBgColor,
+                                  rightBgColor: template.settings.twoColumnRightBgColor,
+                                  leftTextColor: template.settings.twoColumnLeftTextColor,
+                                  rightTextColor: template.settings.twoColumnRightTextColor,
+                                  leftContent: template.settings.twoColumnLeftContent,
+                                  rightContent: template.settings.twoColumnRightContent,
+                                }}
+                                themeMode={template.settings.themeMode}
                               />
                             );
                           })}
@@ -3875,13 +4061,13 @@ export function CheckoutTemplateBuilder({
               </div>
 
               {/* Right Panel - Properties */}
-              <div className="w-72 border-l bg-muted/20 flex flex-col">
-                <Tabs defaultValue="element" className="flex-1 flex flex-col">
-                  <TabsList className="mx-3 mt-3">
+              <div className="w-72 border-l bg-muted/20 flex flex-col" style={{ height: "calc(85vh - 73px)" }}>
+                <Tabs defaultValue="element" className="flex-1 flex flex-col overflow-hidden">
+                  <TabsList className="mx-3 mt-3 flex-shrink-0">
                     <TabsTrigger value="element" className="flex-1">Element</TabsTrigger>
                     <TabsTrigger value="settings" className="flex-1">Settings</TabsTrigger>
                   </TabsList>
-                  <TabsContent value="element" className="flex-1 mt-0">
+                  <TabsContent value="element" className="flex-1 mt-0 overflow-hidden">
                     <ScrollArea className="h-full">
                       <ElementProperties
                         element={getSelectedElement()}
@@ -3891,8 +4077,9 @@ export function CheckoutTemplateBuilder({
                       />
                     </ScrollArea>
                   </TabsContent>
-                  <TabsContent value="settings" className="flex-1 mt-0 p-4">
-                    <div className="space-y-4">
+                  <TabsContent value="settings" className="flex-1 mt-0 overflow-hidden">
+                    <ScrollArea className="h-full">
+                    <div className="p-4 space-y-4">
                       {/* Layout Selector */}
                       <div className="space-y-2">
                         <Label className="text-sm">Layout</Label>
@@ -4059,6 +4246,95 @@ export function CheckoutTemplateBuilder({
                               }
                             />
                           </div>
+
+                          {/* Column Styling */}
+                          <div className="border-t pt-3 mt-3">
+                            <Label className="text-xs font-medium">Left Column Style</Label>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Background</Label>
+                                <ColorPicker
+                                  value={template.settings.twoColumnLeftBgColor || "transparent"}
+                                  onChange={(color) =>
+                                    setTemplate((prev) => ({
+                                      ...prev,
+                                      settings: { ...prev.settings, twoColumnLeftBgColor: color },
+                                    }))
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Text Color</Label>
+                                <ColorPicker
+                                  value={template.settings.twoColumnLeftTextColor || "#000000"}
+                                  onChange={(color) =>
+                                    setTemplate((prev) => ({
+                                      ...prev,
+                                      settings: { ...prev.settings, twoColumnLeftTextColor: color },
+                                    }))
+                                  }
+                                />
+                              </div>
+                            </div>
+                            <div className="mt-2">
+                              <Label className="text-xs text-muted-foreground">Content Text (optional)</Label>
+                              <Textarea
+                                className="mt-1 text-xs min-h-[60px]"
+                                placeholder="Add marketing text, event info, or leave empty for form elements only..."
+                                value={template.settings.twoColumnLeftContent || ""}
+                                onChange={(e) =>
+                                  setTemplate((prev) => ({
+                                    ...prev,
+                                    settings: { ...prev.settings, twoColumnLeftContent: e.target.value },
+                                  }))
+                                }
+                              />
+                            </div>
+                          </div>
+
+                          <div className="border-t pt-3 mt-3">
+                            <Label className="text-xs font-medium">Right Column Style</Label>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Background</Label>
+                                <ColorPicker
+                                  value={template.settings.twoColumnRightBgColor || "transparent"}
+                                  onChange={(color) =>
+                                    setTemplate((prev) => ({
+                                      ...prev,
+                                      settings: { ...prev.settings, twoColumnRightBgColor: color },
+                                    }))
+                                  }
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Text Color</Label>
+                                <ColorPicker
+                                  value={template.settings.twoColumnRightTextColor || "#000000"}
+                                  onChange={(color) =>
+                                    setTemplate((prev) => ({
+                                      ...prev,
+                                      settings: { ...prev.settings, twoColumnRightTextColor: color },
+                                    }))
+                                  }
+                                />
+                              </div>
+                            </div>
+                            <div className="mt-2">
+                              <Label className="text-xs text-muted-foreground">Content Text (optional)</Label>
+                              <Textarea
+                                className="mt-1 text-xs min-h-[60px]"
+                                placeholder="Add marketing text, event info, or leave empty for form elements only..."
+                                value={template.settings.twoColumnRightContent || ""}
+                                onChange={(e) =>
+                                  setTemplate((prev) => ({
+                                    ...prev,
+                                    settings: { ...prev.settings, twoColumnRightContent: e.target.value },
+                                  }))
+                                }
+                              />
+                            </div>
+                          </div>
                         </div>
                       )}
 
@@ -4153,6 +4429,7 @@ export function CheckoutTemplateBuilder({
                         />
                       </div>
                     </div>
+                    </ScrollArea>
                   </TabsContent>
                 </Tabs>
               </div>
