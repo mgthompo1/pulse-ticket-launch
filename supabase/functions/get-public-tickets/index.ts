@@ -128,7 +128,6 @@ serve(async (req) => {
               id,
               name,
               event_date,
-              event_time,
               venue,
               description,
               logo_url,
