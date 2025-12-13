@@ -64,11 +64,16 @@ serve(async (req) => {
     }
 
     console.log("Admin user found, verifying password...");
-    
-    // Simple password check for now
-    const isPasswordValid = password === "AdminPass123!";
+
+    // Verify password against stored hash using bcrypt
+    if (!adminUser.password_hash) {
+      console.error("Admin user has no password hash set");
+      throw new Error("Invalid credentials");
+    }
+
+    const isPasswordValid = await verify(password, adminUser.password_hash);
     console.log("Password valid:", isPasswordValid);
-    
+
     if (!isPasswordValid) {
       console.error("Password verification failed");
       throw new Error("Invalid credentials");

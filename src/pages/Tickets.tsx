@@ -72,111 +72,36 @@ const Tickets: React.FC = () => {
   const loadTickets = async () => {
     try {
       setLoading(true);
-      
-      // First verify the email matches the order and get event delivery method
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .select(`
-          id, 
-          customer_email, 
-          customer_name,
-          total_amount,
-          events!inner(
-            id,
-            name,
-            ticket_delivery_method,
-            event_date,
-            venue,
-            organizations(name, logo_url)
-          )
-        `)
-        .eq('id', orderId)
-        .eq('customer_email', email)
-        .single();
 
-      if (orderError || !orderData) {
-        setError('Order not found or email does not match');
+      // Use secure edge function for public ticket access
+      // This validates orderId + email server-side and returns only authorized data
+      const { data, error: fnError } = await supabase.functions.invoke('get-public-tickets', {
+        body: { orderId, email }
+      });
+
+      if (fnError) {
+        console.error('Error from get-public-tickets:', fnError);
+        setError('Failed to load tickets');
+        return;
+      }
+
+      if (data.error) {
+        setError(data.error);
         return;
       }
 
       // Store order data for UI rendering
-      setOrderData(orderData);
+      setOrderData(data.order);
 
       // Check if this is a confirmation-only event (no actual tickets)
-      if (orderData.events?.ticket_delivery_method === 'confirmation_email') {
-        // For confirmation events, we don't have tickets but we can show order confirmation
+      if (data.isConfirmationOnly) {
         setTickets([]);
         setError(null);
         return;
       }
 
-      // First get order items for this order
-      const { data: orderItems, error: orderItemsError } = await supabase
-        .from('order_items')
-        .select('id')
-        .eq('order_id', orderId);
-
-      if (orderItemsError) {
-        console.error('Error loading order items:', orderItemsError);
-        setError('Failed to load order items');
-        return;
-      }
-
-      if (!orderItems || orderItems.length === 0) {
-        setError('No order items found');
-        return;
-      }
-
-      const orderItemIds = orderItems.map(item => item.id);
-
-      // Load tickets with all related data
-      const { data: ticketsData, error: ticketsError } = await supabase
-        .from('tickets')
-        .select(`
-          id,
-          ticket_code,
-          status,
-          order_item_id,
-          order_items!inner (
-            id,
-            order_id,
-            ticket_type_id,
-            ticket_types (
-              id,
-              name,
-              price
-            ),
-            orders!inner (
-              id,
-              customer_name,
-              customer_email,
-              event_id,
-              events (
-                id,
-                name,
-                event_date,
-                venue,
-                description,
-                logo_url,
-                organizations (
-                  id,
-                  name,
-                  logo_url
-                )
-              )
-            )
-          )
-        `)
-        .in('order_item_id', orderItemIds);
-
-      if (ticketsError) {
-        console.error('Error loading tickets:', ticketsError);
-        setError('Failed to load tickets');
-        return;
-      }
-
       // Transform the data to match TicketDisplay requirements
-      const transformedTickets = ticketsData?.map(ticket => ({
+      const transformedTickets = data.tickets?.map((ticket: any) => ({
         ...ticket,
         eventName: ticket.order_items?.orders?.events?.name || 'Unknown Event',
         customerName: ticket.order_items?.orders?.customer_name || 'Unknown Customer',
