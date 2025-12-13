@@ -181,36 +181,101 @@ export class EmailRenderer {
 
   private sanitizeHtml(html: string): string {
     if (!html) return '';
-    
-    // Comprehensive HTML sanitization to prevent XSS
-    const sanitized = html
-      // Remove potentially dangerous tags
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-      .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
-      .replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '')
-      .replace(/<form\b[^<]*(?:(?!<\/form>)<[^<]*)*<\/form>/gi, '')
-      .replace(/<input\b[^<]*(?:(?!<\/input>)<[^<]*)*<\/input>/gi, '')
-      .replace(/<textarea\b[^<]*(?:(?!<\/textarea>)<[^<]*)*<\/textarea>/gi, '')
-      .replace(/<select\b[^<]*(?:(?!<\/select>)<[^<]*)*<\/select>/gi, '')
-      .replace(/<option\b[^<]*(?:(?!<\/option>)<[^<]*)*<\/option>/gi, '')
-      .replace(/<button\b[^<]*(?:(?!<\/button>)<[^<]*)*<\/button>/gi, '')
-      // Remove event handlers
-      .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
-      .replace(/\s*on\w+\s*=\s*[^>\s]+/gi, '')
-      // Remove javascript: protocol
-      .replace(/href\s*=\s*["']javascript:[^"']*["']/gi, 'href="#"')
-      .replace(/src\s*=\s*["']javascript:[^"']*["']/gi, 'src=""')
-      // Remove style attributes that could contain expressions
-      .replace(/style\s*=\s*["'][^"']*expression\([^"']*\).*?["']/gi, '')
-      .replace(/style\s*=\s*["'][^"']*javascript:[^"']*["']/gi, '')
-      // Allow only safe tags for basic formatting
-      .replace(/<(?!\/?(?:p|br|strong|b|em|i|u|ul|ol|li|h[1-6]|div|span|a)\b)[^>]*>/gi, '');
 
-    // Additional escaping for remaining content
-    return sanitized
-      .replace(/'/g, '&#x27;')
-      .replace(/"/g, '&quot;');
+    // First, decode any HTML entities that might be used to bypass filters
+    const decoded = html
+      .replace(/&#x([0-9a-fA-F]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
+
+    // Comprehensive HTML sanitization to prevent XSS
+    let sanitized = decoded
+      // Remove potentially dangerous tags (including self-closing variants)
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<script\b[^>]*\/?>/gi, '')
+      .replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, '')
+      .replace(/<iframe\b[^>]*\/?>/gi, '')
+      .replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, '')
+      .replace(/<object\b[^>]*\/?>/gi, '')
+      .replace(/<embed\b[^>]*>[\s\S]*?<\/embed>/gi, '')
+      .replace(/<embed\b[^>]*\/?>/gi, '')
+      .replace(/<form\b[^>]*>[\s\S]*?<\/form>/gi, '')
+      .replace(/<form\b[^>]*\/?>/gi, '')
+      .replace(/<input\b[^>]*\/?>/gi, '')
+      .replace(/<textarea\b[^>]*>[\s\S]*?<\/textarea>/gi, '')
+      .replace(/<select\b[^>]*>[\s\S]*?<\/select>/gi, '')
+      .replace(/<button\b[^>]*>[\s\S]*?<\/button>/gi, '')
+      .replace(/<link\b[^>]*\/?>/gi, '')
+      .replace(/<meta\b[^>]*\/?>/gi, '')
+      .replace(/<base\b[^>]*\/?>/gi, '')
+      .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, '')
+      .replace(/<math\b[^>]*>[\s\S]*?<\/math>/gi, '')
+      // Remove event handlers (comprehensive pattern)
+      .replace(/\s*on\w+\s*=\s*["'][^"']*["']/gi, '')
+      .replace(/\s*on\w+\s*=\s*[^\s>]+/gi, '')
+      // Remove javascript:, data:, and vbscript: protocols
+      .replace(/href\s*=\s*["']?\s*(?:javascript|data|vbscript):[^"'\s>]*/gi, 'href="#"')
+      .replace(/src\s*=\s*["']?\s*(?:javascript|data|vbscript):[^"'\s>]*/gi, 'src=""')
+      .replace(/action\s*=\s*["']?\s*(?:javascript|data|vbscript):[^"'\s>]*/gi, '')
+      // Remove dangerous CSS (expression, behavior, -moz-binding, etc.)
+      .replace(/style\s*=\s*["'][^"']*(?:expression|behavior|javascript|-moz-binding|@import)[^"']*["']/gi, '')
+      // Remove style tags entirely
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, '')
+      // Allow only safe tags for basic formatting
+      .replace(/<(?!\/?(?:p|br|strong|b|em|i|u|ul|ol|li|h[1-6]|div|span|a|table|tr|td|th|thead|tbody|tfoot)\b)[^>]*>/gi, '');
+
+    // Escape special characters in text content (but preserve allowed HTML tags)
+    // Only escape ampersands that aren't already part of entities
+    sanitized = sanitized.replace(/&(?!(?:amp|lt|gt|quot|#x?[0-9a-fA-F]+);)/g, '&amp;');
+
+    return sanitized;
+  }
+
+  // Replace personalization variables with actual or sample values
+  private replacePersonalizationVariables(
+    text: string,
+    orderData: OrderData,
+    tickets: TicketData[]
+  ): string {
+    if (!text) return '';
+
+    const eventDate = new Date(orderData.events.event_date);
+    const now = new Date();
+    const diffTime = eventDate.getTime() - now.getTime();
+    const daysUntil = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+    const hoursUntil = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60)));
+
+    const firstName = orderData.customer_name?.split(' ')[0] || 'Customer';
+    const lastName = orderData.customer_name?.split(' ').slice(1).join(' ') || '';
+
+    const variables: Record<string, string> = {
+      '@FirstName': firstName,
+      '@LastName': lastName,
+      '@FullName': orderData.customer_name || orderData.customer_email,
+      '@EventName': orderData.events.name,
+      '@EventDate': eventDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+      '@EventTime': eventDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      '@EventVenue': orderData.events.venue || 'Venue TBA',
+      '@OrderNumber': 'ORD-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+      '@TotalAmount': `$${orderData.total_amount.toFixed(2)}`,
+      '@TicketCount': String(tickets.length),
+      '@OrganizerName': orderData.events.organizations.name,
+      '@ContactEmail': 'support@example.com',
+      '@DaysUntilEvent': String(daysUntil),
+      '@HoursUntilEvent': String(hoursUntil),
+      '@EventCountdown': daysUntil > 0 ? `${daysUntil} days` : `${hoursUntil} hours`,
+      '@VenueAddress': orderData.events.venue || 'Address TBA',
+      '@CheckInTime': eventDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      '@DoorOpenTime': new Date(eventDate.getTime() - 30 * 60 * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      '@AttendeeCount': String(tickets.length),
+      '@TicketTypes': [...new Set(tickets.map(t => t.type))].join(', ') || 'General Admission',
+    };
+
+    let result = text;
+    for (const [variable, value] of Object.entries(variables)) {
+      result = result.replace(new RegExp(variable.replace('@', '@'), 'g'), value);
+    }
+
+    return result;
   }
 
   private sanitizeUrl(url: string): string {
@@ -244,18 +309,40 @@ export class EmailRenderer {
     switch (block.type) {
       case 'header': {
         const headerBlock = block as any;
-        return `<div style="background:${theme.headerColor};color:#fff;padding:20px;" class="email-content mobile-padding">
-          <h1 style="margin:0;text-align:center;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:24px;" class="mobile-font-size">
-            ${this.sanitizeHtml(headerBlock.title || 'Thank you')}
-          </h1>
-        </div>`;
+        const title = this.replacePersonalizationVariables(
+          this.sanitizeHtml(headerBlock.title || 'Thank you'),
+          orderData,
+          tickets
+        );
+        const subtitle = headerBlock.subtitle
+          ? this.replacePersonalizationVariables(this.sanitizeHtml(headerBlock.subtitle), orderData, tickets)
+          : '';
+        return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${theme.headerColor};">
+          <tr>
+            <td style="padding:20px;text-align:center;" class="email-content mobile-padding">
+              <h1 style="margin:0;color:#fff;font-family:'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;font-weight:600;font-size:24px;" class="mobile-font-size">
+                ${title}
+              </h1>
+              ${subtitle ? `<p style="margin:8px 0 0;color:rgba(255,255,255,0.9);font-size:14px;">${subtitle}</p>` : ''}
+            </td>
+          </tr>
+        </table>`;
       }
 
       case 'text': {
         const textBlock = block as any;
-        return `<div style="padding:16px 20px;color:${theme.textColor};line-height:1.6;" class="email-content mobile-padding mobile-font-size">
-          ${this.sanitizeHtml(textBlock.html || '')}
-        </div>`;
+        const content = this.replacePersonalizationVariables(
+          this.sanitizeHtml(textBlock.html || ''),
+          orderData,
+          tickets
+        );
+        return `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="padding:16px 20px;color:${theme.textColor};line-height:1.6;" class="email-content mobile-padding mobile-font-size">
+              ${content}
+            </td>
+          </tr>
+        </table>`;
       }
 
       case 'event_details':
@@ -286,9 +373,18 @@ export class EmailRenderer {
 
       case 'footer': {
         const footerBlock = block as any;
-        return `<div style="background:${theme.accentColor};padding:16px;text-align:center;border-top:1px solid ${theme.borderColor};">
-          <small style="color:#999;">${this.sanitizeHtml(footerBlock.text || '')}</small>
-        </div>`;
+        const footerText = this.replacePersonalizationVariables(
+          this.sanitizeHtml(footerBlock.text || ''),
+          orderData,
+          tickets
+        );
+        return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${theme.accentColor};border-top:1px solid ${theme.borderColor};">
+          <tr>
+            <td style="padding:16px;text-align:center;">
+              <small style="color:#999;">${footerText}</small>
+            </td>
+          </tr>
+        </table>`;
       }
 
       case 'calendar_button':
@@ -298,13 +394,13 @@ export class EmailRenderer {
         return this.renderQRTickets(tickets, theme, block as any);
 
       case 'order_management':
-        return this.renderOrderManagement(block as any, theme);
+        return this.renderOrderManagement(block as any, theme, orderData);
 
       case 'social_links':
         return this.renderSocialLinks(block as any, theme);
 
       case 'custom_message':
-        return this.renderCustomMessage(block as any, theme);
+        return this.renderCustomMessage(block as any, theme, orderData, tickets);
 
       case 'next_steps':
         return this.renderNextSteps(block as any, theme);
@@ -346,82 +442,145 @@ export class EmailRenderer {
       minute: '2-digit'
     });
 
-    return `<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px;">
-      <strong style="color:${theme.textColor};font-size:18px;">${this.sanitizeHtml(orderData.events.name)}</strong>
-      <div style="color:${theme.textColor};font-size:14px;line-height:1.6;margin-top:16px;">
-        <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.backgroundColor};border-radius:8px;">
-          <span style="color:${theme.textColor};margin-right:12px;font-size:16px;">${ICONS.calendar}</span>
-          <div>
-            <div style="font-weight:600;color:${theme.headerColor};">${formattedDate}</div>
-            <div style="color:${theme.textColor};margin-top:4px;">${formattedTime}</div>
-          </div>
-        </div>
-        ${orderData.events.venue ? `<div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.backgroundColor};border-radius:8px;">
-          <span style="color:${theme.textColor};margin-right:12px;font-size:16px;">${ICONS.mapPin}</span>
-          <div>
-            <div style="font-weight:600;color:${theme.headerColor};">Venue</div>
-            <div style="color:${theme.textColor};margin-top:4px;">${this.sanitizeHtml(orderData.events.venue)}</div>
-          </div>
-        </div>` : ''}
-        <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.backgroundColor};border-radius:8px;">
-          <span style="color:${theme.textColor};margin-right:12px;font-size:16px;">${ICONS.user}</span>
-          <div>
-            <div style="font-weight:600;color:${theme.headerColor};">Customer</div>
-            <div style="color:${theme.textColor};margin-top:4px;">${this.sanitizeHtml(orderData.customer_name || orderData.customer_email)}</div>
-          </div>
-        </div>
-      </div>
-    </div>`;
+    return `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="padding:16px 20px;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:8px;">
+            <tr>
+              <td style="padding:16px;">
+                <strong style="color:${theme.textColor};font-size:18px;">${this.sanitizeHtml(orderData.events.name)}</strong>
+
+                <!-- Date/Time Row -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;">
+                  <tr>
+                    <td style="padding:12px;background:${theme.backgroundColor};border-radius:8px;">
+                      <table cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td style="vertical-align:top;padding-right:12px;font-size:16px;color:${theme.textColor};">${ICONS.calendar}</td>
+                          <td>
+                            <div style="font-weight:600;color:${theme.headerColor};">${formattedDate}</div>
+                            <div style="color:${theme.textColor};margin-top:4px;font-size:14px;">${formattedTime}</div>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+
+                ${orderData.events.venue ? `
+                <!-- Venue Row -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:12px;">
+                  <tr>
+                    <td style="padding:12px;background:${theme.backgroundColor};border-radius:8px;">
+                      <table cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td style="vertical-align:top;padding-right:12px;font-size:16px;color:${theme.textColor};">${ICONS.mapPin}</td>
+                          <td>
+                            <div style="font-weight:600;color:${theme.headerColor};">Venue</div>
+                            <div style="color:${theme.textColor};margin-top:4px;font-size:14px;">${this.sanitizeHtml(orderData.events.venue)}</div>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+                ` : ''}
+
+                <!-- Customer Row -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:12px;">
+                  <tr>
+                    <td style="padding:12px;background:${theme.backgroundColor};border-radius:8px;">
+                      <table cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td style="vertical-align:top;padding-right:12px;font-size:16px;color:${theme.textColor};">${ICONS.user}</td>
+                          <td>
+                            <div style="font-weight:600;color:${theme.headerColor};">Customer</div>
+                            <div style="color:${theme.textColor};margin-top:4px;font-size:14px;">${this.sanitizeHtml(orderData.customer_name || orderData.customer_email)}</div>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>`;
   }
 
   private renderTicketList(tickets: TicketData[], theme: ThemeStyles): string {
     if (tickets.length === 0) return '';
 
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://yoxsewbpoqxscsutqlcb.supabase.co';
+    const appleWalletBadge = `${supabaseUrl}/storage/v1/object/public/event-logos/add-to-apple-wallet.png`;
+
     const ticketHtml = tickets.map((ticket, index) => {
-      return `<div style="border:1px solid ${theme.borderColor};border-radius:8px;padding:16px;margin:8px 0;background:${theme.backgroundColor};">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-          <div style="flex:1;">
+      return `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0;">
+        <tr>
+          <td style="border:1px solid ${theme.borderColor};border-radius:8px;padding:16px;background:${theme.backgroundColor};">
             <div style="font-weight:600;color:${theme.headerColor};margin-bottom:8px;">${this.sanitizeHtml(ticket.type)}</div>
             <div style="color:${theme.textColor};font-size:14px;margin-bottom:4px;">Ticket #${index + 1}</div>
-            <div style="color:${theme.textColor};font-size:12px;font-family:monospace;background:${theme.accentColor};padding:8px;border-radius:4px;word-break:break-all;">
+            <div style="color:${theme.textColor};font-size:12px;font-family:monospace;background:${theme.accentColor};padding:8px;border-radius:4px;word-break:break-all;margin-bottom:12px;">
               ${this.sanitizeHtml(ticket.code)}
             </div>
-          </div>
-        </div>
-      </div>`;
+            <!-- Add to Apple Wallet button -->
+            <a href="#" style="display:inline-block;text-decoration:none;line-height:0;">
+              <img src="${appleWalletBadge}" width="120" height="40" alt="Add to Apple Wallet" style="display:block;border:0;outline:none;"/>
+            </a>
+          </td>
+        </tr>
+      </table>`;
     }).join('');
 
-    return `<div style="margin:16px 20px;">
-      <h3 style="color:${theme.headerColor};margin-bottom:16px;font-family:'Manrope', sans-serif;">Your Tickets</h3>
-      ${ticketHtml}
-    </div>`;
+    return `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="padding:16px 20px;">
+          <h3 style="color:${theme.headerColor};margin:0 0 16px;font-family:'Manrope', sans-serif;">Your Tickets</h3>
+          ${ticketHtml}
+        </td>
+      </tr>
+    </table>`;
   }
 
   private renderOrderSummary(orderData: OrderData, theme: ThemeStyles): string {
     const itemsHtml = orderData.order_items.map(item => {
-      const name = item.item_type === 'ticket' 
+      const name = item.item_type === 'ticket'
         ? item.ticket_types?.name || 'General Admission'
         : item.merchandise?.name || 'Merchandise';
-      
-      return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid ${theme.borderColor};">
-        <div>
+
+      return `<tr>
+        <td style="padding:8px 0;border-bottom:1px solid ${theme.borderColor};">
           <div style="font-weight:600;color:${theme.textColor};">${this.sanitizeHtml(name)}</div>
           <div style="color:${theme.textColor};font-size:14px;">Quantity: ${item.quantity}</div>
-        </div>
-        <div style="color:${theme.textColor};font-weight:600;">$${(item.unit_price * item.quantity).toFixed(2)}</div>
-      </div>`;
+        </td>
+        <td style="padding:8px 0;border-bottom:1px solid ${theme.borderColor};text-align:right;vertical-align:top;">
+          <div style="color:${theme.textColor};font-weight:600;">$${(item.unit_price * item.quantity).toFixed(2)}</div>
+        </td>
+      </tr>`;
     }).join('');
 
-    return `<div style="margin:16px 20px;">
-      <h3 style="color:${theme.headerColor};margin-bottom:16px;font-family:'Manrope', sans-serif;">Order Summary</h3>
-      <div style="border:1px solid ${theme.borderColor};border-radius:8px;padding:16px;background:${theme.backgroundColor};">
-        ${itemsHtml}
-        <div style="display:flex;justify-content:space-between;padding:16px 0 8px 0;font-weight:600;color:${theme.headerColor};border-top:2px solid ${theme.borderColor};margin-top:16px;">
-          <div>Total</div>
-          <div>$${orderData.total_amount.toFixed(2)}</div>
-        </div>
-      </div>
-    </div>`;
+    return `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="padding:16px 20px;">
+          <h3 style="color:${theme.headerColor};margin:0 0 16px;font-family:'Manrope', sans-serif;">Order Summary</h3>
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid ${theme.borderColor};border-radius:8px;background:${theme.backgroundColor};">
+            <tr>
+              <td style="padding:16px;">
+                <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                  ${itemsHtml}
+                  <tr>
+                    <td style="padding:16px 0 8px 0;font-weight:600;color:${theme.headerColor};border-top:2px solid ${theme.borderColor};">Total</td>
+                    <td style="padding:16px 0 8px 0;font-weight:600;color:${theme.headerColor};border-top:2px solid ${theme.borderColor};text-align:right;">$${orderData.total_amount.toFixed(2)}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>`;
   }
 
   private renderPaymentSummary(orderData: OrderData, theme: ThemeStyles, paymentData?: PaymentData): string {
@@ -429,25 +588,53 @@ export class EmailRenderer {
       return '';
     }
 
-    return `<div style="background:${theme.accentColor};border:1px solid ${theme.borderColor};margin:16px 20px;padding:16px;border-radius:8px;">
-      <h3 style="color:${theme.headerColor};margin-bottom:16px;font-family:'Manrope', sans-serif;">Payment Summary</h3>
-      <div style="color:${theme.textColor};font-size:14px;line-height:1.6;">
-        <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.backgroundColor};border-radius:8px;">
-          <span style="color:${theme.textColor};margin-right:12px;font-size:16px;">${ICONS.card}</span>
-          <div>
-            <div style="font-weight:600;color:${theme.headerColor};">Payment Method</div>
-            <div style="color:${theme.textColor};margin-top:4px;">${this.sanitizeHtml(paymentData.brand)} ending in ${this.sanitizeHtml(paymentData.last4)}</div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;margin:12px 0;padding:12px;background:${theme.backgroundColor};border-radius:8px;">
-          <span style="color:${theme.textColor};margin-right:12px;font-size:16px;">💰</span>
-          <div>
-            <div style="font-weight:600;color:${theme.headerColor};">Total Paid</div>
-            <div style="color:${theme.textColor};margin-top:4px;">$${orderData.total_amount.toFixed(2)}</div>
-          </div>
-        </div>
-      </div>
-    </div>`;
+    return `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="padding:16px 20px;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:8px;">
+            <tr>
+              <td style="padding:16px;">
+                <h3 style="color:${theme.headerColor};margin:0 0 16px;font-family:'Manrope', sans-serif;">Payment Summary</h3>
+
+                <!-- Payment Method -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px;">
+                  <tr>
+                    <td style="padding:12px;background:${theme.backgroundColor};border-radius:8px;">
+                      <table cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td style="vertical-align:top;padding-right:12px;font-size:16px;color:${theme.textColor};">${ICONS.card}</td>
+                          <td>
+                            <div style="font-weight:600;color:${theme.headerColor};">Payment Method</div>
+                            <div style="color:${theme.textColor};margin-top:4px;font-size:14px;">${this.sanitizeHtml(paymentData.brand)} ending in ${this.sanitizeHtml(paymentData.last4)}</div>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- Total Paid -->
+                <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td style="padding:12px;background:${theme.backgroundColor};border-radius:8px;">
+                      <table cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td style="vertical-align:top;padding-right:12px;font-size:16px;">💰</td>
+                          <td>
+                            <div style="font-weight:600;color:${theme.headerColor};">Total Paid</div>
+                            <div style="color:${theme.textColor};margin-top:4px;font-size:14px;">$${orderData.total_amount.toFixed(2)}</div>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>`;
   }
 
   private renderButton(block: any, theme: ThemeStyles, deliveryMethod?: string): string {
@@ -455,21 +642,33 @@ export class EmailRenderer {
     if (safeUrl === '#' && !block.url) return '';
 
     const alignment = block.align === 'left' ? 'left' : block.align === 'right' ? 'right' : 'center';
-    
+
     // Customize button text based on delivery method
     let buttonText = block.label || 'Click Here';
-    
+
     if (block.label && block.label.toLowerCase().includes('view tickets')) {
       if (deliveryMethod === 'confirmation_email' || deliveryMethod === 'email_confirmation_only' || deliveryMethod === 'email_confirmation') {
         buttonText = 'View Registration Confirmation';
       }
     }
-    
-    return `<div style="padding:16px 20px;text-align:${alignment};" class="email-content mobile-padding mobile-text-center">
-      <a href="${safeUrl}" style="display:inline-block;background:${theme.buttonColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:600;font-family:'Manrope', sans-serif;min-width:120px;" class="mobile-button">
-        ${this.sanitizeHtml(buttonText)}
-      </a>
-    </div>`;
+
+    return `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="padding:16px 20px;text-align:${alignment};" class="email-content mobile-padding mobile-text-center">
+          <!--[if mso]>
+          <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${safeUrl}" style="height:44px;v-text-anchor:middle;width:200px;" arcsize="14%" stroke="f" fillcolor="${theme.buttonColor}">
+            <w:anchorlock/>
+            <center style="color:#ffffff;font-family:sans-serif;font-size:14px;font-weight:600;">${this.sanitizeHtml(buttonText)}</center>
+          </v:roundrect>
+          <![endif]-->
+          <!--[if !mso]><!-->
+          <a href="${safeUrl}" style="display:inline-block;background:${theme.buttonColor};color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:600;font-family:'Manrope', sans-serif;min-width:120px;" class="mobile-button">
+            ${this.sanitizeHtml(buttonText)}
+          </a>
+          <!--<![endif]-->
+        </td>
+      </tr>
+    </table>`;
   }
 
   private renderCalendarButton(block: any, orderData: OrderData, theme: ThemeStyles): string {
@@ -501,22 +700,25 @@ export class EmailRenderer {
 
   private renderQRTickets(tickets: TicketData[], theme: ThemeStyles, block: any): string {
     if (tickets.length === 0) return '';
-    
+
     const layout = block.layout || 'grid';
     const showInline = block.showInline !== false;
     const includeBarcode = block.includeBarcode === true;
-    
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://yoxsewbpoqxscsutqlcb.supabase.co';
+    const appleWalletBadge = `${supabaseUrl}/storage/v1/object/public/event-logos/add-to-apple-wallet.png`;
+
     if (!showInline) {
       return `<div style="margin:16px 20px;padding:16px;background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:8px;text-align:center;">
         <h3 style="color:${theme.headerColor};margin-bottom:8px;font-family:'Manrope', sans-serif;">Your QR Tickets</h3>
         <p style="color:${theme.textColor};font-size:14px;margin:0;">QR codes will be attached as separate files to this email.</p>
       </div>`;
     }
-    
-    const ticketStyle = layout === 'grid' 
+
+    const ticketStyle = layout === 'grid'
       ? 'display:inline-block;margin:8px;vertical-align:top;'
       : 'display:block;margin:8px 0;';
-    
+
     const ticketHtml = tickets.map((ticket, index) => {
       return `<div style="${ticketStyle}border:1px solid ${theme.borderColor};border-radius:8px;padding:16px;background:${theme.backgroundColor};text-align:center;min-width:200px;">
         <div style="font-weight:600;color:${theme.headerColor};margin-bottom:8px;">${this.sanitizeHtml(ticket.type)}</div>
@@ -524,12 +726,16 @@ export class EmailRenderer {
         <div style="width:100px;height:100px;background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:4px;margin:8px auto;display:flex;align-items:center;justify-content:center;color:${theme.textColor};font-size:12px;">
           QR Code<br/>Preview
         </div>
-        <div style="color:${theme.textColor};font-size:10px;font-family:monospace;background:${theme.accentColor};padding:4px;border-radius:4px;word-break:break-all;margin-top:8px;">
+        <div style="color:${theme.textColor};font-size:10px;font-family:monospace;background:${theme.accentColor};padding:4px;border-radius:4px;word-break:break-all;margin-top:8px;margin-bottom:12px;">
           ${this.sanitizeHtml(ticket.code)}
         </div>
+        <!-- Add to Apple Wallet button -->
+        <a href="#" style="display:inline-block;text-decoration:none;line-height:0;">
+          <img src="${appleWalletBadge}" width="110" height="36" alt="Add to Apple Wallet" style="display:inline-block;border:0;outline:none;"/>
+        </a>
       </div>`;
     }).join('');
-    
+
     return `<div style="margin:16px 20px;">
       <h3 style="color:${theme.headerColor};margin-bottom:16px;font-family:'Manrope', sans-serif;">Your QR Tickets</h3>
       <div style="text-align:center;">
@@ -538,28 +744,31 @@ export class EmailRenderer {
     </div>`;
   }
 
-  private renderOrderManagement(block: any, theme: ThemeStyles): string {
+  private renderOrderManagement(block: any, theme: ThemeStyles, orderData: OrderData): string {
     const showViewOrder = block.showViewOrder !== false;
     const showModifyOrder = block.showModifyOrder === true;
     const showCancelOrder = block.showCancelOrder === true;
     const customText = block.customText || 'Need help with your order?';
-    
+
+    // Generate ticket URL (preview uses sample data)
+    const ticketsUrl = `https://www.ticketflo.org/tickets?orderId=sample&email=${encodeURIComponent(orderData.customer_email)}`;
+
     const buttons = [];
-    
+
     if (showViewOrder) {
-      buttons.push(`<a href="#" style="display:inline-block;margin:4px;background:${theme.buttonColor};color:#fff;padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">View Order</a>`);
+      buttons.push(`<a href="${ticketsUrl}" style="display:inline-block;margin:4px;background:${theme.buttonColor};color:#fff;padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">View Order</a>`);
     }
-    
+
     if (showModifyOrder) {
-      buttons.push(`<a href="#" style="display:inline-block;margin:4px;background:${theme.accentColor};color:${theme.textColor};border:1px solid ${theme.borderColor};padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">Modify Order</a>`);
+      buttons.push(`<a href="${ticketsUrl}" style="display:inline-block;margin:4px;background:${theme.accentColor};color:${theme.textColor};border:1px solid ${theme.borderColor};padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">Modify Order</a>`);
     }
-    
+
     if (showCancelOrder) {
-      buttons.push(`<a href="#" style="display:inline-block;margin:4px;background:#ef4444;color:#fff;padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">Cancel Order</a>`);
+      buttons.push(`<a href="${ticketsUrl}" style="display:inline-block;margin:4px;background:#ef4444;color:#fff;padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">Cancel Order</a>`);
     }
-    
+
     if (buttons.length === 0) return '';
-    
+
     return `<div style="margin:16px 20px;padding:16px;background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:8px;text-align:center;">
       <p style="color:${theme.textColor};margin-bottom:12px;font-weight:500;">${this.sanitizeHtml(customText)}</p>
       <div>
@@ -609,15 +818,27 @@ export class EmailRenderer {
     </div>`;
   }
 
-  private renderCustomMessage(block: any, theme: ThemeStyles): string {
+  private renderCustomMessage(block: any, theme: ThemeStyles, orderData?: OrderData, tickets?: TicketData[]): string {
     const message = block.message || block.markdown || '';
     if (!message) return '';
-    
-    return `<div style="margin:16px 20px;padding:16px;background:${theme.accentColor};border-left:4px solid ${theme.buttonColor};border-radius:4px;">
-      <div style="color:${theme.textColor};line-height:1.6;">
-        ${this.sanitizeHtml(message)}
-      </div>
-    </div>`;
+
+    const content = orderData && tickets
+      ? this.replacePersonalizationVariables(this.sanitizeHtml(message), orderData, tickets)
+      : this.sanitizeHtml(message);
+
+    return `<table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="padding:16px 20px;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:8px;">
+            <tr>
+              <td style="padding:16px;color:${theme.textColor};line-height:1.6;">
+                ${content}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>`;
   }
 
   private renderNextSteps(block: any, theme: ThemeStyles): string {

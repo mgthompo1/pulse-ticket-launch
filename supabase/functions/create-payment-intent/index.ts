@@ -222,7 +222,8 @@ serve(async (req) => {
             name,
             currency,
             stripe_booking_fee_enabled,
-            stripe_account_id
+            stripe_account_id,
+            stripe_test_mode
           )
         `)
         .eq("id", eventId)
@@ -432,12 +433,19 @@ serve(async (req) => {
       });
     }
 
+    // Check for test mode first - this affects Connect behavior
+    const orgTestMode = event?.organizations?.stripe_test_mode === true;
+    const envTestMode = Deno.env.get("STRIPE_TEST_MODE") === "true";
+    const isTestMode = orgTestMode || envTestMode;
+
     // Use Connect whenever organization has connected account (regardless of booking fee setting)
+    // BUT: In test mode, skip Connect because connected accounts are mode-specific
+    // (accounts connected in live mode don't exist in test mode)
     let stripeAccountId = null;
     let useConnectPayment = false;
 
-    if (isEventPayment && event?.organizations?.stripe_account_id) {
-      // Organization has Stripe Connect - always use Connect
+    if (isEventPayment && event?.organizations?.stripe_account_id && !isTestMode) {
+      // Organization has Stripe Connect AND we're in live mode - use Connect
       stripeAccountId = event.organizations.stripe_account_id;
       useConnectPayment = true;
 
@@ -452,6 +460,12 @@ serve(async (req) => {
         console.log("Platform application fee: $0 (booking fees disabled)");
         console.log("Organization receives 100% of payment (minus their Stripe fees)");
       }
+    } else if (isTestMode && event?.organizations?.stripe_account_id) {
+      // Test mode with Connect account - skip Connect, use direct payment
+      console.log("🧪 === TEST MODE - SKIPPING CONNECT (Direct Payment) ===");
+      console.log("Connected account exists but test mode is enabled");
+      console.log("Connected accounts are mode-specific - skipping destination charges for testing");
+      console.log("Payment will go to platform test account directly");
     } else if (isEventPayment && enableBookingFees && !event?.organizations?.stripe_account_id) {
       // Booking fees enabled but no connected account - this is an error
       throw new Error("Booking fees require Stripe Connect. Please connect your Stripe account first.");
@@ -463,16 +477,27 @@ serve(async (req) => {
 
     // Initialize Stripe with the appropriate key
     let stripeKey: string;
-    if (useConnectPayment) {
-      // Use platform Stripe account for Connect payments
-      const platformStripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+
+    if (isTestMode) {
+      // Test mode - always use platform test key
+      const platformStripeKey = Deno.env.get("STRIPE_SECRET_KEY_TEST");
+      if (platformStripeKey) {
+        console.log("🧪 Using PLATFORM Stripe TEST key (org test mode:", orgTestMode, ")");
+        stripeKey = platformStripeKey;
+      } else {
+        console.warn("⚠️ Test mode enabled but STRIPE_SECRET_KEY_TEST not set, falling back to STRIPE_SECRET_KEY");
+        stripeKey = Deno.env.get("STRIPE_SECRET_KEY") || "";
+      }
+    } else if (useConnectPayment) {
+      // Live mode with Connect
+      const platformStripeKey = Deno.env.get("STRIPE_SECRET_KEY_LIVE") || Deno.env.get("STRIPE_SECRET_KEY");
       if (!platformStripeKey) {
         throw new Error("Platform Stripe secret key not configured");
       }
       stripeKey = platformStripeKey;
-      console.log("Using PLATFORM Stripe key for Connect payment");
+      console.log("Using PLATFORM Stripe LIVE key for Connect payment");
     } else {
-      // Use organization's Stripe account for direct payments
+      // Direct payment (no Connect)
       if (!stripeSecretKey) {
         throw new Error("Stripe API credentials not configured for this organization");
       }
@@ -491,8 +516,8 @@ serve(async (req) => {
       automatic_payment_methods: { enabled: true },
     };
 
-    // Add Connect parameters only if using Connect payment
-    if (useConnectPayment && stripeAccountId) {
+    // Add Connect parameters only if using Connect payment (NOT in test mode)
+    if (useConnectPayment && stripeAccountId && !isTestMode) {
       // Use DESTINATION CHARGES with on_behalf_of
       // on_behalf_of: Required for Connect - makes charge settle on connected account
       // transfer_data.destination: Where funds go (without amount = all funds minus app fee)
@@ -515,6 +540,10 @@ serve(async (req) => {
       console.log("Total charge amount:", amountInCents, "cents", currency.toUpperCase());
       console.log("Platform application fee:", platformFeeAmount, "cents");
       console.log("Organization receives:", amountInCents - platformFeeAmount, "cents (minus their Stripe fees)");
+    } else if (isTestMode) {
+      console.log("🧪 === CREATING TEST MODE PAYMENT INTENT (No Connect) ===");
+      console.log("Test mode enabled - payment goes to platform test account");
+      console.log("Amount:", amountInCents, "cents", currency.toUpperCase());
     } else {
       console.log("=== CREATING DIRECT PAYMENT INTENT ===");
       console.log("Payment goes directly to organization's Stripe account");

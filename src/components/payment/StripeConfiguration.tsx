@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CreditCard, DollarSign, Info, Coins } from "lucide-react";
+import { CreditCard, DollarSign, Info, Coins, FlaskConical } from "lucide-react";
 import { StripeConnectButton } from "@/components/StripeConnectButton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -18,6 +18,7 @@ interface StripeConfigurationProps {
   enableBookingFees?: boolean;
   stripeConnectedAccountId?: string;
   organizationId?: string;
+  stripeTestMode?: boolean;
   onStripeAccountIdChange: (value: string) => void;
   onStripePublishableKeyChange: (value: string) => void;
   onStripeSecretKeyChange: (value: string) => void;
@@ -26,6 +27,7 @@ interface StripeConfigurationProps {
   onEnableGooglePayChange?: (value: boolean) => void;
   onCurrencyChange: (value: string) => void;
   onEnableBookingFeesChange?: (value: boolean) => void;
+  onStripeTestModeChange?: (value: boolean) => void;
   onConnectionChange?: () => void;
 }
 
@@ -38,12 +40,14 @@ export const StripeConfiguration = ({
   enableBookingFees = false,
   stripeConnectedAccountId,
   organizationId,
+  stripeTestMode = false,
   onStripeAccountIdChange,
   onStripePublishableKeyChange,
   onStripeSecretKeyChange,
   onStripeTerminalLocationIdChange,
   onCurrencyChange,
   onEnableBookingFeesChange,
+  onStripeTestModeChange,
   onConnectionChange
 }: StripeConfigurationProps) => {
   const handleBookingFeeToggle = (checked: boolean) => {
@@ -233,6 +237,59 @@ export const StripeConfiguration = ({
         showBookingFeesRequirement={!enableBookingFees}
         organizationId={organizationId}
       />
+
+      {/* Test/Sandbox Mode Toggle */}
+      <Card className={stripeTestMode ? "border-yellow-400 bg-yellow-50/50" : ""}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FlaskConical className={`h-5 w-5 ${stripeTestMode ? "text-yellow-600" : ""}`} />
+            Test Mode (Sandbox)
+            {stripeTestMode && (
+              <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-yellow-200 text-yellow-800 rounded">
+                ENABLED
+              </span>
+            )}
+          </CardTitle>
+          <CardDescription>
+            Enable test mode to process payments in Stripe's sandbox environment
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between py-4 border-b">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${stripeTestMode ? 'bg-yellow-500/20' : 'bg-muted'}`}>
+                <FlaskConical className={`h-5 w-5 ${stripeTestMode ? 'text-yellow-600' : 'text-muted-foreground'}`} />
+              </div>
+              <div>
+                <div className="font-medium">Enable Stripe Test Mode</div>
+                <p className="text-sm text-muted-foreground">
+                  Use test cards without charging real money
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={stripeTestMode}
+              onCheckedChange={(checked) => onStripeTestModeChange?.(checked)}
+            />
+          </div>
+
+          {stripeTestMode && (
+            <Alert className="bg-yellow-50 border-yellow-200">
+              <FlaskConical className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-800">
+                <strong>Test Mode Active:</strong> Payments will use Stripe's sandbox. Use test card <code className="bg-yellow-100 px-1 rounded">4242 4242 4242 4242</code> with any future expiry and CVC.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {!stripeTestMode && (
+            <p className="text-sm text-muted-foreground">
+              Enable test mode to safely test the checkout flow without processing real payments.
+              All connected Stripe accounts will process in sandbox mode.
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

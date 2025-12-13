@@ -38,6 +38,36 @@ interface EmailTemplateBuilderProps {
   templateType?: EmailTemplateType;
 }
 
+// Block categories for better organization
+const CONFIRMATION_BLOCKS: EmailBlockType[] = [
+  "header",
+  "text",
+  "event_details",
+  "ticket_list",
+  "registration_details",
+  "payment_summary",
+  "button",
+  "divider",
+  "image",
+  "footer",
+  "calendar_button",
+  "qr_tickets",
+  "order_management",
+  "social_links",
+  "custom_message",
+  "next_steps",
+];
+
+const REMINDER_BLOCKS: EmailBlockType[] = [
+  "event_countdown",
+  "attendance_info",
+  "important_updates",
+  "venue_directions",
+  "check_in_info",
+  "weather_info",
+  "recommended_items",
+];
+
 const blockLabel: Record<EmailBlockType, string> = {
   header: "Header",
   text: "Text",
@@ -65,12 +95,22 @@ const blockLabel: Record<EmailBlockType, string> = {
   recommended_items: "Recommended Items",
 };
 
-export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({ 
-  template, 
-  onChange, 
-  emailCustomization, 
-  onEmailCustomizationChange, 
-  isAttractionMode
+// Generate secure unique IDs
+const generateBlockId = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID().slice(0, 8);
+  }
+  // Fallback for older browsers
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
+};
+
+export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({
+  template,
+  onChange,
+  emailCustomization,
+  onEmailCustomizationChange,
+  isAttractionMode,
+  templateType
 }) => {
   // Determine which data source to use
   const isUsingEmailCustomization = isAttractionMode && emailCustomization && onEmailCustomizationChange;
@@ -103,30 +143,66 @@ export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({
     }
   };
   const addBlock = (type: EmailBlockType) => {
-    const id = Math.random().toString(36).slice(2, 9);
-    const base = { id, type } as EmailBlock;
-    const block: EmailBlock =
-      type === "header"
-        ? { ...(base as HeaderBlock), title: "Header", align: "center", includeLogo: true }
-        : type === "text"
-        ? { ...(base as TextBlock), html: "Paragraph text" }
-        : type === "event_details"
-        ? { ...(base as EventDetailsBlock), showDate: true, showTime: true, showVenue: true, showCustomer: true }
-        : type === "ticket_list"
-        ? { ...(base as TicketListBlock), showCode: true, showPrice: true }
-        : type === "registration_details"
-        ? { ...(base as any), showTotal: true, showQuantity: true }
-        : type === "payment_summary"
-        ? { ...(base as any), showPaymentMethod: true, showLast4: true, showTotal: true }
-        : type === "button"
-        ? { ...(base as ButtonBlock), label: "View Tickets", url: "/tickets?orderId={{ORDER_ID}}&email={{CUSTOMER_EMAIL}}", align: "center" }
-        : type === "divider"
-        ? ({ ...(base as DividerBlock) } as DividerBlock)
-        : type === "image"
-        ? { ...(base as ImageBlock), src: "", alt: "", align: "center", width: 560 }
-        : ({ ...(base as FooterBlock), text: "Footer" } as FooterBlock);
+    const id = generateBlockId();
 
-    handleTemplateChange({ ...currentTemplate, blocks: [...currentTemplate.blocks, block] });
+    // Create block with proper defaults based on type
+    const createBlock = (): EmailBlock => {
+      const base = { id, type };
+
+      switch (type) {
+        case "header":
+          return { ...base, type: "header", title: "Header", align: "center", includeLogo: true } as HeaderBlock;
+        case "text":
+          return { ...base, type: "text", html: "Paragraph text" } as TextBlock;
+        case "event_details":
+          return { ...base, type: "event_details", showDate: true, showTime: true, showVenue: true, showCustomer: true } as EventDetailsBlock;
+        case "ticket_list":
+          return { ...base, type: "ticket_list", showCode: true, showPrice: true } as TicketListBlock;
+        case "registration_details":
+          return { ...base, type: "registration_details", showTotal: true, showQuantity: true } as EmailBlock;
+        case "payment_summary":
+          return { ...base, type: "payment_summary", showPaymentMethod: true, showLast4: true, showTotal: true } as EmailBlock;
+        case "button":
+          return { ...base, type: "button", label: "View Tickets", url: "/tickets?orderId={{ORDER_ID}}&email={{CUSTOMER_EMAIL}}", align: "center" } as ButtonBlock;
+        case "divider":
+          return { ...base, type: "divider" } as DividerBlock;
+        case "image":
+          return { ...base, type: "image", src: "", alt: "", align: "center", width: 560 } as ImageBlock;
+        case "footer":
+          return { ...base, type: "footer", text: "Questions? Contact us at @ContactEmail" } as FooterBlock;
+        case "calendar_button":
+          return { ...base, type: "calendar_button", label: "Add to Calendar", align: "center", showIcon: true } as EmailBlock;
+        case "qr_tickets":
+          return { ...base, type: "qr_tickets", showInline: true, layout: "grid" } as EmailBlock;
+        case "order_management":
+          return { ...base, type: "order_management", showViewOrder: true, customText: "Need help with your order?" } as EmailBlock;
+        case "social_links":
+          return { ...base, type: "social_links", align: "center", style: "icons", platforms: {} } as EmailBlock;
+        case "custom_message":
+          return { ...base, type: "custom_message", message: "Thanks for choosing @EventName!", supportVariables: true } as EmailBlock;
+        case "next_steps":
+          return { ...base, type: "next_steps", title: "What to expect next:", steps: [], showIcons: true } as EmailBlock;
+        // Reminder email blocks
+        case "event_countdown":
+          return { ...base, type: "event_countdown", showDays: true, showHours: true, customText: "Don't miss out!", urgencyThreshold: 3, align: "center" } as EventCountdownBlock;
+        case "attendance_info":
+          return { ...base, type: "attendance_info", showTicketCount: true, showTicketTypes: true, customMessage: "Here's a reminder of your attendance details:" } as AttendanceInfoBlock;
+        case "important_updates":
+          return { ...base, type: "important_updates", title: "Important Updates", updates: [], highlightNew: true } as ImportantUpdatesBlock;
+        case "venue_directions":
+          return { ...base, type: "venue_directions", showAddress: true, showMapLink: true, showParkingInfo: false } as VenueDirectionsBlock;
+        case "check_in_info":
+          return { ...base, type: "check_in_info", showQRCodes: true, showArrivalTime: true, showCheckInProcess: [] } as CheckInInfoBlock;
+        case "weather_info":
+          return { ...base, type: "weather_info", showForecast: true, showRecommendations: true, customMessage: "Check the weather and dress accordingly!" } as WeatherInfoBlock;
+        case "recommended_items":
+          return { ...base, type: "recommended_items", title: "What to bring:", categories: { bring: [], wear: [], avoid: [] }, showIcons: true } as RecommendedItemsBlock;
+        default:
+          return { ...base } as EmailBlock;
+      }
+    };
+
+    handleTemplateChange({ ...currentTemplate, blocks: [...currentTemplate.blocks, createBlock()] });
   };
 
   const updateBlock = (id: string, patch: Partial<EmailBlock>) => {
@@ -151,17 +227,53 @@ export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({
     handleTemplateChange({ ...currentTemplate, blocks });
   };
 
+  // Determine which blocks to show based on template type
+  const isReminderTemplate = templateType === 'reminder_email' || currentTemplate.templateType === 'reminder_email';
+
   const controls = useMemo(
     () => (
-      <div className="flex flex-wrap gap-2">
-        {(Object.keys(blockLabel) as EmailBlockType[]).map((t) => (
-          <Button key={t} type="button" variant="outline" onClick={() => addBlock(t)}>
-            + {blockLabel[t]}
-          </Button>
-        ))}
+      <div className="space-y-4">
+        {/* Core Blocks - always shown */}
+        <div>
+          <Label className="text-sm font-medium text-muted-foreground mb-2 block">Core Blocks</Label>
+          <div className="flex flex-wrap gap-2">
+            {CONFIRMATION_BLOCKS.map((t) => (
+              <Button key={t} type="button" variant="outline" size="sm" onClick={() => addBlock(t)}>
+                + {blockLabel[t]}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Reminder Blocks - shown for reminder templates or in an expandable section */}
+        {isReminderTemplate ? (
+          <div>
+            <Label className="text-sm font-medium text-muted-foreground mb-2 block">Reminder Blocks</Label>
+            <div className="flex flex-wrap gap-2">
+              {REMINDER_BLOCKS.map((t) => (
+                <Button key={t} type="button" variant="outline" size="sm" onClick={() => addBlock(t)}>
+                  + {blockLabel[t]}
+                </Button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <details className="border rounded-lg p-3">
+            <summary className="text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground">
+              Reminder Email Blocks (click to expand)
+            </summary>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {REMINDER_BLOCKS.map((t) => (
+                <Button key={t} type="button" variant="outline" size="sm" onClick={() => addBlock(t)}>
+                  + {blockLabel[t]}
+                </Button>
+              ))}
+            </div>
+          </details>
+        )}
       </div>
     ),
-    [currentTemplate]
+    [currentTemplate, isReminderTemplate]
   );
 
   return (
@@ -203,19 +315,206 @@ export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({
               </div>
 
               {block.type === "header" && (
-                <div className="space-y-2">
-                  <Label>Title</Label>
-                  <Input value={(block as HeaderBlock).title} onChange={(e) => updateBlock(block.id, { title: e.target.value })} />
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label>Title</Label>
+                    <Input value={(block as HeaderBlock).title} onChange={(e) => updateBlock(block.id, { title: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Subtitle (optional)</Label>
+                    <Input
+                      value={(block as HeaderBlock).subtitle || ""}
+                      onChange={(e) => updateBlock(block.id, { subtitle: e.target.value })}
+                      placeholder="e.g., @FirstName, your event is coming up soon!"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`${block.id}-includeLogo`}
+                      checked={(block as HeaderBlock).includeLogo !== false}
+                      onCheckedChange={(checked) => updateBlock(block.id, { includeLogo: checked })}
+                    />
+                    <Label htmlFor={`${block.id}-includeLogo`}>Include logo</Label>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Alignment</Label>
+                    <Select value={(block as HeaderBlock).align || "center"} onValueChange={(value) => updateBlock(block.id, { align: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="left">Left</SelectItem>
+                        <SelectItem value="center">Center</SelectItem>
+                        <SelectItem value="right">Right</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               )}
 
               {block.type === "text" && (
                 <div className="space-y-2">
-                  <Label>Content</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Content</Label>
+                    <PersonalizationHelper
+                      onInsertVariable={(variable) => {
+                        const currentHtml = (block as TextBlock).html || '';
+                        updateBlock(block.id, { html: currentHtml + variable });
+                      }}
+                      className="text-xs"
+                    />
+                  </div>
                   <Textarea
                     rows={4}
                     value={(block as TextBlock).html || ""}
                     onChange={(e) => updateBlock(block.id, { html: e.target.value })}
+                    placeholder="Enter text content. Use @FirstName, @EventName, etc. for personalization."
+                  />
+                </div>
+              )}
+
+              {block.type === "event_details" && (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Configure which event details to display:</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showDate`}
+                        checked={(block as EventDetailsBlock).showDate !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showDate: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showDate`}>Show date</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showTime`}
+                        checked={(block as EventDetailsBlock).showTime !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showTime: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showTime`}>Show time</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showVenue`}
+                        checked={(block as EventDetailsBlock).showVenue !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showVenue: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showVenue`}>Show venue</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showCustomer`}
+                        checked={(block as EventDetailsBlock).showCustomer !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showCustomer: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showCustomer`}>Show customer name</Label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {block.type === "ticket_list" && (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Configure ticket list display options:</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showCode`}
+                        checked={(block as TicketListBlock).showCode !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showCode: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showCode`}>Show ticket codes</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showPrice`}
+                        checked={(block as TicketListBlock).showPrice !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showPrice: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showPrice`}>Show prices</Label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {block.type === "registration_details" && (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Configure registration details display:</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showTotal`}
+                        checked={(block as any).showTotal !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showTotal: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showTotal`}>Show total amount</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showQuantity`}
+                        checked={(block as any).showQuantity !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showQuantity: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showQuantity`}>Show quantities</Label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {block.type === "payment_summary" && (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Configure payment summary display:</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showPaymentMethod`}
+                        checked={(block as any).showPaymentMethod !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showPaymentMethod: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showPaymentMethod`}>Show payment method</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showLast4`}
+                        checked={(block as any).showLast4 !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showLast4: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showLast4`}>Show last 4 digits of card</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`${block.id}-showTotal`}
+                        checked={(block as any).showTotal !== false}
+                        onCheckedChange={(checked) => updateBlock(block.id, { showTotal: checked })}
+                      />
+                      <Label htmlFor={`${block.id}-showTotal`}>Show total paid</Label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {block.type === "divider" && (
+                <p className="text-sm text-muted-foreground">
+                  A horizontal line separator. No configuration needed.
+                </p>
+              )}
+
+              {block.type === "footer" && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Footer Text</Label>
+                    <PersonalizationHelper
+                      onInsertVariable={(variable) => {
+                        const currentText = (block as FooterBlock).text || '';
+                        updateBlock(block.id, { text: currentText + variable });
+                      }}
+                      className="text-xs"
+                    />
+                  </div>
+                  <Input
+                    value={(block as FooterBlock).text || ""}
+                    onChange={(e) => updateBlock(block.id, { text: e.target.value })}
+                    placeholder="Questions? Contact us at @ContactEmail"
                   />
                 </div>
               )}
@@ -271,20 +570,21 @@ export const EmailTemplateBuilder: React.FC<EmailTemplateBuilderProps> = ({
               {block.type === "next_steps" && (
                 <div className="space-y-2">
                   <Label>Title</Label>
-                  <Input 
-                    value={(block as any).title || ""} 
-                    onChange={(e) => updateBlock(block.id, { title: e.target.value })} 
+                  <Input
+                    value={(block as any).title || ""}
+                    onChange={(e) => updateBlock(block.id, { title: e.target.value })}
                     placeholder="What to expect next:"
                   />
                   <Label>Steps (one per line)</Label>
                   <Textarea
-                    rows={4}
+                    className="min-h-[120px] resize-y"
                     value={(block as any).steps?.join('\n') || ""}
-                    onChange={(e) => updateBlock(block.id, { steps: e.target.value.split('\n').filter(s => s.trim()) })}
-                    placeholder="Save this email - you'll need it at the event&#10;Add the event to your calendar&#10;Arrive 15 minutes early for check-in"
+                    onChange={(e) => updateBlock(block.id, { steps: e.target.value.split('\n') })}
+                    placeholder={"Save this email - you'll need it at the event\nAdd the event to your calendar\nArrive 15 minutes early for check-in"}
                   />
+                  <p className="text-xs text-muted-foreground">Enter each step on a new line. Empty lines will be preserved.</p>
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
+                    <Checkbox
                       id={`${block.id}-showIcons`}
                       checked={(block as any).showIcons !== false}
                       onCheckedChange={(checked) => updateBlock(block.id, { showIcons: checked })}

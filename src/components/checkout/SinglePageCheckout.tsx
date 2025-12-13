@@ -25,6 +25,7 @@ import { GuestSeatSelector } from "@/components/GuestSeatSelector";
 import MerchandiseSelector from "@/components/MerchandiseSelector";
 import { trackBeginCheckout, trackPurchase } from "@/lib/analytics";
 import { Theme } from "@/types/theme";
+import { getStripePublishableKey } from "@/lib/stripe-config";
 
 // Windcave types
 interface WindcaveDropInConfig {
@@ -185,8 +186,8 @@ export const SinglePageCheckout: React.FC<SinglePageCheckoutProps> = ({
   const isStripePayment = paymentProvider === "stripe";
   const eventTheme: Theme = useMemo(() => theme, [theme]);
 
-  // Use platform Stripe key for Stripe Connect (same as StripePaymentModal)
-  const platformStripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string;
+  // Use platform Stripe key for Stripe Connect (supports test/live mode toggle)
+  const platformStripeKey = getStripePublishableKey();
 
   // Donation configuration
   const crmEnabled = eventData?.organizations?.crm_enabled ?? (eventData as any)?.crm_enabled;

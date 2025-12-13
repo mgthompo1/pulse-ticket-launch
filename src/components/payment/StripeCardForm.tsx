@@ -5,6 +5,7 @@ import { Elements, useStripe, useElements, CardElement } from '@stripe/react-str
 import { supabase } from '@/integrations/supabase/client';
 import { Theme } from '@/types/theme';
 import { Loader2 } from 'lucide-react';
+import { getStripePublishableKey, isStripeTestMode } from '@/lib/stripe-config';
 
 interface StripeCardFormProps {
   eventId: string;
@@ -231,8 +232,9 @@ const CheckoutForm = ({
 export const StripeCardForm: React.FC<StripeCardFormProps> = (props) => {
   const [loading, setLoading] = useState(true);
 
-  // Use platform Stripe key for Stripe Connect
-  const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string;
+  // Use platform Stripe key for Stripe Connect (supports test/live mode toggle)
+  const publishableKey = getStripePublishableKey();
+  const testMode = isStripeTestMode();
 
   const stripePromise = useMemo(() => {
     if (!publishableKey || typeof window === 'undefined') return null;
@@ -264,6 +266,13 @@ export const StripeCardForm: React.FC<StripeCardFormProps> = (props) => {
 
   return (
     <Elements stripe={stripePromise}>
+      {testMode && (
+        <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md text-center">
+          <span className="text-yellow-800 text-sm font-medium">
+            🧪 TEST MODE - Use card 4242 4242 4242 4242
+          </span>
+        </div>
+      )}
       <CheckoutForm {...props} />
     </Elements>
   );

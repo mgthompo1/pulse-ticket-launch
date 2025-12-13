@@ -35,6 +35,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
   const [windcaveStationId, setWindcaveStationId] = useState('');
   const [enableBookingFees, setEnableBookingFees] = useState(false);
   const [stripeConnectedAccountId, setStripeConnectedAccountId] = useState('');
+  const [stripeTestMode, setStripeTestMode] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -50,7 +51,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
       // Get basic organization info (non-sensitive) including Stripe Connect status
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
-        .select('payment_provider, currency, credit_card_processing_fee_percentage, stripe_account_id, stripe_booking_fee_enabled, stripe_terminal_location_id')
+        .select('payment_provider, currency, credit_card_processing_fee_percentage, stripe_account_id, stripe_booking_fee_enabled, stripe_terminal_location_id, stripe_test_mode')
         .eq('id', organizationId)
         .single();
 
@@ -73,6 +74,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
         setStripeConnectedAccountId(orgData.stripe_account_id || '');
         setEnableBookingFees(orgData.stripe_booking_fee_enabled || false);
         setStripeTerminalLocationId(orgData.stripe_terminal_location_id || '');
+        setStripeTestMode(orgData.stripe_test_mode || false);
       }
 
       if (credData) {
@@ -109,7 +111,8 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
           currency: currency,
           credit_card_processing_fee_percentage: creditCardProcessingFee,
           stripe_booking_fee_enabled: enableBookingFees,
-          stripe_terminal_location_id: stripeTerminalLocationId
+          stripe_terminal_location_id: stripeTerminalLocationId,
+          stripe_test_mode: stripeTestMode
         })
         .eq('id', organizationId);
 
@@ -235,6 +238,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
                   enableBookingFees={enableBookingFees}
                   stripeConnectedAccountId={stripeConnectedAccountId}
                   organizationId={organizationId}
+                  stripeTestMode={stripeTestMode}
                   onStripeAccountIdChange={setStripeAccountId}
                   onStripePublishableKeyChange={setStripePublishableKey}
                   onStripeSecretKeyChange={setStripeSecretKey}
@@ -243,6 +247,7 @@ export const PaymentConfiguration = ({ organizationId }: PaymentConfigurationPro
                   onEnableGooglePayChange={setEnableGooglePay}
                   onCurrencyChange={setCurrency}
                   onEnableBookingFeesChange={setEnableBookingFees}
+                  onStripeTestModeChange={setStripeTestMode}
                   onConnectionChange={loadPaymentConfiguration}
             />
           )}

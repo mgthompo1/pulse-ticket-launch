@@ -30,6 +30,7 @@ import { StripePaymentForm } from "@/components/payment/StripePaymentForm";
 import MerchandiseSelector from "@/components/MerchandiseSelector";
 import { trackBeginCheckout, trackPurchase } from "@/lib/analytics";
 import { Theme } from "@/types/theme";
+import { getStripePublishableKey } from "@/lib/stripe-config";
 
 type ModalStep = 'tickets' | 'merchandise' | 'details' | 'payment';
 
@@ -156,7 +157,7 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
 
   // Computed values
   const eventTheme: Theme = useMemo(() => theme, [theme]);
-  const platformStripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string;
+  const platformStripeKey = getStripePublishableKey();
 
   // Check if merchandise is available
   const [hasMerchandise, setHasMerchandise] = useState(false);

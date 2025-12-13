@@ -214,7 +214,7 @@ export class TemplateService {
       case 'qr_tickets':
         return this.renderQRTickets(tickets, qrUrls, theme, block, deliveryMethod);
       case 'order_management':
-        return this.renderOrderManagement(block, theme);
+        return this.renderOrderManagement(block, theme, order);
       case 'social_links':
         return this.renderSocialLinks(block, theme);
       case 'custom_message':
@@ -630,20 +630,26 @@ export class TemplateService {
     </div>`;
   }
   // Render order management block
-  renderOrderManagement(block: EmailBlock, theme: Theme): string {
+  renderOrderManagement(block: EmailBlock, theme: Theme, order: Order): string {
     const showViewOrder = block.showViewOrder !== false;
     const showModifyOrder = block.showModifyOrder === true;
     const showCancelOrder = block.showCancelOrder === true;
     const customText = block.customText || 'Need help with your order?';
+
+    // Generate proper URLs for order management
+    const ticketsUrl = `https://www.ticketflo.org/tickets?orderId=${order.id}&email=${encodeURIComponent(order.customer_email)}`;
+
     const buttons = [];
     if (showViewOrder) {
-      buttons.push(`<a href="#" style="display:inline-block;margin:4px;background:${theme.buttonColor};color:#fff;padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">View Order</a>`);
+      buttons.push(`<a href="${ticketsUrl}" style="display:inline-block;margin:4px;background:${theme.buttonColor};color:#fff;padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">View Order</a>`);
     }
     if (showModifyOrder) {
-      buttons.push(`<a href="#" style="display:inline-block;margin:4px;background:${theme.accentColor};color:${theme.textColor};border:1px solid ${theme.borderColor};padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">Modify Order</a>`);
+      // Link to same page - modification would be handled there
+      buttons.push(`<a href="${ticketsUrl}" style="display:inline-block;margin:4px;background:${theme.accentColor};color:${theme.textColor};border:1px solid ${theme.borderColor};padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">Modify Order</a>`);
     }
     if (showCancelOrder) {
-      buttons.push(`<a href="#" style="display:inline-block;margin:4px;background:#ef4444;color:#fff;padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">Cancel Order</a>`);
+      // Link to same page - cancellation would be handled there
+      buttons.push(`<a href="${ticketsUrl}" style="display:inline-block;margin:4px;background:#ef4444;color:#fff;padding:8px 16px;text-decoration:none;border-radius:4px;font-size:14px;">Cancel Order</a>`);
     }
     if (buttons.length === 0) return '';
     return `<div style="margin:16px 20px;padding:16px;background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:8px;text-align:center;">
@@ -692,7 +698,7 @@ export class TemplateService {
     if (!message) return '';
     // Apply personalization variables
     message = this.applyPersonalization(message, order);
-    return `<div style="margin:16px 20px;padding:16px;background:${theme.accentColor};border-left:4px solid ${theme.buttonColor};border-radius:4px;">
+    return `<div style="margin:16px 20px;padding:16px;background:${theme.accentColor};border:1px solid ${theme.borderColor};border-radius:8px;">
       <div style="color:${theme.textColor};line-height:1.6;">
         ${sanitizeHtml(message)}
       </div>
