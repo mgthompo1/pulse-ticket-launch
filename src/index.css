@@ -561,3 +561,250 @@ All colors MUST be HSL.
 .react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item:hover {
   background-color: hsl(var(--accent));
 }
+
+/* ============================================
+   Windcave Drop-In Styling
+   ============================================ */
+
+/* Main container - transparent background */
+.windcave-dropin-container {
+  background-color: transparent !important;
+  padding: 0 !important;
+  font-family: inherit !important;
+}
+
+/* Hide the "Select Payment Method" title when we have our own header */
+.windcave-dropin-select-payment-text {
+  display: none !important;
+}
+
+/* Payment method group - clean card-like styling */
+.windcave-dropin-item-group {
+  border-radius: 8px !important;
+  border: 1px solid transparent !important;
+  overflow: hidden;
+  transition: all 0.15s ease;
+  margin-bottom: 0.5rem;
+}
+
+/* Payment method toggle/selector */
+.windcave-dropin-item-toggle {
+  padding: 0.875rem 1rem !important;
+  font-size: 0.9375rem !important;
+  font-weight: 500 !important;
+}
+
+/* Payment method content area */
+.windcave-dropin-item-container {
+  padding: 1rem !important;
+}
+
+/* Hosted field input groups - better spacing */
+.windcave-hf-input-group {
+  margin-bottom: 1rem !important;
+}
+
+.windcave-hf-input-group:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Submit and back buttons - styled to match app buttons */
+.windcave-dropin-card-submit-button {
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+  font-size: 0.9375rem !important;
+  padding: 0.625rem 1.25rem !important;
+  min-height: 2.5rem !important;
+  transition: all 0.15s ease !important;
+  cursor: pointer !important;
+}
+
+.windcave-dropin-card-back-button {
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+  font-size: 0.9375rem !important;
+  padding: 0.625rem 1.25rem !important;
+  min-height: 2.5rem !important;
+  transition: all 0.15s ease !important;
+  cursor: pointer !important;
+  border-width: 1px !important;
+}
+
+/* Button container - horizontal layout with gap */
+.windcave-dropin-card-form-buttons {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+}
+
+/* Alternative payment methods section */
+.windcave-dropin-alternative-payment-methods-text {
+  margin-top: 1.25rem !important;
+  padding-top: 1rem !important;
+  text-align: center;
+}
+
+.windcave-dropin-alternative-payment-methods-text-span {
+  font-size: 0.8125rem !important;
+  opacity: 0.6;
+}
+
+/* Redirect buttons (PayPal, etc) */
+.windcave-dropin-redirect-button {
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+  padding: 0.625rem 1.25rem !important;
+  min-height: 2.5rem !important;
+  transition: all 0.15s ease !important;
+  width: 100% !important;
+}
+
+/* ============================================
+   Windcave Custom Checkout Specific Styles
+   (Scoped to .windcave-custom-checkout)
+   ============================================ */
+
+.windcave-custom-checkout .windcave-dropin-container {
+  background: transparent !important;
+}
+
+/* Remove item group borders in custom checkout since we have wrapper */
+.windcave-custom-checkout .windcave-dropin-item-group {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Dark mode specific overrides for Windcave in dark theme contexts */
+.dark .windcave-dropin-container,
+[data-theme="dark"] .windcave-dropin-container {
+  --windcave-bg: #18181b;
+  --windcave-card-bg: #27272a;
+  --windcave-border: #3f3f46;
+  --windcave-text: #ffffff;
+  --windcave-text-muted: #a1a1aa;
+}
+
+.dark .windcave-dropin-item-group,
+[data-theme="dark"] .windcave-dropin-item-group {
+  background-color: #27272a !important;
+  border-color: #3f3f46 !important;
+}
+
+.dark .windcave-dropin-item-group:hover,
+[data-theme="dark"] .windcave-dropin-item-group:hover {
+  background-color: #3f3f46 !important;
+}
+
+.dark .windcave-dropin-card-submit-button,
+[data-theme="dark"] .windcave-dropin-card-submit-button {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+}
+
+.dark .windcave-dropin-card-submit-button:hover,
+[data-theme="dark"] .windcave-dropin-card-submit-button:hover {
+  background-color: #f4f4f5 !important;
+}
+
+.dark .windcave-dropin-card-back-button,
+[data-theme="dark"] .windcave-dropin-card-back-button {
+  background-color: transparent !important;
+  color: #a1a1aa !important;
+  border-color: #3f3f46 !important;
+}
+
+.dark .windcave-dropin-card-back-button:hover,
+[data-theme="dark"] .windcave-dropin-card-back-button:hover {
+  background-color: #27272a !important;
+}
+
+/* Light mode specific overrides */
+.windcave-dropin-item-group {
+  background-color: #ffffff;
+  border-color: #e5e7eb;
+}
+
+.windcave-dropin-item-group:hover {
+  background-color: #f9fafb;
+}
+
+.windcave-dropin-card-submit-button {
+  background-color: #18181b;
+  color: #ffffff;
+}
+
+.windcave-dropin-card-submit-button:hover {
+  background-color: #27272a;
+}
+
+.windcave-dropin-card-back-button {
+  background-color: transparent;
+  color: #6b7280;
+  border-color: #e5e7eb;
+}
+
+.windcave-dropin-card-back-button:hover {
+  background-color: #f3f4f6;
+}
+
+/* Checkbox toggle styling */
+.windcave-dropin-item-toggle-checkbox {
+  border-radius: 4px !important;
+}
+
+.windcave-dropin-item-toggle-checkbox-active {
+  background-color: hsl(var(--primary)) !important;
+  border-color: hsl(var(--primary)) !important;
+}
+
+/* ============================================
+   Windcave 3D Secure / Processing Overlay
+   ============================================ */
+
+/* Submission spinner container */
+.windcave-dropin-submission-spinner-container {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(4px);
+}
+
+/* Dark mode: darker overlay background */
+.dark .windcave-dropin-submission-spinner-container,
+[data-theme="dark"] .windcave-dropin-submission-spinner-container {
+  background-color: rgba(0, 0, 0, 0.75) !important;
+}
+
+/* Loading spinner styling */
+.windcave-dropin-item-container-loading-spinner-holder {
+  background-color: transparent !important;
+}
+
+/* 3DS iframe overlay - style the container */
+iframe[src*="windcave"] {
+  border-radius: 8px !important;
+}
+
+/* Target any Windcave modal/overlay containers that may be injected */
+div[class*="windcave"][style*="position: fixed"],
+div[class*="windcave"][style*="position:fixed"] {
+  backdrop-filter: blur(4px);
+}
+
+/* Style 3DS challenge modal wrapper if it exists */
+.windcave-3ds-container,
+.windcave-threeds-container,
+div[id*="3ds"],
+div[id*="threeds"] {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(4px);
+}
+
+.dark .windcave-3ds-container,
+.dark .windcave-threeds-container,
+.dark div[id*="3ds"],
+.dark div[id*="threeds"],
+[data-theme="dark"] .windcave-3ds-container,
+[data-theme="dark"] .windcave-threeds-container {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+}

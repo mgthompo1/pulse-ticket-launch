@@ -149,9 +149,15 @@ serve(async (req) => {
 
     // Create Windcave session - following documentation format
     const orgCurrency = organizationData.currency || "NZD";
-    const merchantRef = isAttraction 
+    const merchantRef = isAttraction
       ? `attraction-${attractionId}-${Date.now()}`
       : `event-${eventId}-${Date.now()}`;
+
+    // Build the FPRN notification URL for failsafe webhook
+    // This ensures we receive payment confirmation even if user's browser closes
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const notificationUrl = `${supabaseUrl}/functions/v1/windcave-fprn`;
+
     const sessionData = {
       type: "purchase",
       amount: totalAmount.toFixed(2), // Windcave expects decimal format, not cents
@@ -162,8 +168,10 @@ serve(async (req) => {
         approved: `${req.headers.get("origin")}/payment-success`,
         declined: `${req.headers.get("origin")}/payment-failed`,
         cancelled: `${req.headers.get("origin")}/payment-cancelled`
-      }
-      // Remove notificationUrl for drop-in implementation
+      },
+      // FPRN (Fail Proof Result Notification) - Windcave's webhook for payment confirmation
+      // Windcave will send a GET request to this URL with ?sessionId=xxx when payment completes
+      notificationUrl: notificationUrl
     };
 
     console.log("=== WINDCAVE API REQUEST ===");

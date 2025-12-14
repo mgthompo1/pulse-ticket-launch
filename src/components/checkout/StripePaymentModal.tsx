@@ -11,7 +11,7 @@ import { StripePaymentForm } from '@/components/payment/StripePaymentForm';
 import { Theme } from '@/types/theme';
 import { AttendeeInfo } from './AttendeeDetailsForm';
 import { useTaxCalculation, formatTaxForOrder } from '@/hooks/useTaxCalculation';
-import { getStripePublishableKey, isStripeTestMode } from '@/lib/stripe-config';
+import { getStripePublishableKey, isStripeTestModeForOrg } from '@/lib/stripe-config';
 
 interface StripePaymentModalProps {
   isOpen: boolean;
@@ -118,13 +118,16 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
         setIsLoading(true);
 
         try {
-          // With Stripe Connect, always use the platform publishable key (supports test/live mode toggle)
-          const platformKey = getStripePublishableKey();
+          // With Stripe Connect, use the platform publishable key (supports test/live mode toggle)
+          // Pass organization to check stripe_test_mode setting from database
+          const platformKey = getStripePublishableKey(eventData.organizations);
           const configCurrency = eventData.organizations?.currency || 'USD';
 
           if (platformKey) {
-            const modeLabel = isStripeTestMode() ? 'TEST' : 'LIVE';
+            const isTestMode = isStripeTestModeForOrg(eventData.organizations);
+            const modeLabel = isTestMode ? 'TEST' : 'LIVE';
             console.log(`✅ Using platform Stripe ${modeLabel} publishable key for Connect`);
+            console.log(`   Organization test mode: ${eventData.organizations?.stripe_test_mode}`);
             setStripePublishableKey(platformKey);
             setCurrency(configCurrency);
           } else {

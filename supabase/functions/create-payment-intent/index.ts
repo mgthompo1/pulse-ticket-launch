@@ -434,9 +434,11 @@ serve(async (req) => {
     }
 
     // Check for test mode first - this affects Connect behavior
-    const orgTestMode = event?.organizations?.stripe_test_mode === true;
+    // Organization setting takes precedence over environment variable
+    const orgTestModeSetting = event?.organizations?.stripe_test_mode;
     const envTestMode = Deno.env.get("STRIPE_TEST_MODE") === "true";
-    const isTestMode = orgTestMode || envTestMode;
+    // If org has explicit setting, use it; otherwise fall back to env var
+    const isTestMode = typeof orgTestModeSetting === 'boolean' ? orgTestModeSetting : envTestMode;
 
     // Use Connect whenever organization has connected account (regardless of booking fee setting)
     // BUT: In test mode, skip Connect because connected accounts are mode-specific

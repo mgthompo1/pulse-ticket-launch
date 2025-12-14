@@ -955,7 +955,8 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
             if (onPaymentSuccess) {
               await onPaymentSuccess(orderId);
             }
-            closeModal();
+            // Redirect to payment success page
+            window.location.href = `/payment-success?orderId=${orderId}`;
           }}
         />
       )}

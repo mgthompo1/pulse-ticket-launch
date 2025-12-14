@@ -51,6 +51,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getStripePublishableKey, isStripeTestModeForOrg } from "@/lib/stripe-config";
+
+// Windcave types
+interface WindcaveLink {
+  href: string;
+  rel: string;
+  method: string;
+}
+
+interface WindcaveDropInInstance {
+  destroy?: () => void;
+}
+
+declare global {
+  interface Window {
+    WindcavePayments?: {
+      DropIn: {
+        create: (config: any) => WindcaveDropInInstance;
+      };
+    };
+    windcaveRetryCount?: number;
+  }
+}
 
 // Simple HTML sanitizer - strips all tags except basic formatting
 const sanitizeHtml = (html: string): string => {
@@ -167,6 +190,14 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
 
+  // Windcave state
+  const [windcaveInitialized, setWindcaveInitialized] = useState(false);
+  const [isInitializingWindcave, setIsInitializingWindcave] = useState(false);
+  const [windcaveLinks, setWindcaveLinks] = useState<WindcaveLink[]>([]);
+  const [showWindcavePaymentForm, setShowWindcavePaymentForm] = useState(false);
+  const [windcaveDropIn, setWindcaveDropIn] = useState<WindcaveDropInInstance | null>(null);
+  const dropInRef = useRef<HTMLDivElement>(null);
+
   // Abandoned cart tracking
   const sessionId = useRef<string>("");
   const abandonedCartSaved = useRef(false);
@@ -269,10 +300,10 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
   const loadEventData = async () => {
     setLoading(true);
     try {
-      // Load event with organization data
+      // Load event with organization data (include stripe_test_mode for test mode support)
       const { data: event, error: eventError } = await supabase
         .from("events")
-        .select("*, organizations(payment_provider, stripe_booking_fee_enabled, currency)")
+        .select("*, organizations(payment_provider, stripe_booking_fee_enabled, stripe_test_mode, currency, name)")
         .eq("id", eventId)
         .single();
 
@@ -471,6 +502,400 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
       window.location.href = `/payment-success?orderId=${orderId}`;
     }, 1500);
   };
+
+  // Windcave script loading
+  const loadWindcaveScripts = async (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      // Default to SEC (production) endpoint
+      const baseUrl = "https://sec.windcave.com";
+      const scripts = [
+        "/js/lib/drop-in-v1.js",
+        "/js/windcavepayments-dropin-v1.js",
+        "/js/lib/hosted-fields-v1.js",
+        "/js/windcavepayments-hostedfields-v1.js",
+      ];
+
+      // Check if scripts are already loaded
+      const existingScripts = Array.from(document.head.querySelectorAll('script'))
+        .filter(script => script.src.includes('windcave'));
+
+      if (existingScripts.length > 0) {
+        resolve();
+        return;
+      }
+
+      let loadedCount = 0;
+      const totalScripts = scripts.length;
+
+      scripts.forEach((scriptPath) => {
+        const script = document.createElement('script');
+        script.src = baseUrl + scriptPath;
+        script.async = true;
+        script.onload = () => {
+          loadedCount++;
+          if (loadedCount === totalScripts) {
+            resolve();
+          }
+        };
+        script.onerror = (error) => {
+          console.error("Failed to load Windcave script:", scriptPath, error);
+          reject(error);
+        };
+        document.head.appendChild(script);
+      });
+    });
+  };
+
+  // Windcave helper functions
+  const checkWindcaveReadiness = (): boolean => {
+    return typeof window !== 'undefined' && !!window.WindcavePayments?.DropIn?.create;
+  };
+
+  const initializeWindcaveDropIn = (links: WindcaveLink[], totalAmount: number) => {
+    if (typeof window !== 'undefined' && checkWindcaveReadiness()) {
+      const dropInContainer = dropInRef.current;
+      if (!dropInContainer) {
+        console.error("Drop-in container not found");
+        toast({
+          title: "Payment System Error",
+          description: "Payment container not found. Please refresh the page.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      try {
+        // Extract session ID from links for order finalization
+        const sessionId = links[0]?.href?.split('/').pop();
+
+        // Determine dark mode based on template settings
+        const themeMode = template?.settings.themeMode || "system";
+        let darkModeConfig: "light" | "dark" | "auto" = "auto";
+        if (themeMode === "dark") {
+          darkModeConfig = "dark";
+        } else if (themeMode === "light") {
+          darkModeConfig = "light";
+        }
+
+        // Get theme colors for styling
+        const isDarkTheme = themeMode === "dark" ||
+          (themeMode === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+        // Custom styles to match checkout template theme
+        // Note: Avoid styling cardInput/cardInputContainer as they affect iframe sizing
+        const customStyles = isDarkTheme ? {
+          container: {
+            backgroundColor: "transparent"
+          },
+          itemGroup: {
+            backgroundColor: "#27272a",
+            borderColor: "#3f3f46",
+            borderRadius: "8px"
+          },
+          itemGroupHover: {
+            backgroundColor: "#3f3f46"
+          },
+          cardSubmitButton: {
+            backgroundColor: "#ffffff",
+            color: "#18181b",
+            borderRadius: "6px",
+            fontWeight: "500"
+          },
+          cardSubmitButtonHover: {
+            backgroundColor: "#f4f4f5"
+          },
+          cardBackButton: {
+            backgroundColor: "transparent",
+            color: "#a1a1aa",
+            borderColor: "#3f3f46",
+            borderRadius: "6px"
+          },
+          cardBackButtonHover: {
+            backgroundColor: "#27272a"
+          },
+          selectPaymentText: {
+            display: "none"
+          }
+        } : {
+          container: {
+            backgroundColor: "transparent"
+          },
+          itemGroup: {
+            backgroundColor: "#ffffff",
+            borderColor: "#e5e7eb",
+            borderRadius: "8px"
+          },
+          itemGroupHover: {
+            backgroundColor: "#f9fafb"
+          },
+          cardSubmitButton: {
+            backgroundColor: "#18181b",
+            color: "#ffffff",
+            borderRadius: "6px",
+            fontWeight: "500"
+          },
+          cardSubmitButtonHover: {
+            backgroundColor: "#27272a"
+          },
+          cardBackButton: {
+            backgroundColor: "transparent",
+            color: "#6b7280",
+            borderColor: "#e5e7eb",
+            borderRadius: "6px"
+          },
+          cardBackButtonHover: {
+            backgroundColor: "#f3f4f6"
+          },
+          selectPaymentText: {
+            display: "none"
+          }
+        };
+
+        const data = {
+          container: "windcave-drop-in-custom",
+          links: links,
+          totalValue: totalAmount.toString(),
+          darkModeConfig: darkModeConfig,
+          hideSelectPaymentMethodTitle: true,
+          styles: customStyles,
+          card: {
+            hideCardholderName: true,
+            supportedCards: ["visa", "mastercard", "amex"],
+            disableCardAutoComplete: false,
+            cardImagePlacement: "right",
+            sideIcons: ["visa", "mastercard", "amex"]
+          },
+          // Success callback for card payments
+          onSuccess: async (result: any) => {
+            console.log("✅ Windcave payment successful:", result);
+
+            toast({
+              title: "Payment Successful!",
+              description: "Finalizing your order...",
+            });
+
+            try {
+              // Call the windcave-dropin-success function to finalize the order
+              const { data: successData, error } = await supabase.functions.invoke('windcave-dropin-success', {
+                body: {
+                  sessionId: sessionId,
+                  eventId: eventId
+                }
+              });
+
+              if (error) {
+                console.error("Windcave dropin success error:", error);
+                throw error;
+              }
+
+              toast({
+                title: "Order Complete!",
+                description: "Your tickets have been confirmed. Check your email for details.",
+              });
+
+              // Redirect to success page with sessionId for order lookup
+              setTimeout(() => {
+                window.location.href = `/payment-success?sessionId=${sessionId}`;
+              }, 1500);
+            } catch (error: any) {
+              console.error("Error finalizing order:", error);
+              toast({
+                title: "Payment Processed",
+                description: "Payment successful but there was an issue finalizing your order. Please contact support.",
+                variant: "destructive"
+              });
+            }
+          },
+          // Error callback for card payments
+          onError: (error: any) => {
+            console.error("❌ Windcave payment failed:", error);
+
+            let errorMessage = "Payment failed. Please try again.";
+            if (typeof error === 'string') {
+              errorMessage = error;
+            } else if (error?.message) {
+              errorMessage = error.message;
+            }
+
+            toast({
+              title: "Payment Failed",
+              description: errorMessage,
+              variant: "destructive"
+            });
+
+            setShowWindcavePaymentForm(false);
+            setWindcaveInitialized(false);
+          }
+        };
+
+        console.log("Initializing Windcave Drop-In with config:", data);
+        const dropIn = window.WindcavePayments!.DropIn.create({
+          ...data,
+          // Additional configuration to ensure proper security
+          options: {
+            enableAutoComplete: true,
+            enableSecureForm: true,
+            enableFormValidation: true,
+            enableCardValidation: true,
+            enableCardFormatting: true
+          }
+        } as any);
+        setWindcaveDropIn(dropIn);
+        setShowWindcavePaymentForm(true);
+        console.log("✅ Windcave Drop-In initialized");
+      } catch (error) {
+        console.error("❌ Error initializing Windcave Drop-In:", error);
+        toast({
+          title: "Payment System Error",
+          description: "Failed to initialize payment form. Please refresh and try again.",
+          variant: "destructive"
+        });
+      }
+    } else {
+      // Retry if WindcavePayments not ready
+      const retryCount = window.windcaveRetryCount || 0;
+      if (retryCount < 10) {
+        window.windcaveRetryCount = retryCount + 1;
+        setTimeout(() => initializeWindcaveDropIn(links, totalAmount), 1000);
+      } else {
+        console.error("WindcavePayments failed to load after multiple retries");
+        toast({
+          title: "Payment System Unavailable",
+          description: "Unable to load payment system. Please refresh the page.",
+          variant: "destructive"
+        });
+        setShowWindcavePaymentForm(false);
+      }
+    }
+  };
+
+  const createWindcaveSession = async () => {
+    if (!eventData || totals.ticketCount === 0) return;
+    if (windcaveInitialized || isInitializingWindcave) return; // Prevent double initialization
+
+    setIsInitializingWindcave(true);
+    try {
+      // Load Windcave scripts first
+      await loadWindcaveScripts();
+
+      const cart = Object.entries(selectedTickets)
+        .filter(([, qty]) => qty > 0)
+        .map(([ticketId, quantity]) => {
+          const ticket = ticketTypes.find(t => t.id === ticketId);
+          return {
+            id: ticketId,
+            name: ticket?.name || "",
+            price: ticket?.price || 0,
+            quantity,
+          };
+        });
+
+      const { data, error } = await supabase.functions.invoke("windcave-session", {
+        body: {
+          eventId,
+          items: cart.map(item => ({
+            ticket_type_id: item.id,
+            quantity: item.quantity,
+            unit_price: item.price,
+            type: "ticket"
+          })),
+          customerInfo: {
+            name: `${customerInfo.firstName} ${customerInfo.lastName}`.trim(),
+            email: customerInfo.email,
+            phone: customerInfo.phone,
+          },
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.links) {
+        setWindcaveLinks(data.links);
+        setWindcaveInitialized(true);
+        setTimeout(() => {
+          initializeWindcaveDropIn(data.links, data.totalAmount || totals.total);
+        }, 100);
+      } else {
+        throw new Error("Invalid response from Windcave");
+      }
+    } catch (error: any) {
+      console.error("Error creating Windcave session:", error);
+      toast({
+        title: "Payment Error",
+        description: error.message || "Failed to initialize payment. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsInitializingWindcave(false);
+    }
+  };
+
+  // Track previous total to detect cart changes
+  const prevTotalRef = useRef<number>(0);
+
+  // Auto-initialize Windcave when conditions are met (inline like Stripe)
+  useEffect(() => {
+    const paymentProvider = eventData?.organizations?.payment_provider;
+    const hasRequiredInfo = customerInfo.email && customerInfo.firstName;
+    const hasTickets = totals.ticketCount > 0;
+
+    // Check if current page has payment_form element
+    const currentPageData = template?.pages[currentPage];
+    const hasPaymentForm = currentPageData?.elements.some(e => e.type === "payment_form");
+
+    // Auto-initialize Windcave when:
+    // - Payment provider is windcave
+    // - Customer has entered required info
+    // - Tickets are selected
+    // - Current page has payment form
+    // - Windcave not already initialized or initializing
+    if (
+      paymentProvider === "windcave" &&
+      hasRequiredInfo &&
+      hasTickets &&
+      hasPaymentForm &&
+      !windcaveInitialized &&
+      !isInitializingWindcave
+    ) {
+      console.log("Auto-initializing Windcave payment form...");
+      prevTotalRef.current = totals.total;
+      createWindcaveSession();
+    }
+  }, [
+    eventData?.organizations?.payment_provider,
+    customerInfo.email,
+    customerInfo.firstName,
+    totals.ticketCount,
+    currentPage,
+    template,
+    windcaveInitialized,
+    isInitializingWindcave
+  ]);
+
+  // Reset Windcave if cart total changes significantly (user changed ticket selection)
+  useEffect(() => {
+    if (windcaveInitialized && prevTotalRef.current !== totals.total && totals.total > 0) {
+      console.log("Cart total changed, resetting Windcave...");
+      // Destroy existing drop-in
+      if (windcaveDropIn?.destroy) {
+        windcaveDropIn.destroy();
+      }
+      setWindcaveDropIn(null);
+      setWindcaveInitialized(false);
+      setShowWindcavePaymentForm(false);
+      setWindcaveLinks([]);
+      prevTotalRef.current = 0;
+    }
+  }, [totals.total, windcaveInitialized, windcaveDropIn]);
+
+  // Cleanup Windcave drop-in on unmount
+  useEffect(() => {
+    return () => {
+      if (windcaveDropIn?.destroy) {
+        windcaveDropIn.destroy();
+      }
+    };
+  }, [windcaveDropIn]);
 
   // Build cart items for StripePaymentForm
   const cartItems = useMemo(() => {
@@ -850,16 +1275,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
         );
 
       case "payment_form": {
-        const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-
-        if (!stripePublishableKey) {
-          return (
-            <div key={element.id} className={`p-4 rounded-lg ${isDarkMode ? "bg-amber-900/20 text-amber-200" : "bg-amber-50 text-amber-800"}`}>
-              <p className="text-sm font-medium">Payment not configured</p>
-              <p className="text-xs mt-1">Stripe publishable key is missing from environment</p>
-            </div>
-          );
-        }
+        const paymentProvider = eventData?.organizations?.payment_provider || "stripe";
 
         // Check if required info is filled
         if (!customerInfo.email || !customerInfo.firstName) {
@@ -892,6 +1308,76 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                   </div>
                 </CardContent>
               </Card>
+            </div>
+          );
+        }
+
+        // WINDCAVE PAYMENT
+        if (paymentProvider === "windcave") {
+          return (
+            <div key={element.id} className="space-y-4">
+              <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
+              <Card className={cardBg}>
+                <CardContent className="pt-6">
+                  {/* Loading state while initializing Windcave (auto-initializes when conditions met) */}
+                  {(isInitializingWindcave || (!windcaveInitialized && !showWindcavePaymentForm)) && (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-center">
+                        <Loader2 className={`h-8 w-8 animate-spin mx-auto mb-3 ${isDarkMode ? "text-zinc-400" : "text-gray-400"}`} />
+                        <p className={`text-sm ${mutedText}`}>Initializing secure payment...</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Windcave Drop-In container - styled wrapper matching Stripe's container */}
+                  <div
+                    className={`rounded-lg border p-4 ${
+                      isDarkMode
+                        ? "bg-zinc-800/50 border-zinc-700"
+                        : "bg-gray-50/50 border-gray-200"
+                    }`}
+                    style={{
+                      display: showWindcavePaymentForm ? 'block' : 'none'
+                    }}
+                  >
+                    <div
+                      ref={dropInRef}
+                      id="windcave-drop-in-custom"
+                      className="w-full windcave-custom-checkout"
+                    />
+                  </div>
+
+                  {/* Total amount shown below the form */}
+                  {showWindcavePaymentForm && (
+                    <div className={`flex justify-between items-center mt-4 pt-4 border-t ${
+                      isDarkMode ? "border-zinc-700" : "border-gray-200"
+                    }`}>
+                      <span className={`text-sm font-medium ${mutedText}`}>Total</span>
+                      <span className={`text-xl font-bold ${headingText}`}>
+                        ${totals.total.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          );
+        }
+
+        // STRIPE PAYMENT (default)
+        // Use test mode aware helper - checks org.stripe_test_mode setting
+        const stripePublishableKey = getStripePublishableKey(eventData?.organizations);
+        const isTestMode = isStripeTestModeForOrg(eventData?.organizations);
+
+        if (isTestMode) {
+          console.log('🧪 CustomTemplateCheckout: Using Stripe TEST mode');
+        }
+
+        if (!stripePublishableKey) {
+          return (
+            <div key={element.id} className={`p-4 rounded-lg ${isDarkMode ? "bg-amber-900/20 text-amber-200" : "bg-amber-50 text-amber-800"}`}>
+              <p className="text-sm font-medium">Payment not configured</p>
+              <p className="text-xs mt-1">Stripe publishable key is missing from environment</p>
             </div>
           );
         }

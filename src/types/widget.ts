@@ -111,6 +111,7 @@ export interface EventData {
     apple_pay_merchant_id?: string | null;
     windcave_endpoint?: string | null;
     stripe_booking_fee_enabled?: boolean | null;
+    stripe_test_mode?: boolean | null;
     crm_enabled?: boolean | null;
   };
 }

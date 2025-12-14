@@ -22,14 +22,15 @@ export const isStripeTestMode = (): boolean => {
 
 /**
  * Check if test mode is enabled for a specific organization
- * Falls back to environment variable if organization data not provided
+ * Organization setting takes precedence over environment variable
+ * Only falls back to env var if organization setting is not explicitly set
  */
 export const isStripeTestModeForOrg = (organization?: { stripe_test_mode?: boolean } | null): boolean => {
-  // Check organization setting first
-  if (organization?.stripe_test_mode === true) {
-    return true;
+  // If organization has test mode explicitly set, use that value
+  if (organization && typeof organization.stripe_test_mode === 'boolean') {
+    return organization.stripe_test_mode;
   }
-  // Fall back to environment variable
+  // Fall back to environment variable only if org setting is not defined
   return isStripeTestMode();
 };
 

@@ -15,7 +15,7 @@ serve(async (req) => {
     console.log('=== CAPTURE PAYMENT DETAILS STARTED ===');
 
     const { paymentIntentId, orderId } = await req.json();
-    
+
     if (!paymentIntentId || !orderId) {
       throw new Error('Payment intent ID and order ID are required');
     }
@@ -27,8 +27,8 @@ serve(async (req) => {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { 
-        auth: { 
+      {
+        auth: {
           persistSession: false,
           autoRefreshToken: false,
           detectSessionInUrl: false
@@ -36,51 +36,91 @@ serve(async (req) => {
       }
     );
 
-    // Initialize Stripe - try platform key first, then fall back to getting org key
+    // First, get the order and organization info to check for test mode
+    const { data: order, error: orderError } = await supabaseClient
+      .from('orders')
+      .select(`
+        *,
+        events!inner (
+          organization_id,
+          organizations!inner (
+            stripe_test_mode,
+            stripe_account_id
+          )
+        )
+      `)
+      .eq('id', orderId)
+      .single();
+
+    if (orderError || !order) {
+      console.error('Order lookup error:', orderError);
+      throw new Error('Order not found');
+    }
+
+    console.log('Found order:', order.id);
+    console.log('Organization ID:', order.events.organization_id);
+    console.log('Test mode enabled:', order.events.organizations?.stripe_test_mode);
+
+    // Check for test mode - same logic as create-payment-intent
+    // Organization setting takes precedence over environment variable
+    const orgTestModeSetting = order.events.organizations?.stripe_test_mode;
+    const envTestMode = Deno.env.get("STRIPE_TEST_MODE") === "true";
+    // If org has explicit setting, use it; otherwise fall back to env var
+    const isTestMode = typeof orgTestModeSetting === 'boolean' ? orgTestModeSetting : envTestMode;
+
+    console.log('=== TEST MODE CHECK ===');
+    console.log('Org test mode setting:', orgTestModeSetting);
+    console.log('Env test mode:', envTestMode);
+    console.log('Is test mode:', isTestMode);
+
+    // Initialize Stripe with the appropriate key
     const Stripe = await import("https://esm.sh/stripe@14.21.0");
     let stripe: any;
     let paymentIntent: any;
+    let stripeKey: string | undefined;
 
-    // First try with platform key (for Connect payments)
-    const platformStripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (platformStripeKey) {
+    if (isTestMode) {
+      // Test mode - use platform test key (same key used in create-payment-intent)
+      stripeKey = Deno.env.get("STRIPE_SECRET_KEY_TEST");
+      if (!stripeKey) {
+        console.warn('⚠️ Test mode enabled but STRIPE_SECRET_KEY_TEST not set, falling back to STRIPE_SECRET_KEY');
+        stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+      }
+      console.log('🧪 Using PLATFORM Stripe TEST key');
+    } else {
+      // Live mode - try platform key first (for Connect), then org key
+      stripeKey = Deno.env.get("STRIPE_SECRET_KEY_LIVE") || Deno.env.get("STRIPE_SECRET_KEY");
+      console.log('Using PLATFORM Stripe LIVE key for initial attempt');
+    }
+
+    if (stripeKey) {
       try {
-        stripe = new Stripe.default(platformStripeKey, { apiVersion: "2023-10-16" });
+        stripe = new Stripe.default(stripeKey, { apiVersion: "2023-10-16" });
         paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-        console.log('✅ Retrieved payment intent with platform key');
+        console.log('✅ Retrieved payment intent with', isTestMode ? 'test' : 'platform', 'key');
       } catch (error) {
-        console.log('❌ Platform key failed, trying organization key...');
-        stripe = null;
-        paymentIntent = null;
+        if (!isTestMode) {
+          // Only try org key fallback in live mode (test mode should always use platform test key)
+          console.log('❌ Platform key failed, trying organization key...');
+          stripe = null;
+          paymentIntent = null;
+        } else {
+          // In test mode, if platform test key fails, that's an error
+          console.error('❌ Test mode payment intent retrieval failed:', error.message);
+          throw new Error('Failed to retrieve test mode payment intent. Ensure STRIPE_SECRET_KEY_TEST is set correctly.');
+        }
       }
     }
 
-    // If platform key failed, get organization's key from order
-    if (!paymentIntent) {
-      const { data: order, error: orderError } = await supabaseClient
-        .from('orders')
-        .select(`
-          *,
-          events!inner (
-            organization_id
-          )
-        `)
-        .eq('id', orderId)
-        .single();
-
-      if (orderError || !order) {
-        throw new Error('Order not found');
-      }
-
-      console.log('Found order:', order.id, 'for event:', order.events.organization_id);
-
+    // If platform key failed in live mode, get organization's key from credentials
+    if (!paymentIntent && !isTestMode) {
       // Get organization's Stripe credentials from payment_credentials table
       const { data: credentials, error: credError } = await supabaseClient
-        .rpc('get_payment_credentials_for_processing', { 
-          p_organization_id: order.events.organization_id 
+        .rpc('get_payment_credentials_for_processing', {
+          p_organization_id: order.events.organization_id
         });
 
-      console.log('Credentials query result:', { credentials, credError });
+      console.log('Credentials query result:', { credentials: credentials ? 'found' : 'not found', credError });
 
       if (credError || !credentials || credentials.length === 0) {
         throw new Error('Organization payment credentials not found');
