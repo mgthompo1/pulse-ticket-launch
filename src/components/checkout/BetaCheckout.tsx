@@ -87,6 +87,13 @@ interface ReservationHooks {
   hasActiveReservations: () => boolean;
 }
 
+interface FreeRegistrationParams {
+  cart: Array<{ id: string; name: string; price: number; quantity: number }>;
+  customerInfo: { name: string; email: string; phone: string };
+  customAnswers: Record<string, any>;
+  platformTip?: number;
+}
+
 interface BetaCheckoutProps {
   eventData: EventData;
   ticketTypes: TicketType[];
@@ -96,6 +103,7 @@ interface BetaCheckoutProps {
   reservationHooks?: ReservationHooks;
   groupId?: string | null;
   allocationId?: string | null;
+  onFreeRegistration?: (params: FreeRegistrationParams) => Promise<void>;
 }
 
 // Improvement #1: Above-the-fold optimization - inspired by mockup header card
@@ -291,8 +299,13 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
   reservationHooks,
   groupId,
   allocationId,
+  onFreeRegistration,
 }) => {
   const { toast } = useToast();
+
+  // Detect if this is a free event
+  const isFreeEvent = eventData?.pricing_type === 'free';
+  const [isSubmittingFreeRegistration, setIsSubmittingFreeRegistration] = useState(false);
   
   // Ensure customQuestions is always an array
   const safeCustomQuestions = Array.isArray(customQuestions) ? customQuestions : [];
@@ -464,7 +477,7 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!validateForm()) {
       toast({
         title: "Please complete all required fields",
@@ -487,6 +500,38 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
         ...prev,
         donationAmount: selectedDonationAmount
       }));
+    }
+
+    // Handle free event registration
+    if (isFreeEvent && onFreeRegistration) {
+      setIsSubmittingFreeRegistration(true);
+      try {
+        await onFreeRegistration({
+          cart: cartItems.map(item => ({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+          })),
+          customerInfo: {
+            name: customerInfo.name,
+            email: customerInfo.email,
+            phone: customerInfo.phone,
+          },
+          customAnswers: customerInfo.customAnswers || {},
+          platformTip: selectedDonationAmount || undefined,
+        });
+      } catch (error) {
+        console.error('Free registration error:', error);
+        toast({
+          title: "Registration failed",
+          description: "Please try again",
+          variant: "destructive"
+        });
+      } finally {
+        setIsSubmittingFreeRegistration(false);
+      }
+      return;
     }
 
     // For Stripe payment
@@ -1111,15 +1156,20 @@ export const BetaCheckout: React.FC<BetaCheckoutProps> = ({
                           {/* Checkout button */}
                           <Button
                             onClick={handleCheckout}
-                            disabled={isProcessing}
+                            disabled={isProcessing || isSubmittingFreeRegistration}
                             className="w-full h-12 text-lg font-semibold mt-6"
-                            style={{ 
-                              backgroundColor: theme.primaryColor, 
-                              color: theme.buttonTextColor 
+                            style={{
+                              backgroundColor: theme.primaryColor,
+                              color: theme.buttonTextColor
                             }}
                           >
-                            {isProcessing ? (
+                            {isProcessing || isSubmittingFreeRegistration ? (
                               <>Loading...</>
+                            ) : isFreeEvent ? (
+                              <>
+                                <Ticket className="h-5 w-5 mr-2" />
+                                Complete Registration
+                              </>
                             ) : (
                               <>
                                 <CreditCard className="h-5 w-5 mr-2" />

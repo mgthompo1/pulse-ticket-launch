@@ -3259,6 +3259,27 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 </Select>
               </div>
 
+              {/* FREEMIUM: Info banner for free events */}
+              {eventData?.pricing_type === 'free' && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-600 text-lg">⚡</span>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-amber-800">Free Event Limitations</p>
+                      <ul className="text-xs text-amber-700 space-y-1 list-disc list-inside">
+                        <li>Maximum 50 registrations per event</li>
+                        <li>Modal checkout template only</li>
+                        <li>No custom branding or promo codes</li>
+                        <li>"Powered by TicketFlo" badge displayed</li>
+                      </ul>
+                      <p className="text-xs text-amber-600 mt-2">
+                        Switch to Paid to unlock unlimited registrations and full customization.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Event URL and Widget Embedding */}
               {eventData?.status === 'published' && (
                 <div className="space-y-3">

@@ -15,6 +15,7 @@ import {
   Check,
   ShoppingBag,
   User,
+  Sparkles,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -568,8 +569,8 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
         </div>
       )}
 
-      {/* Promo Code */}
-      {promoHooks && cartItems.length > 0 && (
+      {/* Promo Code - FREEMIUM: Hidden for free events */}
+      {!isFreeEvent && promoHooks && cartItems.length > 0 && (
         <div className="border-t pt-4">
           <PromoCodeInput
             promoCode={promoHooks.promoCode}
@@ -1180,8 +1181,8 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
               </div>
             )}
 
-            {/* Organizer Card */}
-            {eventData.organizations?.name && (
+            {/* Organizer Card - FREEMIUM: Hidden for free events */}
+            {!isFreeEvent && eventData.organizations?.name && (
               <div
                 className="bg-white rounded-xl p-6 shadow-sm"
                 style={{ border: '1px solid #eeedf2' }}
@@ -1421,6 +1422,21 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
                   </Button>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* FREEMIUM: Forced branding for free events */}
+          {isFreeEvent && (
+            <div className="border-t px-4 py-2 flex justify-center">
+              <a
+                href="https://ticketflo.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Sparkles className="h-3 w-3" />
+                <span>Powered by <strong>TicketFlo</strong></span>
+              </a>
             </div>
           )}
         </DialogContent>

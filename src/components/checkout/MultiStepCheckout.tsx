@@ -43,6 +43,13 @@ interface ReservationHooks {
   hasActiveReservations: () => boolean;
 }
 
+interface FreeRegistrationParams {
+  cart: Array<{ id: string; name: string; price: number; quantity: number }>;
+  customerInfo: { name: string; email: string; phone: string };
+  customAnswers: Record<string, any>;
+  platformTip?: number;
+}
+
 interface MultiStepCheckoutProps {
   eventData: EventData;
   ticketTypes: TicketType[];
@@ -52,6 +59,7 @@ interface MultiStepCheckoutProps {
   reservationHooks?: ReservationHooks;
   groupId?: string | null;
   allocationId?: string | null;
+  onFreeRegistration?: (params: FreeRegistrationParams) => Promise<void>;
 }
 
 
@@ -66,10 +74,15 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   reservationHooks,
   groupId,
   allocationId,
+  onFreeRegistration,
 }) => {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState<CheckoutStep>('event');
   const [showStripeModal, setShowStripeModal] = useState(false);
+  const [isSubmittingFreeRegistration, setIsSubmittingFreeRegistration] = useState(false);
+
+  // Detect free event
+  const isFreeEvent = eventData?.pricing_type === 'free';
   const {
     cartItems,
     merchandiseCart,
@@ -270,13 +283,45 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [eventData?.id, customerInfo?.email, cartItems]);
 
-  const handleCustomerDetails = (info: CustomerInfo, attendeeData?: AttendeeInfo[]) => {
+  const handleCustomerDetails = async (info: CustomerInfo, attendeeData?: AttendeeInfo[]) => {
     if (typeof info.donationAmount === 'number') {
       setSelectedDonationAmount(info.donationAmount);
     }
     setCustomerInfo(info);
     if (attendeeData) {
       setAttendees(attendeeData);
+    }
+
+    // Handle free event registration (no payment required)
+    if (isFreeEvent && onFreeRegistration) {
+      setIsSubmittingFreeRegistration(true);
+      try {
+        await onFreeRegistration({
+          cart: cartItems.map(item => ({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+          })),
+          customerInfo: {
+            name: info.name || '',
+            email: info.email || '',
+            phone: info.phone || '',
+          },
+          customAnswers: info.customAnswers || {},
+          platformTip: info.donationAmount,
+        });
+      } catch (error) {
+        console.error('Free registration failed:', error);
+        toast({
+          title: "Registration Failed",
+          description: "Please try again",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSubmittingFreeRegistration(false);
+      }
+      return;
     }
 
     // Check if this is a Stripe payment provider

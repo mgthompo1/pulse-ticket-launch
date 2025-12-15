@@ -1534,14 +1534,17 @@ const TicketWidget = () => {
   const checkoutModeDecision = useMemo(() => {
     // Check both local state and event data for checkout mode
     const dataCheckoutMode = eventData?.widget_customization?.checkoutMode;
-    const effectiveCheckoutMode = dataCheckoutMode || checkoutMode;
+
+    // FREEMIUM: Force modal checkout for free events
+    const isFreeEvent = eventData?.pricing_type === 'free';
+    const effectiveCheckoutMode = isFreeEvent ? 'modal' : (dataCheckoutMode || checkoutMode);
 
     const isMultiStep = effectiveCheckoutMode === 'multistep' && eventData;
     const isBeta = effectiveCheckoutMode === 'beta' && eventData;
     const isModal = effectiveCheckoutMode === 'modal' && eventData;
 
-    return { isMultiStep, isBeta, isModal, effectiveCheckoutMode };
-  }, [checkoutMode, eventData?.widget_customization?.checkoutMode, eventData]);
+    return { isMultiStep, isBeta, isModal, effectiveCheckoutMode, isFreeEvent };
+  }, [checkoutMode, eventData?.widget_customization?.checkoutMode, eventData, eventData?.pricing_type]);
 
   // Legacy support for shouldRenderMultiStep
   const shouldRenderMultiStep = checkoutModeDecision.isMultiStep;
@@ -1588,6 +1591,7 @@ const TicketWidget = () => {
           eventData={eventData!}
           ticketTypes={ticketTypes}
           customQuestions={customQuestions}
+          onFreeRegistration={handleFreeRegistration}
           promoCodeHooks={{
             promoCode,
             setPromoCode,
@@ -1689,6 +1693,7 @@ const TicketWidget = () => {
           }}
           groupId={groupId}
           allocationId={allocationId}
+          onFreeRegistration={handleFreeRegistration}
         />
       </>
     );
@@ -1868,6 +1873,7 @@ const TicketWidget = () => {
           groupId={groupId}
           allocationId={allocationId}
           getAvailableQuantity={getAvailableQuantity}
+          onFreeRegistration={handleFreeRegistration}
         />
       </>
     );

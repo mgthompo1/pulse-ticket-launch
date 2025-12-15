@@ -60,8 +60,10 @@ serve(async (req) => {
           organization_id,
           ticket_delivery_method,
           email_customization,
+          pricing_type,
           organizations!inner(
-            id
+            id,
+            stripe_test_mode
           )
         )
       `)
@@ -219,13 +221,20 @@ serve(async (req) => {
     }
 
     // Track usage for platform billing
+    // Skip tracking for test mode, free events, and zero-amount transactions
+    const isTestMode = order.events.organizations?.stripe_test_mode === true;
+    const isFreeEvent = order.events.pricing_type === 'free';
+
+    console.log("📊 Usage tracking context - Test mode:", isTestMode, "Free event:", isFreeEvent, "Amount:", order.total_amount);
     console.log("Tracking usage...");
     try {
       await supabaseClient.functions.invoke("track-usage", {
         body: {
           order_id: order.id,
           organization_id: organizationId,
-          transaction_amount: order.total_amount
+          transaction_amount: order.total_amount,
+          is_test_mode: isTestMode,
+          is_free_event: isFreeEvent
         }
       });
       console.log("Usage tracked");

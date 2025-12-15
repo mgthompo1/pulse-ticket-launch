@@ -107,6 +107,13 @@ interface ReservationHooks {
   hasActiveReservations: () => boolean;
 }
 
+interface FreeRegistrationParams {
+  cart: Array<{ id: string; name: string; price: number; quantity: number }>;
+  customerInfo: { name: string; email: string; phone: string };
+  customAnswers: Record<string, any>;
+  platformTip?: number;
+}
+
 interface SinglePageCheckoutProps {
   eventData: EventData;
   ticketTypes: TicketType[];
@@ -128,6 +135,7 @@ interface SinglePageCheckoutProps {
   allocationId?: string | null;
   // Callbacks
   onPaymentSuccess?: (orderId: string) => Promise<void>;
+  onFreeRegistration?: (params: FreeRegistrationParams) => Promise<void>;
   // Utility functions from parent
   getAvailableQuantity?: (ticketType: TicketType) => number;
 }
@@ -148,8 +156,12 @@ export const SinglePageCheckout: React.FC<SinglePageCheckoutProps> = ({
   groupId,
   allocationId,
   onPaymentSuccess,
+  onFreeRegistration,
   getAvailableQuantity: externalGetAvailableQuantity,
 }) => {
+  // Detect if this is a free event
+  const isFreeEvent = eventData?.pricing_type === 'free';
+  const [isSubmittingFreeRegistration, setIsSubmittingFreeRegistration] = useState(false);
   const {
     cartItems,
     addToCart,
@@ -270,10 +282,37 @@ export const SinglePageCheckout: React.FC<SinglePageCheckoutProps> = ({
     });
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     // Track checkout start
     if (eventData) {
       trackBeginCheckout(eventData.id, eventData.name, getTotalAmount(), eventData.organizations?.currency || 'USD');
+    }
+
+    // Handle free event registration
+    if (isFreeEvent && onFreeRegistration) {
+      setIsSubmittingFreeRegistration(true);
+      try {
+        await onFreeRegistration({
+          cart: cartItems.map(item => ({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+          })),
+          customerInfo: {
+            name: customerInfo.name,
+            email: customerInfo.email,
+            phone: customerInfo.phone,
+          },
+          customAnswers: customAnswers || {},
+          platformTip: selectedDonationAmount || undefined,
+        });
+      } catch (error) {
+        console.error('Free registration error:', error);
+      } finally {
+        setIsSubmittingFreeRegistration(false);
+      }
+      return;
     }
 
     if (paymentProvider === "windcave" && onCreateWindcaveSession) {
@@ -1000,11 +1039,22 @@ export const SinglePageCheckout: React.FC<SinglePageCheckoutProps> = ({
                       variant="secondary"
                       className="w-full mt-4 border-0"
                       size="lg"
-                      disabled={!canProceedToPayment}
+                      disabled={!canProceedToPayment || isSubmittingFreeRegistration}
                       style={{ backgroundColor: primaryColor, color: buttonTextColor }}
                     >
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Proceed to Payment
+                      {isSubmittingFreeRegistration ? (
+                        <>Loading...</>
+                      ) : isFreeEvent ? (
+                        <>
+                          <Ticket className="h-4 w-4 mr-2" />
+                          Complete Registration
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Proceed to Payment
+                        </>
+                      )}
                     </Button>
 
                     {(!customerInfo.name || !customerInfo.email) && (

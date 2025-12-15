@@ -87,23 +87,37 @@ serve(async (req) => {
           if (error) throw error;
 
           // Track usage for billing (platform fees)
+          // Skip tracking for test mode and free events
           try {
             if (posTransaction?.event_id && posTransaction?.total_amount) {
               console.log("Tracking usage for POS transaction billing...");
 
-              // Get organization_id from event
+              // Get organization_id, pricing_type, and test mode from event
               const { data: eventData, error: eventError } = await supabase
                 .from("events")
-                .select("organization_id")
+                .select(`
+                  organization_id,
+                  pricing_type,
+                  organizations (
+                    stripe_test_mode
+                  )
+                `)
                 .eq("id", posTransaction.event_id)
                 .single();
 
               if (!eventError && eventData?.organization_id) {
+                const isTestMode = (eventData as any)?.organizations?.stripe_test_mode === true;
+                const isFreeEvent = eventData.pricing_type === 'free';
+
+                console.log("📊 Usage tracking context - Test mode:", isTestMode, "Free event:", isFreeEvent, "Amount:", posTransaction.total_amount);
+
                 const { error: trackingError } = await supabase.functions.invoke('track-usage', {
                   body: {
                     order_id: posTransaction.id, // Use POS transaction ID as order_id
                     organization_id: eventData.organization_id,
-                    transaction_amount: posTransaction.total_amount
+                    transaction_amount: posTransaction.total_amount,
+                    is_test_mode: isTestMode,
+                    is_free_event: isFreeEvent
                   }
                 });
 

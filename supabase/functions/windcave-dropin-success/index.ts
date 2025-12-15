@@ -151,10 +151,18 @@ serve(async (req) => {
     // Send ticket email
     console.log("Sending ticket email...");
     try {
-      // Get event details for email and Xero integration
+      // Get event details for email, Xero integration, and usage tracking
       const { data: event, error: eventError } = await supabaseClient
         .from("events")
-        .select("name, event_date, organization_id")
+        .select(`
+          name,
+          event_date,
+          organization_id,
+          pricing_type,
+          organizations (
+            stripe_test_mode
+          )
+        `)
         .eq("id", eventId)
         .single();
 
@@ -281,13 +289,20 @@ serve(async (req) => {
 
         // Track usage for platform fee billing (Windcave payments)
         // This is needed because Windcave doesn't support automatic platform fees like Stripe Connect
+        // Skip tracking for test mode, free events, and zero-amount transactions
+        const isTestMode = (event as any)?.organizations?.stripe_test_mode === true;
+        const isFreeEvent = event.pricing_type === 'free';
+
+        console.log("📊 Usage tracking context - Test mode:", isTestMode, "Free event:", isFreeEvent, "Amount:", order.total_amount);
         console.log("Tracking usage for platform billing...");
         try {
           const { error: usageError } = await supabaseClient.functions.invoke('track-usage', {
             body: {
               order_id: order.id,
               organization_id: event.organization_id,
-              transaction_amount: order.total_amount
+              transaction_amount: order.total_amount,
+              is_test_mode: isTestMode,
+              is_free_event: isFreeEvent
             }
           });
 

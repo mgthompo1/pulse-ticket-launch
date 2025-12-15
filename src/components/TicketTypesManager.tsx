@@ -37,12 +37,16 @@ interface TicketTypesManagerProps {
   eventId: string;
 }
 
+// FREEMIUM: Maximum tickets allowed for free events
+const FREE_EVENT_MAX_TICKETS = 50;
+
 const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
   const { toast } = useToast();
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<TicketType | null>(null);
+  const [pricingType, setPricingType] = useState<'paid' | 'free' | 'donation' | null>(null);
   const [formData, setFormData] = useState<TicketType>({
     name: "",
     description: "",
@@ -55,9 +59,39 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
     attendees_per_ticket: 1,
   });
 
+  const isFreeEvent = pricingType === 'free';
+
+  // Calculate total tickets across all ticket types (excluding the one being edited)
+  const getTotalTicketsExcluding = (excludeId?: string) => {
+    return ticketTypes
+      .filter(t => t.id !== excludeId)
+      .reduce((sum, t) => sum + t.quantity_available, 0);
+  };
+
+  // Get remaining tickets available for free events
+  const getRemainingFreeTickets = (excludeId?: string) => {
+    return FREE_EVENT_MAX_TICKETS - getTotalTicketsExcluding(excludeId);
+  };
+
   useEffect(() => {
     loadTicketTypes();
+    loadEventPricingType();
   }, [eventId]);
+
+  const loadEventPricingType = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("events")
+        .select("pricing_type")
+        .eq("id", eventId)
+        .single();
+
+      if (error) throw error;
+      setPricingType(data?.pricing_type || 'paid');
+    } catch (error) {
+      console.error("Error loading event pricing type:", error);
+    }
+  };
 
   const loadTicketTypes = async () => {
     try {
@@ -87,6 +121,20 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
     setLoading(true);
 
     try {
+      // FREEMIUM: Validate ticket quantity for free events
+      if (isFreeEvent) {
+        const remainingTickets = getRemainingFreeTickets(editingTicket?.id);
+        if (formData.quantity_available > remainingTickets) {
+          toast({
+            title: "Free Event Limit",
+            description: `Free events are limited to ${FREE_EVENT_MAX_TICKETS} total tickets. You can add up to ${remainingTickets} more tickets.`,
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
       if (editingTicket?.id) {
         // Update existing ticket type
         const { error } = await supabase
@@ -293,10 +341,16 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
                       id="quantity"
                       type="number"
                       min="1"
+                      max={isFreeEvent ? getRemainingFreeTickets(editingTicket?.id) : undefined}
                       value={formData.quantity_available}
                       onChange={(e) => setFormData({ ...formData, quantity_available: parseInt(e.target.value) || 0 })}
                       required
                     />
+                    {isFreeEvent && (
+                      <p className="text-xs text-amber-600">
+                        Free event limit: {getRemainingFreeTickets(editingTicket?.id)} of {FREE_EVENT_MAX_TICKETS} remaining
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="attendees_per_ticket">Attendees per Ticket</Label>

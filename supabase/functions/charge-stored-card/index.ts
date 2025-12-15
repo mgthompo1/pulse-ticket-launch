@@ -93,17 +93,19 @@ serve(async (req) => {
       throw new Error("No payment method on file for this customer");
     }
 
-    // Get event and organization info
+    // Get event and organization info (including test mode and pricing type for fee tracking)
     const { data: event, error: eventError } = await supabase
       .from("events")
       .select(`
         id,
         name,
         organization_id,
+        pricing_type,
         organizations (
           id,
           name,
-          stripe_account_id
+          stripe_account_id,
+          stripe_test_mode
         )
       `)
       .eq("id", event_id)
@@ -251,11 +253,19 @@ serve(async (req) => {
     }
 
     // Track usage for billing
+    // Skip tracking for test mode and free events
+    const isTestMode = (event.organizations as any)?.stripe_test_mode === true;
+    const isFreeEvent = event.pricing_type === 'free';
+
+    console.log("📊 Usage tracking context - Test mode:", isTestMode, "Free event:", isFreeEvent, "Amount:", totalAmount);
+
     const { error: trackingError } = await supabase.functions.invoke('track-usage', {
       body: {
         order_id: order.id,
         organization_id: (event.organizations as any).id,
-        transaction_amount: totalAmount
+        transaction_amount: totalAmount,
+        is_test_mode: isTestMode,
+        is_free_event: isFreeEvent
       }
     });
 

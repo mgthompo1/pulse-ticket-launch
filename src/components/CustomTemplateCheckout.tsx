@@ -189,6 +189,10 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [isSubmittingFreeRegistration, setIsSubmittingFreeRegistration] = useState(false);
+
+  // Detect free event
+  const isFreeEvent = eventData?.pricing_type === 'free';
 
   // Windcave state
   const [windcaveInitialized, setWindcaveInitialized] = useState(false);
@@ -501,6 +505,64 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
     setTimeout(() => {
       window.location.href = `/payment-success?orderId=${orderId}`;
     }, 1500);
+  };
+
+  // Handle free event registration
+  const handleFreeRegistration = async () => {
+    if (!eventData || !customerInfo.email || !customerInfo.firstName) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in your name and email to register.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmittingFreeRegistration(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('free-registration', {
+        body: {
+          eventId,
+          cart: cartItems.map(item => ({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+          })),
+          customerInfo: {
+            name: `${customerInfo.firstName} ${customerInfo.lastName}`.trim(),
+            email: customerInfo.email,
+            phone: customerInfo.phone,
+          },
+          customAnswers,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      // Registration successful
+      setOrderId(data.orderId);
+      setOrderComplete(true);
+      toast({
+        title: "Registration Complete!",
+        description: "Your tickets have been confirmed. Check your email for details.",
+      });
+
+      // Redirect to success page
+      setTimeout(() => {
+        window.location.href = `/payment-success?orderId=${data.orderId}`;
+      }, 1500);
+    } catch (error) {
+      console.error('Free registration error:', error);
+      toast({
+        title: "Registration Failed",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingFreeRegistration(false);
+    }
   };
 
   // Windcave script loading
@@ -1305,6 +1367,44 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
                     <CreditCard className="h-8 w-8 mx-auto opacity-50" />
                     <p className="font-medium">Select tickets first</p>
                     <p className="text-sm">Please select at least one ticket to proceed</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          );
+        }
+
+        // FREE EVENT REGISTRATION
+        if (isFreeEvent) {
+          return (
+            <div key={element.id} className="space-y-4">
+              <h3 className={`font-semibold ${headingText}`}>Complete Registration</h3>
+              <Card className={cardBg}>
+                <CardContent className="pt-6">
+                  <div className="text-center space-y-4">
+                    <CheckCircle className={`h-12 w-12 mx-auto ${isDarkMode ? "text-green-400" : "text-green-500"}`} />
+                    <div>
+                      <p className={`font-medium ${headingText}`}>Free Event</p>
+                      <p className={`text-sm ${mutedText}`}>No payment required - just click to complete your registration</p>
+                    </div>
+                    <Button
+                      onClick={handleFreeRegistration}
+                      disabled={isSubmittingFreeRegistration}
+                      className="w-full"
+                      size="lg"
+                    >
+                      {isSubmittingFreeRegistration ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Registering...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Complete Registration
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

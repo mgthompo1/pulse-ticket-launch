@@ -154,7 +154,7 @@ serve(async (req) => {
     // Track usage for billing (platform fees)
     console.log("Tracking usage for billing...");
     try {
-      // Get order details for usage tracking
+      // Get order details for usage tracking including test mode and pricing type
       const { data: orderForBilling, error: billingOrderError } = await supabaseClient
         .from("orders")
         .select(`
@@ -162,18 +162,30 @@ serve(async (req) => {
           total_amount,
           event_id,
           events (
-            organization_id
+            organization_id,
+            pricing_type,
+            organizations (
+              stripe_test_mode
+            )
           )
         `)
         .eq("id", orderId)
         .single();
 
       if (!billingOrderError && orderForBilling && (orderForBilling.events as any)?.organization_id) {
+        const eventData = orderForBilling.events as any;
+        const isTestMode = eventData?.organizations?.stripe_test_mode === true;
+        const isFreeEvent = eventData?.pricing_type === 'free';
+
+        console.log("📊 Usage tracking context - Test mode:", isTestMode, "Free event:", isFreeEvent, "Amount:", orderForBilling.total_amount);
+
         const { error: trackingError } = await supabaseClient.functions.invoke('track-usage', {
           body: {
             order_id: orderId,
-            organization_id: (orderForBilling.events as any).organization_id,
-            transaction_amount: orderForBilling.total_amount
+            organization_id: eventData.organization_id,
+            transaction_amount: orderForBilling.total_amount,
+            is_test_mode: isTestMode,
+            is_free_event: isFreeEvent
           }
         });
 

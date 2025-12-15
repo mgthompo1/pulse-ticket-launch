@@ -12,13 +12,70 @@ serve(async (req) => {
   }
 
   try {
-    const { order_id, organization_id, transaction_amount } = await req.json();
+    const { order_id, organization_id, transaction_amount, is_test_mode, is_free_event, is_donation_only } = await req.json();
 
-    if (!order_id || !organization_id || !transaction_amount) {
-      throw new Error('Missing required parameters: order_id, organization_id, transaction_amount');
+    if (!order_id || !organization_id) {
+      throw new Error('Missing required parameters: order_id, organization_id');
     }
 
     console.log('Tracking usage for order:', order_id, 'org:', organization_id, 'amount:', transaction_amount);
+    console.log('Test mode:', is_test_mode, 'Free event:', is_free_event, 'Donation only:', is_donation_only);
+
+    // Skip fee tracking for test mode transactions
+    if (is_test_mode === true) {
+      console.log('⚠️ Skipping platform fee tracking - TEST MODE transaction');
+      return new Response(JSON.stringify({
+        success: true,
+        skipped: true,
+        reason: 'test_mode',
+        message: 'Platform fees not tracked for test mode transactions',
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
+
+    // Skip fee tracking for free events (no revenue to take fees from)
+    if (is_free_event === true) {
+      console.log('⚠️ Skipping platform fee tracking - FREE EVENT');
+      return new Response(JSON.stringify({
+        success: true,
+        skipped: true,
+        reason: 'free_event',
+        message: 'Platform fees not tracked for free events',
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
+
+    // Skip fee tracking for donation-only transactions (tips to platform, not event revenue)
+    if (is_donation_only === true) {
+      console.log('⚠️ Skipping platform fee tracking - DONATION ONLY');
+      return new Response(JSON.stringify({
+        success: true,
+        skipped: true,
+        reason: 'donation_only',
+        message: 'Platform fees not tracked for donation-only transactions',
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
+
+    // Validate transaction amount for paid events
+    if (!transaction_amount || transaction_amount <= 0) {
+      console.log('⚠️ Skipping platform fee tracking - Zero or invalid transaction amount');
+      return new Response(JSON.stringify({
+        success: true,
+        skipped: true,
+        reason: 'zero_amount',
+        message: 'Platform fees not tracked for zero-amount transactions',
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }
 
     // Initialize Supabase client with service role
     const supabaseClient = createClient(

@@ -34,11 +34,18 @@ export default function WidgetRouter() {
     try {
       const { data: event, error: fetchError } = await supabase
         .from("events")
-        .select("widget_customization")
+        .select("widget_customization, pricing_type")
         .eq("id", eventId)
         .single();
 
       if (fetchError) throw fetchError;
+
+      // FREEMIUM: Free events cannot use custom templates
+      const isFreeEvent = event?.pricing_type === 'free';
+      if (isFreeEvent) {
+        setUseCustomTemplate(false);
+        return;
+      }
 
       const customization = event?.widget_customization as {
         useCustomTemplate?: boolean;
@@ -48,6 +55,7 @@ export default function WidgetRouter() {
       // Only use custom template if:
       // 1. useCustomTemplate is explicitly true
       // 2. customTemplate exists and has pages
+      // 3. Event is NOT free (checked above)
       const hasCustomTemplate =
         customization?.useCustomTemplate === true &&
         customization?.customTemplate &&
