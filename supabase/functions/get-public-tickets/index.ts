@@ -66,7 +66,8 @@ serve(async (req) => {
     }
 
     // Step 2: Check if this is a confirmation-only event
-    if (orderData.events?.ticket_delivery_method === "confirmation_email") {
+    const eventData = orderData.events as unknown as { ticket_delivery_method?: string } | null;
+    if (eventData?.ticket_delivery_method === "confirmation_email") {
       return new Response(
         JSON.stringify({
           order: orderData,

@@ -484,7 +484,7 @@ serve(async (req) => {
       // Test mode - always use platform test key
       const platformStripeKey = Deno.env.get("STRIPE_SECRET_KEY_TEST");
       if (platformStripeKey) {
-        console.log("🧪 Using PLATFORM Stripe TEST key (org test mode:", orgTestMode, ")");
+        console.log("🧪 Using PLATFORM Stripe TEST key (org test mode:", orgTestModeSetting, ")");
         stripeKey = platformStripeKey;
       } else {
         console.warn("⚠️ Test mode enabled but STRIPE_SECRET_KEY_TEST not set, falling back to STRIPE_SECRET_KEY");
