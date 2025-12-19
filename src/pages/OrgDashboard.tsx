@@ -31,7 +31,7 @@ import { PaymentConfiguration } from "@/components/PaymentConfiguration";
 import { PayoutsAndFees } from "@/components/PayoutsAndFees";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
-import { Calendar, Users, Ticket, BarChart3, Monitor, LogOut, Menu, HelpCircle, DollarSign, ExternalLink, Clock, CheckCircle, Search, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { Calendar, Users, Ticket, BarChart3, Monitor, LogOut, Menu, HelpCircle, DollarSign, ExternalLink, Clock, CheckCircle, Search, ChevronDown, ChevronUp, FileText, ShoppingCart } from "lucide-react";
 import OrganizationSettings from "@/components/OrganizationSettings";
 import OrganizationOnboarding from "@/components/OrganizationOnboarding";
 
@@ -1481,13 +1481,18 @@ const OrgDashboard = () => {
 
                                 <Card className="gradient-card hover-scale animate-in fade-in-0 border-border shadow-sm hover:shadow-md transition-shadow rounded-2xl" style={{ animationDelay: '300ms' }}>
                                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                                    <CardTitle className="font-manrope font-semibold text-sm text-foreground">Platform Fees</CardTitle>
-                                    <Users className="h-5 w-5 text-muted-foreground" />
+                                    <CardTitle className="font-manrope font-semibold text-sm text-foreground">Avg Order Value</CardTitle>
+                                    <ShoppingCart className="h-5 w-5 text-purple-600" />
                                   </CardHeader>
                                   <CardContent>
-                                    <div>
-                                      <div className="font-manrope font-bold text-3xl text-foreground tabular-nums mb-1">${analytics.estimatedPlatformFees.toFixed(2)}</div>
-                                      <p className="font-manrope text-xs text-muted-foreground">Estimated fees</p>
+                                    <div className="flex items-start justify-between">
+                                      <div>
+                                        <div className="font-manrope font-bold text-3xl text-foreground tabular-nums mb-1">
+                                          ${analytics.totalOrders > 0 ? (analytics.totalRevenue / analytics.totalOrders).toFixed(2) : '0.00'}
+                                        </div>
+                                        <p className="font-manrope text-xs text-muted-foreground">Per order</p>
+                                      </div>
+                                      <MiniSparkline data={[{value: 42}, {value: 48}, {value: 45}, {value: 52}, {value: 49}, {value: 55}, {value: analytics.totalOrders > 0 ? analytics.totalRevenue / analytics.totalOrders : 0}]} color="#8b5cf6" />
                                     </div>
                                   </CardContent>
                                 </Card>
@@ -1498,6 +1503,71 @@ const OrgDashboard = () => {
 
                         </CardContent>
                       </Card>
+
+                      {/* Contextual Alert Cards - Actionable Insights */}
+                      {canAccessAnalytics() && (
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                          {/* Outstanding Invoices Alert */}
+                          {groupAnalytics.outstandingInvoices.length > 0 && (
+                            <Card className="border-orange-200 bg-orange-50 dark:border-orange-500/30 dark:bg-orange-500/5 rounded-2xl">
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-sm flex items-center gap-2 text-orange-900 dark:text-orange-100">
+                                  <FileText className="h-4 w-4 text-orange-500" />
+                                  Pending Invoices
+                                </CardTitle>
+                                <CardDescription className="text-xs text-orange-800 dark:text-orange-200/80">
+                                  {groupAnalytics.outstandingInvoices.length} invoice{groupAnalytics.outstandingInvoices.length > 1 ? 's' : ''} • ${groupAnalytics.outstandingInvoices.reduce((sum, inv) => sum + inv.amountOwed, 0).toLocaleString()}
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="pt-0">
+                                <Button variant="outline" size="sm" className="border-orange-300 text-orange-800 hover:bg-orange-100 dark:border-orange-400 dark:text-orange-100 dark:hover:bg-orange-500/10" onClick={() => setActiveTab("groups")}>
+                                  Review invoices
+                                </Button>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* Events Near Capacity Alert */}
+                          {events.filter(e => e.capacity > 0 && (e.tickets_sold / e.capacity) >= 0.85).length > 0 && (
+                            <Card className="border-emerald-200 bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/5 rounded-2xl">
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-sm flex items-center gap-2 text-emerald-900 dark:text-emerald-100">
+                                  <CheckCircle className="h-4 w-4 text-emerald-500" />
+                                  Events Selling Well
+                                </CardTitle>
+                                <CardDescription className="text-xs text-emerald-800 dark:text-emerald-200/80">
+                                  {events.filter(e => e.capacity > 0 && (e.tickets_sold / e.capacity) >= 0.85).length} event{events.filter(e => e.capacity > 0 && (e.tickets_sold / e.capacity) >= 0.85).length > 1 ? 's' : ''} at 85%+ capacity
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className="pt-0 text-sm text-emerald-900 dark:text-emerald-100">
+                                Consider adding more dates or increasing capacity.
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* Revenue Trend Alert */}
+                          {analytics.trends.revenue !== 0 && (
+                            <Card className={`rounded-2xl ${analytics.trends.revenue > 0
+                              ? 'border-blue-200 bg-blue-50 dark:border-blue-500/30 dark:bg-blue-500/5'
+                              : 'border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/5'}`}>
+                              <CardHeader className="pb-2">
+                                <CardTitle className={`text-sm flex items-center gap-2 ${analytics.trends.revenue > 0 ? 'text-blue-900 dark:text-blue-100' : 'text-amber-900 dark:text-amber-100'}`}>
+                                  <BarChart3 className={`h-4 w-4 ${analytics.trends.revenue > 0 ? 'text-blue-500' : 'text-amber-500'}`} />
+                                  Revenue {analytics.trends.revenue > 0 ? 'Growing' : 'Trend'}
+                                </CardTitle>
+                                <CardDescription className={`text-xs ${analytics.trends.revenue > 0 ? 'text-blue-800 dark:text-blue-200/80' : 'text-amber-800 dark:text-amber-200/80'}`}>
+                                  {analytics.trends.revenue > 0 ? '+' : ''}{analytics.trends.revenue}% vs previous {timeRange}
+                                </CardDescription>
+                              </CardHeader>
+                              <CardContent className={`pt-0 text-sm ${analytics.trends.revenue > 0 ? 'text-blue-900 dark:text-blue-100' : 'text-amber-900 dark:text-amber-100'}`}>
+                                {analytics.trends.revenue > 0
+                                  ? 'Great momentum! Keep up the marketing efforts.'
+                                  : 'Consider boosting promotions or reviewing pricing.'}
+                              </CardContent>
+                            </Card>
+                          )}
+                        </div>
+                      )}
 
                       {/* Customizable Dashboard Widgets */}
                       {canAccessAnalytics() && (

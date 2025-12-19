@@ -24,6 +24,7 @@ import {
   ShoppingCart,
   Users,
   TrendingUp,
+  TrendingDown,
   Calendar,
   MapPin,
   Monitor,
@@ -99,6 +100,39 @@ const gridStyle = {
   strokeDasharray: '3 3',
   strokeOpacity: 0.5,
 };
+
+// Trend Indicator Component
+interface TrendIndicatorProps {
+  value: number;
+  period?: string;
+}
+
+const TrendIndicator = ({ value, period = "vs last period" }: TrendIndicatorProps) => {
+  const isPositive = value > 0;
+  const isNeutral = value === 0;
+  return (
+    <div className={`flex items-center gap-1 text-sm mt-1 ${isNeutral ? 'text-muted-foreground' : isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+      {isNeutral ? null : isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+      <span className="font-medium">{isNeutral ? '0' : Math.abs(value).toFixed(1)}%</span>
+      <span className="text-muted-foreground text-xs">{period}</span>
+    </div>
+  );
+};
+
+// Mini Sparkline Component
+const MiniSparkline = ({ data, color = "#ff4d00" }: { data: Array<{ value: number }>; color?: string }) => (
+  <ResponsiveContainer width={80} height={32}>
+    <LineChart data={data}>
+      <Line
+        type="monotone"
+        dataKey="value"
+        stroke={color}
+        strokeWidth={2}
+        dot={false}
+      />
+    </LineChart>
+  </ResponsiveContainer>
+);
 
 interface DashboardWidgetsProps {
   enabledWidgets: WidgetConfig[];
@@ -251,6 +285,25 @@ export const DashboardWidgets = ({
     );
   }
 
+  // Calculate sparkline data from time series (last 7 points)
+  const revenueSparkline = revenueOverTime.slice(-7).map(d => ({ value: d.revenue }));
+  const ordersSparkline = ordersOverTime.slice(-7).map(d => ({ value: d.orders }));
+
+  // Calculate trend (compare recent half to earlier half)
+  const calculateTrend = (data: number[]) => {
+    if (data.length < 2) return 0;
+    const mid = Math.floor(data.length / 2);
+    const firstHalf = data.slice(0, mid);
+    const secondHalf = data.slice(mid);
+    const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+    const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+    if (firstAvg === 0) return secondAvg > 0 ? 100 : 0;
+    return ((secondAvg - firstAvg) / firstAvg) * 100;
+  };
+
+  const revenueTrend = calculateTrend(revenueOverTime.map(d => d.revenue));
+  const ordersTrend = calculateTrend(ordersOverTime.map(d => d.orders));
+
   const renderWidget = (widgetConfig: WidgetConfig) => {
     const definition = getWidgetDefinition(widgetConfig.widgetId);
     if (!definition) return null;
@@ -266,6 +319,9 @@ export const DashboardWidgets = ({
             value={`$${totalRevenue.toLocaleString()}`}
             icon={<DollarSign className="h-5 w-5" />}
             className={sizeClass}
+            trend={revenueTrend}
+            trendPeriod={getTimeRangeLabel(timeRange)}
+            sparklineData={revenueSparkline}
           />
         );
 
@@ -277,6 +333,9 @@ export const DashboardWidgets = ({
             value={totalTickets.toLocaleString()}
             icon={<Ticket className="h-5 w-5" />}
             className={sizeClass}
+            trend={ordersTrend}
+            trendPeriod={getTimeRangeLabel(timeRange)}
+            sparklineData={ordersSparkline}
           />
         );
 
@@ -288,6 +347,9 @@ export const DashboardWidgets = ({
             value={totalOrders.toLocaleString()}
             icon={<ShoppingCart className="h-5 w-5" />}
             className={sizeClass}
+            trend={ordersTrend}
+            trendPeriod={getTimeRangeLabel(timeRange)}
+            sparklineData={ordersSparkline}
           />
         );
 
@@ -372,11 +434,17 @@ export const DashboardWidgets = ({
             ) : (
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={revenueByEvent.slice(0, 6)} margin={{ top: 5, right: 20, left: 0, bottom: 60 }} barCategoryGap="25%">
+                  <defs>
+                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#ff4d00" stopOpacity={1} />
+                      <stop offset="100%" stopColor="#ff4d00" stopOpacity={0.7} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.3} />
                   <XAxis dataKey="name" tick={axisStyle} axisLine={false} tickLine={false} angle={-45} textAnchor="end" height={70} interval={0} />
                   <YAxis tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} tick={axisStyle} axisLine={false} tickLine={false} dx={-10} width={45} />
                   <Tooltip content={<CustomTooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }} />
-                  <Bar dataKey="revenue" fill={CHART_COLORS[0]} radius={[2, 2, 0, 0]} maxBarSize={40} />
+                  <Bar dataKey="revenue" fill="url(#barGradient)" radius={[6, 6, 0, 0]} maxBarSize={40} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -445,11 +513,17 @@ export const DashboardWidgets = ({
                   </AreaChart>
                 ) : (
                   <BarChart data={revenueOverTime} margin={{ top: 5, right: 20, left: 0, bottom: 5 }} barCategoryGap="20%">
+                    <defs>
+                      <linearGradient id="revenueBarGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#ff4d00" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#ff4d00" stopOpacity={0.7} />
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.3} />
                     <XAxis dataKey="date" tick={axisStyle} axisLine={false} tickLine={false} dy={10} interval="preserveStartEnd" />
                     <YAxis tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} tick={axisStyle} axisLine={false} tickLine={false} dx={-10} width={45} />
                     <Tooltip content={<CustomTooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }} />
-                    <Bar dataKey="revenue" fill={CHART_COLORS[0]} radius={[2, 2, 0, 0]} maxBarSize={32} />
+                    <Bar dataKey="revenue" fill="url(#revenueBarGradient)" radius={[6, 6, 0, 0]} maxBarSize={32} />
                   </BarChart>
                 )}
               </ResponsiveContainer>
@@ -516,11 +590,17 @@ export const DashboardWidgets = ({
                 </LineChart>
               ) : (
                 <BarChart data={weeklyRevenue} margin={{ top: 5, right: 20, left: 0, bottom: 5 }} barCategoryGap="25%">
+                  <defs>
+                    <linearGradient id="weeklyBarGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#ff4d00" stopOpacity={1} />
+                      <stop offset="100%" stopColor="#ff4d00" stopOpacity={0.7} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.3} />
                   <XAxis dataKey="day" tick={axisStyle} axisLine={false} tickLine={false} dy={10} />
                   <YAxis tickFormatter={(v) => `$${v}`} tick={axisStyle} axisLine={false} tickLine={false} dx={-10} width={45} />
                   <Tooltip content={<CustomTooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Revenue"]} />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }} />
-                  <Bar dataKey="revenue" fill={CHART_COLORS[0]} radius={[2, 2, 0, 0]} maxBarSize={40} />
+                  <Bar dataKey="revenue" fill="url(#weeklyBarGradient)" radius={[6, 6, 0, 0]} maxBarSize={40} />
                 </BarChart>
               )}
             </ResponsiveContainer>
@@ -543,7 +623,7 @@ export const DashboardWidgets = ({
                   <XAxis type="number" tick={axisStyle} axisLine={false} tickLine={false} />
                   <YAxis dataKey="name" type="category" tick={axisStyle} axisLine={false} tickLine={false} width={100} />
                   <Tooltip content={<CustomTooltip formatter={(value: number) => [value.toLocaleString(), "Tickets"]} />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }} />
-                  <Bar dataKey="count" radius={[0, 2, 2, 0]} maxBarSize={24}>
+                  <Bar dataKey="count" radius={[0, 6, 6, 0]} maxBarSize={24}>
                     {ticketData.map((entry, index) => (
                       <Cell key={index} fill={entry.fill} />
                     ))}
@@ -559,12 +639,12 @@ export const DashboardWidgets = ({
                     cy="50%"
                     innerRadius={widgetConfig.chartType === "donut" ? 60 : 0}
                     outerRadius={90}
-                    paddingAngle={2}
+                    paddingAngle={3}
                     label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                     labelLine={false}
                   >
                     {ticketData.map((entry, index) => (
-                      <Cell key={index} fill={entry.fill} stroke="transparent" />
+                      <Cell key={index} fill={entry.fill} stroke="hsl(var(--background))" strokeWidth={2} />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomTooltip formatter={(value: number) => [value.toLocaleString(), "Tickets"]} />} />
@@ -650,10 +730,10 @@ export const DashboardWidgets = ({
                     cy="50%"
                     innerRadius={widgetConfig.chartType === "donut" ? 50 : 0}
                     outerRadius={80}
-                    paddingAngle={2}
+                    paddingAngle={3}
                   >
                     {deviceData.map((entry, index) => (
-                      <Cell key={index} fill={entry.fill} stroke="transparent" />
+                      <Cell key={index} fill={entry.fill} stroke="hsl(var(--background))" strokeWidth={2} />
                     ))}
                   </Pie>
                   <Tooltip content={<CustomTooltip formatter={(value: number) => [value.toLocaleString(), "Visitors"]} />} />
@@ -690,11 +770,17 @@ export const DashboardWidgets = ({
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={visitorLocations.slice(0, 6)} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }} barCategoryGap="30%">
+                  <defs>
+                    <linearGradient id="locationBarGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor={CHART_COLORS[3]} stopOpacity={0.8} />
+                      <stop offset="100%" stopColor={CHART_COLORS[3]} stopOpacity={1} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid horizontal={false} vertical={true} stroke="hsl(var(--border))" strokeOpacity={0.3} />
                   <XAxis type="number" tick={axisStyle} axisLine={false} tickLine={false} />
                   <YAxis dataKey="country" type="category" tick={axisStyle} axisLine={false} tickLine={false} width={80} />
                   <Tooltip content={<CustomTooltip formatter={(value: number) => [value.toLocaleString(), "Visitors"]} />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }} />
-                  <Bar dataKey="count" fill={CHART_COLORS[3]} radius={[0, 2, 2, 0]} maxBarSize={20} />
+                  <Bar dataKey="count" fill="url(#locationBarGradient)" radius={[0, 6, 6, 0]} maxBarSize={20} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -742,10 +828,13 @@ export const DashboardWidgets = ({
                         </Badge>
                       </div>
                     </div>
-                    <div className="w-full h-2 rounded-full bg-muted">
+                    <div className="w-full h-2.5 rounded-full bg-muted">
                       <div
-                        className="h-full rounded-full bg-primary transition-all duration-500"
-                        style={{ width: `${step.rate}%` }}
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.max(8, step.rate)}%`,
+                          background: 'linear-gradient(to right, #ff4d00, #f97316, #ec4899)'
+                        }}
                       />
                     </div>
                   </div>
@@ -1061,19 +1150,30 @@ interface StatCardProps {
   icon: React.ReactNode;
   description?: string;
   className?: string;
+  trend?: number;
+  trendPeriod?: string;
+  sparklineData?: Array<{ value: number }>;
 }
 
-const StatCard = ({ title, value, icon, description, className }: StatCardProps) => (
-  <Card className={`group h-full flex flex-col min-h-[320px] bg-card border border-border/50 shadow-sm hover:shadow-md hover:border-border transition-all duration-200 rounded-xl ${className || ''}`}>
+const StatCard = ({ title, value, icon, description, className, trend, trendPeriod, sparklineData }: StatCardProps) => (
+  <Card className={`group h-full flex flex-col min-h-[320px] bg-card border border-border/50 shadow-sm hover:shadow-lg hover:border-border transition-all duration-200 rounded-2xl ${className || ''}`}>
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 flex-shrink-0">
       <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-      <div className="h-9 w-9 rounded-lg bg-muted/50 flex items-center justify-center text-muted-foreground">
+      <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
         {icon}
       </div>
     </CardHeader>
     <CardContent className="flex-1 flex flex-col justify-center">
-      <div className="text-3xl font-bold text-foreground tabular-nums tracking-tight">{value}</div>
-      {description && <p className="text-sm text-muted-foreground mt-2">{description}</p>}
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="text-3xl font-bold text-foreground tabular-nums tracking-tight">{value}</div>
+          {trend !== undefined && <TrendIndicator value={trend} period={trendPeriod} />}
+          {description && <p className="text-sm text-muted-foreground mt-2">{description}</p>}
+        </div>
+        {sparklineData && sparklineData.length > 0 && (
+          <MiniSparkline data={sparklineData} />
+        )}
+      </div>
     </CardContent>
   </Card>
 );
@@ -1086,7 +1186,7 @@ interface ChartCardProps {
 }
 
 const ChartCard = ({ title, description, children, className }: ChartCardProps) => (
-  <Card className={`group h-full flex flex-col min-h-[320px] bg-card border border-border/50 shadow-sm hover:shadow-md hover:border-border transition-all duration-200 rounded-xl ${className || ''}`}>
+  <Card className={`group h-full flex flex-col min-h-[320px] bg-card border border-border/50 shadow-sm hover:shadow-lg hover:border-border transition-all duration-200 rounded-2xl ${className || ''}`}>
     <CardHeader className="pb-4 flex-shrink-0 border-b border-border/30">
       <div className="flex items-center justify-between">
         <div>
