@@ -210,7 +210,9 @@ CREATE POLICY "Users can view payment schedules for their organization orders"
   ON order_payment_schedules FOR SELECT
   USING (
     order_id IN (
-      SELECT id FROM orders WHERE organization_id IN (
+      SELECT o.id FROM orders o
+      JOIN events e ON o.event_id = e.id
+      WHERE e.organization_id IN (
         SELECT id FROM organizations WHERE user_id = auth.uid()
         UNION
         SELECT organization_id FROM organization_users WHERE user_id = auth.uid()
@@ -222,7 +224,9 @@ CREATE POLICY "Owners and admins can manage payment schedules"
   ON order_payment_schedules FOR ALL
   USING (
     order_id IN (
-      SELECT id FROM orders WHERE organization_id IN (
+      SELECT o.id FROM orders o
+      JOIN events e ON o.event_id = e.id
+      WHERE e.organization_id IN (
         SELECT id FROM organizations WHERE user_id = auth.uid()
         UNION
         SELECT organization_id FROM organization_users
