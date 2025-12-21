@@ -14,7 +14,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound, Heart, Share2, FileText, Calendar, Send, ShoppingCart, ClipboardList, Target, BarChart3, Link2, Unlink, Crown, Percent, UserPlus, User, CreditCard } from "lucide-react";
+import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound, Heart, Share2, FileText, Calendar, Send, ShoppingCart, ClipboardList, Target, BarChart3, Link2, Unlink, Crown, Percent, UserPlus, User, CreditCard, AlertCircle } from "lucide-react";
 import { ConditionalDisplay } from "@/types/widget";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
