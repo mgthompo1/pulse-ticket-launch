@@ -12,6 +12,24 @@ import { Theme } from '@/types/theme';
 import { AttendeeInfo } from './AttendeeDetailsForm';
 import { useTaxCalculation, formatTaxForOrder } from '@/hooks/useTaxCalculation';
 import { getStripePublishableKey, isStripeTestModeForOrg } from '@/lib/stripe-config';
+import { PaymentPlanSelector } from './PaymentPlanSelector';
+
+interface PaymentPlan {
+  id: string;
+  name: string;
+  plan_type: 'deposit' | 'installment';
+  deposit_percentage: number | null;
+  number_of_installments: number | null;
+  payment_plan_fee_percentage: number;
+  payment_plan_fee_fixed: number;
+}
+
+interface PaymentScheduleItem {
+  installment_number: number;
+  amount: number;
+  due_date: Date;
+  label: string;
+}
 
 interface StripePaymentModalProps {
   isOpen: boolean;
@@ -26,6 +44,12 @@ interface StripePaymentModalProps {
   promoDiscount?: number;
   groupId?: string | null;
   allocationId?: string | null;
+  // Payment plan props
+  showPaymentPlans?: boolean;
+  selectedPaymentPlan?: PaymentPlan | null;
+  paymentSchedule?: PaymentScheduleItem[] | null;
+  onPaymentPlanSelected?: (plan: PaymentPlan | null, schedule: PaymentScheduleItem[] | null) => void;
+  isSignedIn?: boolean;
 }
 
 export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
@@ -40,7 +64,12 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
   promoCodeId = null,
   promoDiscount = 0,
   groupId = null,
-  allocationId = null
+  allocationId = null,
+  showPaymentPlans = false,
+  selectedPaymentPlan = null,
+  paymentSchedule = null,
+  onPaymentPlanSelected,
+  isSignedIn = false
 }) => {
   const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null);
   const [currency, setCurrency] = useState<string>('USD');
@@ -182,6 +211,20 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-y-auto flex-1 min-h-0">
           {/* Payment Form */}
           <div className="space-y-6">
+            {/* Payment Plan Selector - Show when enabled and user is signed in */}
+            {showPaymentPlans && onPaymentPlanSelected && (
+              <PaymentPlanSelector
+                eventId={eventData.id}
+                organizationId={eventData.organization_id}
+                orderTotal={subtotal}
+                eventDate={eventData.event_date}
+                theme={theme}
+                isSignedIn={isSignedIn}
+                onPlanSelected={onPaymentPlanSelected}
+                selectedPlanId={selectedPaymentPlan?.id}
+              />
+            )}
+
             <Card style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2" style={{ color: theme.headerTextColor }}>
@@ -203,7 +246,7 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                     merchandiseCart={merchandiseCart}
                     customerInfo={customerInfo}
                     attendees={attendees}
-                    total={total}
+                    total={selectedPaymentPlan && paymentSchedule ? paymentSchedule[0]?.amount || total : total}
                     theme={theme}
                     bookingFeesEnabled={bookingFeesEnabled}
                     subtotal={subtotal}
@@ -214,6 +257,8 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                     taxData={taxData}
                     groupId={groupId}
                     allocationId={allocationId}
+                    paymentPlan={selectedPaymentPlan}
+                    paymentSchedule={paymentSchedule}
                     onSuccess={handlePaymentSuccess}
                     onCancel={onClose}
                   />
@@ -365,6 +410,37 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                     <span style={{ color: theme.headerTextColor }}>Total</span>
                     <span style={{ color: theme.headerTextColor }}>${total.toFixed(2)}</span>
                   </div>
+
+                  {/* Payment Plan Schedule */}
+                  {selectedPaymentPlan && paymentSchedule && paymentSchedule.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-dashed">
+                      <h4 className="font-medium text-blue-600 mb-2 flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Payment Schedule - {selectedPaymentPlan.name}
+                      </h4>
+                      <div className="space-y-2">
+                        {paymentSchedule.map((item, idx) => (
+                          <div key={idx} className="flex justify-between text-sm">
+                            <span style={{ color: theme.bodyTextColor }}>
+                              {item.label} - {item.due_date.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </span>
+                            <span
+                              className={idx === 0 ? 'font-medium text-green-600' : ''}
+                              style={idx !== 0 ? { color: theme.headerTextColor } : undefined}
+                            >
+                              ${item.amount.toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-2 p-2 bg-green-50 rounded text-sm text-green-800">
+                        <span className="font-medium">Due Today:</span> ${paymentSchedule[0]?.amount.toFixed(2) || '0.00'}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

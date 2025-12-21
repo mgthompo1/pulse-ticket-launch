@@ -10,6 +10,7 @@ import { CustomerDetails } from './CustomerDetails';
 import { Payment } from './Payment';
 import { OrderSummary } from './OrderSummary';
 import { StripePaymentModal } from './StripePaymentModal';
+import { PaymentPlanSelector } from './PaymentPlanSelector';
 import { AttendeeInfo } from './AttendeeDetailsForm';
 import { TicketType, CustomerInfo, EventData, CustomQuestion } from '@/types/widget';
 import { useTicketReservation } from '@/hooks/useTicketReservation';
@@ -81,6 +82,16 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   const [showStripeModal, setShowStripeModal] = useState(false);
   const [isSubmittingFreeRegistration, setIsSubmittingFreeRegistration] = useState(false);
 
+  // Member pricing state
+  const [authenticatedCustomer, setAuthenticatedCustomer] = useState<any>(null);
+  const [isMember, setIsMember] = useState(false);
+  const [memberTierName, setMemberTierName] = useState<string | undefined>();
+  const [memberPricing, setMemberPricing] = useState<Record<string, { member_price: number; is_exclusive: boolean }>>({});
+
+  // Payment plan state
+  const [selectedPaymentPlan, setSelectedPaymentPlan] = useState<any>(null);
+  const [paymentSchedule, setPaymentSchedule] = useState<any[] | null>(null);
+
   // Detect free event
   const isFreeEvent = eventData?.pricing_type === 'free';
   const {
@@ -115,6 +126,83 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
   useEffect(() => {
     sessionId.current = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }, []);
+
+  // Load member pricing for all ticket types
+  useEffect(() => {
+    const loadMemberPricing = async () => {
+      if (!ticketTypes || ticketTypes.length === 0) return;
+
+      const ticketTypeIds = ticketTypes.map(t => t.id);
+
+      try {
+        const { data, error } = await supabase
+          .from("member_pricing")
+          .select("ticket_type_id, member_price, is_exclusive, tier_id")
+          .in("ticket_type_id", ticketTypeIds);
+
+        if (error) {
+          console.error("Error loading member pricing:", error);
+          return;
+        }
+
+        // Create a map of ticket_type_id -> pricing info (use lowest price if multiple tiers)
+        const pricingMap: Record<string, { member_price: number; is_exclusive: boolean }> = {};
+        (data || []).forEach(pricing => {
+          const existing = pricingMap[pricing.ticket_type_id];
+          if (!existing || pricing.member_price < existing.member_price) {
+            pricingMap[pricing.ticket_type_id] = {
+              member_price: pricing.member_price,
+              is_exclusive: pricing.is_exclusive
+            };
+          }
+        });
+
+        setMemberPricing(pricingMap);
+      } catch (error) {
+        console.error("Error loading member pricing:", error);
+      }
+    };
+
+    loadMemberPricing();
+  }, [ticketTypes]);
+
+  // Check if authenticated customer is a member
+  useEffect(() => {
+    const checkMemberStatus = async () => {
+      if (!authenticatedCustomer?.email || !eventData?.organization_id) {
+        setIsMember(false);
+        setMemberTierName(undefined);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("memberships")
+          .select("id, status, membership_tiers(name)")
+          .eq("organization_id", eventData.organization_id)
+          .eq("customer_email", authenticatedCustomer.email)
+          .eq("status", "active")
+          .maybeSingle();
+
+        if (error) {
+          console.error("Error checking membership:", error);
+          return;
+        }
+
+        if (data) {
+          setIsMember(true);
+          setMemberTierName((data.membership_tiers as any)?.name);
+        } else {
+          setIsMember(false);
+          setMemberTierName(undefined);
+        }
+      } catch (error) {
+        console.error("Error checking membership:", error);
+      }
+    };
+
+    checkMemberStatus();
+  }, [authenticatedCustomer, eventData?.organization_id]);
 
   // Branding
   const brandingData = eventData.widget_customization?.branding;
@@ -282,6 +370,22 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [eventData?.id, customerInfo?.email, cartItems]);
+
+  // Handler for payment plan selection
+  const handlePaymentPlanSelected = (plan: any, schedule: any[] | null) => {
+    setSelectedPaymentPlan(plan);
+    setPaymentSchedule(schedule);
+  };
+
+  // Check if payment plans should be shown
+  const showPaymentPlans =
+    (eventData?.widget_customization as any)?.customerAccountsEnabled &&
+    (eventData as any)?.payment_plans_enabled &&
+    !!authenticatedCustomer;
+
+  // Calculate order total for payment plan eligibility
+  const orderTotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0) +
+    merchandiseCart.reduce((sum, item) => sum + (item.merchandise.price * item.quantity), 0);
 
   const handleCustomerDetails = async (info: CustomerInfo, attendeeData?: AttendeeInfo[]) => {
     if (typeof info.donationAmount === 'number') {
@@ -569,6 +673,10 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                       groupId={groupId}
                       allocationId={allocationId}
                       showCapacity={eventData.widget_customization?.layout?.showCapacity !== false}
+                      memberPricing={memberPricing}
+                      isMember={isMember}
+                      memberTierName={memberTierName}
+                      showMemberPricingTeaser={(eventData as any)?.membership_discount_display !== false}
                     />
 
                     {/* Add-ons Section - Only show if merchandise exists */}
@@ -596,6 +704,7 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
                 eventData={eventData}
                 ticketCount={totalAttendees}
                 cartItems={cartItems}
+                onAuthenticatedCustomerChange={setAuthenticatedCustomer}
               />
             )}
 
@@ -644,6 +753,11 @@ export const MultiStepCheckout: React.FC<MultiStepCheckoutProps> = ({
           promoDiscount={activePromoHooks?.getTotalDiscount() || 0}
           groupId={groupId}
           allocationId={allocationId}
+          showPaymentPlans={showPaymentPlans}
+          selectedPaymentPlan={selectedPaymentPlan}
+          paymentSchedule={paymentSchedule}
+          onPaymentPlanSelected={handlePaymentPlanSelected}
+          isSignedIn={!!authenticatedCustomer}
         />
       )}
     </div>

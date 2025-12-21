@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Edit2, Trash2, DollarSign, MapPin, Ticket } from "lucide-react";
+import { Plus, Edit2, Trash2, DollarSign, MapPin, Ticket, Crown, CreditCard } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,33 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+
+interface MembershipTier {
+  id: string;
+  name: string;
+  color: string;
+}
+
+interface MemberPricing {
+  tier_id: string;
+  member_price: number;
+  is_exclusive: boolean;
+  max_per_member: number | null;
+}
+
+interface PaymentPlan {
+  id: string;
+  name: string;
+  plan_type: 'deposit' | 'installment';
+  deposit_percentage?: number;
+  number_of_installments?: number;
+}
 
 interface TicketType {
   id?: string;
@@ -31,22 +59,39 @@ interface TicketType {
   sale_end_date: string | null;
   use_assigned_seating?: boolean;
   attendees_per_ticket?: number;
+  member_pricing?: MemberPricing[];
+  payment_plan_ids?: string[];
 }
 
 interface TicketTypesManagerProps {
   eventId: string;
+  organizationId?: string;
+  membershipEnabled?: boolean;
+  paymentPlansEnabled?: boolean;
 }
 
 // FREEMIUM: Maximum tickets allowed for free events
 const FREE_EVENT_MAX_TICKETS = 50;
 
-const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
+const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({
+  eventId,
+  organizationId,
+  membershipEnabled = false,
+  paymentPlansEnabled = false
+}) => {
   const { toast } = useToast();
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
   const [loading, setLoading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<TicketType | null>(null);
   const [pricingType, setPricingType] = useState<'paid' | 'free' | 'donation' | null>(null);
+
+  // Membership tiers and payment plans
+  const [membershipTiers, setMembershipTiers] = useState<MembershipTier[]>([]);
+  const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>([]);
+  const [memberPricingForm, setMemberPricingForm] = useState<Record<string, MemberPricing>>({});
+  const [selectedPaymentPlans, setSelectedPaymentPlans] = useState<string[]>([]);
+
   const [formData, setFormData] = useState<TicketType>({
     name: "",
     description: "",
@@ -76,7 +121,99 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
   useEffect(() => {
     loadTicketTypes();
     loadEventPricingType();
-  }, [eventId]);
+    if (organizationId && membershipEnabled) {
+      loadMembershipTiers();
+    }
+    if (organizationId && paymentPlansEnabled) {
+      loadPaymentPlans();
+    }
+  }, [eventId, organizationId, membershipEnabled, paymentPlansEnabled]);
+
+  const loadMembershipTiers = async () => {
+    if (!organizationId) return;
+    try {
+      const { data, error } = await supabase
+        .from("membership_tiers")
+        .select("id, name, color")
+        .eq("organization_id", organizationId)
+        .eq("is_active", true)
+        .order("sort_order");
+
+      if (error) throw error;
+      setMembershipTiers(data || []);
+    } catch (error) {
+      console.error("Error loading membership tiers:", error);
+    }
+  };
+
+  const loadPaymentPlans = async () => {
+    if (!organizationId) return;
+    try {
+      const { data, error } = await supabase
+        .from("payment_plans")
+        .select("id, name, plan_type, deposit_percentage, number_of_installments")
+        .eq("organization_id", organizationId)
+        .eq("is_active", true)
+        .or(`event_id.is.null,event_id.eq.${eventId}`)
+        .order("sort_order");
+
+      if (error) throw error;
+      setPaymentPlans(data || []);
+    } catch (error) {
+      console.error("Error loading payment plans:", error);
+    }
+  };
+
+  const loadMemberPricing = async (ticketTypeId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("member_pricing")
+        .select("tier_id, member_price, is_exclusive, max_per_member")
+        .eq("ticket_type_id", ticketTypeId);
+
+      if (error) throw error;
+
+      const pricingMap: Record<string, MemberPricing> = {};
+      (data || []).forEach(pricing => {
+        pricingMap[pricing.tier_id] = pricing;
+      });
+      setMemberPricingForm(pricingMap);
+    } catch (error) {
+      console.error("Error loading member pricing:", error);
+    }
+  };
+
+  const saveMemberPricing = async (ticketTypeId: string) => {
+    try {
+      // Delete existing pricing for this ticket
+      await supabase
+        .from("member_pricing")
+        .delete()
+        .eq("ticket_type_id", ticketTypeId);
+
+      // Insert new pricing entries
+      const pricingEntries = Object.entries(memberPricingForm)
+        .filter(([_, pricing]) => pricing.member_price > 0)
+        .map(([tierId, pricing]) => ({
+          ticket_type_id: ticketTypeId,
+          tier_id: tierId,
+          member_price: pricing.member_price,
+          is_exclusive: pricing.is_exclusive || false,
+          max_per_member: pricing.max_per_member || null
+        }));
+
+      if (pricingEntries.length > 0) {
+        const { error } = await supabase
+          .from("member_pricing")
+          .insert(pricingEntries);
+
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error("Error saving member pricing:", error);
+      throw error;
+    }
+  };
 
   const loadEventPricingType = async () => {
     try {
@@ -153,13 +290,18 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
 
         if (error) throw error;
 
+        // Save member pricing if enabled
+        if (membershipEnabled && Object.keys(memberPricingForm).length > 0) {
+          await saveMemberPricing(editingTicket.id);
+        }
+
         toast({
           title: "Success",
           description: "Ticket type updated successfully!",
         });
       } else {
         // Create new ticket type
-        const { error } = await supabase
+        const { data: newTicket, error } = await supabase
           .from("ticket_types")
           .insert({
             event_id: eventId,
@@ -171,9 +313,16 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
             sale_end_date: formData.sale_end_date,
             use_assigned_seating: formData.use_assigned_seating || false,
             attendees_per_ticket: formData.attendees_per_ticket || 1,
-          });
+          })
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // Save member pricing if enabled and ticket was created
+        if (membershipEnabled && newTicket && Object.keys(memberPricingForm).length > 0) {
+          await saveMemberPricing(newTicket.id);
+        }
 
         toast({
           title: "Success",
@@ -196,7 +345,7 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
     }
   };
 
-  const handleEdit = (ticket: TicketType) => {
+  const handleEdit = async (ticket: TicketType) => {
     setEditingTicket(ticket);
     setFormData({
       name: ticket.name,
@@ -209,6 +358,14 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
       use_assigned_seating: ticket.use_assigned_seating || false,
       attendees_per_ticket: ticket.attendees_per_ticket || 1,
     });
+
+    // Load member pricing if membership is enabled
+    if (membershipEnabled && ticket.id) {
+      await loadMemberPricing(ticket.id);
+    } else {
+      setMemberPricingForm({});
+    }
+
     setIsDialogOpen(true);
   };
 
@@ -254,6 +411,8 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
       attendees_per_ticket: 1,
     });
     setEditingTicket(null);
+    setMemberPricingForm({});
+    setSelectedPaymentPlans([]);
   };
 
   const formatDate = (dateStr: string | null) => {
@@ -418,6 +577,150 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
                     />
                   </div>
                 </div>
+
+                {/* Member Pricing Section */}
+                {membershipEnabled && membershipTiers.length > 0 && !isFreeEvent && (
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="member-pricing" className="border rounded-lg">
+                      <AccordionTrigger className="px-4 hover:no-underline">
+                        <div className="flex items-center gap-2">
+                          <Crown className="h-4 w-4 text-amber-500" />
+                          <span className="font-medium">Member Pricing</span>
+                          {Object.keys(memberPricingForm).filter(k => memberPricingForm[k]?.member_price > 0).length > 0 && (
+                            <Badge variant="secondary" className="ml-2">
+                              {Object.keys(memberPricingForm).filter(k => memberPricingForm[k]?.member_price > 0).length} tier(s)
+                            </Badge>
+                          )}
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Set special prices for members. Leave blank to use regular price.
+                        </p>
+                        <div className="space-y-4">
+                          {membershipTiers.map(tier => (
+                            <div key={tier.id} className="flex items-center gap-4 p-3 rounded-lg border bg-muted/30">
+                              <div className="flex items-center gap-2 min-w-[120px]">
+                                <div
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: tier.color || '#6366f1' }}
+                                />
+                                <span className="font-medium text-sm">{tier.name}</span>
+                              </div>
+                              <div className="flex-1 flex items-center gap-3">
+                                <div className="relative flex-1">
+                                  <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max={formData.price}
+                                    placeholder="Member price"
+                                    className="pl-8 h-9"
+                                    value={memberPricingForm[tier.id]?.member_price || ''}
+                                    onChange={(e) => {
+                                      const price = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                                      setMemberPricingForm(prev => ({
+                                        ...prev,
+                                        [tier.id]: {
+                                          ...prev[tier.id],
+                                          tier_id: tier.id,
+                                          member_price: price,
+                                          is_exclusive: prev[tier.id]?.is_exclusive || false,
+                                          max_per_member: prev[tier.id]?.max_per_member || null
+                                        }
+                                      }));
+                                    }}
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Switch
+                                    checked={memberPricingForm[tier.id]?.is_exclusive || false}
+                                    onCheckedChange={(checked) => {
+                                      setMemberPricingForm(prev => ({
+                                        ...prev,
+                                        [tier.id]: {
+                                          ...prev[tier.id],
+                                          tier_id: tier.id,
+                                          member_price: prev[tier.id]?.member_price || 0,
+                                          is_exclusive: checked,
+                                          max_per_member: prev[tier.id]?.max_per_member || null
+                                        }
+                                      }));
+                                    }}
+                                  />
+                                  <Label className="text-xs text-muted-foreground whitespace-nowrap">
+                                    Exclusive
+                                  </Label>
+                                </div>
+                              </div>
+                              {memberPricingForm[tier.id]?.member_price > 0 && formData.price > 0 && (
+                                <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
+                                  {Math.round((1 - memberPricingForm[tier.id].member_price / formData.price) * 100)}% off
+                                </Badge>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                )}
+
+                {/* Payment Plans Section */}
+                {paymentPlansEnabled && paymentPlans.length > 0 && !isFreeEvent && (
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="payment-plans" className="border rounded-lg">
+                      <AccordionTrigger className="px-4 hover:no-underline">
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4 text-blue-500" />
+                          <span className="font-medium">Payment Plans</span>
+                          {selectedPaymentPlans.length > 0 && (
+                            <Badge variant="secondary" className="ml-2">
+                              {selectedPaymentPlans.length} plan(s)
+                            </Badge>
+                          )}
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Allow customers to pay in installments for this ticket type.
+                        </p>
+                        <div className="space-y-2">
+                          {paymentPlans.map(plan => (
+                            <div key={plan.id} className="flex items-center space-x-3 p-3 rounded-lg border bg-muted/30">
+                              <Checkbox
+                                id={`plan-${plan.id}`}
+                                checked={selectedPaymentPlans.includes(plan.id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedPaymentPlans(prev => [...prev, plan.id]);
+                                  } else {
+                                    setSelectedPaymentPlans(prev => prev.filter(id => id !== plan.id));
+                                  }
+                                }}
+                              />
+                              <div className="flex-1">
+                                <Label
+                                  htmlFor={`plan-${plan.id}`}
+                                  className="text-sm font-medium cursor-pointer"
+                                >
+                                  {plan.name}
+                                </Label>
+                                <p className="text-xs text-muted-foreground">
+                                  {plan.plan_type === 'deposit'
+                                    ? `${plan.deposit_percentage}% deposit, pay rest later`
+                                    : `${plan.number_of_installments} payments`
+                                  }
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                )}
               </div>
 
               <DialogFooter>

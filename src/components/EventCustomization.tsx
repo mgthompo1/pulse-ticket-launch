@@ -14,7 +14,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound, Heart, Share2, FileText, Calendar, Send, ShoppingCart, ClipboardList, Target, BarChart3, Link2, Unlink, Crown, Percent, UserPlus, User } from "lucide-react";
+import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound, Heart, Share2, FileText, Calendar, Send, ShoppingCart, ClipboardList, Target, BarChart3, Link2, Unlink, Crown, Percent, UserPlus, User, CreditCard } from "lucide-react";
 import { ConditionalDisplay } from "@/types/widget";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
@@ -36,6 +36,7 @@ import { RefundRequestManager } from "@/components/RefundRequestManager";
 import { TicketUpgradeManager } from "@/components/TicketUpgradeManager";
 import { VoucherManager } from "@/components/VoucherManager";
 import { RecurringEventManager } from "@/components/RecurringEventManager";
+import PaymentPlansManager from "@/components/PaymentPlansManager";
 
 // Type definitions for better type safety
 interface EmailBlock {
@@ -306,7 +307,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       
       const { data, error} = await supabase
         .from("events")
-        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, venue_address, venue_lat, venue_lng, venue_place_id, organization_id, description, event_date, event_end_date, capacity, requires_approval, ticket_delivery_method, donations_enabled, donation_title, donation_description, donation_suggested_amounts, abandoned_cart_enabled, abandoned_cart_delay_minutes, abandoned_cart_email_subject, abandoned_cart_email_content, abandoned_cart_discount_enabled, abandoned_cart_discount_code, abandoned_cart_discount_percent, pricing_type, membership_enabled, membership_signup_enabled, membership_discount_display")
+        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, venue_address, venue_lat, venue_lng, venue_place_id, organization_id, description, event_date, event_end_date, capacity, requires_approval, ticket_delivery_method, donations_enabled, donation_title, donation_description, donation_suggested_amounts, abandoned_cart_enabled, abandoned_cart_delay_minutes, abandoned_cart_email_subject, abandoned_cart_email_content, abandoned_cart_discount_enabled, abandoned_cart_discount_code, abandoned_cart_discount_percent, pricing_type, membership_enabled, membership_signup_enabled, membership_discount_display, payment_plans_enabled")
         .eq("id", eventId)
         .single();
 
@@ -363,7 +364,8 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         pricing_type: data.pricing_type || 'paid',
         membership_enabled: data.membership_enabled || false,
         membership_signup_enabled: data.membership_signup_enabled || false,
-        membership_discount_display: data.membership_discount_display !== false
+        membership_discount_display: data.membership_discount_display !== false,
+        payment_plans_enabled: data.payment_plans_enabled || false
       });
       setCurrentLogoUrl(data?.logo_url || null);
 
@@ -1495,6 +1497,39 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                       />
                     </div>
 
+                    {/* Payment Plans */}
+                    <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/20">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4 text-blue-500" />
+                        <div>
+                          <div className="font-medium text-sm">Payment Plans</div>
+                          <p className="text-xs text-muted-foreground">
+                            Allow deposits & installments at checkout
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={(eventData as any)?.payment_plans_enabled || false}
+                        onCheckedChange={async (checked) => {
+                          try {
+                            const { error } = await supabase
+                              .from("events")
+                              .update({ payment_plans_enabled: checked })
+                              .eq("id", eventId);
+                            if (error) throw error;
+                            setEventData(prev => prev ? ({ ...prev, payment_plans_enabled: checked }) : null);
+                            toast({
+                              title: "Success",
+                              description: checked ? "Payment plans enabled" : "Payment plans disabled"
+                            });
+                          } catch (error) {
+                            console.error("Error updating payment plans setting:", error);
+                            toast({ title: "Error", description: "Failed to update setting", variant: "destructive" });
+                          }
+                        }}
+                      />
+                    </div>
+
                     {/* Member Price Badges */}
                     <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/20">
                       <div className="flex items-center gap-2">
@@ -2431,7 +2466,12 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
 
         <TabsContent value="tickets" className="space-y-6">
           {/* Ticket Types & Pricing Management */}
-          <TicketTypesManager eventId={eventId} />
+          <TicketTypesManager
+            eventId={eventId}
+            organizationId={organizationId}
+            membershipEnabled={(eventData?.widget_customization as any)?.customerAccountsEnabled && (eventData as any)?.membership_enabled}
+            paymentPlansEnabled={(eventData as any)?.payment_plans_enabled}
+          />
           
           {/* Ticket Design Customization */}
           <Card>
@@ -3641,6 +3681,74 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   Perfect for embedded widgets - redirect customers back to your site
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Payment Plans */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Payment Plans
+              </CardTitle>
+              <CardDescription>Allow customers to pay in installments or with deposits</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Requirement notice if Customer Accounts is not enabled */}
+              {!(eventData?.widget_customization as any)?.customerAccountsEnabled && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-medium">Customer Accounts Required</p>
+                    <p className="text-amber-700 text-xs mt-1">
+                      Payment plans require Customer Accounts to be enabled in the Widget tab.
+                      This allows customers to save their payment method for scheduled payments.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-500/10">
+                    <CreditCard className="h-4 w-4 text-blue-500" />
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm">Enable Payment Plans</div>
+                    <p className="text-xs text-muted-foreground">
+                      Allow customers to split their purchase into multiple payments
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={(eventData as any)?.payment_plans_enabled || false}
+                  disabled={!(eventData?.widget_customization as any)?.customerAccountsEnabled}
+                  onCheckedChange={async (checked) => {
+                    try {
+                      const { error } = await supabase
+                        .from("events")
+                        .update({ payment_plans_enabled: checked })
+                        .eq("id", eventId);
+                      if (error) throw error;
+                      setEventData(prev => prev ? ({ ...prev, payment_plans_enabled: checked }) : null);
+                      toast({
+                        title: "Success",
+                        description: checked ? "Payment plans enabled" : "Payment plans disabled"
+                      });
+                    } catch (error) {
+                      console.error("Error updating payment plans setting:", error);
+                      toast({ title: "Error", description: "Failed to update setting", variant: "destructive" });
+                    }
+                  }}
+                />
+              </div>
+
+              {(eventData as any)?.payment_plans_enabled && organizationId && (
+                <PaymentPlansManager
+                  organizationId={organizationId}
+                  eventId={eventId}
+                />
+              )}
             </CardContent>
           </Card>
 

@@ -221,6 +221,67 @@ serve(async (req) => {
 
     console.log('✅ Order updated successfully with payment details');
 
+    // Handle payment plan schedule updates
+    const hasPaymentPlan = metadata.hasPaymentPlan === 'true';
+    if (hasPaymentPlan) {
+      console.log('=== UPDATING PAYMENT SCHEDULE ===');
+
+      // Get Stripe customer ID from the payment intent
+      const stripeCustomerId = paymentIntent.customer;
+      const paymentMethodId = paymentMethodDetails.payment_method_id;
+
+      console.log('Stripe Customer ID:', stripeCustomerId);
+      console.log('Payment Method ID:', paymentMethodId);
+
+      // Update first payment schedule record as paid
+      const { error: scheduleUpdateError } = await supabaseClient
+        .from('order_payment_schedules')
+        .update({
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+          stripe_payment_intent_id: paymentIntentId,
+          stripe_customer_id: stripeCustomerId,
+          stripe_payment_method_id: paymentMethodId
+        })
+        .eq('order_id', orderId)
+        .eq('installment_number', 1);
+
+      if (scheduleUpdateError) {
+        console.error('❌ Error updating first payment schedule:', scheduleUpdateError);
+      } else {
+        console.log('✅ First payment marked as paid');
+      }
+
+      // Update remaining payment schedule records with customer ID and payment method for future charges
+      const { error: futureScheduleError } = await supabaseClient
+        .from('order_payment_schedules')
+        .update({
+          stripe_customer_id: stripeCustomerId,
+          stripe_payment_method_id: paymentMethodId
+        })
+        .eq('order_id', orderId)
+        .neq('installment_number', 1);
+
+      if (futureScheduleError) {
+        console.error('❌ Error updating future payment schedules:', futureScheduleError);
+      } else {
+        console.log('✅ Future payments configured with saved card');
+      }
+
+      // Update order with payment plan info
+      const { error: orderPlanError } = await supabaseClient
+        .from('orders')
+        .update({
+          total_paid: totalAmount,
+          payment_plan_status: 'active'
+        })
+        .eq('id', orderId);
+
+      if (orderPlanError) {
+        console.error('❌ Error updating order payment plan status:', orderPlanError);
+      }
+    }
+
     // Increment promo code usage if a promo code was used
     try {
       const { data: orderWithPromo, error: promoCheckError } = await supabaseClient

@@ -198,7 +198,10 @@ serve(async (req) => {
         promoDiscount,
         // Group purchase tracking
         groupId,
-        allocationId
+        allocationId,
+        // Payment plan fields
+        paymentPlan,
+        paymentSchedule
       } = requestBody;
       
       // Assign to outer scope variables
@@ -305,18 +308,36 @@ serve(async (req) => {
         } : null
       };
 
+      // Calculate payment plan amounts
+      const hasPaymentPlan = paymentPlan && paymentSchedule && paymentSchedule.length > 0;
+      const firstPaymentAmount = hasPaymentPlan ? paymentSchedule[0].amount : finalTotal;
+      const totalWithPlanFee = hasPaymentPlan
+        ? paymentSchedule.reduce((sum: number, item: any) => sum + item.amount, 0)
+        : finalTotal;
+
+      console.log("=== PAYMENT PLAN DEBUG ===");
+      console.log("Has payment plan:", hasPaymentPlan);
+      console.log("First payment amount:", firstPaymentAmount);
+      console.log("Total with plan fee:", totalWithPlanFee);
+
       const orderData = {
         event_id: eventId,
         customer_name: customerInfo?.name || "Unknown",
         customer_email: customerInfo?.email || "unknown@example.com",
         customer_phone: customerInfo?.phone || null,
-        total_amount: finalTotal,
+        total_amount: totalWithPlanFee, // Store total including any payment plan fees
         status: "pending",
         custom_answers: customAnswers,
         donation_amount: customerInfo?.donationAmount || 0,
         attendees: attendees || null, // Store attendee details for ticket assignment
         stripe_session_id: null, // Will be updated after payment intent creation
         promo_code_id: promoCodeId || null, // Track which promo code was used
+
+        // Payment plan fields
+        payment_plan_id: paymentPlan?.id || null,
+        payment_plan_status: hasPaymentPlan ? 'active' : null,
+        total_paid: hasPaymentPlan ? firstPaymentAmount : 0,
+        remaining_balance: hasPaymentPlan ? totalWithPlanFee - firstPaymentAmount : 0,
 
         // Tax fields
         subtotal: taxData?.subtotal ?? subtotal,
@@ -393,6 +414,38 @@ serve(async (req) => {
       }
 
       console.log("=== ORDER ITEMS CREATED ===", { count: orderItems.length });
+
+      // Create payment schedule records for payment plans
+      if (hasPaymentPlan && paymentSchedule && paymentSchedule.length > 0) {
+        console.log("=== CREATING PAYMENT SCHEDULE ===");
+
+        const scheduleRecords = paymentSchedule.map((item: any, index: number) => ({
+          order_id: order.id,
+          payment_plan_id: paymentPlan.id,
+          installment_number: item.installment_number || index + 1,
+          amount: item.amount,
+          due_date: item.due_date, // Already in ISO format from frontend
+          status: index === 0 ? 'pending' : 'pending', // First payment will be updated after Stripe payment
+          customer_email: customerInfo?.email || "unknown@example.com",
+          attempt_count: 0
+        }));
+
+        const { error: scheduleError } = await supabaseClient
+          .from("order_payment_schedules")
+          .insert(scheduleRecords);
+
+        if (scheduleError) {
+          console.error("Error creating payment schedule:", scheduleError);
+          // Don't throw - payment schedule creation is non-critical
+          // The order still needs to go through
+        } else {
+          console.log("=== PAYMENT SCHEDULE CREATED ===", { count: scheduleRecords.length });
+        }
+
+        // Update amountInCents to be just the first payment
+        amountInCents = Math.round(firstPaymentAmount * 100);
+        console.log("=== PAYMENT PLAN: Charging first payment only ===", { amountInCents, firstPaymentAmount });
+      }
 
       metadata = {
         eventId: eventId,
@@ -511,12 +564,25 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
+    // Check if this is a payment plan (need to save card for future payments)
+    const hasPaymentPlanOrder = metadata.paymentType === 'event' && requestBody.paymentPlan;
+
     const paymentIntentParams: any = {
       amount: amountInCents,
       currency: currency.toLowerCase(),
-      metadata: metadata,
+      metadata: {
+        ...metadata,
+        hasPaymentPlan: hasPaymentPlanOrder ? 'true' : 'false',
+        paymentPlanId: requestBody.paymentPlan?.id || null
+      },
       automatic_payment_methods: { enabled: true },
     };
+
+    // For payment plans, we need to save the card for future use
+    if (hasPaymentPlanOrder) {
+      paymentIntentParams.setup_future_usage = 'off_session';
+      console.log("=== PAYMENT PLAN: Setup future usage enabled for card saving ===");
+    }
 
     // Add Connect parameters only if using Connect payment (NOT in test mode)
     if (useConnectPayment && stripeAccountId && !isTestMode) {

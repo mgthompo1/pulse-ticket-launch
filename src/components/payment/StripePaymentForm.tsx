@@ -25,6 +25,23 @@ interface TaxData {
   booking_fee_tax: number;
 }
 
+interface PaymentPlanInfo {
+  id: string;
+  name: string;
+  plan_type: 'deposit' | 'installment';
+  deposit_percentage: number | null;
+  number_of_installments: number | null;
+  payment_plan_fee_percentage: number;
+  payment_plan_fee_fixed: number;
+}
+
+interface PaymentScheduleItem {
+  installment_number: number;
+  amount: number;
+  due_date: Date;
+  label: string;
+}
+
 interface StripePaymentFormProps {
   eventId: string;
   cart: any[];
@@ -45,6 +62,9 @@ interface StripePaymentFormProps {
   taxData?: TaxData | null;
   groupId?: string | null;
   allocationId?: string | null;
+  // Payment plan props
+  paymentPlan?: PaymentPlanInfo | null;
+  paymentSchedule?: PaymentScheduleItem[] | null;
 }
 
 const CheckoutForm = ({ 
@@ -258,7 +278,9 @@ export const StripePaymentForm = ({
   promoDiscount = 0,
   taxData = null,
   groupId = null,
-  allocationId = null
+  allocationId = null,
+  paymentPlan = null,
+  paymentSchedule = null
 }: StripePaymentFormProps) => {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -294,6 +316,12 @@ export const StripePaymentForm = ({
           total
         });
 
+        // Prepare payment schedule for edge function (convert Date objects to ISO strings)
+        const paymentScheduleForRequest = paymentSchedule?.map(item => ({
+          ...item,
+          due_date: item.due_date.toISOString()
+        })) || null;
+
         const requestBody = {
           eventId,
           total,
@@ -305,6 +333,17 @@ export const StripePaymentForm = ({
           groupId,
           allocationId,
           taxData,
+          // Payment plan info
+          paymentPlan: paymentPlan ? {
+            id: paymentPlan.id,
+            name: paymentPlan.name,
+            plan_type: paymentPlan.plan_type,
+            deposit_percentage: paymentPlan.deposit_percentage,
+            number_of_installments: paymentPlan.number_of_installments,
+            payment_plan_fee_percentage: paymentPlan.payment_plan_fee_percentage,
+            payment_plan_fee_fixed: paymentPlan.payment_plan_fee_fixed
+          } : null,
+          paymentSchedule: paymentScheduleForRequest,
           items: [
             ...cart.map(item => ({
               id: item.id,

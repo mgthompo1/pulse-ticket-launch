@@ -27,6 +27,7 @@ interface CustomerDetailsProps {
   ticketCount?: number;
   cartItems?: Array<{ name: string; quantity: number; attendees_per_ticket?: number }>;
   onMemberPricingChange?: (enabled: boolean, discountPercentage?: number) => void;
+  onAuthenticatedCustomerChange?: (customer: any | null) => void;
 }
 
 const customerFormSchema = z.object({
@@ -46,7 +47,8 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   eventData,
   ticketCount = 0,
   cartItems = [],
-  onMemberPricingChange
+  onMemberPricingChange,
+  onAuthenticatedCustomerChange
 }) => {
   // Safety check - ensure customQuestions is always an array
   const safeCustomQuestions = Array.isArray(customQuestions) ? customQuestions : [];
@@ -128,6 +130,12 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   // Handle customer authenticated from auth flow
   const handleCustomerAuthenticated = (customer: any, isGuest: boolean) => {
     setFoundCustomer(customer);
+
+    // Notify parent of authenticated customer change
+    if (onAuthenticatedCustomerChange) {
+      onAuthenticatedCustomerChange(isGuest ? null : customer);
+    }
+
     if (customer && !isGuest) {
       // Auto-fill form with customer data
       const fullName = customer.full_name ||
