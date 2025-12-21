@@ -385,13 +385,16 @@ const TicketWidget = () => {
         .select(`
           *,
           organizations (
+            id,
             name,
             payment_provider,
             currency,
             logo_url,
             credit_card_processing_fee_percentage,
             stripe_booking_fee_enabled,
-            stripe_test_mode
+            stripe_test_mode,
+            crm_enabled,
+            membership_enabled
           )
         `)
         .eq("id", eventId as string)
@@ -538,6 +541,7 @@ const TicketWidget = () => {
         .select(`
           *,
           organizations (
+            id,
             name,
             payment_provider,
             currency,
@@ -545,7 +549,8 @@ const TicketWidget = () => {
             credit_card_processing_fee_percentage,
             stripe_booking_fee_enabled,
             stripe_test_mode,
-            crm_enabled
+            crm_enabled,
+            membership_enabled
           )
         `)
         .eq("id", eventId as string)

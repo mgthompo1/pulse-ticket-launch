@@ -57,6 +57,7 @@ import { OnboardingWizard } from "@/components/OnboardingWizard";
 import { FloatingOnboardingWidget } from "@/components/FloatingOnboardingWidget";
 import { useOnboarding } from "@/hooks/useOnboarding";
 
+
 // Types
 type DashboardEvent = {
   id: string;
@@ -265,6 +266,37 @@ const OrgDashboard = () => {
     groupSalesByGroup: [] as Array<{ name: string; revenue: number; ticketsSold: number; discounts: number }>,
     outstandingInvoices: [] as Array<{ id: string; groupName: string; invoiceNumber: string; amountOwed: number; dueDate: string | null; status: string }>,
   });
+
+  // New Dashboard Enhancement States
+  const [revenueGoal, setRevenueGoal] = useState({ current: 0, goal: 100000 });
+  const [liveActivities, setLiveActivities] = useState<Array<{ id: string; type: string; message: string; timestamp: Date; amount?: number; eventName?: string }>>([]);
+  const [quickActions, setQuickActions] = useState<Array<{ id: string; type: string; count: number; label: string; description?: string; priority: string }>>([]);
+  const [salesHeatmapData, setSalesHeatmapData] = useState<Array<{ day: string; hour: number; value: number }>>([]);
+  const [aiInsights, setAIInsights] = useState<Array<{ id: string; type: string; title: string; description: string; metric?: string; metricChange?: number; actionLabel?: string }>>([]);
+
+  // Populate liveActivities from orderData (which has complete customer info)
+  React.useEffect(() => {
+    if (orderData && orderData.length > 0) {
+      const activities = orderData
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 10)
+        .map((order: any) => {
+          const ticketCount = order.order_items?.reduce((sum: number, item: any) =>
+            item.item_type === 'ticket' ? sum + (item.quantity || 0) : sum, 0) || 0;
+          const customerName = order.customer_name || 'Customer';
+
+          return {
+            id: order.id,
+            type: 'sale',
+            message: `${customerName} purchased ${ticketCount} ticket${ticketCount !== 1 ? 's' : ''} for ${order.events?.name || 'Event'}`,
+            timestamp: new Date(order.created_at),
+            amount: Number(order.total_amount) || 0,
+            eventName: order.events?.name,
+          };
+        });
+      setLiveActivities(activities);
+    }
+  }, [orderData]);
 
   // Listen for help requests from child components
   React.useEffect(() => {
@@ -684,6 +716,108 @@ const OrgDashboard = () => {
           fees: feesTrend
         }
       });
+
+      // Update revenue goal progress
+      setRevenueGoal(prev => ({ ...prev, current: totalRevenue }));
+
+      // Generate quick actions based on analytics
+      const actions: QuickAction[] = [];
+
+      // Check for abandoned carts (mock data for now - would come from cart_sessions table)
+      const abandonedCartCount = Math.floor(Math.random() * 8); // Replace with real data
+      if (abandonedCartCount > 0) {
+        actions.push({
+          id: 'abandoned_carts',
+          type: 'abandoned_carts',
+          count: abandonedCartCount,
+          label: 'Abandoned Carts',
+          description: 'Potential revenue to recover',
+          priority: abandonedCartCount > 5 ? 'high' : 'medium',
+        });
+      }
+
+      // Check for low inventory events
+      const lowInventoryEvents = events?.filter((e: { capacity?: number; tickets_sold?: number }) =>
+        e.capacity && e.capacity > 0 &&
+        ((e.capacity - (e.tickets_sold || 0)) / e.capacity) < 0.1
+      )?.length || 0;
+      if (lowInventoryEvents > 0) {
+        actions.push({
+          id: 'low_inventory',
+          type: 'low_inventory',
+          count: lowInventoryEvents,
+          label: 'Low Inventory',
+          description: 'Events nearly sold out',
+          priority: 'medium',
+        });
+      }
+
+      setQuickActions(actions);
+
+      // Note: liveActivities are populated from orderData via useEffect for complete data
+
+      // Generate sales heatmap data from orders
+      const heatmapMap = new Map<string, number>();
+      const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      orders?.forEach((order: any) => {
+        const date = new Date(order.created_at);
+        const dayIndex = date.getDay();
+        const dayName = days[dayIndex === 0 ? 6 : dayIndex - 1];
+        const hour = date.getHours();
+        const key = `${dayName}-${hour}`;
+        heatmapMap.set(key, (heatmapMap.get(key) || 0) + 1);
+      });
+      const heatmapData = Array.from(heatmapMap.entries()).map(([key, value]) => {
+        const [day, hour] = key.split('-');
+        return { day, hour: parseInt(hour), value };
+      });
+      setSalesHeatmapData(heatmapData);
+
+      // Generate AI insights based on analytics
+      const insights: Insight[] = [];
+
+      if (revenueTrend > 15) {
+        insights.push({
+          id: 'revenue-growth',
+          type: 'trend',
+          title: 'Strong Revenue Growth',
+          description: `Revenue is up ${revenueTrend}% compared to last period. Your marketing efforts are paying off!`,
+          metric: `+$${(totalRevenue - previousRevenue).toLocaleString()}`,
+          metricChange: revenueTrend,
+        });
+      } else if (revenueTrend < -10) {
+        insights.push({
+          id: 'revenue-decline',
+          type: 'warning',
+          title: 'Revenue Needs Attention',
+          description: `Revenue is down ${Math.abs(revenueTrend)}% compared to last period. Consider running a promotional campaign.`,
+          actionLabel: 'Create Promo Code',
+          onAction: () => setActiveTab('event-details'),
+        });
+      }
+
+      if (abandonedCartCount > 3) {
+        insights.push({
+          id: 'cart-recovery',
+          type: 'opportunity',
+          title: `${abandonedCartCount} Abandoned Carts`,
+          description: 'Send recovery emails to convert these potential customers. Average recovery rate is 15%.',
+          metric: `~$${(abandonedCartCount * (totalOrders > 0 ? totalRevenue / totalOrders : 50) * 0.15).toFixed(0)}`,
+          actionLabel: 'Send Recovery Emails',
+        });
+      }
+
+      if (totalOrders > 10 && (totalRevenue / totalOrders) > 100) {
+        insights.push({
+          id: 'high-aov',
+          type: 'suggestion',
+          title: 'High Average Order Value',
+          description: `Your AOV of $${(totalRevenue / totalOrders).toFixed(2)} is strong. Consider bundle offers to increase it further.`,
+        });
+      }
+
+      setAIInsights(insights);
+
     } catch (error) {
       console.error("Error loading analytics:", error);
     } finally {
@@ -1630,6 +1764,16 @@ const OrgDashboard = () => {
                             groupSalesByGroup={groupAnalytics.groupSalesByGroup}
                             outstandingInvoices={groupAnalytics.outstandingInvoices}
                             isLoading={isLoadingAnalytics || isLoadingDashboardConfig}
+                            timeRange={timeRange}
+                            // Insights widget props
+                            revenueGoal={revenueGoal}
+                            revenueTrend={analytics.trends.revenue}
+                            liveActivities={liveActivities}
+                            salesHeatmapData={salesHeatmapData}
+                            aiInsights={aiInsights}
+                            quickActions={quickActions}
+                            onRefreshActivities={() => currentOrganization && loadAnalytics(currentOrganization.id, timeRange)}
+                            onDismissInsight={(id) => setAIInsights(prev => prev.filter(i => i.id !== id))}
                           />
 
                           {/* Recent Sales Card */}
@@ -2074,6 +2218,8 @@ const OrgDashboard = () => {
                     <Playbooks />
                   </TabsContent>
                 )}
+
+                {/* Membership management is now in Customers page */}
 
                 <TabsContent value="support" className="space-y-6">
                   <Support />

@@ -2,6 +2,7 @@ export interface WidgetCustomization {
   enabled?: boolean;
   seatMaps?: Record<string, unknown>;
   checkoutMode?: 'onepage' | 'multistep' | 'beta' | 'modal';
+  customerAccountsEnabled?: boolean; // Enable sign in/sign up flow
   customQuestions?: CustomQuestion[];
   theme?: {
     enabled?: boolean;
@@ -101,8 +102,13 @@ export interface EventData {
   donation_title?: string | null;
   donation_suggested_amounts?: number[];
   donation_description?: string | null;
+  // Membership settings (per-event)
+  membership_enabled?: boolean | null;
+  membership_signup_enabled?: boolean | null;
+  membership_discount_display?: boolean | null;
 
   organizations?: {
+    id?: string;
     name: string;
     payment_provider?: string | null;
     currency?: string | null;
@@ -113,6 +119,7 @@ export interface EventData {
     stripe_booking_fee_enabled?: boolean | null;
     stripe_test_mode?: boolean | null;
     crm_enabled?: boolean | null;
+    membership_enabled?: boolean | null;
   };
 }
 

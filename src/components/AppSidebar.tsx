@@ -67,6 +67,9 @@ const getSidebarItems = (systemType: string, groupsEnabled: boolean, crmEnabled:
     items.push({ id: "playbooks", title: "Playbooks", icon: Target });
   }
 
+  // Note: Membership management is now integrated into Customers tab
+  // No separate sidebar item needed
+
   // Add remaining items
   items.push(
     { id: "support", title: "Support", icon: Mail },

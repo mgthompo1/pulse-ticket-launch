@@ -32,6 +32,7 @@ import MerchandiseSelector from "@/components/MerchandiseSelector";
 import { trackBeginCheckout, trackPurchase } from "@/lib/analytics";
 import { Theme } from "@/types/theme";
 import { getStripePublishableKey } from "@/lib/stripe-config";
+import { CustomerAuthFlow } from "./CustomerAuthFlow";
 
 type ModalStep = 'tickets' | 'merchandise' | 'details' | 'payment';
 
@@ -158,7 +159,9 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
 
   // Computed values
   const eventTheme: Theme = useMemo(() => theme, [theme]);
-  const platformStripeKey = getStripePublishableKey();
+  // For Stripe Connect, always use the platform publishable key (not the connected account's key)
+  // Pass eventData.organizations to respect the organization's test/live mode setting
+  const effectiveStripeKey = getStripePublishableKey(eventData.organizations);
 
   // Check if merchandise is available
   const [hasMerchandise, setHasMerchandise] = useState(false);
@@ -171,6 +174,32 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
   );
   const donationTitle = eventData?.donation_title || 'Support Our Cause';
   const donationDescription = eventData?.donation_description;
+
+  // Customer accounts configuration
+  const customerAccountsEnabled = (eventData?.widget_customization as any)?.customerAccountsEnabled || false;
+  const membershipEnabled = eventData?.membership_enabled || eventData?.organizations?.membership_enabled || false;
+  const organizationId = eventData?.organization_id || '';
+  const [memberDiscountPercentage, setMemberDiscountPercentage] = useState<number | undefined>(undefined);
+
+  // Handle customer authenticated from auth flow
+  const handleCustomerAuthenticated = (customer: any, isGuest: boolean) => {
+    if (customer && !isGuest) {
+      const fullName = customer.full_name ||
+        `${customer.first_name || ''} ${customer.last_name || ''}`.trim() ||
+        '';
+
+      setCustomerInfo({
+        name: fullName || customerInfo.name,
+        email: customer.email || customerInfo.email,
+        phone: customer.phone || customerInfo.phone,
+      });
+    }
+  };
+
+  // Handle member pricing toggle
+  const handleMemberPricingEnabled = (enabled: boolean, discountPercentage?: number) => {
+    setMemberDiscountPercentage(enabled ? discountPercentage : undefined);
+  };
 
   // Theme colors
   const primaryColor = eventTheme.primaryColor;
@@ -623,6 +652,17 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
       </div>
 
       <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
+        {/* Customer Auth Flow - only shown if customer accounts are enabled */}
+        {customerAccountsEnabled && organizationId && (
+          <CustomerAuthFlow
+            organizationId={organizationId}
+            membershipEnabled={membershipEnabled}
+            onCustomerAuthenticated={handleCustomerAuthenticated}
+            onMemberPricingEnabled={handleMemberPricingEnabled}
+            theme={eventTheme}
+          />
+        )}
+
         {/* Customer Info */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -924,9 +964,9 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
       </div>
 
       {/* Payment Form */}
-      {paymentProvider === "stripe" && platformStripeKey && (
+      {paymentProvider === "stripe" && effectiveStripeKey && (
         <StripePaymentForm
-          publishableKey={platformStripeKey}
+          publishableKey={effectiveStripeKey}
           eventId={eventData.id}
           cart={cartItems}
           merchandiseCart={merchandiseCart}

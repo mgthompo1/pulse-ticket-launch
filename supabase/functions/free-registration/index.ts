@@ -19,7 +19,12 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { eventId, items, customerInfo, platformTip } = await req.json();
+    const requestBody = await req.json();
+    const { eventId, customerInfo, platformTip, customAnswers } = requestBody;
+    // Support both 'items' and 'cart' for backwards compatibility
+    const items = requestBody.items || requestBody.cart;
+    // Support customAnswers from either top-level or inside customerInfo
+    const mergedCustomAnswers = customAnswers || customerInfo?.customAnswers || {};
 
     console.log("=== FREE REGISTRATION REQUEST ===");
     console.log("Event ID:", eventId);
@@ -28,7 +33,7 @@ serve(async (req) => {
     console.log("Platform Tip:", platformTip);
 
     if (!eventId || !items || !Array.isArray(items) || items.length === 0) {
-      throw new Error("Missing required parameters: eventId, items");
+      throw new Error("Missing required parameters: eventId, items (or cart)");
     }
 
     if (!customerInfo?.name || !customerInfo?.email) {
@@ -59,8 +64,8 @@ serve(async (req) => {
         customer_email: customerInfo.email,
         customer_phone: customerInfo.phone || null,
         total_amount: 0,
-        status: "confirmed", // Free registrations are immediately confirmed
-        custom_answers: customerInfo.customAnswers || {},
+        status: "completed", // Free registrations are immediately completed
+        custom_answers: mergedCustomAnswers,
       })
       .select()
       .single();
@@ -72,8 +77,8 @@ serve(async (req) => {
 
     console.log("Order created:", order.id);
 
-    // Create order items
-    const orderItems = items.map((item: any) => ({
+    // Create order items and get their IDs back
+    const orderItemsToInsert = items.map((item: any) => ({
       order_id: order.id,
       ticket_type_id: item.ticket_type_id || item.id,
       item_type: 'ticket',
@@ -81,23 +86,40 @@ serve(async (req) => {
       unit_price: 0, // Free
     }));
 
-    const { error: orderItemsError } = await supabaseClient
+    const { data: orderItems, error: orderItemsError } = await supabaseClient
       .from("order_items")
-      .insert(orderItems);
+      .insert(orderItemsToInsert)
+      .select();
 
-    if (orderItemsError) {
+    if (orderItemsError || !orderItems) {
       console.error("Error creating order items:", orderItemsError);
       throw new Error("Failed to create registration items");
     }
 
-    // Create tickets for the registration
+    console.log("Order items created:", orderItems.length);
+
+    // Helper function to generate unique ticket codes
+    const generateTicketCode = () => {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Excluding confusing chars like I, O, 0, 1
+      let code = '';
+      for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return code;
+    };
+
+    // Create tickets for the registration - must use order_item_id and include ticket_code
     const ticketsToCreate = [];
-    for (const item of items) {
-      for (let i = 0; i < parseInt(item.quantity); i++) {
+    for (let i = 0; i < orderItems.length; i++) {
+      const orderItem = orderItems[i];
+      const originalItem = items[i];
+      const quantity = parseInt(originalItem.quantity);
+
+      for (let j = 0; j < quantity; j++) {
         ticketsToCreate.push({
-          order_id: order.id,
-          ticket_type_id: item.ticket_type_id || item.id,
-          status: "active",
+          order_item_id: orderItem.id,  // Use order_item_id, not order_id
+          ticket_code: generateTicketCode(),
+          status: "valid",
           attendee_name: customerInfo.name,
           attendee_email: customerInfo.email,
         });
@@ -213,8 +235,10 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("Free registration error:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({
-      error: error.message,
+      error: errorMessage,
+      details: error instanceof Error ? error.stack : null,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,

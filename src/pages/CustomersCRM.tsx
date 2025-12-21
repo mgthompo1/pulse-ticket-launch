@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrganizations } from "@/hooks/useOrganizations";
-import { Search, UserCog, TrendingUp, Mail, MoreVertical, Send, FileText, Link as LinkIcon, UserPlus, Users, Heart, ShoppingBag } from "lucide-react";
+import { Search, UserCog, TrendingUp, Mail, MoreVertical, Send, FileText, Link as LinkIcon, UserPlus, Users, Heart, ShoppingBag, Crown, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CustomerDetailModal } from "@/components/CustomerDetailModal";
 import { BulkEmailModal } from "@/components/BulkEmailModal";
@@ -15,6 +16,8 @@ import { AddCustomerModal } from "@/components/AddCustomerModal";
 import { SendEventLinkModal } from "@/components/SendEventLinkModal";
 import { CreateCustomOrderModal } from "@/components/CreateCustomOrderModal";
 import { CreateInvoiceModal } from "@/components/CreateInvoiceModal";
+import { MembershipManagement } from "@/components/MembershipManagement";
+import { MembershipTiersManager } from "@/components/MembershipTiersManager";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,6 +59,14 @@ interface Contact {
       token: string;
     };
   };
+  // Membership info
+  membership?: {
+    id: string;
+    tier_name: string;
+    tier_color: string;
+    status: string;
+    expires_at: string | null;
+  } | null;
 }
 
 const CustomersCRM: React.FC = () => {
@@ -69,6 +80,7 @@ const CustomersCRM: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
   const [bulkEmailOpen, setBulkEmailOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('customers');
 
   // Phone sales modals
   const [addCustomerOpen, setAddCustomerOpen] = useState(false);
@@ -83,6 +95,8 @@ const CustomersCRM: React.FC = () => {
     totalLifetimeValue: 0,
     totalDonations: 0,
     avgOrderValue: 0,
+    activeMembers: 0,
+    totalMembers: 0,
   });
 
   useEffect(() => {
@@ -136,6 +150,31 @@ const CustomersCRM: React.FC = () => {
 
       if (error) throw error;
 
+      // Also fetch memberships to join with contacts
+      const { data: membershipsData } = await supabase
+        .from("memberships")
+        .select(`
+          id,
+          contact_id,
+          status,
+          expires_at,
+          membership_tiers (
+            name,
+            color
+          )
+        `)
+        .eq("organization_id", currentOrganization.id);
+
+      // Create a map of contact_id to membership
+      const membershipMap = new Map<string, any>();
+      membershipsData?.forEach((m: any) => {
+        // Only keep the active or most recent membership per contact
+        const existing = membershipMap.get(m.contact_id);
+        if (!existing || m.status === 'active') {
+          membershipMap.set(m.contact_id, m);
+        }
+      });
+
       if (data) {
         console.log('✅ Loaded contacts:', data.length);
 
@@ -156,9 +195,19 @@ const CustomersCRM: React.FC = () => {
             });
           });
 
+          // Add membership info if exists
+          const membership = membershipMap.get(contact.id);
+
           return {
             ...contact,
-            groups: groups.size > 0 ? Array.from(groups).map(name => ({ name })) : null
+            groups: groups.size > 0 ? Array.from(groups).map(name => ({ name })) : null,
+            membership: membership ? {
+              id: membership.id,
+              tier_name: membership.membership_tiers?.name || 'Unknown',
+              tier_color: membership.membership_tiers?.color || '#6b7280',
+              status: membership.status,
+              expires_at: membership.expires_at,
+            } : null
           };
         });
 
@@ -170,11 +219,17 @@ const CustomersCRM: React.FC = () => {
         const totalSpent = data.reduce((sum, contact) => sum + Number(contact.total_spent || 0), 0);
         const totalOrders = data.reduce((sum, contact) => sum + contact.total_orders, 0);
 
+        // Calculate membership stats
+        const activeMembers = membershipsData?.filter((m: any) => m.status === 'active').length || 0;
+        const totalMembers = membershipsData?.length || 0;
+
         setStats({
           totalContacts: data.length,
           totalLifetimeValue: totalLTV,
           totalDonations: totalDon,
           avgOrderValue: totalOrders > 0 ? totalSpent / totalOrders : 0,
+          activeMembers,
+          totalMembers,
         });
       }
     } catch (error) {
@@ -303,11 +358,11 @@ const CustomersCRM: React.FC = () => {
             Customers
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Manage customer relationships and track engagement
+            Manage customers, members, and membership tiers
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          {selectedContacts.size > 0 ? (
+          {activeTab === 'customers' && selectedContacts.size > 0 ? (
             <>
               <Badge variant="secondary" className="text-sm px-3 py-1.5 rounded-lg">
                 {selectedContacts.size} selected
@@ -330,7 +385,7 @@ const CustomersCRM: React.FC = () => {
                 Clear
               </Button>
             </>
-          ) : (
+          ) : activeTab === 'customers' ? (
             <Button
               onClick={() => setAddCustomerOpen(true)}
               className="bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-400 rounded-xl"
@@ -339,12 +394,12 @@ const CustomersCRM: React.FC = () => {
               <span className="hidden sm:inline">Add Customer</span>
               <span className="sm:hidden">Add</span>
             </Button>
-          )}
+          ) : null}
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-5">
             <div className="flex items-center gap-4">
@@ -354,6 +409,20 @@ const CustomersCRM: React.FC = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Total Customers</p>
                 <p className="text-2xl font-bold">{stats.totalContacts}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-amber-500/10">
+                <Crown className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Active Members</p>
+                <p className="text-2xl font-bold">{stats.activeMembers}</p>
               </div>
             </div>
           </CardContent>
@@ -390,17 +459,36 @@ const CustomersCRM: React.FC = () => {
         <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="p-5">
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-amber-500/10">
-                <ShoppingBag className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              <div className="p-3 rounded-xl bg-purple-500/10">
+                <ShoppingBag className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Avg. Order Value</p>
+                <p className="text-sm text-muted-foreground">Avg. Order</p>
                 <p className="text-2xl font-bold">{formatCurrency(stats.avgOrderValue)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Tabs for Customers, Members, Tiers */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="bg-muted/50 p-1 rounded-xl">
+          <TabsTrigger value="customers" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm px-4">
+            <Users className="h-4 w-4 mr-2" />
+            All Customers
+          </TabsTrigger>
+          <TabsTrigger value="members" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm px-4">
+            <Crown className="h-4 w-4 mr-2" />
+            Members
+          </TabsTrigger>
+          <TabsTrigger value="tiers" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm px-4">
+            <Settings className="h-4 w-4 mr-2" />
+            Tiers & Benefits
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="customers" className="space-y-4">
 
       {/* Contacts Table */}
       <Card className="rounded-2xl border-border shadow-sm overflow-hidden">
@@ -457,9 +545,20 @@ const CustomersCRM: React.FC = () => {
                           className="mt-1 rounded"
                         />
                         <div className="flex-1 min-w-0" onClick={() => handleContactClick(contact)}>
-                          <p className="font-semibold text-foreground truncate">
-                            {contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || contact.email}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-foreground truncate">
+                              {contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || contact.email}
+                            </p>
+                            {contact.membership?.status === 'active' && (
+                              <Badge
+                                className="text-[10px] px-1.5 py-0 h-4 rounded-md font-medium shrink-0"
+                                style={{ backgroundColor: contact.membership.tier_color + '20', color: contact.membership.tier_color }}
+                              >
+                                <Crown className="h-2.5 w-2.5 mr-0.5" />
+                                {contact.membership.tier_name}
+                              </Badge>
+                            )}
+                          </div>
                           <p className="text-sm text-muted-foreground truncate">{contact.email}</p>
                           {contact.groups && contact.groups.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
@@ -570,12 +669,27 @@ const CustomersCRM: React.FC = () => {
                       </td>
                       <td className="py-4 px-4 cursor-pointer" onClick={() => handleContactClick(contact)}>
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-medium text-sm flex-shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-medium text-sm flex-shrink-0 relative">
                             {(contact.full_name || contact.first_name || contact.email || '?')[0].toUpperCase()}
+                            {contact.membership?.status === 'active' && (
+                              <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: contact.membership.tier_color }}>
+                                <Crown className="h-2.5 w-2.5 text-white" />
+                              </div>
+                            )}
                           </div>
                           <div className="min-w-0">
-                            <div className="font-medium text-foreground group-hover:text-indigo-600 transition-colors truncate">
-                              {contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unnamed'}
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-foreground group-hover:text-indigo-600 transition-colors truncate">
+                                {contact.full_name || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || 'Unnamed'}
+                              </span>
+                              {contact.membership?.status === 'active' && (
+                                <Badge
+                                  className="text-[10px] px-1.5 py-0 h-4 rounded-md font-medium"
+                                  style={{ backgroundColor: contact.membership.tier_color + '20', color: contact.membership.tier_color, borderColor: contact.membership.tier_color + '40' }}
+                                >
+                                  {contact.membership.tier_name}
+                                </Badge>
+                              )}
                             </div>
                             <div className="text-sm text-muted-foreground truncate">{contact.email}</div>
                           </div>
@@ -668,6 +782,18 @@ const CustomersCRM: React.FC = () => {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        {/* Members Tab */}
+        <TabsContent value="members" className="space-y-4">
+          <MembershipManagement organizationId={currentOrganization?.id || ""} />
+        </TabsContent>
+
+        {/* Tiers & Benefits Tab */}
+        <TabsContent value="tiers" className="space-y-4">
+          <MembershipTiersManager organizationId={currentOrganization?.id || ""} />
+        </TabsContent>
+      </Tabs>
 
       {/* Customer Detail Modal */}
       <CustomerDetailModal

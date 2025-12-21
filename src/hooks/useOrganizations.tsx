@@ -11,6 +11,7 @@ interface Organization {
   crm_enabled?: boolean;
   issuing_enabled?: boolean;
   playbooks_enabled?: boolean;
+  membership_enabled?: boolean;
   logo_url?: string | null;
 }
 
@@ -24,6 +25,7 @@ interface OrganizationWithRole {
   crm_enabled?: boolean;
   issuing_enabled?: boolean;
   playbooks_enabled?: boolean;
+  membership_enabled?: boolean;
   logo_url?: string | null;
 }
 
@@ -69,6 +71,7 @@ export const useOrganizations = () => {
             crm_enabled: org.crm_enabled || false,
             issuing_enabled: org.issuing_enabled || false,
             playbooks_enabled: org.playbooks_enabled || false,
+            membership_enabled: org.membership_enabled || false,
             logo_url: org.logo_url,
           });
         });
@@ -89,6 +92,7 @@ export const useOrganizations = () => {
             crm_enabled,
             issuing_enabled,
             playbooks_enabled,
+            membership_enabled,
             logo_url
           )
         `)
@@ -114,6 +118,7 @@ export const useOrganizations = () => {
                 crm_enabled: org.crm_enabled || false,
                 issuing_enabled: org.issuing_enabled || false,
                 playbooks_enabled: org.playbooks_enabled || false,
+                membership_enabled: org.membership_enabled || false,
                 logo_url: org.logo_url,
               });
             }

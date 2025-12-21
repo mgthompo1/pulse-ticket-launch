@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -15,6 +15,7 @@ import { Theme } from '@/types/theme';
 import { Heart } from 'lucide-react';
 import { AttendeeDetailsForm, AttendeeInfo } from './AttendeeDetailsForm';
 import { isQuestionVisible } from '@/hooks/useConditionalField';
+import { CustomerAuthFlow } from './CustomerAuthFlow';
 
 interface CustomerDetailsProps {
   customQuestions: CustomQuestion[];
@@ -25,6 +26,7 @@ interface CustomerDetailsProps {
   eventData?: EventData;
   ticketCount?: number;
   cartItems?: Array<{ name: string; quantity: number; attendees_per_ticket?: number }>;
+  onMemberPricingChange?: (enabled: boolean, discountPercentage?: number) => void;
 }
 
 const customerFormSchema = z.object({
@@ -43,10 +45,16 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   isStripePayment = false,
   eventData,
   ticketCount = 0,
-  cartItems = []
+  cartItems = [],
+  onMemberPricingChange
 }) => {
   // Safety check - ensure customQuestions is always an array
   const safeCustomQuestions = Array.isArray(customQuestions) ? customQuestions : [];
+
+  // Customer accounts settings
+  const organizationId = eventData?.organization_id || eventData?.organizations?.id || '';
+  const customerAccountsEnabled = (eventData?.widget_customization as any)?.customerAccountsEnabled || false;
+  const membershipEnabled = eventData?.membership_enabled || eventData?.organizations?.membership_enabled || false;
 
   // Check if donations are enabled - if organizations is missing, check if we have crm_enabled at the event level
   const crmEnabled = eventData?.organizations?.crm_enabled ?? (eventData as any)?.crm_enabled;
@@ -61,6 +69,8 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
   const [selectedDonationAmount, setSelectedDonationAmount] = useState<number | null>(null);
   const [customDonationAmount, setCustomDonationAmount] = useState<string>('');
   const [attendees, setAttendees] = useState<AttendeeInfo[]>([]);
+  const [foundCustomer, setFoundCustomer] = useState<any>(null);
+  const [memberPricingActive, setMemberPricingActive] = useState(false);
 
   const form = useForm<z.infer<typeof customerFormSchema>>({
     resolver: zodResolver(customerFormSchema),
@@ -113,6 +123,31 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
       setSelectedDonationAmount(null);
       form.setValue('donationAmount', undefined);
     }
+  };
+
+  // Handle customer authenticated from auth flow
+  const handleCustomerAuthenticated = (customer: any, isGuest: boolean) => {
+    setFoundCustomer(customer);
+    if (customer && !isGuest) {
+      // Auto-fill form with customer data
+      const fullName = customer.full_name ||
+        `${customer.first_name || ''} ${customer.last_name || ''}`.trim() ||
+        '';
+
+      if (fullName) {
+        form.setValue('name', fullName);
+      }
+      form.setValue('email', customer.email);
+      if (customer.phone) {
+        form.setValue('phone', customer.phone);
+      }
+    }
+  };
+
+  // Handle member pricing toggle
+  const handleMemberPricingEnabled = (enabled: boolean, discountPercentage?: number) => {
+    setMemberPricingActive(enabled);
+    onMemberPricingChange?.(enabled, discountPercentage);
   };
 
   const renderCustomQuestion = (question: CustomQuestion, index: number) => {
@@ -331,6 +366,17 @@ export const CustomerDetails: React.FC<CustomerDetailsProps> = ({
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {/* Customer Auth Flow - only shown if customer accounts are enabled */}
+          {customerAccountsEnabled && organizationId && (
+            <CustomerAuthFlow
+              organizationId={organizationId}
+              membershipEnabled={membershipEnabled}
+              onCustomerAuthenticated={handleCustomerAuthenticated}
+              onMemberPricingEnabled={handleMemberPricingEnabled}
+              theme={theme}
+            />
+          )}
+
           <Card style={{ backgroundColor: theme.cardBackgroundColor, border: theme.borderEnabled ? `1px solid ${theme.borderColor}` : undefined }}>
             <CardHeader>
               <CardTitle style={{ color: theme.headerTextColor }}>{contactLabel}</CardTitle>

@@ -8,7 +8,7 @@ export interface WidgetDefinition {
   id: string;
   name: string;
   description: string;
-  category: "revenue" | "tickets" | "orders" | "visitors" | "events" | "groups";
+  category: "revenue" | "tickets" | "orders" | "visitors" | "events" | "groups" | "insights";
   supportedChartTypes: ChartType[];
   defaultChartType: ChartType;
   defaultSize: WidgetSize;
@@ -242,6 +242,58 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
     defaultSize: "medium",
     defaultEnabled: false,
   },
+
+  // Insights widgets (new)
+  {
+    id: "insights_goal_progress",
+    name: "Revenue Goal",
+    description: "Track progress towards your revenue goal",
+    category: "insights",
+    supportedChartTypes: ["progress"],
+    defaultChartType: "progress",
+    defaultSize: "medium",
+    defaultEnabled: true,
+  },
+  {
+    id: "insights_live_activity",
+    name: "Live Activity",
+    description: "Real-time sales and activity feed",
+    category: "insights",
+    supportedChartTypes: ["list"],
+    defaultChartType: "list",
+    defaultSize: "medium",
+    defaultEnabled: true,
+  },
+  {
+    id: "insights_sales_heatmap",
+    name: "Peak Sales Times",
+    description: "When your tickets sell best",
+    category: "insights",
+    supportedChartTypes: ["progress"],
+    defaultChartType: "progress",
+    defaultSize: "medium",
+    defaultEnabled: true,
+  },
+  {
+    id: "insights_ai_recommendations",
+    name: "Smart Insights",
+    description: "AI-powered recommendations and alerts",
+    category: "insights",
+    supportedChartTypes: ["list"],
+    defaultChartType: "list",
+    defaultSize: "medium",
+    defaultEnabled: true,
+  },
+  {
+    id: "insights_quick_actions",
+    name: "Action Items",
+    description: "Tasks needing your attention",
+    category: "insights",
+    supportedChartTypes: ["list"],
+    defaultChartType: "list",
+    defaultSize: "medium",
+    defaultEnabled: true,
+  },
 ];
 
 // Get default dashboard config
@@ -266,6 +318,7 @@ export const getWidgetDefinition = (widgetId: string): WidgetDefinition | undefi
 
 // Category labels for grouping
 export const CATEGORY_LABELS: Record<string, string> = {
+  insights: "Insights & Actions",
   revenue: "Revenue",
   tickets: "Tickets",
   orders: "Orders",

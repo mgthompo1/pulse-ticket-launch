@@ -564,100 +564,332 @@ All colors MUST be HSL.
 
 /* ============================================
    Windcave Drop-In Styling
+   Stripe Elements-inspired Design
    ============================================ */
 
-/* Main container - transparent background */
+/* CSS Variables for Stripe-like theming */
+:root {
+  --windcave-font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --windcave-font-size-base: 16px;
+  --windcave-font-size-sm: 14px;
+  --windcave-font-size-xs: 13px;
+  --windcave-spacing-unit: 8px;
+  --windcave-border-radius: 6px;
+  --windcave-border-radius-sm: 4px;
+  --windcave-transition: 0.15s ease;
+  /* Light mode colors - Stripe-inspired */
+  --windcave-color-primary: #5469d4;
+  --windcave-color-primary-hover: #4558b8;
+  --windcave-color-text: #30313d;
+  --windcave-color-text-secondary: #6b7280;
+  --windcave-color-text-placeholder: #9ca3af;
+  --windcave-color-background: #ffffff;
+  --windcave-color-background-hover: #f7f8f9;
+  --windcave-color-border: #e6e6e6;
+  --windcave-color-border-focus: #5469d4;
+  --windcave-color-error: #df1b41;
+  --windcave-color-success: #30b130;
+  --windcave-shadow-focus: 0 0 0 3px rgba(84, 105, 212, 0.15);
+  --windcave-shadow-input: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Main container - clean, minimal */
 .windcave-dropin-container {
   background-color: transparent !important;
   padding: 0 !important;
-  font-family: inherit !important;
+  font-family: var(--windcave-font-family) !important;
+  font-size: var(--windcave-font-size-base) !important;
+  color: var(--windcave-color-text) !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Hide the "Select Payment Method" title when we have our own header */
+/* Hide the "Select Payment Method" title */
 .windcave-dropin-select-payment-text {
   display: none !important;
 }
 
-/* Payment method group - clean card-like styling */
+/* Payment method group - transparent to blend with parent card */
 .windcave-dropin-item-group {
-  border-radius: 8px !important;
-  border: 1px solid transparent !important;
-  overflow: hidden;
-  transition: all 0.15s ease;
-  margin-bottom: 0.5rem;
+  border-radius: 0 !important;
+  border: none !important;
+  background-color: transparent !important;
+  overflow: visible;
+  transition: none;
+  margin-bottom: 0;
+  box-shadow: none !important;
 }
 
-/* Payment method toggle/selector */
+.windcave-dropin-item-group:hover {
+  border-color: transparent !important;
+}
+
+.windcave-dropin-item-group:focus-within {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Payment method toggle/selector - left aligned */
 .windcave-dropin-item-toggle {
-  padding: 0.875rem 1rem !important;
-  font-size: 0.9375rem !important;
+  padding: 0 0 calc(var(--windcave-spacing-unit) * 2) 0 !important;
+  font-size: var(--windcave-font-size-base) !important;
   font-weight: 500 !important;
+  color: var(--windcave-color-text) !important;
+  background-color: transparent !important;
+  text-align: left !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: calc(var(--windcave-spacing-unit) * 1) !important;
+  width: 100% !important;
+  border-bottom: 1px solid var(--windcave-color-border) !important;
+  margin-bottom: calc(var(--windcave-spacing-unit) * 2) !important;
 }
 
-/* Payment method content area */
+.windcave-dropin-item-toggle:hover {
+  background-color: transparent !important;
+}
+
+/* Card logos/icons - keep them inline, left aligned */
+.windcave-dropin-item-toggle img,
+.windcave-dropin-item-toggle svg,
+.windcave-dropin-card-logos,
+.windcave-dropin-item-toggle-icon {
+  flex-shrink: 0 !important;
+}
+
+/* Payment method label text */
+.windcave-dropin-item-toggle-label,
+.windcave-dropin-item-toggle span {
+  text-align: left !important;
+}
+
+/* Payment method content area - transparent */
 .windcave-dropin-item-container {
-  padding: 1rem !important;
+  padding: 0 !important;
+  background-color: transparent !important;
 }
 
-/* Hosted field input groups - better spacing */
+/* Hosted field input groups - Stripe-like spacing */
 .windcave-hf-input-group {
-  margin-bottom: 1rem !important;
+  margin-bottom: calc(var(--windcave-spacing-unit) * 2) !important;
 }
 
 .windcave-hf-input-group:last-child {
   margin-bottom: 0 !important;
 }
 
-/* Submit and back buttons - styled to match app buttons */
+/* Labels - clean, uppercase optional */
+.windcave-hf-label,
+.windcave-dropin-container label {
+  display: block !important;
+  font-size: var(--windcave-font-size-sm) !important;
+  font-weight: 500 !important;
+  color: var(--windcave-color-text) !important;
+  margin-bottom: calc(var(--windcave-spacing-unit) * 0.75) !important;
+  letter-spacing: 0.01em;
+}
+
+/* Input fields - underline only, no box border */
+.windcave-hf-input,
+.windcave-dropin-container input,
+.windcave-dropin-container input[type="text"],
+.windcave-dropin-container input[type="tel"],
+.windcave-dropin-container input[type="number"],
+.windcave-dropin-card-form input,
+.windcave-dropin-item-container input,
+[class*="windcave"] input,
+#windcave-drop-in input {
+  height: 44px !important;
+  padding: 12px 0 !important;
+  font-family: var(--windcave-font-family) !important;
+  font-size: var(--windcave-font-size-base) !important;
+  color: var(--windcave-color-text) !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: 1px solid var(--windcave-color-border) !important;
+  border-radius: 0 !important;
+  -webkit-border-radius: 0 !important;
+  -moz-border-radius: 0 !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  outline: none !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+/* Hosted fields iframe and wrappers - remove ALL styling */
+.windcave-hf-input-wrapper,
+.windcave-hf-field,
+[class*="windcave-hf"],
+.windcave-dropin-card-form,
+.windcave-dropin-card-form > div,
+#windcave-drop-in div[class*="input"],
+#windcave-drop-in div[class*="field"] {
+  border: none !important;
+  border-radius: 0 !important;
+  -webkit-border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.windcave-hf-input::placeholder,
+.windcave-dropin-container input::placeholder {
+  color: var(--windcave-color-text-placeholder) !important;
+}
+
+.windcave-hf-input:hover,
+.windcave-dropin-container input:hover,
+#windcave-drop-in input:hover {
+  border-bottom-color: #999 !important;
+}
+
+.windcave-hf-input:focus,
+.windcave-dropin-container input:focus,
+#windcave-drop-in input:focus {
+  border-bottom-color: var(--windcave-color-border-focus) !important;
+  border-bottom-width: 2px !important;
+  box-shadow: none !important;
+}
+
+/* Error states */
+.windcave-hf-input-error,
+.windcave-hf-input.error {
+  border-bottom-color: var(--windcave-color-error) !important;
+}
+
+.windcave-hf-input-error:focus,
+.windcave-hf-input.error:focus {
+  border-bottom-color: var(--windcave-color-error) !important;
+  border-bottom-width: 2px !important;
+}
+
+.windcave-hf-error-message,
+.windcave-dropin-error {
+  font-size: var(--windcave-font-size-xs) !important;
+  color: var(--windcave-color-error) !important;
+  margin-top: calc(var(--windcave-spacing-unit) * 0.5) !important;
+}
+
+/* Submit button - Stripe-like primary button */
 .windcave-dropin-card-submit-button {
-  border-radius: 6px !important;
-  font-weight: 500 !important;
-  font-size: 0.9375rem !important;
-  padding: 0.625rem 1.25rem !important;
-  min-height: 2.5rem !important;
-  transition: all 0.15s ease !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  border-radius: var(--windcave-border-radius) !important;
+  font-family: var(--windcave-font-family) !important;
+  font-weight: 600 !important;
+  font-size: var(--windcave-font-size-base) !important;
+  padding: 0 calc(var(--windcave-spacing-unit) * 2) !important;
+  background-color: var(--windcave-color-primary) !important;
+  color: #ffffff !important;
+  border: none !important;
   cursor: pointer !important;
+  transition: background-color var(--windcave-transition), transform 0.1s ease, box-shadow var(--windcave-transition);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
+.windcave-dropin-card-submit-button:hover {
+  background-color: var(--windcave-color-primary-hover) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.windcave-dropin-card-submit-button:active {
+  transform: scale(0.98);
+}
+
+.windcave-dropin-card-submit-button:disabled {
+  background-color: #9ca3af !important;
+  cursor: not-allowed !important;
+  transform: none;
+}
+
+/* Back button - secondary style */
 .windcave-dropin-card-back-button {
-  border-radius: 6px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  border-radius: var(--windcave-border-radius) !important;
+  font-family: var(--windcave-font-family) !important;
   font-weight: 500 !important;
-  font-size: 0.9375rem !important;
-  padding: 0.625rem 1.25rem !important;
-  min-height: 2.5rem !important;
-  transition: all 0.15s ease !important;
+  font-size: var(--windcave-font-size-base) !important;
+  padding: 0 calc(var(--windcave-spacing-unit) * 2) !important;
+  background-color: transparent !important;
+  color: var(--windcave-color-text-secondary) !important;
+  border: 1px solid var(--windcave-color-border) !important;
   cursor: pointer !important;
-  border-width: 1px !important;
+  transition: all var(--windcave-transition);
 }
 
-/* Button container - horizontal layout with gap */
+.windcave-dropin-card-back-button:hover {
+  background-color: var(--windcave-color-background-hover) !important;
+  border-color: #d0d0d0 !important;
+  color: var(--windcave-color-text) !important;
+}
+
+/* Button container - clean layout */
 .windcave-dropin-card-form-buttons {
   display: flex;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
-  padding-top: 1rem;
+  gap: calc(var(--windcave-spacing-unit) * 1.5);
+  margin-top: calc(var(--windcave-spacing-unit) * 3);
+  padding-top: calc(var(--windcave-spacing-unit) * 2);
 }
 
-/* Alternative payment methods section */
+/* Alternative payment methods */
 .windcave-dropin-alternative-payment-methods-text {
-  margin-top: 1.25rem !important;
-  padding-top: 1rem !important;
+  margin-top: calc(var(--windcave-spacing-unit) * 3) !important;
+  padding-top: calc(var(--windcave-spacing-unit) * 2) !important;
   text-align: center;
+  border-top: 1px solid var(--windcave-color-border);
 }
 
 .windcave-dropin-alternative-payment-methods-text-span {
-  font-size: 0.8125rem !important;
-  opacity: 0.6;
+  font-size: var(--windcave-font-size-xs) !important;
+  color: var(--windcave-color-text-secondary) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-/* Redirect buttons (PayPal, etc) */
+/* Redirect buttons (Apple Pay, Google Pay, etc) */
 .windcave-dropin-redirect-button {
-  border-radius: 6px !important;
+  height: 44px !important;
+  border-radius: var(--windcave-border-radius) !important;
+  font-family: var(--windcave-font-family) !important;
   font-weight: 500 !important;
-  padding: 0.625rem 1.25rem !important;
-  min-height: 2.5rem !important;
-  transition: all 0.15s ease !important;
+  font-size: var(--windcave-font-size-base) !important;
+  padding: 0 calc(var(--windcave-spacing-unit) * 2) !important;
+  transition: all var(--windcave-transition);
   width: 100% !important;
+  border: 1px solid var(--windcave-color-border) !important;
+  background-color: var(--windcave-color-background) !important;
+  color: var(--windcave-color-text) !important;
+  cursor: pointer !important;
+  margin-top: calc(var(--windcave-spacing-unit) * 1.5) !important;
+}
+
+.windcave-dropin-redirect-button:hover {
+  background-color: var(--windcave-color-background-hover) !important;
+  border-color: #d0d0d0 !important;
+}
+
+/* Checkbox toggle styling */
+.windcave-dropin-item-toggle-checkbox {
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: var(--windcave-border-radius-sm) !important;
+  border: 2px solid var(--windcave-color-border) !important;
+  transition: all var(--windcave-transition);
+}
+
+.windcave-dropin-item-toggle-checkbox-active {
+  background-color: var(--windcave-color-primary) !important;
+  border-color: var(--windcave-color-primary) !important;
 }
 
 /* ============================================
@@ -669,94 +901,113 @@ All colors MUST be HSL.
   background: transparent !important;
 }
 
-/* Remove item group borders in custom checkout since we have wrapper */
+/* Cleaner card in custom checkout context */
 .windcave-custom-checkout .windcave-dropin-item-group {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
+  margin-bottom: 0 !important;
 }
 
-/* Dark mode specific overrides for Windcave in dark theme contexts */
+.windcave-custom-checkout .windcave-dropin-item-container {
+  padding: 0 !important;
+}
+
+/* ============================================
+   Dark Mode - Stripe-inspired Dark Theme
+   ============================================ */
+
 .dark .windcave-dropin-container,
 [data-theme="dark"] .windcave-dropin-container {
-  --windcave-bg: #18181b;
-  --windcave-card-bg: #27272a;
-  --windcave-border: #3f3f46;
-  --windcave-text: #ffffff;
-  --windcave-text-muted: #a1a1aa;
+  --windcave-color-primary: #7c8aff;
+  --windcave-color-primary-hover: #9aa3ff;
+  --windcave-color-text: #f0f0f0;
+  --windcave-color-text-secondary: #9ca3af;
+  --windcave-color-text-placeholder: #6b7280;
+  --windcave-color-background: #1e1e24;
+  --windcave-color-background-hover: #2a2a32;
+  --windcave-color-border: #3c3c44;
+  --windcave-color-border-focus: #7c8aff;
+  --windcave-shadow-focus: 0 0 0 3px rgba(124, 138, 255, 0.2);
+  --windcave-shadow-input: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .dark .windcave-dropin-item-group,
 [data-theme="dark"] .windcave-dropin-item-group {
-  background-color: #27272a !important;
-  border-color: #3f3f46 !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
 }
 
 .dark .windcave-dropin-item-group:hover,
 [data-theme="dark"] .windcave-dropin-item-group:hover {
-  background-color: #3f3f46 !important;
+  border-color: transparent !important;
+}
+
+.dark .windcave-dropin-item-toggle,
+[data-theme="dark"] .windcave-dropin-item-toggle {
+  color: var(--windcave-color-text) !important;
+  border-bottom-color: var(--windcave-color-border) !important;
+}
+
+.dark .windcave-dropin-item-toggle:hover,
+[data-theme="dark"] .windcave-dropin-item-toggle:hover {
+  background-color: transparent !important;
 }
 
 .dark .windcave-dropin-card-submit-button,
 [data-theme="dark"] .windcave-dropin-card-submit-button {
-  background-color: #ffffff !important;
-  color: #18181b !important;
+  background-color: var(--windcave-color-primary) !important;
+  color: #1e1e24 !important;
 }
 
 .dark .windcave-dropin-card-submit-button:hover,
 [data-theme="dark"] .windcave-dropin-card-submit-button:hover {
-  background-color: #f4f4f5 !important;
+  background-color: var(--windcave-color-primary-hover) !important;
 }
 
 .dark .windcave-dropin-card-back-button,
 [data-theme="dark"] .windcave-dropin-card-back-button {
   background-color: transparent !important;
-  color: #a1a1aa !important;
-  border-color: #3f3f46 !important;
+  color: var(--windcave-color-text-secondary) !important;
+  border-color: var(--windcave-color-border) !important;
 }
 
 .dark .windcave-dropin-card-back-button:hover,
 [data-theme="dark"] .windcave-dropin-card-back-button:hover {
-  background-color: #27272a !important;
+  background-color: var(--windcave-color-background-hover) !important;
+  color: var(--windcave-color-text) !important;
 }
 
-/* Light mode specific overrides */
-.windcave-dropin-item-group {
-  background-color: #ffffff;
-  border-color: #e5e7eb;
+.dark .windcave-hf-input,
+.dark .windcave-dropin-container input,
+.dark #windcave-drop-in input,
+[data-theme="dark"] .windcave-hf-input,
+[data-theme="dark"] .windcave-dropin-container input,
+[data-theme="dark"] #windcave-drop-in input {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid var(--windcave-color-border) !important;
+  color: var(--windcave-color-text) !important;
 }
 
-.windcave-dropin-item-group:hover {
-  background-color: #f9fafb;
+.dark .windcave-hf-label,
+.dark .windcave-dropin-container label,
+[data-theme="dark"] .windcave-hf-label,
+[data-theme="dark"] .windcave-dropin-container label {
+  color: var(--windcave-color-text) !important;
 }
 
-.windcave-dropin-card-submit-button {
-  background-color: #18181b;
-  color: #ffffff;
+.dark .windcave-dropin-redirect-button,
+[data-theme="dark"] .windcave-dropin-redirect-button {
+  background-color: var(--windcave-color-background) !important;
+  border-color: var(--windcave-color-border) !important;
+  color: var(--windcave-color-text) !important;
 }
 
-.windcave-dropin-card-submit-button:hover {
-  background-color: #27272a;
-}
-
-.windcave-dropin-card-back-button {
-  background-color: transparent;
-  color: #6b7280;
-  border-color: #e5e7eb;
-}
-
-.windcave-dropin-card-back-button:hover {
-  background-color: #f3f4f6;
-}
-
-/* Checkbox toggle styling */
-.windcave-dropin-item-toggle-checkbox {
-  border-radius: 4px !important;
-}
-
-.windcave-dropin-item-toggle-checkbox-active {
-  background-color: hsl(var(--primary)) !important;
-  border-color: hsl(var(--primary)) !important;
+.dark .windcave-dropin-redirect-button:hover,
+[data-theme="dark"] .windcave-dropin-redirect-button:hover {
+  background-color: var(--windcave-color-background-hover) !important;
 }
 
 /* ============================================

@@ -20,7 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail, Phone, MapPin, Calendar, DollarSign, Ticket, Heart, Tag, Send, CreditCard, FileText, Link as LinkIcon, Edit, Trash2, StickyNote } from "lucide-react";
+import { Mail, Phone, MapPin, Calendar, DollarSign, Ticket, Heart, Tag, Send, CreditCard, FileText, Link as LinkIcon, Edit, Trash2, StickyNote, Crown, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ComposeEmailModal } from "@/components/ComposeEmailModal";
@@ -59,6 +59,13 @@ interface Contact {
       token: string;
     };
   };
+  membership?: {
+    id: string;
+    tier_name: string;
+    tier_color: string;
+    status: string;
+    expires_at: string | null;
+  } | null;
 }
 
 interface Order {
@@ -416,6 +423,62 @@ export const CustomerDetailModal: React.FC<CustomerDetailModalProps> = ({
               </CardContent>
             </Card>
           </div>
+
+          {/* Membership Status */}
+          <Card className={contact.membership?.status === 'active' ? 'border-2' : ''} style={contact.membership?.status === 'active' ? { borderColor: contact.membership.tier_color } : {}}>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <Crown className="h-5 w-5" style={contact.membership?.status === 'active' ? { color: contact.membership.tier_color } : {}} />
+                Membership
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {contact.membership ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        className="text-sm px-3 py-1"
+                        style={{
+                          backgroundColor: contact.membership.tier_color + '20',
+                          color: contact.membership.tier_color,
+                          borderColor: contact.membership.tier_color + '40'
+                        }}
+                      >
+                        <Crown className="h-3.5 w-3.5 mr-1.5" />
+                        {contact.membership.tier_name}
+                      </Badge>
+                      <Badge variant={contact.membership.status === 'active' ? 'default' : 'secondary'}>
+                        {contact.membership.status === 'active' ? 'Active' : contact.membership.status}
+                      </Badge>
+                    </div>
+                  </div>
+                  {contact.membership.expires_at && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      {contact.membership.status === 'active' ? 'Renews' : 'Expired'}: {new Date(contact.membership.expires_at).toLocaleDateString('en-NZ', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-sm">
+                    <Shield className="h-4 w-4 text-green-600" />
+                    <span className="text-green-600 font-medium">Member pricing enabled</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <Crown className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                  <p className="text-sm text-muted-foreground">Not a member</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Membership can be added from the Members tab
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Payment Methods */}
           {contact.payment_methods && (contact.payment_methods.stripe || contact.payment_methods.windcave) && (

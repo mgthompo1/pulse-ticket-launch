@@ -14,7 +14,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound, Heart, Share2, FileText, Calendar, Send, ShoppingCart, ClipboardList, Target, BarChart3, Link2, Unlink } from "lucide-react";
+import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound, Heart, Share2, FileText, Calendar, Send, ShoppingCart, ClipboardList, Target, BarChart3, Link2, Unlink, Crown, Percent, UserPlus, User } from "lucide-react";
 import { ConditionalDisplay } from "@/types/widget";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
@@ -306,7 +306,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       
       const { data, error} = await supabase
         .from("events")
-        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, venue_address, venue_lat, venue_lng, venue_place_id, organization_id, description, event_date, event_end_date, capacity, requires_approval, ticket_delivery_method, donations_enabled, donation_title, donation_description, donation_suggested_amounts, abandoned_cart_enabled, abandoned_cart_delay_minutes, abandoned_cart_email_subject, abandoned_cart_email_content, abandoned_cart_discount_enabled, abandoned_cart_discount_code, abandoned_cart_discount_percent, pricing_type")
+        .select("widget_customization, ticket_customization, email_customization, name, status, logo_url, venue, venue_address, venue_lat, venue_lng, venue_place_id, organization_id, description, event_date, event_end_date, capacity, requires_approval, ticket_delivery_method, donations_enabled, donation_title, donation_description, donation_suggested_amounts, abandoned_cart_enabled, abandoned_cart_delay_minutes, abandoned_cart_email_subject, abandoned_cart_email_content, abandoned_cart_discount_enabled, abandoned_cart_discount_code, abandoned_cart_discount_percent, pricing_type, membership_enabled, membership_signup_enabled, membership_discount_display")
         .eq("id", eventId)
         .single();
 
@@ -360,7 +360,10 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         abandoned_cart_discount_enabled: data.abandoned_cart_discount_enabled || false,
         abandoned_cart_discount_code: data.abandoned_cart_discount_code,
         abandoned_cart_discount_percent: data.abandoned_cart_discount_percent || 10,
-        pricing_type: data.pricing_type || 'paid'
+        pricing_type: data.pricing_type || 'paid',
+        membership_enabled: data.membership_enabled || false,
+        membership_signup_enabled: data.membership_signup_enabled || false,
+        membership_discount_display: data.membership_discount_display !== false
       });
       setCurrentLogoUrl(data?.logo_url || null);
 
@@ -900,19 +903,6 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
         </div>
       </div>
 
-      {/* Seat Map Designer Modal */}
-      {showSeatMapDesigner && eventData && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-background rounded-lg shadow-lg w-full max-w-7xl h-[90vh] overflow-hidden">
-            <SeatMapDesigner
-              eventId={eventId}
-              eventName={eventData.name}
-              onClose={() => setShowSeatMapDesigner(false)}
-            />
-          </div>
-        </div>
-      )}
-
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         {/* Compact navigation bar */}
         <div className="overflow-x-auto -mx-4 px-4 pb-2">
@@ -1380,6 +1370,170 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                   </div>
                 </div>
               )}
+
+              {/* Customer Accounts Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between py-3 px-4 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-indigo-500/10">
+                      <User className="h-4 w-4 text-indigo-500" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm">Customer Accounts</div>
+                      <p className="text-xs text-muted-foreground">
+                        Allow sign in/sign up for saved cards & member benefits
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={(eventData?.widget_customization as any)?.customerAccountsEnabled || false}
+                    onCheckedChange={async (checked) => {
+                      try {
+                        const currentCustomization = (eventData?.widget_customization as any) || {};
+                        const updatedCustomization = {
+                          ...currentCustomization,
+                          customerAccountsEnabled: checked
+                        };
+
+                        const { error } = await supabase
+                          .from("events")
+                          .update({ widget_customization: updatedCustomization })
+                          .eq("id", eventId);
+
+                        if (error) throw error;
+
+                        setEventData(prev => prev ? ({
+                          ...prev,
+                          widget_customization: updatedCustomization as any
+                        }) : null);
+                        setWidgetCustomization(updatedCustomization);
+
+                        toast({
+                          title: checked ? "Customer Accounts Enabled" : "Customer Accounts Disabled",
+                          description: checked
+                            ? "Customers can now sign in for saved details and member pricing"
+                            : "Checkout will proceed as guest only"
+                        });
+                      } catch (error) {
+                        console.error("Error updating customer accounts setting:", error);
+                        toast({
+                          title: "Error",
+                          description: "Failed to update setting",
+                          variant: "destructive"
+                        });
+                      }
+                    }}
+                  />
+                </div>
+
+                {/* Membership Sub-options - only show when Customer Accounts is enabled */}
+                {(eventData?.widget_customization as any)?.customerAccountsEnabled && (
+                  <div className="ml-6 pl-4 border-l-2 border-indigo-200 space-y-3">
+                    {/* Member Pricing */}
+                    <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/20">
+                      <div className="flex items-center gap-2">
+                        <Crown className="h-4 w-4 text-amber-500" />
+                        <div>
+                          <div className="font-medium text-sm">Member Pricing</div>
+                          <p className="text-xs text-muted-foreground">
+                            Show special prices for members
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={(eventData as any)?.membership_enabled || false}
+                        onCheckedChange={async (checked) => {
+                          try {
+                            const { error } = await supabase
+                              .from("events")
+                              .update({ membership_enabled: checked })
+                              .eq("id", eventId);
+                            if (error) throw error;
+                            setEventData(prev => prev ? ({ ...prev, membership_enabled: checked }) : null);
+                            toast({
+                              title: "Success",
+                              description: checked ? "Member pricing enabled" : "Member pricing disabled"
+                            });
+                          } catch (error) {
+                            console.error("Error updating membership setting:", error);
+                            toast({ title: "Error", description: "Failed to update setting", variant: "destructive" });
+                          }
+                        }}
+                      />
+                    </div>
+
+                    {/* Membership Signup */}
+                    <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/20">
+                      <div className="flex items-center gap-2">
+                        <UserPlus className="h-4 w-4 text-green-500" />
+                        <div>
+                          <div className="font-medium text-sm">Membership Signup</div>
+                          <p className="text-xs text-muted-foreground">
+                            Allow joining as member at checkout
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={(eventData as any)?.membership_signup_enabled || false}
+                        onCheckedChange={async (checked) => {
+                          try {
+                            const { error } = await supabase
+                              .from("events")
+                              .update({ membership_signup_enabled: checked })
+                              .eq("id", eventId);
+                            if (error) throw error;
+                            setEventData(prev => prev ? ({ ...prev, membership_signup_enabled: checked }) : null);
+                            toast({
+                              title: "Success",
+                              description: checked ? "Membership signup enabled" : "Membership signup disabled"
+                            });
+                          } catch (error) {
+                            console.error("Error updating membership signup setting:", error);
+                            toast({ title: "Error", description: "Failed to update setting", variant: "destructive" });
+                          }
+                        }}
+                      />
+                    </div>
+
+                    {/* Member Price Badges */}
+                    <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/20">
+                      <div className="flex items-center gap-2">
+                        <Tag className="h-4 w-4 text-purple-500" />
+                        <div>
+                          <div className="font-medium text-sm">Price Badges</div>
+                          <p className="text-xs text-muted-foreground">
+                            Show "Member Price" labels
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={(eventData as any)?.membership_discount_display !== false}
+                        onCheckedChange={async (checked) => {
+                          try {
+                            const { error } = await supabase
+                              .from("events")
+                              .update({ membership_discount_display: checked })
+                              .eq("id", eventId);
+                            if (error) throw error;
+                            setEventData(prev => prev ? ({ ...prev, membership_discount_display: checked }) : null);
+                            toast({
+                              title: "Success",
+                              description: checked ? "Member price badges shown" : "Member price badges hidden"
+                            });
+                          } catch (error) {
+                            console.error("Error updating badge setting:", error);
+                            toast({ title: "Error", description: "Failed to update setting", variant: "destructive" });
+                          }
+                        }}
+                      />
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      Configure member-specific pricing in the Tickets tab.
+                    </p>
+                  </div>
+                )}
+              </div>
 
               {/* Preset Templates - only show when not using custom */}
               {!(eventData?.widget_customization as any)?.useCustomTemplate && (
@@ -3591,42 +3745,14 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       </Tabs>
       
       {/* Seat Map Designer Modal */}
-      {showSeatMapDesigner && (
+      {showSeatMapDesigner && eventData && (
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-                  <div className="bg-white dark:bg-gray-900 rounded-lg max-w-6xl w-full h-[90vh] flex flex-col shadow-xl border">
-          <div className="p-4 border-b flex items-center justify-between bg-white dark:bg-gray-900">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Seat Map Designer - {eventData?.name || 'Loading...'}
-              </h2>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  console.log("=== CLOSING SEAT MAP DESIGNER ===");
-                  setShowSeatMapDesigner(false);
-                }}
-              >
-                Close
-              </Button>
-            </div>
-            <div className="flex-1 overflow-hidden bg-white dark:bg-gray-900">
-              {eventData ? (
-                <SeatMapDesigner
-                  eventId={eventId}
-                  eventName={eventData.name}
-                  onClose={() => {
-                    console.log("=== CLOSING SEAT MAP DESIGNER ===");
-                    setShowSeatMapDesigner(false);
-                  }}
-                />
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-muted-foreground">Loading event data...</p>
-                  </div>
-                </div>
-              )}
-            </div>
+          <div className="bg-white dark:bg-gray-900 rounded-lg max-w-7xl w-full h-[90vh] overflow-hidden shadow-xl border">
+            <SeatMapDesigner
+              eventId={eventId}
+              eventName={eventData.name}
+              onClose={() => setShowSeatMapDesigner(false)}
+            />
           </div>
         </div>
       )}

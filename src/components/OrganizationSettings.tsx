@@ -626,6 +626,8 @@ const OrganizationSettings: React.FC = () => {
               }
             />
           </div>
+
+          {/* Note: Membership management is now built into Customers page */}
         </CardContent>
       </Card>
     </div>

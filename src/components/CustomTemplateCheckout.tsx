@@ -52,6 +52,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getStripePublishableKey, isStripeTestModeForOrg } from "@/lib/stripe-config";
+import { CustomerAuthFlow } from "./checkout/CustomerAuthFlow";
+import { Theme } from "@/types/theme";
 
 // Windcave types
 interface WindcaveLink {
@@ -193,6 +195,32 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
 
   // Detect free event
   const isFreeEvent = eventData?.pricing_type === 'free';
+
+  // Customer accounts state
+  const customerAccountsEnabled = (eventData?.widget_customization as any)?.customerAccountsEnabled || false;
+  const membershipEnabled = eventData?.membership_enabled || eventData?.organizations?.membership_enabled || false;
+  const organizationId = eventData?.organization_id || '';
+  const [memberDiscountPercentage, setMemberDiscountPercentage] = useState<number | undefined>(undefined);
+
+  // Handle customer authenticated from auth flow
+  const handleCustomerAuthenticated = (customer: any, isGuest: boolean) => {
+    if (customer && !isGuest) {
+      const firstName = customer.first_name || '';
+      const lastName = customer.last_name || '';
+
+      setCustomerInfo(prev => ({
+        firstName: firstName || prev.firstName,
+        lastName: lastName || prev.lastName,
+        email: customer.email || prev.email,
+        phone: customer.phone || prev.phone,
+      }));
+    }
+  };
+
+  // Handle member pricing toggle
+  const handleMemberPricingEnabled = (enabled: boolean, discountPercentage?: number) => {
+    setMemberDiscountPercentage(enabled ? discountPercentage : undefined);
+  };
 
   // Windcave state
   const [windcaveInitialized, setWindcaveInitialized] = useState(false);
@@ -1279,10 +1307,38 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
           </div>
         );
 
-      case "customer_info":
+      case "customer_info": {
+        // Build theme for CustomerAuthFlow
+        const authFlowTheme: Theme = {
+          enabled: true,
+          primaryColor: "#000000",
+          buttonTextColor: "#ffffff",
+          secondaryColor: "#ffffff",
+          backgroundColor: isDarkMode ? "#18181b" : "#ffffff",
+          cardBackgroundColor: isDarkMode ? "#27272a" : "#ffffff",
+          inputBackgroundColor: isDarkMode ? "#3f3f46" : "#ffffff",
+          borderEnabled: true,
+          borderColor: isDarkMode ? "#3f3f46" : "#e5e7eb",
+          headerTextColor: isDarkMode ? "#ffffff" : "#111827",
+          bodyTextColor: isDarkMode ? "#a1a1aa" : "#6b7280",
+          fontFamily: "system-ui",
+        };
+
         return (
           <div key={element.id} className="space-y-4">
             <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
+
+            {/* Customer Auth Flow - only shown if customer accounts are enabled */}
+            {customerAccountsEnabled && organizationId && (
+              <CustomerAuthFlow
+                organizationId={organizationId}
+                membershipEnabled={membershipEnabled}
+                onCustomerAuthenticated={handleCustomerAuthenticated}
+                onMemberPricingEnabled={handleMemberPricingEnabled}
+                theme={authFlowTheme}
+              />
+            )}
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label className={bodyText}>First Name *</Label>
@@ -1335,6 +1391,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
             )}
           </div>
         );
+      }
 
       case "payment_form": {
         const paymentProvider = eventData?.organizations?.payment_provider || "stripe";

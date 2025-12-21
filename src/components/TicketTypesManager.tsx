@@ -142,7 +142,7 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
           .update({
             name: formData.name,
             description: formData.description,
-            price: formData.price,
+            price: isFreeEvent ? 0 : formData.price,
             quantity_available: formData.quantity_available,
             sale_start_date: formData.sale_start_date,
             sale_end_date: formData.sale_end_date,
@@ -165,7 +165,7 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
             event_id: eventId,
             name: formData.name,
             description: formData.description,
-            price: formData.price,
+            price: isFreeEvent ? 0 : formData.price,
             quantity_available: formData.quantity_available,
             sale_start_date: formData.sale_start_date,
             sale_end_date: formData.sale_end_date,
@@ -306,20 +306,27 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="price">Price *</Label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="price"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={formData.price === 0 ? '' : formData.price}
-                        onChange={(e) => setFormData({ ...formData, price: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
-                        placeholder="0.00"
-                        className="pl-10"
-                        required
-                      />
-                    </div>
+                    {isFreeEvent ? (
+                      <div className="flex items-center h-10 px-3 rounded-md border bg-muted">
+                        <span className="text-sm font-medium text-green-600">Free</span>
+                        <span className="ml-2 text-xs text-muted-foreground">(Free event)</span>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="price"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.price === 0 ? '' : formData.price}
+                          onChange={(e) => setFormData({ ...formData, price: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
+                          placeholder="0.00"
+                          className="pl-10"
+                          required
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -484,7 +491,13 @@ const TicketTypesManager: React.FC<TicketTypesManagerProps> = ({ eventId }) => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground">Price</p>
-                    <p className="font-semibold text-lg">${ticket.price}</p>
+                    <p className="font-semibold text-lg">
+                      {ticket.price === 0 || isFreeEvent ? (
+                        <span className="text-green-600">Free</span>
+                      ) : (
+                        `$${ticket.price}`
+                      )}
+                    </p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Available</p>

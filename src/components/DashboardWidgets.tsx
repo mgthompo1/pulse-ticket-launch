@@ -34,8 +34,17 @@ import {
   UsersRound,
   FileText,
   AlertCircle,
+  Target,
+  Activity,
+  Clock,
+  Sparkles,
+  Lightbulb,
+  Bell,
+  RefreshCw,
 } from "lucide-react";
-import { format } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import {
   WidgetConfig,
   getWidgetDefinition,
@@ -160,6 +169,16 @@ interface DashboardWidgetsProps {
   isLoading?: boolean;
   // Time range for dynamic labels
   timeRange?: string;
+  // Insights widget props
+  revenueGoal?: { current: number; goal: number };
+  revenueTrend?: number;
+  liveActivities?: Array<{ id: string; type: string; message: string; timestamp: Date; amount?: number; eventName?: string }>;
+  salesHeatmapData?: Array<{ day: string; hour: number; value: number }>;
+  aiInsights?: Array<{ id: string; type: string; title: string; description: string; metric?: string; metricChange?: number; actionLabel?: string }>;
+  quickActions?: Array<{ id: string; type: string; count: number; label: string; description?: string; priority: string }>;
+  onRefreshActivities?: () => void;
+  onDismissInsight?: (id: string) => void;
+  onQuickAction?: (actionId: string) => void;
 }
 
 // Helper to get time range label
@@ -243,6 +262,16 @@ export const DashboardWidgets = ({
   outstandingInvoices,
   isLoading = false,
   timeRange,
+  // Insights props
+  revenueGoal = { current: 0, goal: 100000 },
+  revenueTrend = 0,
+  liveActivities = [],
+  salesHeatmapData = [],
+  aiInsights = [],
+  quickActions = [],
+  onRefreshActivities,
+  onDismissInsight,
+  onQuickAction,
 }: DashboardWidgetsProps) => {
   // Set up drag sensors
   const sensors = useSensors(
@@ -301,7 +330,7 @@ export const DashboardWidgets = ({
     return ((secondAvg - firstAvg) / firstAvg) * 100;
   };
 
-  const revenueTrend = calculateTrend(revenueOverTime.map(d => d.revenue));
+  const calculatedRevenueTrend = calculateTrend(revenueOverTime.map(d => d.revenue));
   const ordersTrend = calculateTrend(ordersOverTime.map(d => d.orders));
 
   const renderWidget = (widgetConfig: WidgetConfig) => {
@@ -319,7 +348,7 @@ export const DashboardWidgets = ({
             value={`$${totalRevenue.toLocaleString()}`}
             icon={<DollarSign className="h-5 w-5" />}
             className={sizeClass}
-            trend={revenueTrend}
+            trend={calculatedRevenueTrend}
             trendPeriod={getTimeRangeLabel(timeRange)}
             sparklineData={revenueSparkline}
           />
@@ -1116,6 +1145,298 @@ export const DashboardWidgets = ({
             )}
           </ChartCard>
         );
+
+      // Insights widgets
+      case "insights_goal_progress": {
+        const percentage = revenueGoal.goal > 0 ? Math.min((revenueGoal.current / revenueGoal.goal) * 100, 100) : 0;
+        const remaining = Math.max(revenueGoal.goal - revenueGoal.current, 0);
+        const radius = 60;
+        const circumference = 2 * Math.PI * radius;
+        const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+        return (
+          <ChartCard
+            key={widgetConfig.widgetId}
+            title="Revenue Goal"
+            description="Track progress towards your target"
+            className={sizeClass}
+          >
+            <div className="flex items-center gap-6 flex-1">
+              <div className="relative flex-shrink-0">
+                <svg width="140" height="140" className="transform -rotate-90">
+                  <circle cx="70" cy="70" r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth="10" />
+                  <circle
+                    cx="70" cy="70" r={radius} fill="none"
+                    stroke={percentage >= 100 ? "#10b981" : "#ff4d00"}
+                    strokeWidth="10" strokeLinecap="round"
+                    strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
+                    className="transition-all duration-1000"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-bold tabular-nums">{percentage.toFixed(0)}%</span>
+                  <span className="text-xs text-muted-foreground">of goal</span>
+                </div>
+              </div>
+              <div className="flex-1 space-y-3">
+                <div>
+                  <div className="text-xl font-bold tabular-nums">${revenueGoal.current.toLocaleString()}</div>
+                  <div className="text-sm text-muted-foreground">of ${revenueGoal.goal.toLocaleString()}</div>
+                </div>
+                <div className="h-px bg-border" />
+                <div>
+                  <div className="text-lg font-semibold text-muted-foreground tabular-nums">${remaining.toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground">remaining</div>
+                </div>
+                {revenueTrend !== 0 && (
+                  <div className={`flex items-center gap-1 text-sm ${revenueTrend >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {revenueTrend >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    <span className="font-medium">{Math.abs(revenueTrend).toFixed(1)}%</span>
+                    <span className="text-muted-foreground text-xs">vs last period</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </ChartCard>
+        );
+      }
+
+      case "insights_live_activity":
+        return (
+          <ChartCard
+            key={widgetConfig.widgetId}
+            title="Live Activity"
+            description="Recent sales and registrations"
+            className={sizeClass}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                {liveActivities.length > 0 && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                  </span>
+                )}
+                <span className="text-xs text-muted-foreground">{liveActivities.length} recent</span>
+              </div>
+              {onRefreshActivities && (
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRefreshActivities}>
+                  <RefreshCw className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+            {liveActivities.length === 0 ? (
+              <div className="text-center py-6">
+                <Activity className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">No recent activity</p>
+              </div>
+            ) : (
+              <div className="space-y-2 flex-1 overflow-auto">
+                {liveActivities.slice(0, 6).map((activity, i) => (
+                  <div key={activity.id || i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="h-7 w-7 rounded-full bg-muted/50 flex items-center justify-center flex-shrink-0">
+                      <Ticket className="h-3.5 w-3.5 text-emerald-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{activity.message}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(activity.timestamp, { addSuffix: true })}
+                      </p>
+                    </div>
+                    {activity.amount !== undefined && (
+                      <span className="text-sm font-semibold text-emerald-600 tabular-nums">
+                        +${activity.amount.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </ChartCard>
+        );
+
+      case "insights_sales_heatmap": {
+        const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+        const hours = Array.from({ length: 24 }, (_, i) => i);
+        const maxValue = Math.max(...salesHeatmapData.map(d => d.value), 1);
+        const heatmapMap = new Map<string, number>();
+        salesHeatmapData.forEach(d => heatmapMap.set(`${d.day}-${d.hour}`, d.value));
+
+        const getCellColor = (value: number) => {
+          if (value === 0) return "bg-muted/30";
+          const intensity = value / maxValue;
+          if (intensity > 0.8) return "bg-orange-500";
+          if (intensity > 0.6) return "bg-orange-400";
+          if (intensity > 0.4) return "bg-orange-300";
+          if (intensity > 0.2) return "bg-orange-200";
+          return "bg-orange-100 dark:bg-orange-900/30";
+        };
+
+        return (
+          <ChartCard
+            key={widgetConfig.widgetId}
+            title="Peak Sales Times"
+            description="When your tickets sell best"
+            className={sizeClass}
+          >
+            <TooltipProvider delayDuration={100}>
+              <div className="overflow-x-auto flex-1">
+                <div className="min-w-[400px]">
+                  <div className="flex mb-1 pl-8">
+                    {[0, 6, 12, 18].map(h => (
+                      <div key={h} className="flex-1 text-[10px] text-muted-foreground">
+                        {h === 0 ? "12am" : h === 12 ? "12pm" : h < 12 ? `${h}am` : `${h-12}pm`}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-0.5">
+                    {days.map(day => (
+                      <div key={day} className="flex items-center gap-1">
+                        <span className="w-7 text-[10px] text-muted-foreground">{day}</span>
+                        <div className="flex-1 flex gap-0.5">
+                          {hours.map(hour => {
+                            const value = heatmapMap.get(`${day}-${hour}`) || 0;
+                            return (
+                              <UITooltip key={`${day}-${hour}`}>
+                                <TooltipTrigger asChild>
+                                  <div className={`flex-1 h-4 rounded-sm ${getCellColor(value)} hover:ring-1 hover:ring-primary`} />
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs">
+                                  {day} {hour === 0 ? "12am" : hour === 12 ? "12pm" : hour < 12 ? `${hour}am` : `${hour-12}pm`}: {value} sales
+                                </TooltipContent>
+                              </UITooltip>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-end gap-1 mt-3 pt-2 border-t border-border/50">
+                    <span className="text-[10px] text-muted-foreground">Less</span>
+                    <div className="flex gap-0.5">
+                      {["bg-muted/30", "bg-orange-100", "bg-orange-200", "bg-orange-300", "bg-orange-400", "bg-orange-500"].map((c, i) => (
+                        <div key={i} className={`w-3 h-3 rounded-sm ${c}`} />
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">More</span>
+                  </div>
+                </div>
+              </div>
+            </TooltipProvider>
+          </ChartCard>
+        );
+      }
+
+      case "insights_ai_recommendations":
+        return (
+          <ChartCard
+            key={widgetConfig.widgetId}
+            title="Smart Insights"
+            description="AI-powered recommendations"
+            className={sizeClass}
+          >
+            {aiInsights.length === 0 ? (
+              <div className="text-center py-6 flex-1 flex flex-col items-center justify-center">
+                <Sparkles className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">No insights right now</p>
+                <p className="text-xs text-muted-foreground mt-1">Check back later</p>
+              </div>
+            ) : (
+              <div className="space-y-3 flex-1 overflow-auto">
+                {aiInsights.slice(0, 4).map((insight) => {
+                  const iconColor = insight.type === 'opportunity' ? 'text-emerald-500' :
+                    insight.type === 'warning' ? 'text-amber-500' :
+                    insight.type === 'trend' ? 'text-blue-500' : 'text-purple-500';
+                  const Icon = insight.type === 'opportunity' ? TrendingUp :
+                    insight.type === 'warning' ? AlertCircle :
+                    insight.type === 'trend' ? Target : Lightbulb;
+
+                  return (
+                    <div key={insight.id} className="p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className={`h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center flex-shrink-0 ${iconColor}`}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm">{insight.title}</h4>
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{insight.description}</p>
+                          {insight.metric && (
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className="text-sm font-semibold">{insight.metric}</span>
+                              {insight.metricChange !== undefined && (
+                                <span className={`text-xs ${insight.metricChange >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                  {insight.metricChange >= 0 ? '+' : ''}{insight.metricChange}%
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </ChartCard>
+        );
+
+      case "insights_quick_actions": {
+        const activeActions = quickActions.filter(a => a.count > 0);
+        return (
+          <ChartCard
+            key={widgetConfig.widgetId}
+            title="Action Items"
+            description="Tasks needing attention"
+            className={sizeClass}
+          >
+            {activeActions.length === 0 ? (
+              <div className="text-center py-6 flex-1 flex flex-col items-center justify-center">
+                <Bell className="h-10 w-10 mx-auto text-emerald-500 mb-2" />
+                <p className="text-sm font-medium text-emerald-600">All caught up!</p>
+                <p className="text-xs text-muted-foreground mt-1">No pending actions</p>
+              </div>
+            ) : (
+              <div className="space-y-2 flex-1 overflow-auto">
+                {activeActions.slice(0, 5).map((action) => {
+                  const isHigh = action.priority === 'high';
+                  const iconColor = action.type === 'abandoned_carts' ? 'text-amber-500' :
+                    action.type === 'low_inventory' ? 'text-orange-500' :
+                    action.type === 'failed_payments' ? 'text-red-500' : 'text-blue-500';
+                  const Icon = action.type === 'abandoned_carts' ? ShoppingCart :
+                    action.type === 'low_inventory' ? AlertCircle :
+                    action.type === 'failed_payments' ? AlertCircle : Bell;
+
+                  return (
+                    <div
+                      key={action.id}
+                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => onQuickAction?.(action.id)}
+                    >
+                      <div className={`h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center flex-shrink-0 ${iconColor}`}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{action.count} {action.label}</span>
+                          {isHigh && (
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                            </span>
+                          )}
+                        </div>
+                        {action.description && (
+                          <p className="text-xs text-muted-foreground">{action.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </ChartCard>
+        );
+      }
 
       default:
         return null;
