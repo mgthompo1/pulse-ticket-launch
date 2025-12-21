@@ -69,7 +69,25 @@ const GivvvAuth = () => {
       if (!user) return;
 
       try {
-        // Get user's organization memberships with admin/owner role
+        const allOrgs: { id: string; name: string; isOwner: boolean }[] = [];
+
+        // 1. Get organizations where user is the direct OWNER (organizations.user_id)
+        const { data: ownedOrgs, error: ownedError } = await supabase
+          .from("organizations")
+          .select("id, name")
+          .eq("user_id", user.id);
+
+        if (ownedError) {
+          console.error("Error loading owned organizations:", ownedError);
+        }
+
+        if (ownedOrgs) {
+          ownedOrgs.forEach(org => {
+            allOrgs.push({ id: org.id, name: org.name, isOwner: true });
+          });
+        }
+
+        // 2. Get organizations where user is an admin via organization_users table
         const { data: memberships, error: memberError } = await supabase
           .from("organization_users")
           .select("organization_id, role, organizations(id, name)")
@@ -78,11 +96,21 @@ const GivvvAuth = () => {
 
         if (memberError) {
           console.error("Error loading organization membership:", memberError);
-          setError("Failed to load your organization. Please try again.");
-          return;
         }
 
-        if (!memberships || memberships.length === 0) {
+        if (memberships) {
+          memberships.forEach(m => {
+            if (m.organizations && !allOrgs.find(o => o.id === m.organization_id)) {
+              allOrgs.push({
+                id: m.organization_id,
+                name: (m.organizations as any).name,
+                isOwner: false,
+              });
+            }
+          });
+        }
+
+        if (allOrgs.length === 0) {
           // Check if they have any membership at all (just not admin)
           const { data: anyMembership } = await supabase
             .from("organization_users")
@@ -98,19 +126,19 @@ const GivvvAuth = () => {
           return;
         }
 
-        // Build list of all organizations user can connect
-        const orgs = memberships
-          .filter(m => m.organizations)
-          .map(m => ({
-            id: m.organization_id,
-            name: (m.organizations as any).name,
-          }));
+        // Sort: owned orgs first, then by name
+        allOrgs.sort((a, b) => {
+          if (a.isOwner && !b.isOwner) return -1;
+          if (!a.isOwner && b.isOwner) return 1;
+          return a.name.localeCompare(b.name);
+        });
 
-        setAllOrganizations(orgs);
+        const orgsForState = allOrgs.map(o => ({ id: o.id, name: o.name }));
+        setAllOrganizations(orgsForState);
 
-        // Default to first org, but user can change
-        if (orgs.length > 0) {
-          setOrganization(orgs[0]);
+        // Default to first org (owned orgs come first now)
+        if (orgsForState.length > 0) {
+          setOrganization(orgsForState[0]);
         }
       } catch (err) {
         console.error("Error:", err);
