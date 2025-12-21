@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Download, Mail, Search, Calendar, User, Receipt, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
+import { TablePagination } from "@/components/ui/table-pagination";
 
 interface PaymentLogProps {
   organizationId: string;
@@ -40,6 +41,8 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [emailLoading, setEmailLoading] = useState<string | null>(null);
   const [refundLoading, setRefundLoading] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -72,8 +75,7 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
         `)
         .eq('events.organization_id', organizationId)
         .in('status', ['completed', 'paid', 'refunded'])
-        .order('created_at', { ascending: false })
-        .limit(50);
+        .order('created_at', { ascending: false });
 
       if (ordersError) console.error('Orders error:', ordersError);
 
@@ -120,7 +122,7 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
         new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime()
       );
 
-      setPayments(allPayments.slice(0, 100)); // Limit to 100 total records
+      setPayments(allPayments);
     } catch (error) {
       console.error('Error loading payments:', error);
       toast({
@@ -254,14 +256,38 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
     });
   };
 
-  const filteredPayments = payments.filter(payment =>
-    payment.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    payment.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    payment.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    payment.customer_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    payment.event_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    payment.order_id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter payments based on search term
+  const filteredPayments = useMemo(() => {
+    return payments.filter(payment =>
+      payment.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.customer_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.event_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      payment.order_id.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [payments, searchTerm]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  // Paginate the filtered results
+  const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
+  const paginatedPayments = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredPayments.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredPayments, currentPage, itemsPerPage]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (items: number) => {
+    setItemsPerPage(items);
+    setCurrentPage(1);
+  };
 
   const getPaymentProviderBadge = (provider: string) => {
     switch (provider) {
@@ -331,6 +357,7 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
             </p>
           </div>
         ) : (
+          <>
           <div className="border rounded-lg">
             <Table>
               <TableHeader>
@@ -350,7 +377,7 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPayments.map((payment) => (
+                {paginatedPayments.map((payment) => (
                   <TableRow key={payment.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -444,6 +471,15 @@ export const PaymentLog = ({ organizationId }: PaymentLogProps) => {
               </TableBody>
             </Table>
           </div>
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredPayments.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+          </>
         )}
       </CardContent>
     </Card>

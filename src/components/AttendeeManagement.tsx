@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Users, Search, Filter, Download, Mail, CheckCircle, Clock, MapPin, Cale
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { TablePagination } from "@/components/ui/table-pagination";
 
 interface AttendeeManagementProps {
   eventId: string;
@@ -48,6 +49,8 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
     message: "",
     sendToSelected: false
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   // Analytics state
   const [analytics, setAnalytics] = useState({
@@ -152,6 +155,27 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
   useEffect(() => {
     filterAttendees();
   }, [filterAttendees]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, ticketTypeFilter, checkedInFilter]);
+
+  // Paginate the filtered results
+  const totalPages = Math.ceil(filteredAttendees.length / itemsPerPage);
+  const paginatedAttendees = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredAttendees.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredAttendees, currentPage, itemsPerPage]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (items: number) => {
+    setItemsPerPage(items);
+    setCurrentPage(1);
+  };
 
   const exportAttendees = () => {
     const csvContent = [
@@ -507,7 +531,7 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredAttendees.map((attendee) => (
+                  paginatedAttendees.map((attendee) => (
                     <TableRow key={attendee.ticket_id || `row-${Math.random()}`}>
                       <TableCell className="font-medium">
                         {attendee.customer_name || 'N/A'}
@@ -566,6 +590,16 @@ const AttendeeManagement: React.FC<AttendeeManagementProps> = ({ eventId }) => {
               </TableBody>
             </Table>
           </div>
+          {filteredAttendees.length > 0 && (
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredAttendees.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

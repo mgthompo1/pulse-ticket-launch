@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { ShoppingCart, DollarSign, Mail, TrendingUp, Clock, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
+import { TablePagination } from "@/components/ui/table-pagination";
 
 interface RecoveryAnalyticsProps {
   eventId: string;
@@ -36,6 +37,8 @@ export const RecoveryAnalytics: React.FC<RecoveryAnalyticsProps> = ({ eventId })
   const [carts, setCarts] = useState<AbandonedCart[]>([]);
   const [stats, setStats] = useState<RecoveryStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   useEffect(() => {
     const loadRecoveryData = async () => {
@@ -82,6 +85,22 @@ export const RecoveryAnalytics: React.FC<RecoveryAnalyticsProps> = ({ eventId })
       loadRecoveryData();
     }
   }, [eventId]);
+
+  // Paginate the carts
+  const totalPages = Math.ceil(carts.length / itemsPerPage);
+  const paginatedCarts = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return carts.slice(startIndex, startIndex + itemsPerPage);
+  }, [carts, currentPage, itemsPerPage]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (items: number) => {
+    setItemsPerPage(items);
+    setCurrentPage(1);
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -220,7 +239,7 @@ export const RecoveryAnalytics: React.FC<RecoveryAnalyticsProps> = ({ eventId })
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {carts.map((cart) => (
+                {paginatedCarts.map((cart) => (
                   <TableRow key={cart.id}>
                     <TableCell>
                       <div>
@@ -244,6 +263,16 @@ export const RecoveryAnalytics: React.FC<RecoveryAnalyticsProps> = ({ eventId })
               </TableBody>
             </Table>
           </div>
+          {carts.length > 0 && (
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={carts.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { Download, Users, Calendar, DollarSign, Ticket, TrendingUp, Search, BarC
 import { format } from "date-fns";
 import { WidgetFunnelAnalytics } from "./WidgetFunnelAnalytics";
 import { RecoveryAnalytics } from "./RecoveryAnalytics";
+import { TablePagination } from "@/components/ui/table-pagination";
 
 interface EventAnalyticsProps {
   events: Array<{
@@ -95,6 +96,8 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
   const [hasDonations, setHasDonations] = useState(false);
   const [hasGroupSales, setHasGroupSales] = useState(false);
   const [hasAssignedSeats, setHasAssignedSeats] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const { toast } = useToast();
 
   // Helper function to split name into first and last
@@ -453,6 +456,27 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
     setFilteredOrders(filtered);
   }, [searchQuery, orders]);
 
+  // Reset to page 1 when search changes or event changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedEventId]);
+
+  // Paginate the filtered results
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredOrders.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredOrders, currentPage, itemsPerPage]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (items: number) => {
+    setItemsPerPage(items);
+    setCurrentPage(1);
+  };
+
   useEffect(() => {
     if (selectedEventId) {
       loadEventAnalytics(selectedEventId);
@@ -789,7 +813,7 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                       </TableRow>
                     </TableHeader>
                     <TableBody className="divide-y divide-border">
-                      {filteredOrders.map((order) => {
+                      {paginatedOrders.map((order) => {
                         const { firstName, lastName } = splitName(order.customer_name);
                         return (
                           <TableRow key={order.id} className="hover:bg-muted/30 transition-colors">
@@ -867,6 +891,16 @@ export const EventAnalytics: React.FC<EventAnalyticsProps> = ({ events }) => {
                   </TableBody>
                 </Table>
               </div>
+              {filteredOrders.length > 0 && (
+                <TablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={filteredOrders.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                />
+              )}
               {filteredOrders.length === 0 && orders.length > 0 && (
                 <div className="text-center py-12">
                   <div className="p-4 rounded-2xl bg-muted/50 w-fit mx-auto mb-4">
