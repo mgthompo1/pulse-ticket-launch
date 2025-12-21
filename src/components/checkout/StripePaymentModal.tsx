@@ -222,6 +222,8 @@ export const StripePaymentModal: React.FC<StripePaymentModalProps> = ({
                 isSignedIn={isSignedIn}
                 onPlanSelected={onPaymentPlanSelected}
                 selectedPlanId={selectedPaymentPlan?.id}
+                groupId={groupId}
+                allocationId={allocationId}
               />
             )}
 

@@ -41,6 +41,8 @@ interface PaymentPlanSelectorProps {
   isSignedIn: boolean;
   onPlanSelected: (plan: PaymentPlan | null, schedule: PaymentScheduleItem[] | null) => void;
   selectedPlanId?: string | null;
+  groupId?: string | null;
+  allocationId?: string | null;
 }
 
 export const PaymentPlanSelector: React.FC<PaymentPlanSelectorProps> = ({
@@ -51,11 +53,54 @@ export const PaymentPlanSelector: React.FC<PaymentPlanSelectorProps> = ({
   theme,
   isSignedIn,
   onPlanSelected,
-  selectedPlanId
+  selectedPlanId,
+  groupId = null,
+  allocationId = null
 }) => {
   const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(selectedPlanId || null);
+  const [groupPaymentPlansEnabled, setGroupPaymentPlansEnabled] = useState<boolean>(true);
+
+  // Check if payment plans are enabled for this group
+  useEffect(() => {
+    const checkGroupPaymentPlans = async () => {
+      if (!groupId) {
+        setGroupPaymentPlansEnabled(true);
+        return;
+      }
+
+      try {
+        // First check allocation-level override, then group-level setting
+        if (allocationId) {
+          const { data: allocation } = await supabase
+            .from("group_ticket_allocations")
+            .select("payment_plans_enabled")
+            .eq("id", allocationId)
+            .single();
+
+          if (allocation?.payment_plans_enabled !== null) {
+            setGroupPaymentPlansEnabled(allocation.payment_plans_enabled);
+            return;
+          }
+        }
+
+        // Check group-level setting
+        const { data: group } = await supabase
+          .from("groups")
+          .select("payment_plans_enabled")
+          .eq("id", groupId)
+          .single();
+
+        setGroupPaymentPlansEnabled(group?.payment_plans_enabled ?? true);
+      } catch (error) {
+        console.error("Error checking group payment plan setting:", error);
+        setGroupPaymentPlansEnabled(true); // Default to enabled on error
+      }
+    };
+
+    checkGroupPaymentPlans();
+  }, [groupId, allocationId]);
 
   useEffect(() => {
     loadPaymentPlans();
@@ -188,6 +233,11 @@ export const PaymentPlanSelector: React.FC<PaymentPlanSelectorProps> = ({
 
   if (paymentPlans.length === 0) {
     return null; // No payment plans available
+  }
+
+  // Hide payment plans if disabled for this group
+  if (groupId && !groupPaymentPlansEnabled) {
+    return null;
   }
 
   return (

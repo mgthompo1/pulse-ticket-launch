@@ -54,6 +54,8 @@ import FeatureLowFees from "./pages/FeatureLowFees";
 import FeatureCheckin from "./pages/FeatureCheckin";
 import FeatureCRM from "./pages/FeatureCRM";
 import FeatureIntegrations from "./pages/FeatureIntegrations";
+import FeaturePaymentPlans from "./pages/FeaturePaymentPlans";
+import FeatureMembership from "./pages/FeatureMembership";
 
 const queryClient = new QueryClient();
 
@@ -115,6 +117,8 @@ const App = () => (
                 <Route path="/features/checkin" element={<FeatureCheckin />} />
                 <Route path="/features/crm" element={<FeatureCRM />} />
                 <Route path="/features/integrations" element={<FeatureIntegrations />} />
+                <Route path="/features/payment-plans" element={<FeaturePaymentPlans />} />
+                <Route path="/features/membership" element={<FeatureMembership />} />
 
                 {/* Protected routes */}
                 <Route path="/error-monitoring" element={

@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrganizations } from "@/hooks/useOrganizations";
@@ -65,6 +66,7 @@ interface Group {
   is_active: boolean;
   created_at: string;
   passkey: string | null;
+  payment_plans_enabled: boolean;
   total_allocations?: number;
   total_sold?: number;
   total_revenue?: number;
@@ -83,6 +85,7 @@ interface GroupFormData {
   billing_address: string;
   url_slug: string;
   passkey: string;
+  payment_plans_enabled: boolean;
 }
 
 const WIZARD_STEPS = [
@@ -116,6 +119,7 @@ export const GroupsManagement: React.FC = () => {
     billing_address: "",
     url_slug: "",
     passkey: "",
+    payment_plans_enabled: true,
   });
 
   useEffect(() => {
@@ -159,6 +163,7 @@ export const GroupsManagement: React.FC = () => {
         is_active: boolean;
         created_at: string;
         passkey: string | null;
+        payment_plans_enabled: boolean;
         group_ticket_allocations: { allocated_quantity: number; used_quantity: number }[];
         group_ticket_sales: { paid_price: number; discount_amount: number }[];
       }) => {
@@ -177,6 +182,7 @@ export const GroupsManagement: React.FC = () => {
           is_active: group.is_active,
           created_at: group.created_at,
           passkey: group.passkey,
+          payment_plans_enabled: group.payment_plans_enabled ?? true,
           total_allocations: allocations.reduce((sum, a) => sum + a.allocated_quantity, 0),
           total_sold: allocations.reduce((sum, a) => sum + a.used_quantity, 0),
           total_revenue: sales.reduce((sum, s) => sum + (s.paid_price || 0), 0),
@@ -242,6 +248,7 @@ export const GroupsManagement: React.FC = () => {
       billing_address: "",
       url_slug: "",
       passkey: generatePasskey(),
+      payment_plans_enabled: true,
     });
     setShowGroupDialog(true);
   };
@@ -271,6 +278,7 @@ export const GroupsManagement: React.FC = () => {
         billing_address: fullGroup.billing_address || "",
         url_slug: fullGroup.url_slug || "",
         passkey: fullGroup.passkey || "",
+        payment_plans_enabled: fullGroup.payment_plans_enabled ?? true,
       });
     } catch (error) {
       console.error("Error fetching group details:", error);
@@ -286,6 +294,7 @@ export const GroupsManagement: React.FC = () => {
         billing_address: "",
         url_slug: group.url_slug || "",
         passkey: group.passkey || "",
+        payment_plans_enabled: group.payment_plans_enabled ?? true,
       });
     }
 
@@ -351,6 +360,7 @@ export const GroupsManagement: React.FC = () => {
             billing_address: formData.billing_address,
             url_slug: formData.url_slug,
             passkey: formData.passkey,
+            payment_plans_enabled: formData.payment_plans_enabled,
           })
           .eq("id", editingGroup.id);
 
@@ -374,6 +384,7 @@ export const GroupsManagement: React.FC = () => {
           billing_address: formData.billing_address,
           url_slug: formData.url_slug,
           passkey: formData.passkey,
+          payment_plans_enabled: formData.payment_plans_enabled,
           is_active: true,
         });
 
@@ -774,6 +785,25 @@ export const GroupsManagement: React.FC = () => {
               <p className="text-xs text-muted-foreground">
                 Group coordinators will need this passkey to access their admin portal.
               </p>
+            </div>
+
+            {/* Payment Plans Toggle */}
+            <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+              <div className="space-y-0.5">
+                <Label htmlFor="payment_plans_enabled" className="text-sm font-medium cursor-pointer">
+                  Allow Payment Plans
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Enable deposits and installments for this group's members
+                </p>
+              </div>
+              <Switch
+                id="payment_plans_enabled"
+                checked={formData.payment_plans_enabled}
+                onCheckedChange={(checked) =>
+                  setFormData((prev) => ({ ...prev, payment_plans_enabled: checked }))
+                }
+              />
             </div>
 
             {/* Preview */}

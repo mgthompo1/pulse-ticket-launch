@@ -11,7 +11,9 @@ import {
   Shield,
   UserCheck,
   Building2,
-  FileCheck
+  FileCheck,
+  CreditCard,
+  UserCircle
 } from "lucide-react";
 import { useLandingPageContent } from "@/hooks/useLandingPageContent";
 
@@ -67,6 +69,20 @@ const features = [
     title: "Promo Codes",
     description: "Discounts, early bird pricing, and affiliate tools.",
     badge: "Sales"
+  },
+  {
+    icon: CreditCard,
+    title: "Payment Plans",
+    description: "Deposits and installments so attendees can pay over time.",
+    badge: "Payments",
+    highlight: true
+  },
+  {
+    icon: UserCircle,
+    title: "Member Accounts",
+    description: "Let attendees create accounts, view tickets, and manage bookings.",
+    badge: "Accounts",
+    highlight: true
   }
 ];
 
