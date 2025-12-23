@@ -29,6 +29,7 @@ import { PromoCodeInput } from "@/components/checkout/PromoCodeInput";
 import { MerchandiseCartItem, TicketType, EventData, CustomQuestion, WindcaveLink } from "@/types/widget";
 import { StripePaymentForm } from "@/components/payment/StripePaymentForm";
 import MerchandiseSelector from "@/components/MerchandiseSelector";
+import { PaymentPlanSelector } from "@/components/checkout/PaymentPlanSelector";
 import { trackBeginCheckout, trackPurchase } from "@/lib/analytics";
 import { Theme } from "@/types/theme";
 import { getStripePublishableKey } from "@/lib/stripe-config";
@@ -157,6 +158,11 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
   const [customTipAmount, setCustomTipAmount] = useState<string>('');
   const platformTipOptions = [0, 1, 2, 5];
 
+  // Payment plan state
+  const [selectedPaymentPlan, setSelectedPaymentPlan] = useState<any>(null);
+  const [paymentSchedule, setPaymentSchedule] = useState<any[] | null>(null);
+  const [isCustomerSignedIn, setIsCustomerSignedIn] = useState(false);
+
   // Computed values
   const eventTheme: Theme = useMemo(() => theme, [theme]);
   // For Stripe Connect, always use the platform publishable key (not the connected account's key)
@@ -193,7 +199,16 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
         email: customer.email || customerInfo.email,
         phone: customer.phone || customerInfo.phone,
       });
+      setIsCustomerSignedIn(true);
+    } else {
+      setIsCustomerSignedIn(false);
     }
+  };
+
+  // Handle payment plan selection
+  const handlePaymentPlanSelected = (plan: any, schedule: any[] | null) => {
+    setSelectedPaymentPlan(plan);
+    setPaymentSchedule(schedule);
   };
 
   // Handle member pricing toggle
@@ -268,6 +283,24 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
   const creditCardProcessingFee = eventData?.organizations?.credit_card_processing_fee_percentage || 0;
   const bookingFeeEnabled = eventData?.organizations?.stripe_booking_fee_enabled && paymentProvider === 'stripe';
 
+  // Tax configuration
+  const taxEnabled = eventData?.organizations?.tax_enabled || false;
+  const taxName = eventData?.organizations?.tax_name || 'GST';
+  const taxRate = eventData?.organizations?.tax_rate || 0;
+  const taxInclusive = eventData?.organizations?.tax_inclusive ?? true;
+
+  // Calculate tax amount (for display purposes)
+  const calculateTaxAmount = (amount: number) => {
+    if (!taxEnabled || taxRate <= 0) return 0;
+    if (taxInclusive) {
+      // Tax is included in the price, calculate the tax portion
+      return amount - (amount / (1 + taxRate / 100));
+    } else {
+      // Tax is added on top
+      return amount * (taxRate / 100);
+    }
+  };
+
   const getTotalDiscount = () => promoHooks?.getTotalDiscount() || 0;
 
   const getTotalAmount = () => {
@@ -277,6 +310,10 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
     }
     if (bookingFeeEnabled) {
       total += (subtotal * 0.01) + 0.50;
+    }
+    // Add tax if not inclusive (tax-exclusive pricing)
+    if (taxEnabled && !taxInclusive && taxRate > 0) {
+      total += total * (taxRate / 100);
     }
     if (selectedDonationAmount && selectedDonationAmount > 0) {
       total += selectedDonationAmount;
@@ -506,6 +543,26 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
             <div className="flex justify-between text-sm">
               <span>Donation</span>
               <span>${selectedDonationAmount.toFixed(2)}</span>
+            </div>
+          )}
+
+          {creditCardProcessingFee > 0 && (
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Processing Fee ({creditCardProcessingFee}%)</span>
+              <span>${((subtotal - getTotalDiscount()) * creditCardProcessingFee / 100).toFixed(2)}</span>
+            </div>
+          )}
+
+          {taxEnabled && taxRate > 0 && (
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>{taxName} ({taxRate}%){taxInclusive ? ' incl.' : ''}</span>
+              <span>
+                {taxInclusive ? (
+                  `$${calculateTaxAmount(subtotal - getTotalDiscount()).toFixed(2)}`
+                ) : (
+                  `$${((subtotal - getTotalDiscount()) * taxRate / 100).toFixed(2)}`
+                )}
+              </span>
             </div>
           )}
 
@@ -951,10 +1008,28 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
             <span>${selectedDonationAmount.toFixed(2)}</span>
           </div>
         )}
+        {creditCardProcessingFee > 0 && (
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>Processing Fee ({creditCardProcessingFee}%)</span>
+            <span>${((subtotal - getTotalDiscount()) * creditCardProcessingFee / 100).toFixed(2)}</span>
+          </div>
+        )}
         {bookingFeeEnabled && (
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Booking Fee</span>
             <span>${((subtotal * 0.01) + 0.50).toFixed(2)}</span>
+          </div>
+        )}
+        {taxEnabled && taxRate > 0 && (
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>{taxName} ({taxRate}%){taxInclusive ? ' incl.' : ''}</span>
+            <span>
+              {taxInclusive ? (
+                `$${calculateTaxAmount(subtotal - getTotalDiscount()).toFixed(2)}`
+              ) : (
+                `$${((subtotal - getTotalDiscount()) * taxRate / 100).toFixed(2)}`
+              )}
+            </span>
           </div>
         )}
         <div className="border-t pt-2 flex justify-between font-bold text-lg">
@@ -962,6 +1037,22 @@ export const ModalCheckout: React.FC<ModalCheckoutProps> = ({
           <span style={{ color: primaryColor }}>${getTotalAmount().toFixed(2)}</span>
         </div>
       </div>
+
+      {/* Payment Plan Selector */}
+      {organizationId && getTotalAmount() > 0 && (
+        <PaymentPlanSelector
+          eventId={eventData.id}
+          organizationId={organizationId}
+          orderTotal={getTotalAmount()}
+          eventDate={eventData.event_date}
+          theme={eventTheme}
+          isSignedIn={isCustomerSignedIn}
+          onPlanSelected={handlePaymentPlanSelected}
+          selectedPlanId={selectedPaymentPlan?.id || null}
+          groupId={groupId}
+          allocationId={allocationId}
+        />
+      )}
 
       {/* Payment Form */}
       {paymentProvider === "stripe" && effectiveStripeKey && (

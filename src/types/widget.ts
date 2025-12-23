@@ -120,6 +120,11 @@ export interface EventData {
     stripe_test_mode?: boolean | null;
     crm_enabled?: boolean | null;
     membership_enabled?: boolean | null;
+    // Tax settings
+    tax_enabled?: boolean | null;
+    tax_name?: string | null;
+    tax_rate?: number | null;
+    tax_inclusive?: boolean | null;
   };
 }
 
