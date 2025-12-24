@@ -57,7 +57,7 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
     },
   });
 
-  // Form state
+  // Form state - only includes actual database columns
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -65,12 +65,11 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
     base_price: 0,
     duration_minutes: 60,
     max_concurrent_bookings: 1,
-    resource_label: 'Guide',
     status: 'active',
     logo_url: '',
   });
 
-  // Theme state
+  // Theme state - stored in widget_customization JSONB column
   const [themeData, setThemeData] = useState({
     primaryColor: '#3b82f6',
     accentColor: '#10b981',
@@ -92,6 +91,8 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
     borderRadius: 'medium' as 'none' | 'small' | 'medium' | 'large',
     showTrustSignals: true,
     fontFamily: 'default' as 'default' | 'serif' | 'modern',
+    // Resource label (stored in widget_customization, not a DB column)
+    resourceLabel: 'Guide',
     // Trust signals customization
     trustSignals: {
       paymentTitle: 'Secure Payment',
@@ -120,7 +121,6 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
         duration_minutes: attraction.duration_minutes || 60,
         logo_url: attraction.logo_url || '',
         max_concurrent_bookings: attraction.max_concurrent_bookings || 1,
-        resource_label: attraction.resource_label || 'Guide',
         status: attraction.status || 'active',
       });
 
@@ -147,6 +147,8 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
         borderRadius: customization.borderRadius || 'medium',
         showTrustSignals: customization.showTrustSignals !== false,
         fontFamily: customization.fontFamily || 'default',
+        // Resource label
+        resourceLabel: customization.resourceLabel || 'Guide',
         // Trust signals
         trustSignals: customization.trustSignals || {
           paymentTitle: 'Secure Payment',
@@ -376,8 +378,8 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
                 <Label htmlFor="resource_label">Staff/Resource Label</Label>
                 <Input
                   id="resource_label"
-                  value={formData.resource_label}
-                  onChange={(e) => handleInputChange('resource_label', e.target.value)}
+                  value={themeData.resourceLabel}
+                  onChange={(e) => handleThemeChange('resourceLabel', e.target.value)}
                   placeholder="e.g., Guide, Instructor, Staff"
                 />
                 <p className="text-sm text-muted-foreground">
