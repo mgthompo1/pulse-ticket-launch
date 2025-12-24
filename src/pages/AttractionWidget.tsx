@@ -1,14 +1,18 @@
+/**
+ * AttractionWidget - Public booking page for attractions
+ * Uses V3 booking widget with Stripe payment integration
+ */
+
 import { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Star } from "lucide-react";
-import BookingWidget, { type Experience, type BookingState } from "@/components/BookingWidget";
+import { Loader2, Star, AlertCircle } from "lucide-react";
 import { SEOHead } from "@/components/SEOHead";
+import { AttractionBookingWidgetV3 } from "@/components/attractions/v3";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AttractionStripePayment } from "@/components/payment/AttractionStripePayment";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { AttractionWindcavePayment } from "@/components/payment/AttractionWindcavePayment";
 
 interface AttractionData {
   id: string;
@@ -24,12 +28,33 @@ interface AttractionData {
   organization_id: string;
   status: string;
   resource_label?: string | null;
+  currency?: string;
 }
 
 interface OrganizationData {
   id: string;
   name: string;
   logo_url: string | null;
+  payment_provider?: 'stripe' | 'windcave';
+  currency?: string;
+}
+
+interface BookingData {
+  id?: string;
+  reference: string;
+  date: string;
+  time: string;
+  partySize: number;
+  customerInfo: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone?: string;
+  };
+  total: number;
+  selectedAddons?: { addon: any; quantity: number }[];
+  selectedPackage?: any;
+  selectedStaffId?: string;
 }
 
 const AttractionWidget = () => {
@@ -37,45 +62,14 @@ const AttractionWidget = () => {
   const { toast } = useToast();
   const [attractionData, setAttractionData] = useState<AttractionData | null>(null);
   const [organizationData, setOrganizationData] = useState<OrganizationData | null>(null);
+  const [requirements, setRequirements] = useState<any[]>([]);
+  const [customFields, setCustomFields] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [bookingState, setBookingState] = useState<BookingState | null>(null);
-  const [customerEmail, setCustomerEmail] = useState("");
-  const [customerName, setCustomerName] = useState("");
-  const [showCustomerForm, setShowCustomerForm] = useState(true);
+  const [pendingBooking, setPendingBooking] = useState<BookingData | null>(null);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
 
-  // Map attraction data to Experience format for BookingWidget
-  const experienceData = useMemo<Experience | undefined>(() => {
-    if (!attractionData) return undefined;
-
-    const experience = {
-      title: attractionData.name,
-      durationMin: attractionData.duration_minutes,
-      venue: attractionData.venue || "Main Venue",
-      org: organizationData?.name || "Your Organization",
-      basePrice: attractionData.base_price,
-      currency: "USD",
-      timezone: "America/Chicago", // TODO: Get from organization settings
-      description: attractionData.description || undefined,
-      highlights: attractionData.widget_customization?.expectations?.items || [
-        "Professional staff assistance available throughout",
-        "All equipment and safety gear provided on-site",
-        "Comfortable clothing and closed-toe shoes recommended",
-        "Arrive 15 minutes early for check-in"
-      ],
-      coverImage: attractionData.logo_url || undefined
-    };
-
-    console.log('📦 Experience data prepared for BookingWidget:', {
-      title: experience.title,
-      coverImage: experience.coverImage,
-      hasCoverImage: !!experience.coverImage,
-      rawLogoUrl: attractionData.logo_url
-    });
-
-    return experience;
-  }, [attractionData, organizationData]);
-
+  // Load attraction and related data
   const loadAttractionData = async () => {
     if (!attractionId) return;
 
@@ -99,26 +93,43 @@ const AttractionWidget = () => {
         throw new Error("Attraction not found or not active");
       }
 
-      console.log('🎯 Attraction loaded from database:', {
-        id: attraction.id,
-        name: attraction.name,
-        logo_url: attraction.logo_url,
-        hasLogo: !!attraction.logo_url
-      });
-
+      console.log('🎯 Attraction loaded:', attraction.name);
       setAttractionData(attraction);
 
-      // Load organization details
+      // Load organization details including payment provider
       if (attraction.organization_id) {
         const { data: organization, error: orgError } = await supabase
           .from("organizations")
-          .select("id, name, logo_url")
+          .select("id, name, logo_url, payment_provider, currency")
           .eq("id", attraction.organization_id)
           .single();
 
         if (!orgError && organization) {
           setOrganizationData(organization);
         }
+      }
+
+      // Load requirements
+      const { data: reqData } = await supabase
+        .from("attraction_requirements")
+        .select("*")
+        .eq("attraction_id", attractionId)
+        .order("display_order");
+
+      if (reqData) {
+        setRequirements(reqData);
+      }
+
+      // Load custom fields
+      const { data: fieldsData } = await supabase
+        .from("attraction_custom_fields")
+        .select("*")
+        .eq("attraction_id", attractionId)
+        .eq("is_active", true)
+        .order("display_order");
+
+      if (fieldsData) {
+        setCustomFields(fieldsData);
       }
 
     } catch (error) {
@@ -139,47 +150,89 @@ const AttractionWidget = () => {
     }
   }, [attractionId]);
 
-  // Fetch available slots for the booking widget
-  const fetchAttractionSlots = async ({ dateISO, partySize }: { dateISO: string; partySize: number }) => {
-    if (!attractionId) return [];
-
-    try {
-      // TODO: Replace with actual Supabase query for attraction slots
-      // For now, using demo data
-      const { demoFetchSlots } = await import("@/components/BookingWidget");
-      return demoFetchSlots(dateISO, partySize);
-    } catch (error) {
-      console.error("Error fetching slots:", error);
-      return [];
-    }
-  };
-
-  const handleContinue = (state: BookingState) => {
-    console.log("📋 Booking state:", state);
-    setBookingState(state);
+  // Handle booking completion - triggers payment modal
+  const handleBookingComplete = (booking: any) => {
+    console.log("📋 Booking ready for payment:", booking);
+    setPendingBooking(booking);
     setShowPaymentModal(true);
-    setShowCustomerForm(true);
   };
 
+  // Handle successful payment
   const handlePaymentSuccess = async () => {
+    if (!pendingBooking || !attractionData) return;
+
     try {
+      setPaymentProcessing(true);
+
+      // Create the booking in database
+      const { data: newBooking, error: bookingError } = await supabase
+        .from("attraction_bookings")
+        .insert({
+          attraction_id: attractionId,
+          customer_name: `${pendingBooking.customerInfo.first_name} ${pendingBooking.customerInfo.last_name}`,
+          customer_email: pendingBooking.customerInfo.email,
+          customer_phone: pendingBooking.customerInfo.phone,
+          booking_date: pendingBooking.date,
+          party_size: pendingBooking.partySize,
+          total_amount: pendingBooking.total,
+          status: "confirmed",
+          payment_status: "completed",
+          booking_reference: pendingBooking.reference,
+          resource_id: pendingBooking.selectedStaffId,
+        })
+        .select()
+        .single();
+
+      if (bookingError) throw bookingError;
+
+      // Save add-ons
+      if (pendingBooking.selectedAddons?.length) {
+        const addonsToInsert = pendingBooking.selectedAddons.map(({ addon, quantity }) => ({
+          booking_id: newBooking.id,
+          addon_id: addon.id,
+          addon_name: addon.name,
+          quantity,
+          unit_price: addon.price,
+          total_price: addon.price * quantity,
+        }));
+
+        await supabase.from("booking_add_ons").insert(addonsToInsert);
+      }
+
       toast({
-        title: "Booking Confirmed!",
-        description: `Payment successful! Confirmation email will be sent to ${customerEmail}.`,
+        title: "Booking Confirmed! 🎉",
+        description: `Confirmation sent to ${pendingBooking.customerInfo.email}`,
       });
 
       setShowPaymentModal(false);
+      setPendingBooking(null);
+
+      // Trigger email notification via edge function
+      try {
+        await supabase.functions.invoke("send-attraction-confirmation", {
+          body: {
+            bookingId: newBooking.id,
+            email: pendingBooking.customerInfo.email,
+          },
+        });
+      } catch (emailError) {
+        console.error("Email notification failed:", emailError);
+        // Don't fail the booking for email errors
+      }
 
     } catch (error) {
-      console.error('Error in payment success handler:', error);
+      console.error('Error completing booking:', error);
       toast({
-        title: "Booking Confirmed",
-        description: "Payment was successful! You should receive a confirmation email shortly.",
+        title: "Error",
+        description: "Failed to complete booking. Please contact support.",
+        variant: "destructive",
       });
-      setShowPaymentModal(false);
+    } finally {
+      setPaymentProcessing(false);
     }
   };
 
+  // Handle payment error
   const handlePaymentError = (error: Error) => {
     toast({
       title: "Payment Failed",
@@ -188,13 +241,7 @@ const AttractionWidget = () => {
     });
   };
 
-  const handleCustomerFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (customerEmail && customerName) {
-      setShowCustomerForm(false);
-    }
-  };
-
+  // Loading state
   if (loading) {
     return (
       <>
@@ -204,7 +251,7 @@ const AttractionWidget = () => {
         />
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
-            <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-gray-900" />
+            <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-primary" />
             <p className="text-gray-700">Loading attraction...</p>
           </div>
         </div>
@@ -212,6 +259,7 @@ const AttractionWidget = () => {
     );
   }
 
+  // Not found state
   if (!attractionData) {
     return (
       <>
@@ -220,13 +268,13 @@ const AttractionWidget = () => {
           description="The attraction you're looking for could not be found or is not active."
         />
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <Star className="h-12 w-12 mx-auto mb-4 text-gray-900" />
+          <div className="text-center max-w-md mx-auto px-4">
+            <AlertCircle className="h-16 w-16 mx-auto mb-4 text-gray-400" />
             <h1 className="text-2xl font-bold mb-2 text-gray-900">
               Attraction Not Found
             </h1>
             <p className="text-gray-600">
-              The attraction you're looking for could not be found or is not active.
+              The attraction you're looking for could not be found or is no longer active.
             </p>
           </div>
         </div>
@@ -234,119 +282,125 @@ const AttractionWidget = () => {
     );
   }
 
+  const currency = attractionData.currency || 'USD';
+
   return (
     <>
       <SEOHead
         title={`${attractionData.name} - Book Now | ${organizationData?.name || 'TicketFlo'}`}
         description={attractionData.description || `Book your ${attractionData.name} experience. From $${attractionData.base_price} for ${attractionData.duration_minutes} minutes.`}
         ogTitle={`${attractionData.name} - Book Now`}
-        ogDescription={attractionData.description || `Book your ${attractionData.name} experience. From $${attractionData.base_price} for ${attractionData.duration_minutes} minutes.`}
+        ogDescription={attractionData.description || `Book your ${attractionData.name} experience.`}
         ogImage={attractionData.logo_url || organizationData?.logo_url || "https://www.ticketflo.org/og-image.jpg"}
         canonical={`https://www.ticketflo.org/attraction/${attractionId}`}
       />
-      <div className="min-h-screen bg-gray-50 py-8">
-        <BookingWidget
-          experience={experienceData}
-          fetchSlots={fetchAttractionSlots}
-          onContinue={handleContinue}
-        />
-      </div>
+
+      {/* V3 Booking Widget */}
+      <AttractionBookingWidgetV3
+        attractionId={attractionId!}
+        attraction={{
+          id: attractionData.id,
+          name: attractionData.name,
+          description: attractionData.description || undefined,
+          base_price: attractionData.base_price,
+          currency: currency,
+          duration_minutes: attractionData.duration_minutes,
+          location: attractionData.venue || undefined,
+          image_url: attractionData.logo_url || undefined,
+          resource_label: attractionData.resource_label || undefined,
+        }}
+        requirements={requirements}
+        customFields={customFields}
+        showStaffSelector={true}
+        showAddons={true}
+        showPackages={true}
+        showReviews={true}
+        showUrgency={true}
+        showSocialProof={true}
+        onBookingComplete={handleBookingComplete}
+      />
 
       {/* Payment Modal */}
       <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Complete Your Booking</DialogTitle>
+            <DialogTitle>Complete Your Payment</DialogTitle>
             <DialogDescription>
-              {attractionData?.name} - {bookingState?.partySize} {bookingState?.partySize === 1 ? 'guest' : 'guests'}
+              {attractionData.name} - {pendingBooking?.partySize} {pendingBooking?.partySize === 1 ? 'guest' : 'guests'}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 mt-4">
-            {/* Booking Summary */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-semibold mb-2">Booking Details</h3>
-              <div className="space-y-1 text-sm">
-                <p><span className="font-medium">Date:</span> {bookingState?.date ? new Date(bookingState.date).toLocaleDateString() : 'N/A'}</p>
-                <p><span className="font-medium">Time:</span> {bookingState?.slotLabel || 'N/A'}</p>
-                <p><span className="font-medium">Party Size:</span> {bookingState?.partySize || 0}</p>
-                <p className="text-lg font-bold mt-2">Total: ${((bookingState?.partySize || 0) * (attractionData?.base_price || 0)).toFixed(2)}</p>
+          {pendingBooking && (
+            <div className="space-y-6 mt-4">
+              {/* Booking Summary */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="font-semibold mb-3">Booking Details</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Date</span>
+                    <span className="font-medium">{new Date(pendingBooking.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Time</span>
+                    <span className="font-medium">{pendingBooking.time}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Guests</span>
+                    <span className="font-medium">{pendingBooking.partySize}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Contact</span>
+                    <span className="font-medium">{pendingBooking.customerInfo.email}</span>
+                  </div>
+                </div>
+                <div className="border-t border-gray-200 mt-3 pt-3">
+                  <div className="flex justify-between text-lg font-bold">
+                    <span>Total</span>
+                    <span>${pendingBooking.total.toFixed(2)} {currency}</span>
+                  </div>
+                </div>
               </div>
+
+              {/* Payment Form - Stripe or Windcave based on org settings */}
+              {organizationData?.payment_provider === 'windcave' ? (
+                <AttractionWindcavePayment
+                  attractionId={attractionData.id}
+                  bookingId={pendingBooking.id || pendingBooking.reference}
+                  amount={pendingBooking.total}
+                  currency={currency}
+                  description={`${attractionData.name} - ${pendingBooking.partySize} guests`}
+                  customerEmail={pendingBooking.customerInfo.email}
+                  customerName={`${pendingBooking.customerInfo.first_name} ${pendingBooking.customerInfo.last_name}`}
+                  onSuccess={() => handlePaymentSuccess()}
+                  onError={handlePaymentError}
+                  theme={{
+                    primary: attractionData.widget_customization?.primaryColor || '#3b82f6',
+                  }}
+                />
+              ) : (
+                <AttractionStripePayment
+                  amount={pendingBooking.total}
+                  currency={currency}
+                  description={`${attractionData.name} - ${pendingBooking.partySize} guests`}
+                  customerEmail={pendingBooking.customerInfo.email}
+                  customerName={`${pendingBooking.customerInfo.first_name} ${pendingBooking.customerInfo.last_name}`}
+                  onSuccess={handlePaymentSuccess}
+                  onError={handlePaymentError}
+                  metadata={{
+                    organization_id: attractionData.organization_id,
+                    attraction_id: attractionData.id,
+                    booking_reference: pendingBooking.reference,
+                    booking_date: pendingBooking.date,
+                    booking_time: pendingBooking.time,
+                    party_size: String(pendingBooking.partySize),
+                  }}
+                  theme={{
+                    primary: attractionData.widget_customization?.primaryColor || '#3b82f6',
+                  }}
+                />
+              )}
             </div>
-
-            {/* Customer Information Form */}
-            {showCustomerForm ? (
-              <form onSubmit={handleCustomerFormSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="customerName">Full Name *</Label>
-                  <Input
-                    id="customerName"
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="John Doe"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="customerEmail">Email Address *</Label>
-                  <Input
-                    id="customerEmail"
-                    type="email"
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    placeholder="john@example.com"
-                    required
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90"
-                >
-                  Continue to Payment
-                </button>
-              </form>
-            ) : (
-              <>
-                {/* Customer Info Display */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-semibold mb-2">Contact Information</h3>
-                  <p className="text-sm">{customerName}</p>
-                  <p className="text-sm text-gray-600">{customerEmail}</p>
-                  <button
-                    onClick={() => setShowCustomerForm(true)}
-                    className="text-sm text-primary mt-2 hover:underline"
-                  >
-                    Edit
-                  </button>
-                </div>
-
-                {/* Payment Form */}
-                <div>
-                  <h3 className="font-semibold mb-4">Payment Information</h3>
-                  <AttractionStripePayment
-                    amount={(bookingState?.partySize || 0) * (attractionData?.base_price || 0)}
-                    currency="USD"
-                    description={`${attractionData?.name} - ${bookingState?.partySize} guests`}
-                    customerEmail={customerEmail}
-                    customerName={customerName}
-                    onSuccess={handlePaymentSuccess}
-                    onError={handlePaymentError}
-                    metadata={{
-                      organization_id: attractionData?.organization_id || '',
-                      attraction_id: attractionData?.id || '',
-                      booking_date: bookingState?.date || '',
-                      booking_time: bookingState?.slotLabel || '',
-                      party_size: String(bookingState?.partySize || 0),
-                    }}
-                    theme={{
-                      primary: attractionData?.widget_customization?.primaryColor || '#3b82f6',
-                    }}
-                  />
-                </div>
-              </>
-            )}
-          </div>
+          )}
         </DialogContent>
       </Dialog>
     </>

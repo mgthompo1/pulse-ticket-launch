@@ -47,7 +47,7 @@ import Support from "@/pages/Support";
 import { DashboardHelp } from "@/components/DashboardHelp";
 import { OrganizationUserManagement } from "@/components/OrganizationUserManagement";
 import AttractionManagement from "@/components/AttractionManagement";
-import AttractionCustomization from "@/components/AttractionCustomization";
+import { AttractionEditorV3 } from "@/components/attractions/admin/AttractionEditorV3";
 import GroupsManagement from "@/components/GroupsManagement";
 import CustomersCRM from "@/pages/CustomersCRM";
 import IssuingPage from "@/pages/IssuingPage";
@@ -2149,7 +2149,7 @@ const OrgDashboard = () => {
                   ) : (
                     selectedAttraction ? (
                       <div className="space-y-6">
-                        <AttractionCustomization attractionId={selectedAttraction.id} />
+                        <AttractionEditorV3 attractionId={selectedAttraction.id} />
                       </div>
                     ) : (
                       <Card>

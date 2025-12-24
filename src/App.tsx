@@ -18,7 +18,9 @@ import WidgetRouter from "./pages/WidgetRouter";
 import GroupPortal from "./pages/GroupPortal";
 import GroupPublicWidget from "./pages/GroupPublicWidget";
 import AttractionWidget from "./pages/AttractionWidget";
+import AttractionEmbed from "./pages/AttractionEmbed";
 import AttractionBookingDemo from "./pages/AttractionBookingDemo";
+import AttractionV3Demo from "./pages/AttractionV3Demo";
 import MasterAdmin from "./pages/MasterAdmin";
 import SecureAdminAuth from "./pages/SecureAdminAuth";
 import TicketFloLIVE from "./pages/TicketFloLIVE";
@@ -77,7 +79,9 @@ const App = () => (
                 <Route path="/widget/:eventId" element={<WidgetRouter />} />
                 <Route path="/group/:slug/widget" element={<GroupPublicWidget />} />
                 <Route path="/attraction/:attractionId" element={<AttractionWidget />} />
+                <Route path="/embed/attraction/:attractionId" element={<AttractionEmbed />} />
                 <Route path="/booking-demo" element={<AttractionBookingDemo />} />
+                <Route path="/attraction-v3-demo" element={<AttractionV3Demo />} />
                 <Route path="/topup/:token" element={<TopUpPage />} />
                 {/* DEPRECATED: /admin-auth has been removed due to hardcoded credentials security vulnerability */}
                 {/* Use /secure-admin instead which has database-backed authentication with TOTP support */}
