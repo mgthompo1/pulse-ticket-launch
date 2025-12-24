@@ -402,7 +402,7 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
                   bookingFlow.selectDate(date);
                   availability.setSelectedDate(date);
                   // Auto-advance to time selection
-                  setTimeout(() => nextStep(), 300);
+                  setTimeout(() => goToStep('time'), 300);
                 }}
                 loading={availability.isLoadingCalendar}
               />
@@ -436,8 +436,11 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
               basePrice={attraction.base_price}
               onSlotSelect={(slot) => {
                 bookingFlow.selectSlot(slot.id, slot.start_time);
-                // Auto-advance to next step
-                setTimeout(() => nextStep(), 300);
+                // Auto-advance to next step after time
+                const timeIndex = steps.indexOf('time');
+                if (timeIndex >= 0 && timeIndex < steps.length - 1) {
+                  setTimeout(() => goToStep(steps[timeIndex + 1]), 300);
+                }
               }}
               loading={availability.isLoadingSlots}
               currency={currency}
