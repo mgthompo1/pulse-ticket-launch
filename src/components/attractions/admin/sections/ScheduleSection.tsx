@@ -172,11 +172,11 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
     <div className={cn('space-y-8', className)}>
       {/* Section Header */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          <Clock className="w-5 h-5 text-gray-500" />
+        <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+          <Clock className="w-5 h-5 text-muted-foreground" />
           Operating Hours
         </h3>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Set your regular operating hours for each day of the week
         </p>
       </div>
@@ -184,11 +184,11 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
       {/* Timezone Selector */}
       {onTimezoneChange && (
         <div className="flex items-center gap-3">
-          <label className="text-sm font-medium text-gray-700">Timezone:</label>
+          <label className="text-sm font-medium text-foreground">Timezone:</label>
           <select
             value={timezone}
             onChange={(e) => onTimezoneChange(e.target.value)}
-            className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="Pacific/Auckland">New Zealand (Auckland)</option>
             <option value="Australia/Sydney">Australia (Sydney)</option>
@@ -212,7 +212,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
                 'border rounded-xl overflow-hidden transition-all',
                 daySchedule.enabled
                   ? 'border-primary/30 bg-primary/5'
-                  : 'border-gray-200 bg-gray-50'
+                  : 'border-border bg-muted/50'
               )}
             >
               {/* Day Header */}
@@ -229,7 +229,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
                     }}
                     className={cn(
                       'w-10 h-6 rounded-full transition-colors relative',
-                      daySchedule.enabled ? 'bg-primary' : 'bg-gray-300'
+                      daySchedule.enabled ? 'bg-primary' : 'bg-muted-foreground/30'
                     )}
                   >
                     <span
@@ -240,13 +240,13 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
                     />
                   </button>
 
-                  <span className="font-medium text-gray-900">{label}</span>
+                  <span className="font-medium text-foreground">{label}</span>
                 </div>
 
                 <div className="flex items-center gap-4">
                   {/* Time Summary */}
                   {daySchedule.enabled && daySchedule.timeRanges.length > 0 && (
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-muted-foreground">
                       {daySchedule.timeRanges
                         .map((r) => `${r.start} - ${r.end}`)
                         .join(', ')}
@@ -254,13 +254,13 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
                   )}
 
                   {!daySchedule.enabled && (
-                    <span className="text-sm text-gray-400">Closed</span>
+                    <span className="text-sm text-muted-foreground/60">Closed</span>
                   )}
 
                   {isExpanded ? (
-                    <ChevronUp className="w-5 h-5 text-gray-400" />
+                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
                   ) : (
-                    <ChevronDown className="w-5 h-5 text-gray-400" />
+                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
                   )}
                 </div>
               </div>
@@ -272,7 +272,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="border-t border-gray-200"
+                    className="border-t border-border"
                   >
                     <div className="p-4 space-y-4">
                       {/* Time Ranges */}
@@ -290,9 +290,9 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
                                   e.target.value
                                 )
                               }
-                              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                              className="px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                             />
-                            <span className="text-gray-400">to</span>
+                            <span className="text-muted-foreground">to</span>
                             <input
                               type="time"
                               value={range.end}
@@ -304,7 +304,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
                                   e.target.value
                                 )
                               }
-                              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                              className="px-3 py-2 border border-border rounded-lg text-sm bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                             />
                           </div>
 
@@ -313,7 +313,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
                               onClick={() =>
                                 removeTimeRange(key as keyof WeeklySchedule, idx)
                               }
-                              className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                              className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -333,7 +333,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
 
                         <button
                           onClick={() => copyToOtherDays(key as keyof WeeklySchedule)}
-                          className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                          className="flex items-center gap-1 px-3 py-2 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors"
                         >
                           <Copy className="w-4 h-4" />
                           Copy to all days
@@ -349,20 +349,20 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
       </div>
 
       {/* Blackout Dates Section */}
-      <div className="pt-6 border-t border-gray-200">
+      <div className="pt-6 border-t border-border">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h4 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-gray-500" />
+            <h4 className="text-base font-semibold text-foreground flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-muted-foreground" />
               Blackout Dates
             </h4>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Block specific dates when you're unavailable
             </p>
           </div>
           <button
             onClick={() => setShowBlackoutCalendar(!showBlackoutCalendar)}
-            className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+            className="px-4 py-2 bg-muted text-foreground text-sm font-medium rounded-lg hover:bg-muted/80 transition-colors"
           >
             {showBlackoutCalendar ? 'Hide Calendar' : 'Manage Dates'}
           </button>
@@ -374,7 +374,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
             {blackoutDates.slice(0, 10).map((date) => (
               <span
                 key={date.id}
-                className="inline-flex items-center gap-1 px-3 py-1 bg-red-50 text-red-700 text-sm rounded-full"
+                className="inline-flex items-center gap-1 px-3 py-1 bg-red-500/10 text-red-600 dark:text-red-400 text-sm rounded-full"
               >
                 {formatDate(date.date)}
                 <button
@@ -386,7 +386,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
               </span>
             ))}
             {blackoutDates.length > 10 && (
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-muted-foreground">
                 +{blackoutDates.length - 10} more
               </span>
             )}
@@ -400,7 +400,7 @@ export const ScheduleSection: React.FC<ScheduleSectionProps> = ({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="border border-gray-200 rounded-xl overflow-hidden"
+              className="border border-border rounded-xl overflow-hidden"
             >
               <BlackoutCalendar
                 month={selectedBlackoutMonth}
@@ -447,16 +447,16 @@ const BlackoutCalendar: React.FC<{
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={prevMonth}
-          className="p-2 hover:bg-gray-100 rounded-lg"
+          className="p-2 hover:bg-muted rounded-lg text-muted-foreground"
         >
           <ChevronDown className="w-5 h-5 rotate-90" />
         </button>
-        <span className="font-semibold text-gray-900">
+        <span className="font-semibold text-foreground">
           {month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </span>
         <button
           onClick={nextMonth}
-          className="p-2 hover:bg-gray-100 rounded-lg"
+          className="p-2 hover:bg-muted rounded-lg text-muted-foreground"
         >
           <ChevronDown className="w-5 h-5 -rotate-90" />
         </button>
@@ -465,7 +465,7 @@ const BlackoutCalendar: React.FC<{
       {/* Day Headers */}
       <div className="grid grid-cols-7 gap-1 mb-2">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-          <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">
+          <div key={day} className="text-center text-xs font-medium text-muted-foreground py-2">
             {day}
           </div>
         ))}
@@ -489,8 +489,8 @@ const BlackoutCalendar: React.FC<{
               disabled={isPast}
               className={cn(
                 'aspect-square flex items-center justify-center rounded-lg text-sm transition-colors',
-                isPast && 'text-gray-300 cursor-not-allowed',
-                !isPast && !isBlackout && 'hover:bg-gray-100 text-gray-700',
+                isPast && 'text-muted-foreground/40 cursor-not-allowed',
+                !isPast && !isBlackout && 'hover:bg-muted text-foreground',
                 isBlackout && 'bg-red-500 text-white hover:bg-red-600'
               )}
             >
@@ -501,13 +501,13 @@ const BlackoutCalendar: React.FC<{
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100 text-xs text-gray-500">
+      <div className="flex items-center gap-4 mt-4 pt-4 border-t border-border text-xs text-muted-foreground">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded bg-red-500" />
           <span>Blocked</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded bg-gray-100" />
+          <div className="w-3 h-3 rounded bg-muted" />
           <span>Available</span>
         </div>
       </div>

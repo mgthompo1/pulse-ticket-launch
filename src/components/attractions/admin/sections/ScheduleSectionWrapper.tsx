@@ -274,7 +274,7 @@ export const ScheduleSectionWrapper: React.FC<ScheduleSectionWrapperProps> = ({ 
       </Card>
 
       {/* Generate Slots */}
-      <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+      <Card className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border-blue-500/30">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-blue-600" />
@@ -363,8 +363,8 @@ const DayScheduleRow: React.FC<{
 
   if (!schedule) {
     return (
-      <div className="flex items-center justify-between py-3 px-4 border rounded-lg bg-gray-50">
-        <span className="font-medium text-gray-500">{day}</span>
+      <div className="flex items-center justify-between py-3 px-4 border border-border rounded-lg bg-muted/50">
+        <span className="font-medium text-muted-foreground">{day}</span>
         <Button variant="outline" size="sm" onClick={onAdd} disabled={isAdding}>
           <Plus className="w-4 h-4 mr-1" />
           Add Hours
@@ -374,9 +374,9 @@ const DayScheduleRow: React.FC<{
   }
 
   return (
-    <div className="flex items-center gap-4 py-3 px-4 border rounded-lg">
+    <div className="flex items-center gap-4 py-3 px-4 border border-border rounded-lg">
       <div className="w-24">
-        <span className="font-medium">{day}</span>
+        <span className="font-medium text-foreground">{day}</span>
       </div>
 
       <div className="flex items-center gap-2">
@@ -387,7 +387,7 @@ const DayScheduleRow: React.FC<{
           onBlur={handleBlur}
           className="w-32"
         />
-        <span className="text-gray-400">to</span>
+        <span className="text-muted-foreground">to</span>
         <Input
           type="time"
           value={localSchedule?.end_time || ''}
@@ -398,7 +398,7 @@ const DayScheduleRow: React.FC<{
       </div>
 
       <div className="flex items-center gap-2">
-        <Label className="text-sm text-gray-500">Slot:</Label>
+        <Label className="text-sm text-muted-foreground">Slot:</Label>
         <Input
           type="number"
           min={15}
@@ -408,11 +408,11 @@ const DayScheduleRow: React.FC<{
           onBlur={handleBlur}
           className="w-20"
         />
-        <span className="text-sm text-gray-500">min</span>
+        <span className="text-sm text-muted-foreground">min</span>
       </div>
 
       <div className="flex items-center gap-2">
-        <Label className="text-sm text-gray-500">Capacity:</Label>
+        <Label className="text-sm text-muted-foreground">Capacity:</Label>
         <Input
           type="number"
           min={1}
@@ -431,7 +431,7 @@ const DayScheduleRow: React.FC<{
             onUpdate({ is_active: checked });
           }}
         />
-        <Button variant="ghost" size="sm" onClick={onDelete} className="text-red-600 hover:bg-red-50">
+        <Button variant="ghost" size="sm" onClick={onDelete} className="text-red-600 hover:bg-red-500/10">
           <Trash2 className="w-4 h-4" />
         </Button>
       </div>
@@ -488,10 +488,10 @@ const BlackoutManager: React.FC<{
           {blackouts.map((blackout) => (
             <div
               key={blackout.id}
-              className="flex items-center justify-between p-3 border rounded-lg bg-red-50"
+              className="flex items-center justify-between p-3 border border-red-500/30 rounded-lg bg-red-500/10"
             >
               <div>
-                <div className="font-medium">
+                <div className="font-medium text-foreground">
                   {new Date(blackout.date).toLocaleDateString('en-US', {
                     weekday: 'short',
                     month: 'short',
@@ -500,14 +500,14 @@ const BlackoutManager: React.FC<{
                   })}
                 </div>
                 {blackout.reason && (
-                  <div className="text-sm text-gray-600">{blackout.reason}</div>
+                  <div className="text-sm text-muted-foreground">{blackout.reason}</div>
                 )}
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onRemove(blackout.id)}
-                className="text-red-600 hover:bg-red-100"
+                className="text-red-600 hover:bg-red-500/20"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
