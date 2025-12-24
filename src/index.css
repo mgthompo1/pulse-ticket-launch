@@ -1286,7 +1286,11 @@ div[id*="threeds"] {
 }
 
 .time-slot-card-selected {
-  @apply border-primary bg-primary/5 shadow-lg;
+  @apply border-primary bg-primary/10 shadow-lg ring-2 ring-primary/20;
+}
+
+.dark .time-slot-card-selected {
+  @apply bg-primary/20 border-primary shadow-primary/20;
 }
 
 .time-slot-card-disabled {

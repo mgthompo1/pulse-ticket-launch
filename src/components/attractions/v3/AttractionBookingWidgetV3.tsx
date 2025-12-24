@@ -212,12 +212,21 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
     return member?.name;
   }, [staff, state.selectedStaffId]);
 
+  // Auto-create pending booking when entering payment step
+  useEffect(() => {
+    if (currentStep === 'payment' && !pendingBookingId && !isProcessingPayment && !bookingCreationFailed && organizationId) {
+      createPendingBooking();
+    }
+  }, [currentStep, pendingBookingId, isProcessingPayment, bookingCreationFailed, organizationId]);
+
   // Generate booking reference
   const generateBookingRef = () => {
     return 'PLS-' + Math.random().toString(36).substr(2, 8).toUpperCase();
   };
 
   // Create pending booking for payment
+  const [bookingCreationFailed, setBookingCreationFailed] = useState(false);
+
   const createPendingBooking = async () => {
     if (!organizationId) {
       console.error('No organization ID provided for payment');
@@ -226,6 +235,18 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
         description: 'Payment is not configured. Please contact support.',
         variant: 'destructive',
       });
+      setBookingCreationFailed(true);
+      return null;
+    }
+
+    if (!state.selectedSlotId) {
+      console.error('No slot selected');
+      toast({
+        title: 'Error',
+        description: 'Please select a time slot first.',
+        variant: 'destructive',
+      });
+      setBookingCreationFailed(true);
       return null;
     }
 
@@ -241,13 +262,12 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
           customer_name: `${state.customerInfo.first_name} ${state.customerInfo.last_name}`,
           customer_email: state.customerInfo.email,
           customer_phone: state.customerInfo.phone || null,
-          booking_date: state.selectedDate,
+          booking_slot_id: state.selectedSlotId,
           party_size: state.partySize,
           total_amount: totalPrice,
           booking_status: 'pending',
           payment_status: 'pending',
           booking_reference: reference,
-          resource_id: state.selectedStaffId,
         })
         .select()
         .single();
@@ -265,6 +285,7 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
         variant: 'destructive',
       });
       setIsProcessingPayment(false);
+      setBookingCreationFailed(true);
       return null;
     }
   };
@@ -381,6 +402,8 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
                 onDateSelect={(date) => {
                   bookingFlow.selectDate(date);
                   availability.setSelectedDate(date);
+                  // Auto-advance to time selection
+                  setTimeout(() => nextStep(), 300);
                 }}
                 loading={availability.isLoadingCalendar}
               />
@@ -414,6 +437,8 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
               basePrice={attraction.base_price}
               onSlotSelect={(slot) => {
                 bookingFlow.selectSlot(slot.id, slot.start_time);
+                // Auto-advance to next step
+                setTimeout(() => nextStep(), 300);
               }}
               loading={availability.isLoadingSlots}
               currency={currency}
@@ -596,23 +621,28 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
                     }}
                   />
                 </div>
+              ) : bookingCreationFailed ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="text-center">
+                    <p className="text-destructive font-medium mb-4">Failed to prepare payment</p>
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        setBookingCreationFailed(false);
+                        createPendingBooking();
+                      }}
+                      className="px-6 py-3 bg-primary text-primary-foreground font-semibold rounded-xl hover:bg-primary/90 transition-colors"
+                    >
+                      Try Again
+                    </motion.button>
+                  </div>
+                </div>
               ) : (
-                <div className="space-y-4">
-                  <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    onClick={createPendingBooking}
-                    disabled={isProcessingPayment}
-                    className="w-full py-4 bg-primary text-primary-foreground font-semibold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50"
-                  >
-                    {isProcessingPayment ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Preparing payment...
-                      </span>
-                    ) : (
-                      `Proceed to Payment - ${formatPrice(totalPrice, currency)}`
-                    )}
-                  </motion.button>
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+                    <p className="text-muted-foreground">Preparing secure payment...</p>
+                  </div>
                 </div>
               )
             ) : (

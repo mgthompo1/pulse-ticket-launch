@@ -34,17 +34,30 @@ import {
 import { fadeInUp, staggerContainer, staggerItem, buttonTap } from '@/lib/animations';
 
 interface BookingSummaryProps {
-  attraction: AttractionV3Data;
+  attraction: AttractionV3Data | {
+    name: string;
+    image_url?: string;
+    logo_url?: string;
+    base_price: number;
+    duration_minutes?: number;
+    venue?: string;
+    currency?: string;
+    resource_label?: string;
+  };
   selectedDate: string;
-  selectedSlot: EnhancedBookingSlot | null;
+  selectedSlot?: EnhancedBookingSlot | null;
+  selectedTime?: string; // Alternative to selectedSlot
   selectedStaff?: StaffProfile | null;
-  selectedAddons: Map<string, number>;
+  selectedAddons?: Map<string, number> | SelectedAddon[];
   selectedPackage?: AttractionPackage | null;
-  addons: AttractionAddon[];
+  addons?: AttractionAddon[];
   partySize: number;
+  totalPrice?: number; // Pre-calculated total
+  currency?: string;
   onContinue: () => void;
   onEdit?: (section: 'date' | 'time' | 'staff' | 'addons' | 'party') => void;
   isProcessing?: boolean;
+  canContinue?: boolean;
   ctaText?: string;
   showTrustSignals?: boolean;
   className?: string;
@@ -54,28 +67,45 @@ export const BookingSummary: React.FC<BookingSummaryProps> = ({
   attraction,
   selectedDate,
   selectedSlot,
+  selectedTime,
   selectedStaff,
   selectedAddons,
   selectedPackage,
-  addons,
+  addons = [],
   partySize,
+  totalPrice: providedTotal,
+  currency: providedCurrency,
   onContinue,
   onEdit,
   isProcessing = false,
+  canContinue: providedCanContinue,
   ctaText = 'Continue',
   showTrustSignals = true,
   className,
 }) => {
-  const currency = attraction.currency || 'USD';
+  const currency = providedCurrency || (attraction as any).currency || 'USD';
   const basePrice = selectedSlot?.price ?? attraction.base_price;
 
-  // Calculate totals
-  const baseTotal = selectedPackage ? selectedPackage.price : basePrice * partySize;
-  const safeAddons = addons || [];
-  const addonsTotal = Array.from(selectedAddons?.entries() || []).reduce((total, [addonId, quantity]) => {
-    const addon = safeAddons.find((a) => a.id === addonId);
-    if (!addon) return total;
+  // Get display time - prefer selectedSlot, fall back to selectedTime string
+  const displayTime = selectedSlot
+    ? formatTime(selectedSlot.start_time)
+    : selectedTime || 'Select time';
 
+  // Normalize selectedAddons - handle both Map and Array formats
+  const normalizedAddons: SelectedAddon[] = selectedAddons
+    ? Array.isArray(selectedAddons)
+      ? selectedAddons
+      : Array.from(selectedAddons.entries())
+          .map(([addonId, quantity]) => {
+            const addon = addons.find((a) => a.id === addonId);
+            return addon ? { addon, quantity } : null;
+          })
+          .filter(Boolean) as SelectedAddon[]
+    : [];
+
+  // Calculate totals (use provided total if available)
+  const baseTotal = selectedPackage ? selectedPackage.price : basePrice * partySize;
+  const addonsTotal = normalizedAddons.reduce((total, { addon, quantity }) => {
     let addonCost = 0;
     switch (addon.pricing_type) {
       case 'flat':
@@ -91,17 +121,12 @@ export const BookingSummary: React.FC<BookingSummaryProps> = ({
     return total + addonCost;
   }, 0);
 
-  const grandTotal = baseTotal + addonsTotal;
+  const grandTotal = providedTotal ?? (baseTotal + addonsTotal);
 
-  const canContinue = selectedSlot !== null;
+  const canContinue = providedCanContinue ?? (selectedSlot !== null || !!selectedTime);
 
-  // Get selected addon details
-  const selectedAddonDetails: SelectedAddon[] = Array.from(selectedAddons?.entries() || [])
-    .map(([addonId, quantity]) => {
-      const addon = safeAddons.find((a) => a.id === addonId);
-      return addon ? { addon, quantity } : null;
-    })
-    .filter(Boolean) as SelectedAddon[];
+  // Get selected addon details for display
+  const selectedAddonDetails = normalizedAddons;
 
   return (
     <motion.div
@@ -121,9 +146,9 @@ export const BookingSummary: React.FC<BookingSummaryProps> = ({
       <div className="p-4 space-y-4">
         {/* Attraction Info */}
         <div className="flex items-start gap-3">
-          {attraction.logo_url ? (
+          {((attraction as any).logo_url || (attraction as any).image_url) ? (
             <img
-              src={attraction.logo_url}
+              src={(attraction as any).logo_url || (attraction as any).image_url}
               alt={attraction.name}
               className="w-16 h-16 rounded-lg object-cover"
             />
@@ -134,10 +159,10 @@ export const BookingSummary: React.FC<BookingSummaryProps> = ({
           )}
           <div className="flex-1 min-w-0">
             <h4 className="font-medium text-foreground truncate">{attraction.name}</h4>
-            {attraction.venue && (
+            {(attraction as any).venue && (
               <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                 <MapPin className="w-3.5 h-3.5" />
-                {attraction.venue}
+                {(attraction as any).venue}
               </p>
             )}
           </div>
@@ -187,7 +212,7 @@ export const BookingSummary: React.FC<BookingSummaryProps> = ({
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-foreground">
-                {selectedSlot ? formatTime(selectedSlot.start_time) : 'Select time'}
+                {displayTime}
               </span>
               {onEdit && (
                 <button
