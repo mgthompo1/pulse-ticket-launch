@@ -127,6 +127,7 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
   const [bookingReference, setBookingReference] = useState<string | null>(null);
+  const [bookingCreationFailed, setBookingCreationFailed] = useState(false);
 
   // Theme defaults
   const primaryColor = theme?.primaryColor || '#3b82f6';
@@ -225,8 +226,6 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
   };
 
   // Create pending booking for payment
-  const [bookingCreationFailed, setBookingCreationFailed] = useState(false);
-
   const createPendingBooking = async () => {
     if (!organizationId) {
       console.error('No organization ID provided for payment');
