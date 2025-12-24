@@ -309,18 +309,37 @@ const AttractionWidget = () => {
           duration_minutes: attractionData.duration_minutes,
           location: attractionData.venue || undefined,
           image_url: attractionData.logo_url || undefined,
-          resource_label: attractionData.resource_label || undefined,
+          resource_label: attractionData.widget_customization?.resourceLabel || undefined,
           timezone: attractionData.timezone || 'Pacific/Auckland',
+          hero_settings: attractionData.widget_customization ? {
+            layout: attractionData.widget_customization.heroLayout || 'fullwidth',
+            showGallery: true,
+            showRating: attractionData.widget_customization.showReviews !== false,
+            showBookingCount: attractionData.widget_customization.showSocialProof !== false,
+            overlayOpacity: (attractionData.widget_customization.heroOverlayOpacity ?? 50) / 100, // Convert 0-100 to 0-1
+            ctaText: attractionData.widget_customization.ctaButtonText || 'Book Now',
+            showFloatingCard: attractionData.widget_customization.showFloatingCard !== false,
+          } : undefined,
         }}
+        theme={attractionData.widget_customization ? {
+          primaryColor: attractionData.widget_customization.primaryColor,
+          accentColor: attractionData.widget_customization.accentColor,
+          borderRadius: attractionData.widget_customization.borderRadius,
+          fontFamily: attractionData.widget_customization.fontFamily,
+          compactMode: attractionData.widget_customization.compactMode,
+          hidePrice: attractionData.widget_customization.hidePrice,
+          showTrustSignals: attractionData.widget_customization.showTrustSignals,
+          customCss: attractionData.widget_customization.customCss,
+        } : undefined}
         trustSignals={attractionData.widget_customization?.trustSignals}
         requirements={requirements}
         customFields={customFields}
-        showStaffSelector={true}
-        showAddons={true}
-        showPackages={true}
-        showReviews={true}
-        showUrgency={true}
-        showSocialProof={true}
+        showStaffSelector={attractionData.widget_customization?.showStaffSelector !== false}
+        showAddons={attractionData.widget_customization?.showAddons !== false}
+        showPackages={attractionData.widget_customization?.showPackages !== false}
+        showReviews={attractionData.widget_customization?.showReviews !== false}
+        showUrgency={attractionData.widget_customization?.showUrgency !== false}
+        showSocialProof={attractionData.widget_customization?.showSocialProof !== false}
         onBookingComplete={handleBookingComplete}
       />
 

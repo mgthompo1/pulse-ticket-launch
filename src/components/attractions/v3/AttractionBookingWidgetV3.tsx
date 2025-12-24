@@ -55,6 +55,17 @@ import {
 
 import { staggerContainer, staggerItem, slideInFromBottom } from '@/lib/animations';
 
+interface ThemeSettings {
+  primaryColor?: string;
+  accentColor?: string;
+  borderRadius?: 'none' | 'small' | 'medium' | 'large';
+  fontFamily?: 'default' | 'serif' | 'modern';
+  compactMode?: boolean;
+  hidePrice?: boolean;
+  showTrustSignals?: boolean;
+  customCss?: string;
+}
+
 interface AttractionBookingWidgetV3Props {
   attractionId: string;
   organizationId?: string;
@@ -72,6 +83,7 @@ interface AttractionBookingWidgetV3Props {
     hero_settings?: HeroSettings;
     timezone?: string;
   };
+  theme?: ThemeSettings;
   trustSignals?: {
     paymentTitle?: string;
     paymentBadges?: { label: string; description: string }[];
@@ -95,6 +107,7 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
   attractionId,
   organizationId,
   attraction,
+  theme,
   trustSignals,
   requirements = [],
   customFields = [],
@@ -114,6 +127,12 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
   const [bookingReference, setBookingReference] = useState<string | null>(null);
+
+  // Theme defaults
+  const primaryColor = theme?.primaryColor || '#3b82f6';
+  const accentColor = theme?.accentColor || '#10b981';
+  const showTrustSignals = theme?.showTrustSignals !== false;
+  const hidePrice = theme?.hidePrice || false;
 
   // Check for mobile viewport
   useEffect(() => {
@@ -606,7 +625,9 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
             )}
 
             {/* Trust Signals */}
-            <TrustSignals variant="compact" customSignals={trustSignals} />
+            {showTrustSignals && (
+              <TrustSignals variant="compact" customSignals={trustSignals} />
+            )}
           </motion.div>
         );
 
@@ -643,8 +664,20 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
     }
   };
 
+  // Apply custom CSS if provided
+  const customStyles = theme?.customCss ? (
+    <style dangerouslySetInnerHTML={{ __html: theme.customCss }} />
+  ) : null;
+
   return (
-    <div className={cn('min-h-screen bg-background', className)}>
+    <div
+      className={cn('min-h-screen bg-background', className)}
+      style={{
+        '--primary-color': primaryColor,
+        '--accent-color': accentColor,
+      } as React.CSSProperties}
+    >
+      {customStyles}
       {/* Hero Section */}
       {currentStep !== 'confirmation' && (
         <HeroSection
@@ -656,11 +689,12 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
             venue: attraction.location,
             attraction_type: 'other',
             duration_minutes: attraction.duration_minutes,
-            base_price: attraction.base_price,
+            base_price: hidePrice ? 0 : attraction.base_price,
             currency: currency,
             status: 'active',
             featured_image_url: attraction.image_url,
             logo_url: attraction.image_url,
+            hero_settings: attraction.hero_settings,
           }}
           gallery={attraction.gallery_images?.map((url, i) => ({
             id: `gallery-${i}`,
@@ -786,9 +820,11 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
                 )}
 
                 {/* Trust Signals */}
-                <div className="mt-6">
-                  <TrustSignals variant="detailed" showStats />
-                </div>
+                {showTrustSignals && (
+                  <div className="mt-6">
+                    <TrustSignals variant="detailed" showStats customSignals={trustSignals} />
+                  </div>
+                )}
               </div>
             </div>
           )}

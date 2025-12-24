@@ -356,12 +356,13 @@ export interface BookingFlowSettings {
 }
 
 export interface HeroSettings {
-  layout: 'fullwidth' | 'contained' | 'split';
+  layout: 'fullwidth' | 'contained' | 'split' | 'minimal';
   showGallery: boolean;
   showRating: boolean;
   showBookingCount: boolean;
   overlayOpacity: number;
   ctaText?: string;
+  showFloatingCard?: boolean;
 }
 
 // ============================================================================
