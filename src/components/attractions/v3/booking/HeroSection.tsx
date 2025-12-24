@@ -60,7 +60,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
     showBookingCount: true,
     overlayOpacity: 0.5,
     ctaText: 'Book Now',
+    showFloatingCard: true,
   };
+
+  const isMinimal = heroSettings.layout === 'minimal';
+  const showFloatingCard = heroSettings.showFloatingCard !== false && !isMinimal;
 
   // Get images for gallery
   const images = gallery.length > 0
@@ -80,6 +84,50 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const prevImage = () => {
     setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
   };
+
+  // Minimal layout - just a compact header
+  if (isMinimal) {
+    return (
+      <section className={cn('relative w-full bg-gradient-to-r from-primary/10 to-primary/5 py-8', className)}>
+        <div className="max-w-7xl mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+          >
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
+                {attraction.name}
+              </h1>
+              <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+                {attraction.venue && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4" />
+                    {attraction.venue}
+                  </span>
+                )}
+                <span className="flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  {attraction.duration_minutes} min
+                </span>
+                <span className="font-semibold text-foreground">
+                  From {formatPrice(attraction.base_price, attraction.currency || 'USD')}
+                </span>
+              </div>
+            </div>
+            <Button
+              size="lg"
+              onClick={onBookNow}
+              className="w-full md:w-auto"
+            >
+              <Calendar className="w-5 h-5 mr-2" />
+              {heroSettings.ctaText || 'Book Now'}
+            </Button>
+          </motion.div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className={cn('relative w-full', className)}>
@@ -256,74 +304,76 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         </motion.div>
 
         {/* Floating Booking Card (Desktop) */}
-        <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
-          className="hero-floating-card"
-        >
-          <div className="space-y-4">
-            {/* Price */}
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-foreground">
-                {formatPrice(attraction.base_price, attraction.currency || 'USD')}
-              </span>
-              <span className="text-muted-foreground">per person</span>
-            </div>
+        {showFloatingCard && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
+            className="hero-floating-card"
+          >
+            <div className="space-y-4">
+              {/* Price */}
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-foreground">
+                  {formatPrice(attraction.base_price, attraction.currency || 'USD')}
+                </span>
+                <span className="text-muted-foreground">per person</span>
+              </div>
 
-            {/* Rating */}
-            {ratingSummary && ratingSummary.review_count > 0 && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center">
-                  <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                  <span className="ml-1 font-semibold text-foreground">{ratingSummary.average_rating.toFixed(1)}</span>
+              {/* Rating */}
+              {ratingSummary && ratingSummary.review_count > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center">
+                    <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                    <span className="ml-1 font-semibold text-foreground">{ratingSummary.average_rating.toFixed(1)}</span>
+                  </div>
+                  <span className="text-muted-foreground">
+                    ({ratingSummary.review_count} reviews)
+                  </span>
                 </div>
-                <span className="text-muted-foreground">
-                  ({ratingSummary.review_count} reviews)
+              )}
+
+              {/* Quick Info */}
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  {attraction.duration_minutes} min
+                </span>
+                {attraction.max_party_size && (
+                  <span className="flex items-center gap-1">
+                    <Users className="w-4 h-4" />
+                    Up to {attraction.max_party_size}
+                  </span>
+                )}
+              </div>
+
+              {/* Divider */}
+              <hr className="border-border" />
+
+              {/* CTA Button */}
+              <Button
+                size="lg"
+                onClick={onBookNow}
+                className="w-full text-lg font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
+              >
+                <Calendar className="w-5 h-5 mr-2" />
+                {heroSettings.ctaText || 'Check Availability'}
+              </Button>
+
+              {/* Trust Signals */}
+              <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Shield className="w-3.5 h-3.5 text-green-500" />
+                  Free cancellation
+                </span>
+                <span className="flex items-center gap-1">
+                  <Zap className="w-3.5 h-3.5 text-blue-500" />
+                  Instant confirm
                 </span>
               </div>
-            )}
-
-            {/* Quick Info */}
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                {attraction.duration_minutes} min
-              </span>
-              {attraction.max_party_size && (
-                <span className="flex items-center gap-1">
-                  <Users className="w-4 h-4" />
-                  Up to {attraction.max_party_size}
-                </span>
-              )}
             </div>
-
-            {/* Divider */}
-            <hr className="border-border" />
-
-            {/* CTA Button */}
-            <Button
-              size="lg"
-              onClick={onBookNow}
-              className="w-full text-lg font-semibold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all"
-            >
-              <Calendar className="w-5 h-5 mr-2" />
-              {heroSettings.ctaText || 'Check Availability'}
-            </Button>
-
-            {/* Trust Signals */}
-            <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Shield className="w-3.5 h-3.5 text-green-500" />
-                Free cancellation
-              </span>
-              <span className="flex items-center gap-1">
-                <Zap className="w-3.5 h-3.5 text-blue-500" />
-                Instant confirm
-              </span>
-            </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        )}
       </div>
 
       {/* Description Section (Below Hero) */}
