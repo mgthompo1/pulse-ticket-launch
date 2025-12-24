@@ -93,11 +93,11 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       {/* Section Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <User className="w-5 h-5 text-gray-500" />
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <User className="w-5 h-5 text-muted-foreground" />
             {resourceLabel} Profiles
           </h3>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Add profiles that customers can choose from when booking
           </p>
         </div>
@@ -113,9 +113,9 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
 
       {/* Staff List */}
       {staff.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-          <User className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500">No {resourceLabel.toLowerCase()}s added yet</p>
+        <div className="text-center py-12 bg-muted rounded-xl border-2 border-dashed border-border">
+          <User className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground">No {resourceLabel.toLowerCase()}s added yet</p>
           <button
             onClick={addStaffMember}
             className="mt-3 text-primary text-sm font-medium hover:underline"
@@ -190,7 +190,7 @@ const StaffCard: React.FC<{
     <Reorder.Item
       value={member}
       className={cn(
-        'bg-white border rounded-xl overflow-hidden',
+        'bg-card border border-border rounded-xl overflow-hidden',
         !member.is_active && 'opacity-60'
       )}
     >
@@ -198,7 +198,7 @@ const StaffCard: React.FC<{
         <div className="flex items-start gap-4">
           {/* Drag Handle */}
           <div className="pt-2 cursor-grab active:cursor-grabbing">
-            <GripVertical className="w-5 h-5 text-gray-400" />
+            <GripVertical className="w-5 h-5 text-muted-foreground" />
           </div>
 
           {/* Photo */}
@@ -210,8 +210,8 @@ const StaffCard: React.FC<{
                 className="w-16 h-16 rounded-full object-cover"
               />
             ) : (
-              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-                <User className="w-8 h-8 text-gray-400" />
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                <User className="w-8 h-8 text-muted-foreground" />
               </div>
             )}
 
@@ -238,7 +238,7 @@ const StaffCard: React.FC<{
                   value={member.name}
                   onChange={(e) => onUpdate({ name: e.target.value })}
                   placeholder="Name"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                   autoFocus
                 />
 
@@ -248,12 +248,12 @@ const StaffCard: React.FC<{
                   onChange={(e) => onUpdate({ bio: e.target.value })}
                   placeholder="Short bio (optional)"
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
                 />
 
                 {/* Specialties */}
                 <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase">
+                  <label className="text-xs font-medium text-muted-foreground uppercase">
                     Specialties
                   </label>
                   <div className="flex flex-wrap gap-2 mt-2">
@@ -275,7 +275,7 @@ const StaffCard: React.FC<{
                         onChange={(e) => setNewSpecialty(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && addSpecialty()}
                         placeholder="Add..."
-                        className="w-20 px-2 py-1 text-xs border border-gray-200 rounded-full focus:outline-none focus:ring-1 focus:ring-primary/20"
+                        className="w-20 px-2 py-1 text-xs border border-border rounded-full bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary/20"
                       />
                       {newSpecialty && (
                         <button
@@ -292,7 +292,7 @@ const StaffCard: React.FC<{
                 {/* Capacity */}
                 <div className="flex items-center gap-4">
                   <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase">
+                    <label className="text-xs font-medium text-muted-foreground uppercase">
                       Capacity
                     </label>
                     <input
@@ -302,7 +302,7 @@ const StaffCard: React.FC<{
                       onChange={(e) =>
                         onUpdate({ capacity: parseInt(e.target.value) || 1 })
                       }
-                      className="w-20 mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      className="w-20 mt-1 px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
                 </div>
@@ -321,7 +321,7 @@ const StaffCard: React.FC<{
             ) : (
               <div>
                 <div className="flex items-center gap-2">
-                  <h4 className="font-medium text-gray-900">
+                  <h4 className="font-medium text-foreground">
                     {member.name || 'Unnamed'}
                   </h4>
                   {member.rating_average && (
@@ -333,7 +333,7 @@ const StaffCard: React.FC<{
                 </div>
 
                 {member.bio && (
-                  <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                     {member.bio}
                   </p>
                 )}
@@ -343,13 +343,13 @@ const StaffCard: React.FC<{
                     {member.specialties?.slice(0, 3).map((s, i) => (
                       <span
                         key={i}
-                        className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full"
+                        className="px-2 py-0.5 bg-muted text-muted-foreground text-xs rounded-full"
                       >
                         {s}
                       </span>
                     ))}
                     {(member.specialties?.length ?? 0) > 3 && (
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-muted-foreground">
                         +{(member.specialties?.length ?? 0) - 3}
                       </span>
                     )}
@@ -369,7 +369,7 @@ const StaffCard: React.FC<{
                   'p-2 rounded-lg transition-colors',
                   member.show_on_widget
                     ? 'text-primary hover:bg-primary/10'
-                    : 'text-gray-400 hover:bg-gray-100'
+                    : 'text-muted-foreground hover:bg-muted'
                 )}
                 title={member.show_on_widget ? 'Visible on widget' : 'Hidden from widget'}
               >
@@ -385,7 +385,7 @@ const StaffCard: React.FC<{
                 onClick={() => onUpdate({ is_active: !member.is_active })}
                 className={cn(
                   'w-10 h-6 rounded-full transition-colors relative',
-                  member.is_active ? 'bg-green-500' : 'bg-gray-300'
+                  member.is_active ? 'bg-green-500' : 'bg-muted-foreground/30'
                 )}
               >
                 <span
@@ -399,7 +399,7 @@ const StaffCard: React.FC<{
               {/* Edit */}
               <button
                 onClick={onEdit}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg"
               >
                 <Edit2 className="w-4 h-4" />
               </button>
@@ -407,7 +407,7 @@ const StaffCard: React.FC<{
               {/* Remove */}
               <button
                 onClick={onRemove}
-                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                className="p-2 text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded-lg"
               >
                 <Trash2 className="w-4 h-4" />
               </button>

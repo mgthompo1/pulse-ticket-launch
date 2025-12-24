@@ -97,6 +97,14 @@ export const ScheduleSectionWrapper: React.FC<ScheduleSectionWrapperProps> = ({ 
       queryClient.invalidateQueries({ queryKey: ['attraction-schedules', attractionId] });
       toast({ title: 'Schedule added' });
     },
+    onError: (error: Error) => {
+      console.error('Failed to add schedule:', error);
+      toast({
+        title: 'Failed to add hours',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
   });
 
   // Update schedule mutation
@@ -165,19 +173,17 @@ export const ScheduleSectionWrapper: React.FC<ScheduleSectionWrapperProps> = ({ 
     },
   });
 
-  // Generate slots mutation
+  // Generate slots mutation - calls the SQL function directly
   const generateSlotsMutation = useMutation({
     mutationFn: async ({ startDate, endDate }: { startDate: string; endDate: string }) => {
-      const { data, error } = await supabase.functions.invoke('generate-attraction-slots', {
-        body: {
-          attractionId,
-          startDate,
-          endDate,
-        },
+      const { data, error } = await supabase.rpc('generate_attraction_slots', {
+        p_attraction_id: attractionId,
+        p_start_date: startDate,
+        p_end_date: endDate,
       });
 
       if (error) throw error;
-      return data;
+      return { slotsCreated: data };
     },
     onSuccess: (data) => {
       toast({
@@ -188,6 +194,7 @@ export const ScheduleSectionWrapper: React.FC<ScheduleSectionWrapperProps> = ({ 
       setGenerateEndDate('');
     },
     onError: (error: Error) => {
+      console.error('Failed to generate slots:', error);
       toast({
         title: 'Failed to generate slots',
         description: error.message,

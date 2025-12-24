@@ -206,7 +206,7 @@ const StaffRow: React.FC<{
 
   if (isEditing) {
     return (
-      <div className="border rounded-lg p-4 space-y-4 bg-gray-50">
+      <div className="border border-border rounded-lg p-4 space-y-4 bg-muted">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label>Name</Label>
@@ -269,12 +269,12 @@ const StaffRow: React.FC<{
               {localData.specialties.map((specialty, index) => (
                 <span
                   key={index}
-                  className="px-2 py-1 bg-blue-100 text-blue-700 text-sm rounded-full flex items-center gap-1"
+                  className="px-2 py-1 bg-primary/10 text-primary text-sm rounded-full flex items-center gap-1"
                 >
                   {specialty}
                   <button
                     onClick={() => removeSpecialty(index)}
-                    className="hover:text-blue-900"
+                    className="hover:text-primary/80"
                   >
                     ×
                   </button>
@@ -314,10 +314,10 @@ const StaffRow: React.FC<{
 
   return (
     <div className={cn(
-      'border rounded-lg p-4 flex items-center gap-4',
+      'border border-border rounded-lg p-4 flex items-center gap-4',
       !member.is_active && 'opacity-50'
     )}>
-      <GripVertical className="w-5 h-5 text-gray-400 cursor-grab" />
+      <GripVertical className="w-5 h-5 text-muted-foreground cursor-grab" />
 
       {member.photo_url ? (
         <img
@@ -326,8 +326,8 @@ const StaffRow: React.FC<{
           className="w-12 h-12 rounded-full object-cover"
         />
       ) : (
-        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-          <Users className="w-6 h-6 text-gray-400" />
+        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+          <Users className="w-6 h-6 text-muted-foreground" />
         </div>
       )}
 
@@ -341,16 +341,16 @@ const StaffRow: React.FC<{
             </span>
           )}
           {!member.show_on_widget && (
-            <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">Hidden</span>
+            <span className="px-2 py-0.5 bg-muted text-muted-foreground text-xs rounded-full">Hidden</span>
           )}
         </div>
         {member.specialties && member.specialties.length > 0 && (
           <div className="flex gap-1 mt-1">
             {member.specialties.slice(0, 3).map((s, i) => (
-              <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-600 text-xs rounded-full">{s}</span>
+              <span key={i} className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">{s}</span>
             ))}
             {member.specialties.length > 3 && (
-              <span className="text-xs text-gray-400">+{member.specialties.length - 3}</span>
+              <span className="text-xs text-muted-foreground">+{member.specialties.length - 3}</span>
             )}
           </div>
         )}
@@ -363,7 +363,7 @@ const StaffRow: React.FC<{
 
       <div className="flex items-center gap-1">
         <Button variant="ghost" size="sm" onClick={onEdit}>Edit</Button>
-        <Button variant="ghost" size="sm" onClick={onDelete} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+        <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive hover:text-destructive hover:bg-destructive/10">
           <Trash2 className="w-4 h-4" />
         </Button>
       </div>

@@ -108,25 +108,25 @@ export const AddOnsSection: React.FC<AddOnsSectionProps> = ({
       {/* Section Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Package className="w-5 h-5 text-gray-500" />
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <Package className="w-5 h-5 text-muted-foreground" />
             Add-ons & Packages
           </h3>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Create upsells and bundle deals for your customers
           </p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-gray-200">
+      <div className="flex items-center gap-2 border-b border-border">
         <button
           onClick={() => setActiveTab('addons')}
           className={cn(
             'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
             activeTab === 'addons'
               ? 'border-primary text-primary'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
           )}
         >
           Add-ons ({addons.length})
@@ -137,7 +137,7 @@ export const AddOnsSection: React.FC<AddOnsSectionProps> = ({
             'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
             activeTab === 'packages'
               ? 'border-primary text-primary'
-              : 'border-transparent text-gray-500 hover:text-gray-700'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
           )}
         >
           Packages ({packages.length})
@@ -158,7 +158,7 @@ export const AddOnsSection: React.FC<AddOnsSectionProps> = ({
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={addAddon}
-              className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 border-2 border-dashed border-border rounded-xl text-muted-foreground hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
             >
               <Plus className="w-5 h-5" />
               Add New Add-on
@@ -203,7 +203,7 @@ export const AddOnsSection: React.FC<AddOnsSectionProps> = ({
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={addPackage}
-              className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
+              className="w-full py-3 border-2 border-dashed border-border rounded-xl text-muted-foreground hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
             >
               <Plus className="w-5 h-5" />
               Create New Package
@@ -275,7 +275,7 @@ const AddonCard: React.FC<{
     <Reorder.Item
       value={addon}
       className={cn(
-        'bg-white border rounded-xl overflow-hidden',
+        'bg-card border border-border rounded-xl overflow-hidden',
         !addon.is_active && 'opacity-60'
       )}
     >
@@ -283,11 +283,11 @@ const AddonCard: React.FC<{
         <div className="flex items-start gap-4">
           {/* Drag Handle */}
           <div className="pt-2 cursor-grab active:cursor-grabbing">
-            <GripVertical className="w-5 h-5 text-gray-400" />
+            <GripVertical className="w-5 h-5 text-muted-foreground" />
           </div>
 
           {/* Image */}
-          <div className="relative group w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+          <div className="relative group w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
             {addon.image_url ? (
               <img
                 src={addon.image_url}
@@ -296,7 +296,7 @@ const AddonCard: React.FC<{
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <Tag className="w-6 h-6 text-gray-400" />
+                <Tag className="w-6 h-6 text-muted-foreground" />
               </div>
             )}
             {isEditing && onImageUpload && (
@@ -321,7 +321,7 @@ const AddonCard: React.FC<{
                   value={addon.name}
                   onChange={(e) => onUpdate({ name: e.target.value })}
                   placeholder="Add-on name"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground"
                   autoFocus
                 />
                 <textarea
@@ -329,24 +329,24 @@ const AddonCard: React.FC<{
                   onChange={(e) => onUpdate({ description: e.target.value })}
                   placeholder="Description (optional)"
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground resize-none"
                 />
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
                       type="number"
                       min={0}
                       step={0.01}
                       value={addon.price}
                       onChange={(e) => onUpdate({ price: parseFloat(e.target.value) || 0 })}
-                      className="w-32 pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm"
+                      className="w-32 pl-8 pr-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground"
                     />
                   </div>
                   <select
                     value={addon.pricing_type}
                     onChange={(e) => onUpdate({ pricing_type: e.target.value as 'flat' | 'per_person' })}
-                    className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    className="px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground"
                   >
                     <option value="flat">Flat rate</option>
                     <option value="per_person">Per person</option>
@@ -374,20 +374,20 @@ const AddonCard: React.FC<{
             ) : (
               <div>
                 <div className="flex items-center gap-2">
-                  <h4 className="font-medium text-gray-900">{addon.name || 'Unnamed'}</h4>
+                  <h4 className="font-medium text-foreground">{addon.name || 'Unnamed'}</h4>
                   {addon.is_required && (
-                    <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full">
+                    <span className="px-2 py-0.5 bg-orange-500/20 text-orange-600 dark:text-orange-400 text-xs rounded-full">
                       Required
                     </span>
                   )}
                 </div>
                 {addon.description && (
-                  <p className="text-sm text-gray-500 mt-1 line-clamp-1">{addon.description}</p>
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{addon.description}</p>
                 )}
-                <p className="text-sm font-semibold text-gray-900 mt-1">
+                <p className="text-sm font-semibold text-foreground mt-1">
                   {formatPrice(addon.price, currency)}
                   {addon.pricing_type === 'per_person' && (
-                    <span className="text-gray-500 font-normal"> /person</span>
+                    <span className="text-muted-foreground font-normal"> /person</span>
                   )}
                 </p>
               </div>
@@ -401,7 +401,7 @@ const AddonCard: React.FC<{
                 onClick={() => onUpdate({ is_active: !addon.is_active })}
                 className={cn(
                   'w-10 h-6 rounded-full transition-colors relative',
-                  addon.is_active ? 'bg-green-500' : 'bg-gray-300'
+                  addon.is_active ? 'bg-green-500' : 'bg-muted-foreground/30'
                 )}
               >
                 <span
@@ -411,10 +411,10 @@ const AddonCard: React.FC<{
                   )}
                 />
               </button>
-              <button onClick={onEdit} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+              <button onClick={onEdit} className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg">
                 <Edit2 className="w-4 h-4" />
               </button>
-              <button onClick={onRemove} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+              <button onClick={onRemove} className="p-2 text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded-lg">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
@@ -463,7 +463,7 @@ const PackageCard: React.FC<{
     <Reorder.Item
       value={pkg}
       className={cn(
-        'bg-white border rounded-xl overflow-hidden',
+        'bg-card border border-border rounded-xl overflow-hidden',
         !pkg.is_active && 'opacity-60',
         pkg.is_featured && 'ring-2 ring-yellow-400'
       )}
@@ -478,7 +478,7 @@ const PackageCard: React.FC<{
       <div className="p-4">
         <div className="flex items-start gap-4">
           <div className="pt-2 cursor-grab active:cursor-grabbing">
-            <GripVertical className="w-5 h-5 text-gray-400" />
+            <GripVertical className="w-5 h-5 text-muted-foreground" />
           </div>
 
           <div className="flex-1 min-w-0">
@@ -489,7 +489,7 @@ const PackageCard: React.FC<{
                   value={pkg.name}
                   onChange={(e) => onUpdate({ name: e.target.value })}
                   placeholder="Package name"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground"
                   autoFocus
                 />
                 <textarea
@@ -497,11 +497,11 @@ const PackageCard: React.FC<{
                   onChange={(e) => onUpdate({ description: e.target.value })}
                   placeholder="Description"
                   rows={2}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none"
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground resize-none"
                 />
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
                       type="number"
                       min={0}
@@ -509,7 +509,7 @@ const PackageCard: React.FC<{
                       value={pkg.price}
                       onChange={(e) => onUpdate({ price: parseFloat(e.target.value) || 0 })}
                       placeholder="Package price"
-                      className="w-32 pl-8 pr-3 py-2 border border-gray-200 rounded-lg text-sm"
+                      className="w-32 pl-8 pr-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground"
                     />
                   </div>
                   <div className="relative">
@@ -520,7 +520,7 @@ const PackageCard: React.FC<{
                       value={pkg.original_price || ''}
                       onChange={(e) => onUpdate({ original_price: parseFloat(e.target.value) || undefined })}
                       placeholder="Original price"
-                      className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                      className="w-32 px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground"
                     />
                   </div>
                 </div>
@@ -528,7 +528,7 @@ const PackageCard: React.FC<{
                 {/* Included Add-ons */}
                 {addons.length > 0 && (
                   <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase">
+                    <label className="text-xs font-medium text-muted-foreground uppercase">
                       Included Add-ons
                     </label>
                     <div className="flex flex-wrap gap-2 mt-2">
@@ -542,7 +542,7 @@ const PackageCard: React.FC<{
                               'px-3 py-1.5 text-sm rounded-lg border transition-colors',
                               isIncluded
                                 ? 'border-primary bg-primary/10 text-primary'
-                                : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                                : 'border-border text-muted-foreground hover:border-muted-foreground'
                             )}
                           >
                             {isIncluded && <Check className="w-3 h-3 inline mr-1" />}
@@ -575,14 +575,14 @@ const PackageCard: React.FC<{
               </div>
             ) : (
               <div>
-                <h4 className="font-medium text-gray-900">{pkg.name || 'Unnamed'}</h4>
+                <h4 className="font-medium text-foreground">{pkg.name || 'Unnamed'}</h4>
                 {pkg.description && (
-                  <p className="text-sm text-gray-500 mt-1 line-clamp-1">{pkg.description}</p>
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{pkg.description}</p>
                 )}
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="font-semibold text-gray-900">{formatPrice(pkg.price, currency)}</span>
+                  <span className="font-semibold text-foreground">{formatPrice(pkg.price, currency)}</span>
                   {pkg.original_price && (
-                    <span className="text-sm text-gray-400 line-through">
+                    <span className="text-sm text-muted-foreground line-through">
                       {formatPrice(pkg.original_price, currency)}
                     </span>
                   )}
@@ -590,12 +590,12 @@ const PackageCard: React.FC<{
                 {includedAddons.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
                     {includedAddons.slice(0, 3).map((a) => (
-                      <span key={a.id} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                      <span key={a.id} className="px-2 py-0.5 bg-muted text-muted-foreground text-xs rounded-full">
                         {a.name}
                       </span>
                     ))}
                     {includedAddons.length > 3 && (
-                      <span className="text-xs text-gray-400">+{includedAddons.length - 3}</span>
+                      <span className="text-xs text-muted-foreground">+{includedAddons.length - 3}</span>
                     )}
                   </div>
                 )}
@@ -609,7 +609,7 @@ const PackageCard: React.FC<{
                 onClick={() => onUpdate({ is_active: !pkg.is_active })}
                 className={cn(
                   'w-10 h-6 rounded-full transition-colors relative',
-                  pkg.is_active ? 'bg-green-500' : 'bg-gray-300'
+                  pkg.is_active ? 'bg-green-500' : 'bg-muted-foreground/30'
                 )}
               >
                 <span
@@ -619,10 +619,10 @@ const PackageCard: React.FC<{
                   )}
                 />
               </button>
-              <button onClick={onEdit} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+              <button onClick={onEdit} className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg">
                 <Edit2 className="w-4 h-4" />
               </button>
-              <button onClick={onRemove} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg">
+              <button onClick={onRemove} className="p-2 text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded-lg">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>

@@ -184,7 +184,7 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
                       spotsLeft === 0 && 'time-slot-card-disabled'
                     )}
                     aria-pressed={isSelected}
-                    aria-label={`${formatTime(slot.start_time)} - ${formatPrice(price, currency)} - ${spotsLeft} spots left`}
+                    aria-label={`${(slot as any).display_start_time || formatTime(slot.start_time)} - ${formatPrice(price, currency)} - ${spotsLeft} spots left`}
                   >
                     {/* Urgency Badge */}
                     {urgencyText && spotsLeft > 0 && (
@@ -214,9 +214,9 @@ export const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
                     )}
 
                     <div className="space-y-2">
-                      {/* Time */}
+                      {/* Time - use display_start_time if available (pre-formatted in attraction timezone) */}
                       <div className="text-lg font-bold text-foreground">
-                        {formatTime(slot.start_time)}
+                        {(slot as any).display_start_time || formatTime(slot.start_time)}
                       </div>
 
                       {/* Price */}
@@ -319,7 +319,7 @@ export const TimeSlotStrip: React.FC<{
               )}
             >
               <span className="text-lg font-bold text-foreground">
-                {formatTime(slot.start_time)}
+                {(slot as any).display_start_time || formatTime(slot.start_time)}
               </span>
               <span className="text-sm text-muted-foreground">
                 {formatPrice(price, currency)}

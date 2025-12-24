@@ -29,6 +29,7 @@ interface AttractionData {
   status: string;
   resource_label?: string | null;
   currency?: string;
+  timezone?: string;
 }
 
 interface OrganizationData {
@@ -298,6 +299,7 @@ const AttractionWidget = () => {
       {/* V3 Booking Widget */}
       <AttractionBookingWidgetV3
         attractionId={attractionId!}
+        organizationId={attractionData.organization_id}
         attraction={{
           id: attractionData.id,
           name: attractionData.name,
@@ -308,7 +310,9 @@ const AttractionWidget = () => {
           location: attractionData.venue || undefined,
           image_url: attractionData.logo_url || undefined,
           resource_label: attractionData.resource_label || undefined,
+          timezone: attractionData.timezone || 'Pacific/Auckland',
         }}
+        trustSignals={attractionData.widget_customization?.trustSignals}
         requirements={requirements}
         customFields={customFields}
         showStaffSelector={true}

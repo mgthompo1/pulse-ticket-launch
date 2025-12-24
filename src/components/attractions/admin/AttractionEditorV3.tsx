@@ -67,6 +67,7 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
     max_concurrent_bookings: 1,
     resource_label: 'Guide',
     status: 'active',
+    logo_url: '',
   });
 
   // Theme state
@@ -91,6 +92,21 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
     borderRadius: 'medium' as 'none' | 'small' | 'medium' | 'large',
     showTrustSignals: true,
     fontFamily: 'default' as 'default' | 'serif' | 'modern',
+    // Trust signals customization
+    trustSignals: {
+      paymentTitle: 'Secure Payment',
+      paymentBadges: [
+        { label: 'Secure Checkout', description: '256-bit SSL encryption' },
+        { label: 'Safe Payment', description: 'PCI DSS compliant' },
+        { label: 'Data Protected', description: 'Your info is safe' },
+      ],
+      guaranteesTitle: 'Our Guarantees',
+      guaranteeBadges: [
+        { label: 'Free Cancellation', description: 'Up to 24h before' },
+        { label: 'Instant Confirmation', description: 'Get tickets immediately' },
+        { label: 'Best Price Guarantee', description: 'Lowest price or refund' },
+      ],
+    },
   });
 
   // Update form when attraction loads
@@ -102,6 +118,7 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
         venue: attraction.venue || '',
         base_price: attraction.base_price || 0,
         duration_minutes: attraction.duration_minutes || 60,
+        logo_url: attraction.logo_url || '',
         max_concurrent_bookings: attraction.max_concurrent_bookings || 1,
         resource_label: attraction.resource_label || 'Guide',
         status: attraction.status || 'active',
@@ -130,6 +147,21 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
         borderRadius: customization.borderRadius || 'medium',
         showTrustSignals: customization.showTrustSignals !== false,
         fontFamily: customization.fontFamily || 'default',
+        // Trust signals
+        trustSignals: customization.trustSignals || {
+          paymentTitle: 'Secure Payment',
+          paymentBadges: [
+            { label: 'Secure Checkout', description: '256-bit SSL encryption' },
+            { label: 'Safe Payment', description: 'PCI DSS compliant' },
+            { label: 'Data Protected', description: 'Your info is safe' },
+          ],
+          guaranteesTitle: 'Our Guarantees',
+          guaranteeBadges: [
+            { label: 'Free Cancellation', description: 'Up to 24h before' },
+            { label: 'Instant Confirmation', description: 'Get tickets immediately' },
+            { label: 'Best Price Guarantee', description: 'Lowest price or refund' },
+          ],
+        },
       });
     }
   }, [attraction]);
@@ -153,9 +185,10 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
       });
     },
     onError: (error) => {
+      console.error('❌ Error saving attraction:', error);
       toast({
         title: 'Error saving',
-        description: 'Failed to save changes. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to save changes. Please try again.',
         variant: 'destructive',
       });
     },
@@ -442,7 +475,7 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
                       id="primaryColor"
                       value={themeData.primaryColor}
                       onChange={(e) => handleThemeChange('primaryColor', e.target.value)}
-                      className="w-12 h-10 rounded border cursor-pointer"
+                      className="w-12 h-10 rounded border border-border cursor-pointer"
                     />
                     <Input
                       value={themeData.primaryColor}
@@ -462,7 +495,7 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
                       id="accentColor"
                       value={themeData.accentColor}
                       onChange={(e) => handleThemeChange('accentColor', e.target.value)}
-                      className="w-12 h-10 rounded border cursor-pointer"
+                      className="w-12 h-10 rounded border border-border cursor-pointer"
                     />
                     <Input
                       value={themeData.accentColor}
@@ -506,6 +539,36 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
               <CardDescription>Customize the hero/header area of your booking widget</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Logo/Hero Image */}
+              <div className="space-y-2">
+                <Label htmlFor="logo_url">Logo / Hero Image URL</Label>
+                <div className="flex gap-4 items-start">
+                  {formData.logo_url && (
+                    <div className="w-20 h-20 rounded-lg border border-border overflow-hidden bg-muted flex-shrink-0">
+                      <img
+                        src={formData.logo_url}
+                        alt="Logo preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div className="flex-1 space-y-2">
+                    <Input
+                      id="logo_url"
+                      value={formData.logo_url}
+                      onChange={(e) => handleInputChange('logo_url', e.target.value)}
+                      placeholder="https://example.com/your-logo.jpg"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Enter a URL to your logo or hero image. Recommended size: 800x400px
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Hero Layout</Label>
@@ -755,6 +818,116 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
               </div>
             </CardContent>
           </Card>
+
+          {/* Trust Signals Customization */}
+          {themeData.showTrustSignals && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="w-5 h-5" />
+                  Trust Signals Content
+                </CardTitle>
+                <CardDescription>Customize the security badges and guarantees shown to customers</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Payment Section */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Payment Section Title</Label>
+                    <Input
+                      value={themeData.trustSignals.paymentTitle}
+                      onChange={(e) => handleThemeChange('trustSignals', {
+                        ...themeData.trustSignals,
+                        paymentTitle: e.target.value,
+                      })}
+                      placeholder="Secure Payment"
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-sm text-muted-foreground">Payment Badges</Label>
+                    {themeData.trustSignals.paymentBadges.map((badge: { label: string; description: string }, index: number) => (
+                      <div key={index} className="grid gap-2 md:grid-cols-2 p-3 bg-muted/50 rounded-lg">
+                        <Input
+                          value={badge.label}
+                          onChange={(e) => {
+                            const newBadges = [...themeData.trustSignals.paymentBadges];
+                            newBadges[index] = { ...newBadges[index], label: e.target.value };
+                            handleThemeChange('trustSignals', {
+                              ...themeData.trustSignals,
+                              paymentBadges: newBadges,
+                            });
+                          }}
+                          placeholder="Badge label"
+                        />
+                        <Input
+                          value={badge.description}
+                          onChange={(e) => {
+                            const newBadges = [...themeData.trustSignals.paymentBadges];
+                            newBadges[index] = { ...newBadges[index], description: e.target.value };
+                            handleThemeChange('trustSignals', {
+                              ...themeData.trustSignals,
+                              paymentBadges: newBadges,
+                            });
+                          }}
+                          placeholder="Badge description"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-6">
+                  {/* Guarantees Section */}
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Guarantees Section Title</Label>
+                      <Input
+                        value={themeData.trustSignals.guaranteesTitle}
+                        onChange={(e) => handleThemeChange('trustSignals', {
+                          ...themeData.trustSignals,
+                          guaranteesTitle: e.target.value,
+                        })}
+                        placeholder="Our Guarantees"
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-sm text-muted-foreground">Guarantee Badges</Label>
+                      {themeData.trustSignals.guaranteeBadges.map((badge: { label: string; description: string }, index: number) => (
+                        <div key={index} className="grid gap-2 md:grid-cols-2 p-3 bg-muted/50 rounded-lg">
+                          <Input
+                            value={badge.label}
+                            onChange={(e) => {
+                              const newBadges = [...themeData.trustSignals.guaranteeBadges];
+                              newBadges[index] = { ...newBadges[index], label: e.target.value };
+                              handleThemeChange('trustSignals', {
+                                ...themeData.trustSignals,
+                                guaranteeBadges: newBadges,
+                              });
+                            }}
+                            placeholder="Badge label"
+                          />
+                          <Input
+                            value={badge.description}
+                            onChange={(e) => {
+                              const newBadges = [...themeData.trustSignals.guaranteeBadges];
+                              newBadges[index] = { ...newBadges[index], description: e.target.value };
+                              handleThemeChange('trustSignals', {
+                                ...themeData.trustSignals,
+                                guaranteeBadges: newBadges,
+                              });
+                            }}
+                            placeholder="Badge description"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Advanced */}
           <Card>

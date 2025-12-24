@@ -87,11 +87,11 @@ export const CustomFieldsSection: React.FC<CustomFieldsSectionProps> = ({
     <div className={cn('space-y-6', className)}>
       {/* Section Header */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-          <FileText className="w-5 h-5 text-gray-500" />
+        <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+          <FileText className="w-5 h-5 text-muted-foreground" />
           Custom Booking Fields
         </h3>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Add custom questions to collect information from customers
         </p>
       </div>
@@ -123,7 +123,7 @@ export const CustomFieldsSection: React.FC<CustomFieldsSectionProps> = ({
         <motion.button
           whileTap={{ scale: 0.97 }}
           onClick={() => setShowTypeSelector(!showTypeSelector)}
-          className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
+          className="w-full py-3 border-2 border-dashed border-border rounded-xl text-muted-foreground hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
         >
           <Plus className="w-5 h-5" />
           Add Custom Field
@@ -136,17 +136,17 @@ export const CustomFieldsSection: React.FC<CustomFieldsSectionProps> = ({
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="absolute top-full left-0 right-0 mt-2 p-2 bg-white border border-gray-200 rounded-xl shadow-lg z-10"
+              className="absolute top-full left-0 right-0 mt-2 p-2 bg-card border border-border rounded-xl shadow-lg z-10"
             >
               <div className="grid grid-cols-4 gap-2">
                 {FIELD_TYPES.map(({ type, label, icon: Icon }) => (
                   <button
                     key={type}
                     onClick={() => addField(type)}
-                    className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-muted transition-colors"
                   >
-                    <Icon className="w-5 h-5 text-gray-500" />
-                    <span className="text-xs font-medium text-gray-700">{label}</span>
+                    <Icon className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-foreground">{label}</span>
                   </button>
                 ))}
               </div>
@@ -157,7 +157,7 @@ export const CustomFieldsSection: React.FC<CustomFieldsSectionProps> = ({
 
       {/* Empty State */}
       {fields.length === 0 && !showTypeSelector && (
-        <div className="text-center py-8 text-gray-500 text-sm">
+        <div className="text-center py-8 text-muted-foreground text-sm">
           No custom fields added yet. Click the button above to add one.
         </div>
       )}
@@ -207,7 +207,7 @@ const FieldCard: React.FC<{
     <Reorder.Item
       value={field}
       className={cn(
-        'bg-white border rounded-xl overflow-hidden',
+        'bg-card border border-border rounded-xl overflow-hidden',
         !field.is_active && 'opacity-60'
       )}
     >
@@ -215,12 +215,12 @@ const FieldCard: React.FC<{
         <div className="flex items-start gap-4">
           {/* Drag Handle */}
           <div className="pt-2 cursor-grab active:cursor-grabbing">
-            <GripVertical className="w-5 h-5 text-gray-400" />
+            <GripVertical className="w-5 h-5 text-muted-foreground" />
           </div>
 
           {/* Icon */}
-          <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-            <Icon className="w-5 h-5 text-gray-500" />
+          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+            <Icon className="w-5 h-5 text-muted-foreground" />
           </div>
 
           {/* Content */}
@@ -229,7 +229,7 @@ const FieldCard: React.FC<{
               <div className="space-y-3">
                 {/* Label */}
                 <div>
-                  <label className="text-xs font-medium text-gray-500 uppercase">
+                  <label className="text-xs font-medium text-muted-foreground uppercase">
                     Field Label
                   </label>
                   <input
@@ -237,7 +237,7 @@ const FieldCard: React.FC<{
                     value={field.label}
                     onChange={(e) => onUpdate({ label: e.target.value })}
                     placeholder="e.g., Dietary Requirements"
-                    className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                    className="w-full mt-1 px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground"
                     autoFocus
                   />
                 </div>
@@ -245,7 +245,7 @@ const FieldCard: React.FC<{
                 {/* Placeholder (for text-based fields) */}
                 {['text', 'email', 'phone', 'number', 'textarea'].includes(field.field_type) && (
                   <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase">
+                    <label className="text-xs font-medium text-muted-foreground uppercase">
                       Placeholder Text
                     </label>
                     <input
@@ -253,7 +253,7 @@ const FieldCard: React.FC<{
                       value={field.placeholder || ''}
                       onChange={(e) => onUpdate({ placeholder: e.target.value })}
                       placeholder="e.g., Enter your dietary requirements..."
-                      className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                      className="w-full mt-1 px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground"
                     />
                   </div>
                 )}
@@ -261,7 +261,7 @@ const FieldCard: React.FC<{
                 {/* Options (for select fields) */}
                 {field.field_type === 'select' && (
                   <div>
-                    <label className="text-xs font-medium text-gray-500 uppercase">
+                    <label className="text-xs font-medium text-muted-foreground uppercase">
                       Options
                     </label>
                     <div className="space-y-2 mt-2">
@@ -272,12 +272,12 @@ const FieldCard: React.FC<{
                             value={option.label}
                             onChange={(e) => updateOption(idx, { label: e.target.value })}
                             placeholder={`Option ${idx + 1}`}
-                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                            className="flex-1 px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground"
                           />
                           {(field.options?.length || 0) > 1 && (
                             <button
                               onClick={() => removeOption(idx)}
-                              className="p-2 text-red-400 hover:text-red-600"
+                              className="p-2 text-destructive/70 hover:text-destructive"
                             >
                               <X className="w-4 h-4" />
                             </button>
@@ -319,23 +319,23 @@ const FieldCard: React.FC<{
             ) : (
               <div>
                 <div className="flex items-center gap-2">
-                  <h4 className="font-medium text-gray-900">
+                  <h4 className="font-medium text-foreground">
                     {field.label || 'Untitled Field'}
                   </h4>
-                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                  <span className="px-2 py-0.5 bg-muted text-muted-foreground text-xs rounded-full">
                     {fieldTypeInfo?.label}
                   </span>
                   {field.is_required && (
-                    <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full">
+                    <span className="px-2 py-0.5 bg-destructive/20 text-destructive text-xs rounded-full">
                       Required
                     </span>
                   )}
                 </div>
                 {field.placeholder && (
-                  <p className="text-sm text-gray-500 mt-1">"{field.placeholder}"</p>
+                  <p className="text-sm text-muted-foreground mt-1">"{field.placeholder}"</p>
                 )}
                 {field.field_type === 'select' && field.options && (
-                  <p className="text-sm text-gray-400 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     {field.options.length} option{field.options.length !== 1 ? 's' : ''}
                   </p>
                 )}
@@ -350,7 +350,7 @@ const FieldCard: React.FC<{
                 onClick={() => onUpdate({ is_active: !field.is_active })}
                 className={cn(
                   'w-10 h-6 rounded-full transition-colors relative',
-                  field.is_active ? 'bg-green-500' : 'bg-gray-300'
+                  field.is_active ? 'bg-green-500' : 'bg-muted-foreground/30'
                 )}
               >
                 <span
@@ -362,13 +362,13 @@ const FieldCard: React.FC<{
               </button>
               <button
                 onClick={onEdit}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg"
               >
                 <Edit2 className="w-4 h-4" />
               </button>
               <button
                 onClick={onRemove}
-                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                className="p-2 text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded-lg"
               >
                 <Trash2 className="w-4 h-4" />
               </button>

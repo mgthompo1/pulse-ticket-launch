@@ -496,6 +496,8 @@ export function calculateBookingTotal(
 
 /**
  * Group time slots by time of day
+ * Uses _hour_in_tz if available (pre-calculated in attraction's timezone)
+ * Falls back to browser timezone if not
  */
 export function groupSlotsByTimeOfDay(slots: EnhancedBookingSlot[]): TimeSlotGroup[] {
   const morning: EnhancedBookingSlot[] = [];
@@ -507,7 +509,8 @@ export function groupSlotsByTimeOfDay(slots: EnhancedBookingSlot[]): TimeSlotGro
   }
 
   slots.forEach(slot => {
-    const hour = new Date(slot.start_time).getHours();
+    // Use pre-calculated hour in attraction timezone if available
+    const hour = (slot as any)._hour_in_tz ?? new Date(slot.start_time).getHours();
     if (hour < 12) {
       morning.push(slot);
     } else if (hour < 17) {
@@ -571,11 +574,14 @@ export function formatTime(isoString: string): string {
 }
 
 /**
- * Format date from ISO string
+ * Format date from ISO string or YYYY-MM-DD
  */
 export function formatDate(isoString: string): string {
   if (!isoString) return 'Select date';
-  const date = new Date(isoString);
+  // Handle YYYY-MM-DD format by adding noon time to avoid timezone date shift
+  // new Date("2025-12-25") parses as UTC midnight which shows wrong date in some timezones
+  const dateStr = isoString.includes('T') ? isoString : `${isoString}T12:00:00`;
+  const date = new Date(dateStr);
   if (isNaN(date.getTime())) return 'Select date';
   return date.toLocaleDateString('en-US', {
     weekday: 'long',

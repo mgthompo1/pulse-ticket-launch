@@ -27,6 +27,13 @@ interface TrustBadge {
   description?: string;
 }
 
+interface CustomTrustSignals {
+  paymentTitle?: string;
+  paymentBadges?: { label: string; description: string }[];
+  guaranteesTitle?: string;
+  guaranteeBadges?: { label: string; description: string }[];
+}
+
 interface TrustSignalsProps {
   variant?: 'compact' | 'detailed' | 'inline';
   showPaymentBadges?: boolean;
@@ -36,6 +43,7 @@ interface TrustSignalsProps {
   rating?: number;
   reviewCount?: number;
   className?: string;
+  customSignals?: CustomTrustSignals;
 }
 
 const paymentBadges: TrustBadge[] = [
@@ -83,7 +91,28 @@ export const TrustSignals: React.FC<TrustSignalsProps> = ({
   rating,
   reviewCount,
   className,
+  customSignals,
 }) => {
+  // Build payment badges with custom overrides
+  const effectivePaymentBadges: TrustBadge[] = customSignals?.paymentBadges?.length
+    ? customSignals.paymentBadges.map((badge, i) => ({
+        icon: i === 0 ? <Lock className="w-4 h-4" /> : i === 1 ? <CreditCard className="w-4 h-4" /> : <Shield className="w-4 h-4" />,
+        label: badge.label,
+        description: badge.description,
+      }))
+    : paymentBadges;
+
+  // Build guarantee badges with custom overrides
+  const effectiveGuaranteeBadges: TrustBadge[] = customSignals?.guaranteeBadges?.length
+    ? customSignals.guaranteeBadges.map((badge, i) => ({
+        icon: i === 0 ? <RefreshCw className="w-4 h-4" /> : i === 1 ? <Clock className="w-4 h-4" /> : <Award className="w-4 h-4" />,
+        label: badge.label,
+        description: badge.description,
+      }))
+    : guaranteeBadges;
+
+  const paymentTitle = customSignals?.paymentTitle || 'Secure Payment';
+  const guaranteesTitle = customSignals?.guaranteesTitle || 'Our Guarantees';
   if (variant === 'inline') {
     return (
       <div className={cn('flex flex-wrap items-center gap-4 text-sm text-muted-foreground', className)}>
@@ -168,9 +197,9 @@ export const TrustSignals: React.FC<TrustSignalsProps> = ({
       {/* Payment Badges */}
       {showPaymentBadges && (
         <motion.div variants={staggerItem}>
-          <h4 className="text-sm font-medium text-muted-foreground mb-3">Secure Payment</h4>
+          <h4 className="text-sm font-medium text-muted-foreground mb-3">{paymentTitle}</h4>
           <div className="grid grid-cols-3 gap-3">
-            {paymentBadges.map((badge, i) => (
+            {effectivePaymentBadges.map((badge, i) => (
               <div
                 key={i}
                 className="flex flex-col items-center text-center p-3 rounded-lg bg-muted/50"
@@ -188,9 +217,9 @@ export const TrustSignals: React.FC<TrustSignalsProps> = ({
       {/* Guarantee Badges */}
       {showGuarantees && (
         <motion.div variants={staggerItem}>
-          <h4 className="text-sm font-medium text-muted-foreground mb-3">Our Guarantees</h4>
+          <h4 className="text-sm font-medium text-muted-foreground mb-3">{guaranteesTitle}</h4>
           <div className="space-y-2">
-            {guaranteeBadges.map((badge, i) => (
+            {effectiveGuaranteeBadges.map((badge, i) => (
               <div
                 key={i}
                 className="flex items-center gap-3 p-3 rounded-lg bg-primary/5"

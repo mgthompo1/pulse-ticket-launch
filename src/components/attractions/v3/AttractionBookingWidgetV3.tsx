@@ -5,8 +5,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 // Hooks
 import { useBookingFlowV3 } from '@/hooks/attractions/useBookingFlowV3';
@@ -14,6 +16,9 @@ import { useAvailabilityV3 } from '@/hooks/attractions/useAvailabilityV3';
 import { useAddonsV3 } from '@/hooks/attractions/useAddonsV3';
 import { useStaffProfilesV3 } from '@/hooks/attractions/useStaffProfilesV3';
 import { useReviewsV3 } from '@/hooks/attractions/useReviewsV3';
+
+// Payment
+import { AttractionStripePayment } from '@/components/payment/AttractionStripePayment';
 
 // Types
 import {
@@ -52,6 +57,7 @@ import { staggerContainer, staggerItem, slideInFromBottom } from '@/lib/animatio
 
 interface AttractionBookingWidgetV3Props {
   attractionId: string;
+  organizationId?: string;
   attraction: {
     id: string;
     name: string;
@@ -64,6 +70,13 @@ interface AttractionBookingWidgetV3Props {
     gallery_images?: string[];
     resource_label?: string;
     hero_settings?: HeroSettings;
+    timezone?: string;
+  };
+  trustSignals?: {
+    paymentTitle?: string;
+    paymentBadges?: { label: string; description: string }[];
+    guaranteesTitle?: string;
+    guaranteeBadges?: { label: string; description: string }[];
   };
   requirements?: AttractionRequirement[];
   customFields?: CustomFormField[];
@@ -80,7 +93,9 @@ interface AttractionBookingWidgetV3Props {
 
 export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props> = ({
   attractionId,
+  organizationId,
   attraction,
+  trustSignals,
   requirements = [],
   customFields = [],
   showStaffSelector = true,
@@ -93,8 +108,12 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
   onClose,
   className,
 }) => {
+  const { toast } = useToast();
   const currency = attraction.currency || 'USD';
   const [isMobile, setIsMobile] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
+  const [bookingReference, setBookingReference] = useState<string | null>(null);
 
   // Check for mobile viewport
   useEffect(() => {
@@ -139,6 +158,7 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
     attractionId,
     resourceId: state.selectedStaffId,
     partySize: state.partySize,
+    timezone: attraction.timezone || 'Pacific/Auckland',
   });
 
   const { staff, availableStaff } = useStaffProfilesV3({
@@ -173,22 +193,138 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
     return member?.name;
   }, [staff, state.selectedStaffId]);
 
-  // Handle booking submission
+  // Generate booking reference
+  const generateBookingRef = () => {
+    return 'PLS-' + Math.random().toString(36).substr(2, 8).toUpperCase();
+  };
+
+  // Create pending booking for payment
+  const createPendingBooking = async () => {
+    if (!organizationId) {
+      console.error('No organization ID provided for payment');
+      toast({
+        title: 'Configuration Error',
+        description: 'Payment is not configured. Please contact support.',
+        variant: 'destructive',
+      });
+      return null;
+    }
+
+    setIsProcessingPayment(true);
+    const reference = generateBookingRef();
+
+    try {
+      const { data, error } = await supabase
+        .from('attraction_bookings')
+        .insert({
+          attraction_id: attractionId,
+          organization_id: organizationId,
+          customer_name: `${state.customerInfo.first_name} ${state.customerInfo.last_name}`,
+          customer_email: state.customerInfo.email,
+          customer_phone: state.customerInfo.phone || null,
+          booking_date: state.selectedDate,
+          party_size: state.partySize,
+          total_amount: totalPrice,
+          booking_status: 'pending',
+          payment_status: 'pending',
+          booking_reference: reference,
+          resource_id: state.selectedStaffId,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setPendingBookingId(data.id);
+      setBookingReference(reference);
+      return data;
+    } catch (error) {
+      console.error('Error creating pending booking:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create booking. Please try again.',
+        variant: 'destructive',
+      });
+      setIsProcessingPayment(false);
+      return null;
+    }
+  };
+
+  // Handle payment success
+  const handlePaymentSuccess = async () => {
+    if (!pendingBookingId) return;
+
+    try {
+      // Update booking status
+      await supabase
+        .from('attraction_bookings')
+        .update({
+          booking_status: 'confirmed',
+          payment_status: 'completed',
+        })
+        .eq('id', pendingBookingId);
+
+      // Update slot booking count if we have a selected slot
+      if (selectedSlot) {
+        await supabase
+          .from('booking_slots')
+          .update({
+            current_bookings: selectedSlot.current_bookings + state.partySize,
+          })
+          .eq('id', selectedSlot.id);
+      }
+
+      toast({
+        title: 'Payment Successful! 🎉',
+        description: 'Your booking has been confirmed.',
+      });
+
+      // Go to confirmation
+      goToStep('confirmation');
+
+      if (onBookingComplete) {
+        onBookingComplete({
+          id: pendingBookingId,
+          reference: bookingReference,
+          ...state,
+          total: totalPrice,
+        });
+      }
+    } catch (error) {
+      console.error('Error confirming booking:', error);
+      toast({
+        title: 'Error',
+        description: 'Payment succeeded but booking confirmation failed. Please contact support.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  // Handle payment error
+  const handlePaymentError = (error: Error) => {
+    console.error('Payment error:', error);
+    toast({
+      title: 'Payment Failed',
+      description: error.message || 'Please try again.',
+      variant: 'destructive',
+    });
+    setIsProcessingPayment(false);
+  };
+
+  // Handle booking submission - legacy, for confirmation step
   const handleSubmitBooking = async () => {
-    // This would call your booking API
     console.log('Submitting booking:', {
       attractionId,
       ...state,
       totalPrice,
     });
 
-    // Simulate success
-    goToStep('confirmation');
-
     if (onBookingComplete) {
       onBookingComplete({
-        id: 'booking-id',
-        reference: 'PLS-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+        id: pendingBookingId || 'booking-id',
+        reference: bookingReference || generateBookingRef(),
         ...state,
         total: totalPrice,
       });
@@ -418,25 +554,59 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
               </div>
             </div>
 
-            {/* Payment Form Placeholder */}
-            <div className="p-6 rounded-2xl border-2 border-dashed border-border text-center">
-              <p className="text-muted-foreground">Payment form integration</p>
-              <p className="text-sm text-muted-foreground/70 mt-1">
-                Stripe / Windcave payment would be embedded here
-              </p>
-            </div>
+            {/* Payment Form - Stripe */}
+            {organizationId ? (
+              pendingBookingId ? (
+                <div className="space-y-4">
+                  <AttractionStripePayment
+                    amount={totalPrice}
+                    currency={currency}
+                    description={`${attraction.name} - ${state.partySize} ${state.partySize === 1 ? 'guest' : 'guests'}`}
+                    customerEmail={state.customerInfo.email}
+                    customerName={`${state.customerInfo.first_name} ${state.customerInfo.last_name}`}
+                    onSuccess={handlePaymentSuccess}
+                    onError={handlePaymentError}
+                    metadata={{
+                      organization_id: organizationId,
+                      attraction_id: attractionId,
+                      booking_id: pendingBookingId,
+                      booking_reference: bookingReference || '',
+                      booking_date: state.selectedDate,
+                      booking_time: state.selectedTime,
+                      party_size: String(state.partySize),
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={createPendingBooking}
+                    disabled={isProcessingPayment}
+                    className="w-full py-4 bg-primary text-primary-foreground font-semibold rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  >
+                    {isProcessingPayment ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Preparing payment...
+                      </span>
+                    ) : (
+                      `Proceed to Payment - ${formatPrice(totalPrice, currency)}`
+                    )}
+                  </motion.button>
+                </div>
+              )
+            ) : (
+              <div className="p-6 rounded-2xl border-2 border-dashed border-border text-center">
+                <p className="text-muted-foreground">Payment not configured</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">
+                  Please contact the organizer to complete your booking.
+                </p>
+              </div>
+            )}
 
             {/* Trust Signals */}
-            <TrustSignals variant="compact" />
-
-            {/* Pay Button */}
-            <motion.button
-              whileTap={{ scale: 0.98 }}
-              onClick={handleSubmitBooking}
-              className="w-full py-4 bg-primary text-primary-foreground font-semibold rounded-xl hover:bg-primary/90 transition-colors"
-            >
-              Pay {formatPrice(totalPrice, currency)}
-            </motion.button>
+            <TrustSignals variant="compact" customSignals={trustSignals} />
           </motion.div>
         );
 
@@ -444,8 +614,8 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
         return (
           <Confirmation
             booking={{
-              id: 'temp-id',
-              reference: 'PLS-' + Math.random().toString(36).substr(2, 8).toUpperCase(),
+              id: pendingBookingId || 'booking-id',
+              reference: bookingReference || 'PLS-XXXXXXXX',
               status: 'confirmed',
               date: state.selectedDate,
               time: state.selectedTime,
