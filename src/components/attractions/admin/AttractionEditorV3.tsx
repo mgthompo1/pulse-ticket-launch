@@ -541,12 +541,12 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
               <CardDescription>Customize the hero/header area of your booking widget</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Logo/Hero Image */}
+              {/* Logo/Hero Image Upload */}
               <div className="space-y-2">
-                <Label htmlFor="logo_url">Logo / Hero Image URL</Label>
+                <Label>Logo / Hero Image</Label>
                 <div className="flex gap-4 items-start">
                   {formData.logo_url && (
-                    <div className="w-20 h-20 rounded-lg border border-border overflow-hidden bg-muted flex-shrink-0">
+                    <div className="w-24 h-24 rounded-lg border border-border overflow-hidden bg-muted flex-shrink-0">
                       <img
                         src={formData.logo_url}
                         alt="Logo preview"
@@ -557,15 +557,49 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
                       />
                     </div>
                   )}
-                  <div className="flex-1 space-y-2">
+                  <div className="flex-1">
                     <Input
-                      id="logo_url"
-                      value={formData.logo_url}
-                      onChange={(e) => handleInputChange('logo_url', e.target.value)}
-                      placeholder="https://example.com/your-logo.jpg"
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        // Validate file
+                        if (!file.type.startsWith('image/')) {
+                          toast({ title: 'Error', description: 'Please select an image file', variant: 'destructive' });
+                          return;
+                        }
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast({ title: 'Error', description: 'File size must be less than 5MB', variant: 'destructive' });
+                          return;
+                        }
+
+                        try {
+                          const fileExt = file.name.split('.').pop();
+                          const fileName = `attractions/${attractionId}/logo.${fileExt}`;
+
+                          const { error: uploadError } = await supabase.storage
+                            .from('event-logos')
+                            .upload(fileName, file, { upsert: true });
+
+                          if (uploadError) throw uploadError;
+
+                          const { data } = supabase.storage
+                            .from('event-logos')
+                            .getPublicUrl(fileName);
+
+                          handleInputChange('logo_url', data.publicUrl);
+                          toast({ title: 'Success', description: 'Logo uploaded successfully' });
+                        } catch (error) {
+                          console.error('Upload error:', error);
+                          toast({ title: 'Error', description: 'Failed to upload logo', variant: 'destructive' });
+                        }
+                      }}
+                      className="cursor-pointer"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Enter a URL to your logo or hero image. Recommended size: 800x400px
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Upload a logo or hero image. Recommended size: 800x400px. Max 5MB.
                     </p>
                   </div>
                 </div>
