@@ -40,9 +40,12 @@ import {
   Heart,
   Bike,
   LayoutGrid,
+  Scissors,
+  Dumbbell,
   type LucideIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getVerticalDisplayName } from "@/types/verticals";
 
 interface Attraction {
   id: string;
@@ -50,6 +53,7 @@ interface Attraction {
   description: string | null;
   venue: string | null;
   attraction_type: string;
+  vertical_type: string;
   duration_minutes: number;
   base_price: number;
   max_concurrent_bookings: number;
@@ -74,11 +78,29 @@ const ATTRACTION_TYPES: { value: string; label: string; icon: LucideIcon }[] = [
   { value: "tour", label: "Tour / Activity", icon: Compass },
   { value: "workshop", label: "Workshop / Class", icon: GraduationCap },
   { value: "spa_service", label: "Spa / Wellness", icon: Heart },
+  { value: "salon", label: "Salon / Barber", icon: Scissors },
+  { value: "fitness", label: "Fitness / Gym", icon: Dumbbell },
   { value: "rental", label: "Equipment Rental", icon: Bike },
   { value: "other", label: "Other", icon: LayoutGrid }
 ];
 
 const getAttractionType = (type: string) => ATTRACTION_TYPES.find(t => t.value === type);
+
+// Map attraction types to vertical types for auto-selection
+const ATTRACTION_TO_VERTICAL: Record<string, string> = {
+  golf_simulator: 'golf',
+  karaoke_room: 'entertainment',
+  escape_room: 'entertainment',
+  vr_experience: 'entertainment',
+  bowling_lane: 'entertainment',
+  tour: 'tours',
+  workshop: 'general',
+  spa_service: 'spa',
+  salon: 'salon',
+  fitness: 'fitness',
+  rental: 'rental',
+  other: 'general'
+};
 
 const AttractionManagement: React.FC<AttractionManagementProps> = ({
   organizationId,
@@ -130,6 +152,9 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async () => {
+      // Auto-select vertical_type based on attraction_type
+      const verticalType = ATTRACTION_TO_VERTICAL[formData.attraction_type] || 'general';
+
       const { data, error } = await supabase
         .from("attractions")
         .insert({
@@ -138,6 +163,7 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
           description: formData.description?.trim() || null,
           venue: formData.venue?.trim() || null,
           attraction_type: formData.attraction_type,
+          vertical_type: verticalType,
           duration_minutes: Math.max(1, formData.duration_minutes),
           base_price: Math.max(0, formData.base_price),
           max_concurrent_bookings: Math.max(1, formData.max_concurrent_bookings),
@@ -427,9 +453,14 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
                           {attraction.status}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {getAttractionType(attraction.attraction_type)?.label}
-                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Badge variant="outline" className="text-xs font-normal">
+                          {getVerticalDisplayName(attraction.vertical_type as any)}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {getAttractionType(attraction.attraction_type)?.label}
+                        </span>
+                      </div>
                     </div>
                   </div>
 

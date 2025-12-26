@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Save, Eye, ExternalLink, Settings, Users, Clock, Package, FileText, Palette, Image, Star, AlertTriangle, Zap, Layout, Type, Shield, Square, RectangleHorizontal, FileSignature, Trash2 } from 'lucide-react';
+import { Loader2, Save, Eye, ExternalLink, Settings, Users, Clock, Package, FileText, Palette, Image, Star, AlertTriangle, Zap, Layout, Type, Shield, Square, RectangleHorizontal, FileSignature, Trash2, Settings2, Flag, CreditCard, ShoppingBag, Moon, Sun } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AttractionWaiverConfig } from '../waivers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -27,6 +27,16 @@ import {
   AddOnsSection,
   CustomFieldsSection,
 } from './sections';
+
+import {
+  VerticalSelector,
+  FeatureToggles,
+  GolfConfigEditor,
+  PassesManager,
+  ServicesManager,
+  ProductCatalog,
+} from '@/components/verticals';
+import type { VerticalType, VerticalFeatures } from '@/types/verticals';
 
 interface AttractionEditorV3Props {
   attractionId: string;
@@ -91,12 +101,15 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
     max_concurrent_bookings: 1,
     status: 'active',
     logo_url: '',
+    vertical_type: 'general' as VerticalType,
+    feature_overrides: {} as Partial<VerticalFeatures>,
   });
 
   // Theme state - stored in widget_customization JSONB column
   const [themeData, setThemeData] = useState({
     primaryColor: '#3b82f6',
     accentColor: '#10b981',
+    themeMode: 'light' as 'light' | 'dark' | 'system',
     showReviews: true,
     showUrgency: true,
     showSocialProof: true,
@@ -146,6 +159,8 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
         logo_url: attraction.logo_url || '',
         max_concurrent_bookings: attraction.max_concurrent_bookings || 1,
         status: attraction.status || 'active',
+        vertical_type: (attraction.vertical_type as VerticalType) || 'general',
+        feature_overrides: (attraction.feature_overrides as Partial<VerticalFeatures>) || {},
       });
 
       // Load theme from widget_customization
@@ -153,6 +168,7 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
       setThemeData({
         primaryColor: customization.primaryColor || '#3b82f6',
         accentColor: customization.accentColor || '#10b981',
+        themeMode: customization.themeMode || 'light',
         showReviews: customization.showReviews !== false,
         showUrgency: customization.showUrgency !== false,
         showSocialProof: customization.showSocialProof !== false,
@@ -293,7 +309,7 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="w-full flex flex-wrap justify-start gap-0.5 h-auto p-1 bg-muted">
           <TabsTrigger value="basic" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
             <span className="hidden sm:inline">Basic</span>
@@ -306,6 +322,47 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
             <Users className="w-4 h-4" />
             <span className="hidden sm:inline">Staff</span>
           </TabsTrigger>
+
+          {/* Golf-specific tabs */}
+          {formData.vertical_type === 'golf' && (
+            <TabsTrigger value="golf" className="flex items-center gap-2">
+              <Flag className="w-4 h-4" />
+              <span className="hidden sm:inline">Golf</span>
+            </TabsTrigger>
+          )}
+
+          {/* Salon/Spa-specific tabs */}
+          {(formData.vertical_type === 'salon' || formData.vertical_type === 'spa') && (
+            <TabsTrigger value="services" className="flex items-center gap-2">
+              <Settings2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Services</span>
+            </TabsTrigger>
+          )}
+
+          {/* Entertainment-specific tabs */}
+          {formData.vertical_type === 'entertainment' && (
+            <TabsTrigger value="entertainment" className="flex items-center gap-2">
+              <Settings2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Venue</span>
+            </TabsTrigger>
+          )}
+
+          {/* Passes tab - for golf, fitness, entertainment */}
+          {['golf', 'fitness', 'entertainment'].includes(formData.vertical_type) && (
+            <TabsTrigger value="passes" className="flex items-center gap-2">
+              <CreditCard className="w-4 h-4" />
+              <span className="hidden sm:inline">Passes</span>
+            </TabsTrigger>
+          )}
+
+          {/* Products tab - for verticals with retail */}
+          {['golf', 'salon', 'spa', 'entertainment'].includes(formData.vertical_type) && (
+            <TabsTrigger value="products" className="flex items-center gap-2">
+              <ShoppingBag className="w-4 h-4" />
+              <span className="hidden sm:inline">Products</span>
+            </TabsTrigger>
+          )}
+
           <TabsTrigger value="addons" className="flex items-center gap-2">
             <Package className="w-4 h-4" />
             <span className="hidden sm:inline">Add-ons</span>
@@ -463,6 +520,20 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
             </CardContent>
           </Card>
 
+          {/* Business Type - Vertical Selector */}
+          <VerticalSelector
+            value={formData.vertical_type}
+            onChange={(type) => handleInputChange('vertical_type', type)}
+          />
+
+          {/* Feature Toggles */}
+          <FeatureToggles
+            attractionId={attractionId}
+            verticalType={formData.vertical_type}
+            overrides={formData.feature_overrides}
+            onChange={(overrides) => handleInputChange('feature_overrides', overrides)}
+          />
+
           {/* Danger Zone */}
           <Card className="border-destructive/50">
             <CardHeader>
@@ -493,6 +564,49 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Golf Tab */}
+        {formData.vertical_type === 'golf' && (
+          <TabsContent value="golf" className="space-y-6">
+            <GolfConfigEditor attractionId={attractionId} />
+          </TabsContent>
+        )}
+
+        {/* Services Tab (Salon/Spa) */}
+        {(formData.vertical_type === 'salon' || formData.vertical_type === 'spa') && (
+          <TabsContent value="services" className="space-y-6">
+            <ServicesManager attractionId={attractionId} verticalType={formData.vertical_type} />
+          </TabsContent>
+        )}
+
+        {/* Entertainment Tab */}
+        {formData.vertical_type === 'entertainment' && (
+          <TabsContent value="entertainment" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Entertainment Venue Settings</CardTitle>
+                <CardDescription>Configure lanes, rooms, durations, and party packages</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">Entertainment venue configuration coming soon. This will include lane/room management, duration options, and party package setup.</p>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* Passes Tab */}
+        {['golf', 'fitness', 'entertainment'].includes(formData.vertical_type) && (
+          <TabsContent value="passes" className="space-y-6">
+            <PassesManager attractionId={attractionId} verticalType={formData.vertical_type} />
+          </TabsContent>
+        )}
+
+        {/* Products Tab */}
+        {['golf', 'salon', 'spa', 'entertainment'].includes(formData.vertical_type) && (
+          <TabsContent value="products" className="space-y-6">
+            <ProductCatalog attractionId={attractionId} verticalType={formData.vertical_type} />
+          </TabsContent>
+        )}
 
         {/* Schedule Tab */}
         <TabsContent value="schedule">
@@ -576,6 +690,52 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
                   </div>
                   <p className="text-xs text-muted-foreground">Used for success states and badges</p>
                 </div>
+              </div>
+
+              {/* Theme Mode */}
+              <div className="space-y-2">
+                <Label>Widget Theme Mode</Label>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => handleThemeChange('themeMode', 'light')}
+                    className={cn(
+                      'flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all',
+                      themeData.themeMode === 'light'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    <Sun className="w-5 h-5" />
+                    <span className="font-medium">Light</span>
+                  </button>
+                  <button
+                    onClick={() => handleThemeChange('themeMode', 'dark')}
+                    className={cn(
+                      'flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all',
+                      themeData.themeMode === 'dark'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    <Moon className="w-5 h-5" />
+                    <span className="font-medium">Dark</span>
+                  </button>
+                  <button
+                    onClick={() => handleThemeChange('themeMode', 'system')}
+                    className={cn(
+                      'flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all',
+                      themeData.themeMode === 'system'
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    )}
+                  >
+                    <Settings className="w-5 h-5" />
+                    <span className="font-medium">System</span>
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Choose how the booking widget appears. This is independent of TicketFlo's dashboard theme.
+                </p>
               </div>
 
               {/* Color Preview */}
