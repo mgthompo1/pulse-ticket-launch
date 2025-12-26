@@ -305,9 +305,12 @@ export function useAvailabilityV3({
       calendarData.forEach((value, date) => {
         map.set(date, {
           date,
-          level: getAvailabilityLevel(value.slotsAvailable),
-          slotsAvailable: value.slotsAvailable,
-          lowestPrice: value.lowestPrice,
+          level: getAvailabilityLevel(value.slotsAvailable, value.totalSlots),
+          slots_available: value.slotsAvailable,
+          total_slots: value.totalSlots,
+          lowest_price: value.lowestPrice,
+          is_blackout: false,
+          is_closed: false,
         });
       });
     }

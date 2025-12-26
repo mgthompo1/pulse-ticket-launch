@@ -3,7 +3,7 @@
  * Premium, mobile-first booking experience with Framer Motion animations
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -148,6 +148,11 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
   const [hasOnlineWaivers, setHasOnlineWaivers] = useState(false);
   const [waiverModalOpen, setWaiverModalOpen] = useState(false);
 
+  // Add-ons context state (kept in sync with booking flow)
+  const [addonsPartySize, setAddonsPartySize] = useState(1);
+  const [addonsSelectedDate, setAddonsSelectedDate] = useState('');
+  const [addonsSelectedStaffId, setAddonsSelectedStaffId] = useState<string | null>(null);
+
   // Theme defaults
   const primaryColor = theme?.primaryColor || '#3b82f6';
   const accentColor = theme?.accentColor || '#10b981';
@@ -186,6 +191,11 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
     checkForWaivers();
   }, [attractionId, organizationId]);
 
+  const requiredRequirementIds = useMemo(
+    () => requirements.filter((req) => req.acknowledgement_required).map((req) => req.id),
+    [requirements]
+  );
+
   // Initialize hooks
   const {
     addons,
@@ -200,6 +210,9 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
     getAddonTotal,
   } = useAddonsV3({
     attractionId,
+    partySize: addonsPartySize,
+    selectedDate: addonsSelectedDate,
+    resourceId: addonsSelectedStaffId,
     enabled: showAddons || showPackages,
   });
 
@@ -214,9 +227,37 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
     hasPackages: showPackages && availablePackages.length > 0,
     hasRequirements: requirements.length > 0,
     hasOnlineWaivers,
+    requiredRequirementIds,
   });
 
-  const { state, currentStep, steps, canProceed, canGoBack, nextStep, prevStep, goToStep } = bookingFlow;
+  const {
+    state,
+    currentStep,
+    steps,
+    canProceed,
+    canGoBack,
+    nextStep,
+    prevStep,
+    goToStep,
+    setPartySize,
+    selectDate,
+    selectStaff,
+  } = bookingFlow;
+
+  const handlePartySizeChange = useCallback((size: number) => {
+    setAddonsPartySize(size);
+    setPartySize(size);
+  }, [setPartySize]);
+
+  const handleDateSelect = useCallback((date: string) => {
+    setAddonsSelectedDate(date);
+    selectDate(date);
+  }, [selectDate]);
+
+  const handleStaffSelect = useCallback((staffId: string | null) => {
+    setAddonsSelectedStaffId(staffId);
+    selectStaff(staffId);
+  }, [selectStaff]);
 
   const availability = useAvailabilityV3({
     attractionId,
@@ -539,7 +580,7 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
             <motion.div variants={staggerItem}>
               <PartySizeSelector
                 value={state.partySize}
-                onChange={bookingFlow.setPartySize}
+                onChange={handlePartySizeChange}
                 pricePerPerson={attraction.base_price}
                 currency={currency}
               />
@@ -551,7 +592,7 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
                 availability={availability.availability}
                 selectedDate={state.selectedDate}
                 onDateSelect={(date) => {
-                  bookingFlow.selectDate(date);
+                  handleDateSelect(date);
                   availability.setSelectedDate(date);
                   // Auto-advance to time selection
                   setTimeout(() => goToStep('time'), 300);
@@ -564,8 +605,8 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
             {showUrgency && state.selectedDate && selectedSlot && (
               <motion.div variants={staggerItem}>
                 <UrgencyBadge
-                  level={selectedSlot.urgency_level || 'low'}
-                  spotsLeft={selectedSlot.available_spots}
+                  level={selectedSlot.urgency_level ?? 'low'}
+                  spotsLeft={selectedSlot.spots_left}
                 />
               </motion.div>
             )}
@@ -613,7 +654,7 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
               staff={availableStaff}
               selectedStaffId={state.selectedStaffId}
               resourceLabel={attraction.resource_label || 'Guide'}
-              onSelect={bookingFlow.selectStaff}
+              onSelect={handleStaffSelect}
             />
           </motion.div>
         );
@@ -635,7 +676,7 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
                 addons={addons}
                 selectedPackageId={selectedPackageId}
                 basePrice={attraction.base_price}
-                partySize={state.partySize}
+                partySize={addonsPartySize}
                 currency={currency}
                 onPackageSelect={selectPackage}
               />
@@ -646,9 +687,9 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
               <AddOnsSelector
                 addons={availableAddons}
                 selectedAddons={selectedAddons}
-                partySize={state.partySize}
-                selectedDate={state.selectedDate}
-                resourceId={state.selectedStaffId}
+                partySize={addonsPartySize}
+                selectedDate={addonsSelectedDate}
+                resourceId={addonsSelectedStaffId}
                 currency={currency}
                 onAddonsChange={(newAddons) => {
                   // Update each addon

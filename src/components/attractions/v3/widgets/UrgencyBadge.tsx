@@ -17,7 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { urgencyPulse, urgencyShake } from '@/lib/animations';
 
-type UrgencyLevel = 'low' | 'medium' | 'high' | 'critical';
+type UrgencyLevel = 'none' | 'low' | 'medium' | 'high' | 'critical';
 
 interface UrgencyBadgeProps {
   level: UrgencyLevel;
@@ -35,6 +35,13 @@ const levelConfig: Record<UrgencyLevel, {
   icon: React.ReactNode;
   defaultMessage: string;
 }> = {
+  none: {
+    bgClass: 'bg-gray-50',
+    textClass: 'text-gray-600',
+    borderClass: 'border-gray-200',
+    icon: <AlertTriangle className="w-4 h-4" />,
+    defaultMessage: 'Sold out',
+  },
   low: {
     bgClass: 'bg-green-50',
     textClass: 'text-green-700',
@@ -74,9 +81,13 @@ export const UrgencyBadge: React.FC<UrgencyBadgeProps> = ({
   className,
 }) => {
   const config = levelConfig[level];
-  const displayMessage = message || (spotsLeft !== undefined
-    ? `Only ${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left!`
-    : config.defaultMessage);
+  const displayMessage = message || (
+    spotsLeft !== undefined
+      ? spotsLeft <= 0
+        ? config.defaultMessage
+        : `Only ${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left!`
+      : config.defaultMessage
+  );
 
   const shouldAnimate = showAnimation && (level === 'high' || level === 'critical');
 

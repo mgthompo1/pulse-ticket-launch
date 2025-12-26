@@ -260,7 +260,6 @@ export const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({
         >
           {calendarDays.map((day, index) => {
             const isDisabled = !day.isCurrentMonth || day.isPast || day.isBlackout;
-            const hasAvailability = day.availability && day.availability.slots_available > 0;
 
             return (
               <motion.button

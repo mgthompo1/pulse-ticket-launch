@@ -3,7 +3,7 @@
  * Manages step progression, validation, and booking state
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   BookingFlowState,
   BookingStep,
@@ -24,6 +24,7 @@ interface UseBookingFlowV3Props {
   hasPackages?: boolean;
   hasRequirements?: boolean;
   hasOnlineWaivers?: boolean;
+  requiredRequirementIds?: string[];
 }
 
 interface UseBookingFlowV3Return {
@@ -98,6 +99,18 @@ const DEFAULT_STATE: BookingFlowState & { waiversCompleted: boolean } = {
   waiversCompleted: false,
 };
 
+const STEP_ORDER: BookingStep[] = [
+  'date',
+  'time',
+  'staff',
+  'addons',
+  'requirements',
+  'details',
+  'waiver',
+  'payment',
+  'confirmation',
+];
+
 export function useBookingFlowV3({
   attractionId,
   basePrice,
@@ -109,6 +122,7 @@ export function useBookingFlowV3({
   hasPackages = false,
   hasRequirements = false,
   hasOnlineWaivers = false,
+  requiredRequirementIds = [],
 }: UseBookingFlowV3Props): UseBookingFlowV3Return {
   const [state, setState] = useState<BookingFlowState & { waiversCompleted: boolean }>(DEFAULT_STATE);
 
@@ -132,6 +146,20 @@ export function useBookingFlowV3({
 
   const currentStepIndex = steps.indexOf(state.step);
 
+  // Ensure current step stays valid when steps list changes
+  useEffect(() => {
+    if (steps.includes(state.step)) return;
+
+    const currentOrderIndex = STEP_ORDER.indexOf(state.step);
+    const fallbackStep =
+      steps.find((step) => STEP_ORDER.indexOf(step) >= currentOrderIndex) ||
+      steps[steps.length - 1];
+
+    if (fallbackStep && fallbackStep !== state.step) {
+      setState((prev) => ({ ...prev, step: fallbackStep }));
+    }
+  }, [steps, state.step]);
+
   // Validation for each step
   const validateStep = useCallback((step: BookingStep): boolean => {
     switch (step) {
@@ -147,8 +175,8 @@ export function useBookingFlowV3({
         return true;
       case 'requirements':
         // All required acknowledgements must be made
-        // This would need to check against actual requirements
-        return true;
+        if (requiredRequirementIds.length === 0) return true;
+        return requiredRequirementIds.every((id) => state.acknowledgedRequirements.has(id));
       case 'waiver':
         // Waiver step is complete when waivers are signed
         return state.waiversCompleted;
@@ -167,7 +195,7 @@ export function useBookingFlowV3({
       default:
         return false;
     }
-  }, [state]);
+  }, [state, requiredRequirementIds]);
 
   const canProceed = useMemo(() => {
     return validateStep(state.step);
