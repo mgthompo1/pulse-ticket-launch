@@ -255,10 +255,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 </Badge>
               )}
 
-              <Badge variant="secondary" className="glass text-white border-white/20">
-                <Shield className="w-3.5 h-3.5 mr-1 text-green-400" />
-                Instant confirmation
-              </Badge>
             </motion.div>
 
             {/* Title */}

@@ -148,14 +148,14 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: 'spring', bounce: 0.5, delay: 0.2 }}
-          className="w-20 h-20 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-6"
+          className="w-20 h-20 mx-auto rounded-full bg-green-500/10 dark:bg-green-500/20 flex items-center justify-center mb-6"
         >
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.4 }}
           >
-            <CheckCircle className="w-10 h-10 text-green-600" />
+            <CheckCircle className="w-10 h-10 text-green-500" />
           </motion.div>
         </motion.div>
 
@@ -163,7 +163,7 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="text-3xl font-bold text-gray-900 mb-2"
+          className="text-3xl font-bold text-foreground mb-2"
         >
           Booking Confirmed!
         </motion.h1>
@@ -172,7 +172,7 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="text-gray-600"
+          className="text-muted-foreground"
         >
           Your adventure awaits. Check your email for confirmation.
         </motion.p>
@@ -185,28 +185,28 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
       >
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-sm text-gray-500">Booking Reference</p>
+            <p className="text-sm text-muted-foreground">Booking Reference</p>
             <p className="text-2xl font-mono font-bold text-primary">{booking.reference}</p>
           </div>
-          <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center shadow-sm">
-            <QrCode className="w-10 h-10 text-gray-400" />
+          <div className="w-16 h-16 bg-card rounded-xl flex items-center justify-center shadow-sm border border-border">
+            <QrCode className="w-10 h-10 text-muted-foreground" />
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-gray-600">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Mail className="w-4 h-4" />
-          <span>Confirmation sent to <span className="font-medium">{booking.customerEmail}</span></span>
+          <span>Confirmation sent to <span className="font-medium text-foreground">{booking.customerEmail}</span></span>
         </div>
       </motion.div>
 
       {/* Booking Details Card */}
       <motion.div
         variants={staggerItem}
-        className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm"
+        className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm"
       >
         {/* Attraction Header */}
         {attraction.imageUrl && (
-          <div className="relative h-40 bg-gray-100">
+          <div className="relative h-40 bg-muted">
             <img
               src={attraction.imageUrl}
               alt={attraction.name}
@@ -254,21 +254,21 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
 
           {/* Package & Add-ons */}
           {(selectedPackage || (selectedAddons && selectedAddons.length > 0)) && (
-            <div className="mt-6 pt-6 border-t border-gray-100">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">What's Included</h3>
+            <div className="mt-6 pt-6 border-t border-border">
+              <h3 className="text-sm font-medium text-foreground mb-3">What's Included</h3>
               <div className="space-y-2">
                 {selectedPackage && (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">{selectedPackage.name}</span>
-                    <span className="font-medium">{formatPrice(selectedPackage.price, booking.currency)}</span>
+                    <span className="text-muted-foreground">{selectedPackage.name}</span>
+                    <span className="font-medium text-foreground">{formatPrice(selectedPackage.price, booking.currency)}</span>
                   </div>
                 )}
                 {selectedAddons?.map(({ addon, quantity }) => (
                   <div key={addon.id} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">
+                    <span className="text-muted-foreground">
                       {addon.name} {quantity > 1 && `x${quantity}`}
                     </span>
-                    <span className="font-medium">
+                    <span className="font-medium text-foreground">
                       {formatPrice(addon.price * quantity, booking.currency)}
                     </span>
                   </div>
@@ -278,9 +278,9 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
           )}
 
           {/* Total */}
-          <div className="mt-6 pt-6 border-t border-gray-100">
+          <div className="mt-6 pt-6 border-t border-border">
             <div className="flex items-center justify-between">
-              <span className="text-lg font-semibold text-gray-900">Total Paid</span>
+              <span className="text-lg font-semibold text-foreground">Total Paid</span>
               <span className="text-2xl font-bold text-primary">
                 {formatPrice(booking.total, booking.currency)}
               </span>
@@ -298,7 +298,7 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
           whileHover={cardHover}
           whileTap={buttonTap}
           onClick={onDownloadTicket}
-          className="flex items-center justify-center gap-2 px-6 py-4 rounded-xl border-2 border-gray-200 bg-white text-gray-700 font-medium hover:border-gray-300 transition-colors"
+          className="flex items-center justify-center gap-2 px-6 py-4 rounded-xl border-2 border-border bg-card text-foreground font-medium hover:border-muted-foreground/50 transition-colors"
         >
           <Download className="w-5 h-5" />
           Download Ticket
@@ -308,7 +308,7 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
           whileHover={cardHover}
           whileTap={buttonTap}
           onClick={onAddToCalendar}
-          className="flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
+          className="flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
         >
           <Calendar className="w-5 h-5" />
           Add to Calendar
@@ -318,9 +318,9 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
       {/* How to Use Your Ticket */}
       <motion.div
         variants={staggerItem}
-        className="bg-blue-50 rounded-2xl p-6"
+        className="bg-primary/5 dark:bg-primary/10 rounded-2xl p-6"
       >
-        <h3 className="font-semibold text-gray-900 mb-4">How to Use Your Ticket</h3>
+        <h3 className="font-semibold text-foreground mb-4">How to Use Your Ticket</h3>
         <div className="space-y-4">
           <StepItem
             number={1}
@@ -348,7 +348,7 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
         <motion.div variants={staggerItem} className="space-y-4">
           <div className="flex items-center gap-2">
             <Gift className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold text-gray-900">Enhance Your Experience</h3>
+            <h3 className="font-semibold text-foreground">Enhance Your Experience</h3>
           </div>
 
           <div className="grid gap-4">
@@ -356,7 +356,7 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
               <motion.div
                 key={upsell.id}
                 whileHover={cardHover}
-                className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 bg-white"
+                className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card"
               >
                 {upsell.imageUrl && (
                   <img
@@ -366,11 +366,11 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-gray-900">{upsell.title}</h4>
-                  <p className="text-sm text-gray-500 line-clamp-1">{upsell.description}</p>
+                  <h4 className="font-medium text-foreground">{upsell.title}</h4>
+                  <p className="text-sm text-muted-foreground line-clamp-1">{upsell.description}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-gray-900">
+                  <p className="font-semibold text-foreground">
                     +{formatPrice(upsell.price, booking.currency)}
                   </p>
                   <motion.button
@@ -392,7 +392,7 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
         variants={staggerItem}
         className="text-center py-6"
       >
-        <p className="text-sm text-gray-500 mb-3">Share your upcoming adventure</p>
+        <p className="text-sm text-muted-foreground mb-3">Share your upcoming adventure</p>
         <div className="flex justify-center gap-4">
           <ShareButton network="twitter" />
           <ShareButton network="facebook" />
@@ -403,17 +403,17 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
       {/* Rate Your Booking Experience */}
       <motion.div
         variants={staggerItem}
-        className="text-center py-8 bg-gray-50 rounded-2xl"
+        className="text-center py-8 bg-muted rounded-2xl"
       >
-        <h3 className="font-semibold text-gray-900 mb-2">How was your booking experience?</h3>
-        <p className="text-sm text-gray-500 mb-4">Help us improve</p>
+        <h3 className="font-semibold text-foreground mb-2">How was your booking experience?</h3>
+        <p className="text-sm text-muted-foreground mb-4">Help us improve</p>
         <div className="flex justify-center gap-2">
           {['😡', '😕', '😐', '😊', '😍'].map((emoji, i) => (
             <motion.button
               key={i}
               whileHover={{ scale: 1.2 }}
               whileTap={{ scale: 0.9 }}
-              className="text-2xl p-2 hover:bg-white rounded-lg transition-colors"
+              className="text-2xl p-2 hover:bg-card rounded-lg transition-colors"
             >
               {emoji}
             </motion.button>
@@ -431,12 +431,12 @@ const DetailItem: React.FC<{
   value: string;
 }> = ({ icon, label, value }) => (
   <div className="flex items-start gap-3">
-    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 flex-shrink-0">
+    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0">
       {icon}
     </div>
     <div>
-      <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
-      <p className="font-medium text-gray-900">{value}</p>
+      <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
+      <p className="font-medium text-foreground">{value}</p>
     </div>
   </div>
 );
@@ -449,15 +449,15 @@ const StepItem: React.FC<{
   description: string;
 }> = ({ number, icon, title, description }) => (
   <div className="flex items-start gap-4">
-    <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-semibold flex-shrink-0">
+    <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold flex-shrink-0">
       {number}
     </div>
     <div className="flex-1">
       <div className="flex items-center gap-2 mb-0.5">
-        <span className="text-blue-600">{icon}</span>
-        <h4 className="font-medium text-gray-900">{title}</h4>
+        <span className="text-primary">{icon}</span>
+        <h4 className="font-medium text-foreground">{title}</h4>
       </div>
-      <p className="text-sm text-gray-600">{description}</p>
+      <p className="text-sm text-muted-foreground">{description}</p>
     </div>
   </div>
 );
@@ -484,7 +484,7 @@ const ShareButton: React.FC<{
     <motion.button
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.9 }}
-      className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors"
+      className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-muted/80 transition-colors"
     >
       {icons[network]}
     </motion.button>

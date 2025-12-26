@@ -20,6 +20,9 @@ import { useReviewsV3 } from '@/hooks/attractions/useReviewsV3';
 // Payment
 import { AttractionStripePayment } from '@/components/payment/AttractionStripePayment';
 
+// Waivers
+import { AttractionWaiverSigning } from '../waivers';
+
 // Types
 import {
   AttractionRequirement,
@@ -128,6 +131,22 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
   const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
   const [bookingReference, setBookingReference] = useState<string | null>(null);
   const [bookingCreationFailed, setBookingCreationFailed] = useState(false);
+  const [reservationId, setReservationId] = useState<string | null>(null);
+  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+
+  // Promo code state
+  const [promoCode, setPromoCode] = useState('');
+  const [promoCodeValidating, setPromoCodeValidating] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<{
+    id: string;
+    code: string;
+    discount: number;
+  } | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+
+  // Waiver state
+  const [hasOnlineWaivers, setHasOnlineWaivers] = useState(false);
+  const [waiverModalOpen, setWaiverModalOpen] = useState(false);
 
   // Theme defaults
   const primaryColor = theme?.primaryColor || '#3b82f6';
@@ -142,6 +161,30 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Check for online waivers
+  useEffect(() => {
+    const checkForWaivers = async () => {
+      if (!organizationId) return;
+
+      try {
+        const { data: waivers } = await supabase
+          .from('waiver_templates')
+          .select('id')
+          .eq('organization_id', organizationId)
+          .eq('is_active', true)
+          .or(`attraction_id.eq.${attractionId},attraction_id.is.null`)
+          .or('waiver_timing.eq.online,waiver_timing.eq.both')
+          .limit(1);
+
+        setHasOnlineWaivers((waivers?.length || 0) > 0);
+      } catch (error) {
+        console.error('Error checking for waivers:', error);
+      }
+    };
+
+    checkForWaivers();
+  }, [attractionId, organizationId]);
 
   // Initialize hooks
   const {
@@ -170,6 +213,7 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
     hasAddons: showAddons && availableAddons.length > 0,
     hasPackages: showPackages && availablePackages.length > 0,
     hasRequirements: requirements.length > 0,
+    hasOnlineWaivers,
   });
 
   const { state, currentStep, steps, canProceed, canGoBack, nextStep, prevStep, goToStep } = bookingFlow;
@@ -192,14 +236,20 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
     enabled: showReviews,
   });
 
-  // Calculate total
-  const totalPrice = useMemo(() => {
+  // Calculate subtotal (before promo)
+  const subtotalPrice = useMemo(() => {
     if (selectedPackageId) {
       const pkg = packages.find((p) => p.id === selectedPackageId);
       return (pkg?.price || 0) + getAddonTotal();
     }
     return (attraction.base_price * state.partySize) + getAddonTotal();
   }, [attraction.base_price, state.partySize, selectedPackageId, packages, getAddonTotal]);
+
+  // Calculate total (after promo discount)
+  const totalPrice = useMemo(() => {
+    const discount = appliedPromo?.discount || 0;
+    return Math.max(0, subtotalPrice - discount);
+  }, [subtotalPrice, appliedPromo]);
 
   // Get selected slot details
   const selectedSlot = useMemo(() => {
@@ -213,9 +263,10 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
     return member?.name;
   }, [staff, state.selectedStaffId]);
 
-  // Auto-create pending booking when entering payment step
+  // Auto-create pending booking when entering waiver or payment step
   useEffect(() => {
-    if (currentStep === 'payment' && !pendingBookingId && !isProcessingPayment && !bookingCreationFailed && organizationId) {
+    const needsBooking = currentStep === 'payment' || currentStep === 'waiver';
+    if (needsBooking && !pendingBookingId && !isProcessingPayment && !bookingCreationFailed && organizationId) {
       createPendingBooking();
     }
   }, [currentStep, pendingBookingId, isProcessingPayment, bookingCreationFailed, organizationId]);
@@ -223,6 +274,56 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
   // Generate booking reference
   const generateBookingRef = () => {
     return 'PLS-' + Math.random().toString(36).substr(2, 8).toUpperCase();
+  };
+
+  // Validate and apply promo code
+  const validatePromoCode = async () => {
+    if (!promoCode.trim()) {
+      setPromoError('Please enter a promo code');
+      return;
+    }
+
+    setPromoCodeValidating(true);
+    setPromoError(null);
+
+    try {
+      const { data, error } = await supabase.rpc('validate_attraction_promo_code', {
+        p_code: promoCode.trim(),
+        p_attraction_id: attractionId,
+        p_customer_email: state.customerInfo.email,
+        p_party_size: state.partySize,
+        p_subtotal: subtotalPrice,
+      });
+
+      if (error) throw error;
+
+      const result = data?.[0];
+      if (result?.valid) {
+        setAppliedPromo({
+          id: result.promo_code_id,
+          code: promoCode.trim().toUpperCase(),
+          discount: result.discount_amount,
+        });
+        setPromoCode('');
+        toast({
+          title: 'Promo code applied!',
+          description: `You saved ${formatPrice(result.discount_amount, currency)}`,
+        });
+      } else {
+        setPromoError(result?.error_message || 'Invalid promo code');
+      }
+    } catch (error) {
+      console.error('Error validating promo code:', error);
+      setPromoError('Failed to validate promo code');
+    } finally {
+      setPromoCodeValidating(false);
+    }
+  };
+
+  // Remove applied promo code
+  const removePromoCode = () => {
+    setAppliedPromo(null);
+    setPromoError(null);
   };
 
   // Create pending booking for payment
@@ -253,6 +354,35 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
     const reference = generateBookingRef();
 
     try {
+      // Step 1: Reserve the slot atomically to prevent overbooking
+      const { data: reservationResult, error: reservationError } = await supabase.rpc(
+        'reserve_attraction_slot',
+        {
+          p_attraction_id: attractionId,
+          p_booking_slot_id: state.selectedSlotId,
+          p_party_size: state.partySize,
+          p_session_id: sessionId,
+          p_customer_email: state.customerInfo.email,
+        }
+      );
+
+      if (reservationError) throw reservationError;
+
+      const reservation = reservationResult?.[0];
+      if (!reservation?.success) {
+        toast({
+          title: 'Slot Unavailable',
+          description: reservation?.error_message || 'This time slot is no longer available. Please select another.',
+          variant: 'destructive',
+        });
+        setIsProcessingPayment(false);
+        setBookingCreationFailed(true);
+        return null;
+      }
+
+      setReservationId(reservation.reservation_id);
+
+      // Step 2: Create the booking with the reservation
       const { data, error } = await supabase
         .from('attraction_bookings')
         .insert({
@@ -267,6 +397,8 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
           booking_status: 'pending',
           payment_status: 'pending',
           booking_reference: reference,
+          promo_code_id: appliedPromo?.id || null,
+          promo_code_discount: appliedPromo?.discount || 0,
         })
         .select()
         .single();
@@ -278,6 +410,10 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
       return data;
     } catch (error) {
       console.error('Error creating pending booking:', error);
+      // Cancel reservation if booking creation failed
+      if (reservationId) {
+        await supabase.rpc('cancel_attraction_reservation', { p_session_id: sessionId }).catch(() => {});
+      }
       toast({
         title: 'Error',
         description: 'Failed to create booking. Please try again.',
@@ -303,14 +439,30 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
         })
         .eq('id', pendingBookingId);
 
-      // Update slot booking count if we have a selected slot
-      if (selectedSlot) {
+      // Complete the slot reservation (atomically updates slot count)
+      if (reservationId) {
+        await supabase.rpc('complete_attraction_reservation', {
+          p_reservation_id: reservationId,
+          p_booking_id: pendingBookingId,
+        });
+      } else if (selectedSlot) {
+        // Fallback: direct update if no reservation (shouldn't happen)
         await supabase
           .from('booking_slots')
           .update({
             current_bookings: selectedSlot.current_bookings + state.partySize,
           })
           .eq('id', selectedSlot.id);
+      }
+
+      // Send confirmation email
+      try {
+        await supabase.functions.invoke('send-booking-email', {
+          body: { bookingId: pendingBookingId }
+        });
+      } catch (emailError) {
+        console.error('Failed to send confirmation email:', emailError);
+        // Don't fail the booking if email fails
       }
 
       toast({
@@ -547,6 +699,57 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
           </motion.div>
         );
 
+      case 'waiver':
+        return (
+          <motion.div
+            key="waiver"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+          >
+            <motion.div variants={staggerItem}>
+              <div className="text-center py-8">
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  Waiver Required
+                </h3>
+                <p className="text-muted-foreground mb-6">
+                  Please sign the required waiver(s) before proceeding to payment.
+                </p>
+                <button
+                  onClick={() => setWaiverModalOpen(true)}
+                  className="px-6 py-3 rounded-lg font-semibold text-white"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  Sign Waiver
+                </button>
+              </div>
+            </motion.div>
+
+            {/* Waiver Signing Modal */}
+            {organizationId && pendingBookingId && (
+              <AttractionWaiverSigning
+                open={waiverModalOpen}
+                onOpenChange={setWaiverModalOpen}
+                attractionId={attractionId}
+                organizationId={organizationId}
+                bookingId={pendingBookingId}
+                bookingReference={bookingReference || ''}
+                customerName={`${state.customerInfo.first_name} ${state.customerInfo.last_name}`}
+                customerEmail={state.customerInfo.email}
+                waiverTiming="online"
+                onWaiverSigned={() => {
+                  bookingFlow.markWaiversCompleted();
+                  setWaiverModalOpen(false);
+                  // Auto-advance to payment
+                  setTimeout(() => goToStep('payment'), 300);
+                }}
+              />
+            )}
+          </motion.div>
+        );
+
       case 'payment':
         return (
           <motion.div
@@ -588,6 +791,24 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
                   );
                 })}
 
+                {/* Promo Discount */}
+                {appliedPromo && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span className="flex items-center gap-2">
+                      Promo: {appliedPromo.code}
+                      <button
+                        onClick={removePromoCode}
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                      >
+                        (remove)
+                      </button>
+                    </span>
+                    <span className="font-medium">
+                      -{formatPrice(appliedPromo.discount, currency)}
+                    </span>
+                  </div>
+                )}
+
                 {/* Total */}
                 <div className="pt-3 border-t border-border">
                   <div className="flex justify-between">
@@ -599,6 +820,42 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
                 </div>
               </div>
             </div>
+
+            {/* Promo Code Input */}
+            {!appliedPromo && (
+              <div className="p-4 rounded-xl bg-muted/50">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Have a promo code?
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={promoCode}
+                    onChange={(e) => {
+                      setPromoCode(e.target.value.toUpperCase());
+                      setPromoError(null);
+                    }}
+                    placeholder="Enter code"
+                    className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <button
+                    onClick={validatePromoCode}
+                    disabled={promoCodeValidating || !promoCode.trim()}
+                    className="px-4 py-2 rounded-lg font-medium text-white disabled:opacity-50"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    {promoCodeValidating ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'Apply'
+                    )}
+                  </button>
+                </div>
+                {promoError && (
+                  <p className="mt-2 text-sm text-destructive">{promoError}</p>
+                )}
+              </div>
+            )}
 
             {/* Payment Form - Stripe */}
             {organizationId ? (
@@ -837,8 +1094,9 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
                   selectedPackage={packages.find((p) => p.id === selectedPackageId)}
                   totalPrice={totalPrice}
                   currency={currency}
-                  onContinue={nextStep}
-                  canContinue={canProceed}
+                  onContinue={currentStep === 'payment' ? undefined : nextStep}
+                  canContinue={currentStep === 'payment' ? false : canProceed}
+                  ctaText={currentStep === 'payment' ? 'Complete payment below' : 'Continue'}
                 />
 
                 {/* Reviews Preview */}

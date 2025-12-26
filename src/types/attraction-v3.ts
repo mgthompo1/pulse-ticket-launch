@@ -296,7 +296,9 @@ export type BookingStep =
   | 'time'
   | 'staff'
   | 'addons'
+  | 'requirements'
   | 'details'
+  | 'waiver'
   | 'payment'
   | 'confirmation';
 

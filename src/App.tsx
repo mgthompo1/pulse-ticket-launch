@@ -24,6 +24,7 @@ import AttractionV3Demo from "./pages/AttractionV3Demo";
 import MasterAdmin from "./pages/MasterAdmin";
 import SecureAdminAuth from "./pages/SecureAdminAuth";
 import TicketFloLIVE from "./pages/TicketFloLIVE";
+import TicketFloLIVEAttractions from "./pages/TicketFloLIVEAttractions";
 import DashboardMockup from "./pages/DashboardMockup";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentFailed from "./pages/PaymentFailed";
@@ -88,6 +89,7 @@ const App = () => (
                 <Route path="/secure-admin" element={<SecureAdminAuth />} />
                 <Route path="/secure-admin-auth" element={<SecureAdminAuth />} />
                 <Route path="/ticketflolive/:eventId" element={<TicketFloLIVE />} />
+                <Route path="/ticketflolive/attraction/:attractionId" element={<TicketFloLIVEAttractions />} />
                 <Route path="/payment-success" element={<PaymentSuccess />} />
                 <Route path="/payment-failed" element={<PaymentFailed />} />
                 <Route path="/payment-cancelled" element={<PaymentCancelled />} />

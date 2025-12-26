@@ -40,8 +40,11 @@ import { MarketingTools } from "@/components/MarketingTools";
 import { AnalyticsCharts } from "@/components/AnalyticsCharts";
 import { AttractionAnalytics } from "@/components/AttractionAnalytics";
 import { DashboardWidgets } from "@/components/DashboardWidgets";
+import { AttractionsDashboardWidgets } from "@/components/AttractionsDashboardWidgets";
 import { CustomizeDashboard } from "@/components/CustomizeDashboard";
+import { CustomizeAttractionsDashboard } from "@/components/CustomizeAttractionsDashboard";
 import { useDashboardConfig } from "@/hooks/useDashboardConfig";
+import { useAttractionsDashboardConfig } from "@/hooks/useAttractionsDashboardConfig";
 import { RecentSalesCard } from "@/components/RecentSalesCard";
 import Support from "@/pages/Support";
 import { DashboardHelp } from "@/components/DashboardHelp";
@@ -201,6 +204,19 @@ const OrgDashboard = () => {
     isLoading: isLoadingDashboardConfig,
   } = useDashboardConfig({ organizationId: currentOrganization?.id || null });
 
+  // Attractions dashboard customization config
+  const {
+    config: attractionDashboardConfig,
+    enabledWidgets: attractionEnabledWidgets,
+    updateWidgetEnabled: updateAttractionWidgetEnabled,
+    updateWidgetChartType: updateAttractionWidgetChartType,
+    reorderWidgets: reorderAttractionWidgets,
+    resetToDefaults: resetAttractionDashboardDefaults,
+    saveConfig: saveAttractionDashboardConfig,
+    isSaving: isSavingAttractionDashboard,
+    isLoading: isLoadingAttractionDashboardConfig,
+  } = useAttractionsDashboardConfig({ organizationId: currentOrganization?.id || null });
+
   // Show onboarding wizard when needed
   useEffect(() => {
     if (shouldShowWizard && currentOrganization && isEventsMode()) {
@@ -259,6 +275,24 @@ const OrgDashboard = () => {
     visitorLocations: [] as Array<{ country: string; count: number }>,
     conversionFunnel: [] as Array<{ step: string; count: number; rate: number }>,
     ticketsByType: [] as Array<{ name: string; count: number }>,
+  });
+
+  // Attraction widget analytics data
+  const [attractionWidgetData, setAttractionWidgetData] = useState({
+    totalBookings: 0,
+    totalGuests: 0,
+    avgBookingValue: 0,
+    checkinRate: 0,
+    revenueByAttraction: [] as Array<{ name: string; revenue: number }>,
+    revenueOverTime: [] as Array<{ date: string; revenue: number }>,
+    weeklyRevenue: [] as Array<{ day: string; revenue: number }>,
+    bookingsOverTime: [] as Array<{ date: string; bookings: number }>,
+    bookingsByAttraction: [] as Array<{ name: string; bookings: number }>,
+    partySizeDistribution: [] as Array<{ size: string; count: number }>,
+    capacityUtilization: [] as Array<{ name: string; used: number; capacity: number }>,
+    popularTimeSlots: [] as Array<{ time: string; bookings: number }>,
+    revenueTrend: 0,
+    bookingsTrend: 0,
   });
 
   // Group analytics data
@@ -926,6 +960,82 @@ const OrgDashboard = () => {
         const current = weeklyRevenue.get(weekKey) || 0;
         weeklyRevenue.set(weekKey, current + (Number(booking.total_amount) || 0));
       }
+    });
+
+    // Process data for attraction widgets
+    const totalRevenue = bookingData.reduce((sum, b) => sum + (Number(b.total_amount) || 0), 0);
+    const avgBookingValue = totalTickets > 0 ? totalRevenue / totalTickets : 0;
+
+    // Bookings by attraction
+    const attractionBookings = new Map<string, number>();
+    bookingData.forEach(booking => {
+      const name = booking.attractions?.name || 'Unknown';
+      attractionBookings.set(name, (attractionBookings.get(name) || 0) + 1);
+    });
+
+    // Revenue over time (daily for last 30 days)
+    const revenueByDate = new Map<string, number>();
+    const bookingsByDate = new Map<string, number>();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    bookingData.forEach(booking => {
+      const bookingDate = new Date(booking.created_at);
+      if (bookingDate >= thirtyDaysAgo) {
+        const dateKey = bookingDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        revenueByDate.set(dateKey, (revenueByDate.get(dateKey) || 0) + (Number(booking.total_amount) || 0));
+        bookingsByDate.set(dateKey, (bookingsByDate.get(dateKey) || 0) + 1);
+      }
+    });
+
+    // Weekly revenue by day name
+    const weeklyRevenueByDay = new Map<string, number>();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    bookingData.forEach(booking => {
+      const bookingDate = new Date(booking.created_at);
+      if (bookingDate >= sevenDaysAgo) {
+        const dayName = bookingDate.toLocaleDateString('en-US', { weekday: 'short' });
+        weeklyRevenueByDay.set(dayName, (weeklyRevenueByDay.get(dayName) || 0) + (Number(booking.total_amount) || 0));
+      }
+    });
+
+    // Set attraction widget data
+    setAttractionWidgetData({
+      totalBookings: totalTickets,
+      totalGuests: totalTickets, // Assuming 1 booking = 1 guest for now
+      avgBookingValue,
+      checkinRate: 0, // Will need additional data to calculate
+      revenueByAttraction: Array.from(attractionRevenue.entries()).map(([name, revenue]) => ({
+        name,
+        revenue: Number(revenue)
+      })),
+      revenueOverTime: Array.from(revenueByDate.entries()).map(([date, revenue]) => ({
+        date,
+        revenue
+      })),
+      weeklyRevenue: Array.from(weeklyRevenueByDay.entries()).map(([day, revenue]) => ({
+        day,
+        revenue
+      })),
+      bookingsOverTime: Array.from(bookingsByDate.entries()).map(([date, bookings]) => ({
+        date,
+        bookings
+      })),
+      bookingsByAttraction: Array.from(attractionBookings.entries()).map(([name, bookings]) => ({
+        name,
+        bookings
+      })),
+      partySizeDistribution: [], // Will need party_size data
+      capacityUtilization: attractionData.map(a => ({
+        name: a.name,
+        used: attractionBookings.get(a.name) || 0,
+        capacity: 100 // Default capacity, would need real data
+      })),
+      popularTimeSlots: [], // Will need time slot data
+      revenueTrend: 0,
+      bookingsTrend: 0,
     });
 
     setAnalyticsData({
@@ -1800,8 +1910,16 @@ const OrgDashboard = () => {
                   ) : (
                     // Attractions mode content
                     <div className="space-y-6">
-                      {/* Time Range Filter for Attractions */}
-                      <div className="flex justify-end">
+                      {/* Dashboard Controls for Attractions */}
+                      <div className="flex justify-end gap-2">
+                        <CustomizeAttractionsDashboard
+                          config={attractionDashboardConfig}
+                          onUpdateEnabled={updateAttractionWidgetEnabled}
+                          onUpdateChartType={updateAttractionWidgetChartType}
+                          onResetDefaults={resetAttractionDashboardDefaults}
+                          onSave={saveAttractionDashboardConfig}
+                          isSaving={isSavingAttractionDashboard}
+                        />
                         <TimeRangeFilter value={timeRange} onChange={setTimeRange} />
                       </div>
 
@@ -1870,14 +1988,39 @@ const OrgDashboard = () => {
                       </>
                     )}
                   </div>
-                  {/* Charts temporarily disabled to resolve JSX structure issue */}
 
-
+                  {/* Attraction Dashboard Widgets */}
+                  {canAccessAnalytics() && (
+                    <AttractionsDashboardWidgets
+                      enabledWidgets={attractionEnabledWidgets}
+                      onReorder={(fromIndex, toIndex) => {
+                        reorderAttractionWidgets(fromIndex, toIndex);
+                        setTimeout(() => saveAttractionDashboardConfig(), 100);
+                      }}
+                      totalRevenue={analytics.totalRevenue}
+                      totalBookings={attractionWidgetData.totalBookings}
+                      totalGuests={attractionWidgetData.totalGuests}
+                      avgBookingValue={attractionWidgetData.avgBookingValue}
+                      checkinRate={attractionWidgetData.checkinRate}
+                      revenueByAttraction={attractionWidgetData.revenueByAttraction}
+                      revenueOverTime={attractionWidgetData.revenueOverTime}
+                      weeklyRevenue={attractionWidgetData.weeklyRevenue}
+                      bookingsOverTime={attractionWidgetData.bookingsOverTime}
+                      bookingsByAttraction={attractionWidgetData.bookingsByAttraction}
+                      partySizeDistribution={attractionWidgetData.partySizeDistribution}
+                      capacityUtilization={attractionWidgetData.capacityUtilization}
+                      popularTimeSlots={attractionWidgetData.popularTimeSlots}
+                      isLoading={isLoadingAnalytics || isLoadingAttractionDashboardConfig}
+                      timeRange={timeRange}
+                      revenueTrend={attractionWidgetData.revenueTrend}
+                      bookingsTrend={attractionWidgetData.bookingsTrend}
+                    />
+                  )}
 
                   <Card className="border-border shadow-sm hover:shadow-md transition-shadow rounded-2xl">
                     <CardHeader className="pb-3">
-                      <CardTitle className="font-manrope font-semibold text-lg text-foreground">Recent Events</CardTitle>
-                      <CardDescription className="font-manrope text-sm text-muted-foreground">Your latest event performance</CardDescription>
+                      <CardTitle className="font-manrope font-semibold text-lg text-foreground">Recent Attractions</CardTitle>
+                      <CardDescription className="font-manrope text-sm text-muted-foreground">Your latest attraction performance</CardDescription>
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">

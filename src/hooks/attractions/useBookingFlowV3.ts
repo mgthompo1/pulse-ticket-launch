@@ -23,6 +23,7 @@ interface UseBookingFlowV3Props {
   hasAddons?: boolean;
   hasPackages?: boolean;
   hasRequirements?: boolean;
+  hasOnlineWaivers?: boolean;
 }
 
 interface UseBookingFlowV3Return {
@@ -62,6 +63,9 @@ interface UseBookingFlowV3Return {
   // Requirements
   acknowledgeRequirement: (requirementId: string) => void;
 
+  // Waivers
+  markWaiversCompleted: () => void;
+
   // Calculations
   calculateTotal: () => number;
   getAddonTotal: () => number;
@@ -79,7 +83,7 @@ const DEFAULT_CUSTOMER_INFO: CustomerInfo = {
   marketing_opt_in: false,
 };
 
-const DEFAULT_STATE: BookingFlowState = {
+const DEFAULT_STATE: BookingFlowState & { waiversCompleted: boolean } = {
   step: 'date',
   selectedDate: '',
   selectedSlotId: null,
@@ -91,6 +95,7 @@ const DEFAULT_STATE: BookingFlowState = {
   customerInfo: DEFAULT_CUSTOMER_INFO,
   customFieldResponses: new Map(),
   acknowledgedRequirements: new Set(),
+  waiversCompleted: false,
 };
 
 export function useBookingFlowV3({
@@ -103,8 +108,9 @@ export function useBookingFlowV3({
   hasAddons = false,
   hasPackages = false,
   hasRequirements = false,
+  hasOnlineWaivers = false,
 }: UseBookingFlowV3Props): UseBookingFlowV3Return {
-  const [state, setState] = useState<BookingFlowState>(DEFAULT_STATE);
+  const [state, setState] = useState<BookingFlowState & { waiversCompleted: boolean }>(DEFAULT_STATE);
 
   // Determine which steps are needed
   const steps = useMemo<BookingStep[]>(() => {
@@ -114,10 +120,15 @@ export function useBookingFlowV3({
     if (hasAddons || hasPackages) baseSteps.push('addons');
     if (hasRequirements) baseSteps.push('requirements');
 
-    baseSteps.push('details', 'payment', 'confirmation');
+    baseSteps.push('details');
+
+    // Add waiver step before payment if waivers are required online
+    if (hasOnlineWaivers) baseSteps.push('waiver');
+
+    baseSteps.push('payment', 'confirmation');
 
     return baseSteps;
-  }, [requiresStaff, hasAddons, hasPackages, hasRequirements]);
+  }, [requiresStaff, hasAddons, hasPackages, hasRequirements, hasOnlineWaivers]);
 
   const currentStepIndex = steps.indexOf(state.step);
 
@@ -138,6 +149,9 @@ export function useBookingFlowV3({
         // All required acknowledgements must be made
         // This would need to check against actual requirements
         return true;
+      case 'waiver':
+        // Waiver step is complete when waivers are signed
+        return state.waiversCompleted;
       case 'details':
         return !!(
           state.customerInfo.first_name &&
@@ -272,6 +286,11 @@ export function useBookingFlowV3({
     });
   }, []);
 
+  // Waivers
+  const markWaiversCompleted = useCallback(() => {
+    setState((prev) => ({ ...prev, waiversCompleted: true }));
+  }, []);
+
   // Calculations
   const getAddonTotal = useCallback(() => {
     let total = 0;
@@ -328,6 +347,7 @@ export function useBookingFlowV3({
     updateCustomerInfo,
     updateCustomField,
     acknowledgeRequirement,
+    markWaiversCompleted,
     calculateTotal,
     getAddonTotal,
     reset,

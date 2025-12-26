@@ -28,6 +28,7 @@ import {
   Loader2,
   TrendingUp,
   Sparkles,
+  Monitor,
   // Attraction type icons
   Target,
   Mic2,
@@ -460,6 +461,7 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
+                      size="sm"
                       className="flex-1 border-border/50 hover:bg-muted/50"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -469,7 +471,23 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
                       <Eye className="w-4 h-4 mr-1.5" />
                       Preview
                     </Button>
+                    {attraction.status === 'active' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 border-border/50 hover:bg-muted/50"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(`/ticketflolive/attraction/${attraction.id}`, '_blank');
+                        }}
+                      >
+                        <Monitor className="w-4 h-4 mr-1.5" />
+                        <span className="hidden sm:inline">TicketFloLIVE</span>
+                        <span className="sm:hidden">Live</span>
+                      </Button>
+                    )}
                     <Button
+                      size="sm"
                       className="flex-1 bg-primary hover:bg-primary/90"
                       onClick={(e) => {
                         e.stopPropagation();

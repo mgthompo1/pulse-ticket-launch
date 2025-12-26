@@ -14,7 +14,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Save, Eye, ExternalLink, Settings, Users, Clock, Package, FileText, Palette, Image, Star, AlertTriangle, Zap, Layout, Type, Shield, Square, RectangleHorizontal } from 'lucide-react';
+import { Loader2, Save, Eye, ExternalLink, Settings, Users, Clock, Package, FileText, Palette, Image, Star, AlertTriangle, Zap, Layout, Type, Shield, Square, RectangleHorizontal, FileSignature, Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { AttractionWaiverConfig } from '../waivers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
@@ -41,6 +43,28 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('basic');
   const [hasChanges, setHasChanges] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('attractions')
+        .delete()
+        .eq('id', attractionId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['org-attractions'] });
+      toast({ title: 'Attraction deleted' });
+      onClose?.();
+    },
+    onError: (error) => {
+      console.error('Failed to delete attraction:', error);
+      toast({ title: 'Failed to delete attraction', description: String(error), variant: 'destructive' });
+    },
+  });
 
   // Load attraction data
   const { data: attraction, isLoading, error } = useQuery({
@@ -269,7 +293,7 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="basic" className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
             <span className="hidden sm:inline">Basic</span>
@@ -285,6 +309,10 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
           <TabsTrigger value="addons" className="flex items-center gap-2">
             <Package className="w-4 h-4" />
             <span className="hidden sm:inline">Add-ons</span>
+          </TabsTrigger>
+          <TabsTrigger value="waivers" className="flex items-center gap-2">
+            <FileSignature className="w-4 h-4" />
+            <span className="hidden sm:inline">Waivers</span>
           </TabsTrigger>
           <TabsTrigger value="fields" className="flex items-center gap-2">
             <FileText className="w-4 h-4" />
@@ -434,6 +462,36 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
               </div>
             </CardContent>
           </Card>
+
+          {/* Danger Zone */}
+          <Card className="border-destructive/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="w-5 h-5" />
+                Danger Zone
+              </CardTitle>
+              <CardDescription>
+                Irreversible actions that permanently affect your attraction
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between p-4 border border-destructive/30 rounded-lg bg-destructive/5">
+                <div>
+                  <h4 className="font-medium text-foreground">Delete this attraction</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Permanently remove this attraction and all associated bookings
+                  </p>
+                </div>
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDeleteDialog(true)}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Schedule Tab */}
@@ -449,6 +507,16 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
         {/* Add-ons Tab */}
         <TabsContent value="addons">
           <AddOnsSection attractionId={attractionId} />
+        </TabsContent>
+
+        {/* Waivers Tab */}
+        <TabsContent value="waivers" className="space-y-6">
+          {attraction && (
+            <AttractionWaiverConfig
+              attractionId={attractionId}
+              organizationId={attraction.organization_id}
+            />
+          )}
         </TabsContent>
 
         {/* Custom Fields Tab */}
@@ -1016,6 +1084,41 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Delete Attraction
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{attraction?.name}</strong>? This action cannot be undone and will permanently remove all associated bookings.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 justify-end mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteMutation.mutate()}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-2" />
+              )}
+              Delete Attraction
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

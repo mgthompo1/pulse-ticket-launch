@@ -86,6 +86,65 @@ const formatCurrency = (amount: number, currency = 'USD') => {
   }).format(amount)
 }
 
+// Generate ICS calendar file content
+function generateICSContent(data: EmailData): string {
+  const startDate = new Date(data.startTime);
+  const endDate = new Date(data.endTime);
+
+  // Format dates for ICS (YYYYMMDDTHHMMSSZ)
+  const formatICSDate = (date: Date) => {
+    return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  };
+
+  const uid = `${data.bookingId}@ticketflo.org`;
+  const dtstamp = formatICSDate(new Date());
+  const dtstart = formatICSDate(startDate);
+  const dtend = formatICSDate(endDate);
+
+  // Escape special characters for ICS
+  const escapeICS = (str: string) => {
+    return str.replace(/[\\;,\n]/g, (match) => {
+      if (match === '\n') return '\\n';
+      return '\\' + match;
+    });
+  };
+
+  const description = escapeICS(
+    `Booking Reference: ${data.bookingReference}\\n` +
+    `Party Size: ${data.partySize} ${data.partySize === 1 ? 'person' : 'people'}\\n` +
+    `Total: ${formatCurrency(data.totalAmount, data.currency)}\\n\\n` +
+    `Booked through ${data.organizationName}`
+  );
+
+  const location = escapeICS(data.venue || '');
+  const summary = escapeICS(`${data.attractionName} - ${data.bookingReference}`);
+
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//TicketFlo//Booking//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${dtstamp}`,
+    `DTSTART:${dtstart}`,
+    `DTEND:${dtend}`,
+    `SUMMARY:${summary}`,
+    `DESCRIPTION:${description}`,
+    `LOCATION:${location}`,
+    'STATUS:CONFIRMED',
+    `ORGANIZER;CN=${escapeICS(data.organizationName)}:mailto:noreply@ticketflo.org`,
+    'BEGIN:VALARM',
+    'TRIGGER:-PT1H',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:Reminder: Your booking is in 1 hour',
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].join('\r\n');
+}
+
 const formatDateTime = (dateTimeStr: string) => {
   const date = new Date(dateTimeStr)
   return {
@@ -225,7 +284,21 @@ function renderBlock(block: EmailBlock, data: EmailData, theme: EmailTheme): str
       `
 
     case 'footer':
+      // Generate Google Calendar URL
+      const gcalStart = new Date(data.startTime).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+      const gcalEnd = new Date(data.endTime).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+      const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(data.attractionName)}&dates=${gcalStart}/${gcalEnd}&details=${encodeURIComponent(`Booking Reference: ${data.bookingReference}\nParty Size: ${data.partySize}`)}&location=${encodeURIComponent(data.venue || '')}`;
+
       return `
+        <div style="text-align: center; padding: 20px;">
+          <p style="margin: 0 0 15px 0; font-size: 14px; color: ${theme.textColor};">Add this booking to your calendar:</p>
+          <a href="${gcalUrl}" target="_blank" style="display: inline-block; background-color: #4285f4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-size: 14px; margin-right: 10px;">
+            📅 Google Calendar
+          </a>
+          <span style="display: inline-block; background-color: #f0f0f0; color: ${theme.textColor}; padding: 10px 20px; border-radius: 6px; font-size: 14px;">
+            📎 .ics file attached
+          </span>
+        </div>
         <div style="background-color: ${theme.footerBgColor}; padding: 20px; text-align: center; color: ${theme.textColor}; font-size: 14px; border-top: 1px solid #e5e7eb;">
           <p style="margin: 0;">${block.text || 'Questions? Contact us anytime.'}</p>
           <p style="margin: 10px 0 0 0; font-size: 12px; opacity: 0.8;">
@@ -427,6 +500,10 @@ serve(async (req) => {
       )
     }
 
+    // Generate calendar invite
+    const icsContent = generateICSContent(emailData);
+    const icsBase64 = btoa(icsContent);
+
     const emailResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -437,7 +514,14 @@ serve(async (req) => {
         from: 'TicketFlo <noreply@ticketflo.org>',
         to: [emailData.customerEmail],
         subject: subject,
-        html: html
+        html: html,
+        attachments: [
+          {
+            filename: `booking-${emailData.bookingReference}.ics`,
+            content: icsBase64,
+            content_type: 'text/calendar; method=PUBLISH'
+          }
+        ]
       })
     })
 
