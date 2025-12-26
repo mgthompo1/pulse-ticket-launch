@@ -6,6 +6,7 @@ import compression from 'compression';
 import sirv from 'sirv';
 import fetch from 'node-fetch';
 import { addAppleWalletRoutes } from './apple-wallet-routes.js';
+import { sendHeartbeat, createIncident, kodoErrorHandler } from './kodo.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isProduction = process.env.NODE_ENV === 'production';
@@ -25,9 +26,22 @@ app.use(express.json({ limit: '10mb' }));
 // Add Apple Wallet signing routes
 addAppleWalletRoutes(app);
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
+// Health check endpoint - pings Kodo heartbeat
+app.get('/health', async (req, res) => {
+  const start = Date.now();
+
+  // Send heartbeat to Kodo (fire-and-forget)
+  sendHeartbeat({
+    status: 'up',
+    response_time_ms: Date.now() - start,
+    message: 'Health check passed',
+  }).catch(() => {}); // Silent fail
+
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
 });
 
 // Dynamic sitemap generation
@@ -315,21 +329,32 @@ app.use('/', async (req, res, next) => {
     
   } catch (error) {
     console.error('SSR Error:', error);
-    
+
     if (!isProduction && req.app.locals.vite) {
       // In development, let Vite fix the stack trace
       req.app.locals.vite.ssrFixStacktrace(error);
     }
-    
+
+    // Report SSR errors to Kodo (production only)
+    if (isProduction) {
+      createIncident({
+        title: `SSR Error: ${error.message?.substring(0, 50) || 'Unknown SSR error'}`,
+        severity: 'major',
+        status: 'investigating',
+        message: `SSR rendering failed for ${url}\n\nError: ${error.message}\n\nStack: ${error.stack?.substring(0, 500) || 'No stack trace'}`,
+        services: ['Website'],
+      }).catch(() => {}); // Silent fail
+    }
+
     // Fallback to SPA mode on error
     const template = isProduction
       ? fs.readFileSync(path.resolve(__dirname, 'dist/client/index.html'), 'utf-8')
       : fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
-    
+
     const fallbackHtml = template
       .replace('<!--ssr-outlet-->', '')
       .replace('<!--ssr-head-->', '');
-    
+
     res.status(500).set({ 'Content-Type': 'text/html' }).end(fallbackHtml);
   }
 });
@@ -394,10 +419,25 @@ function escapeAttr(str = '') {
     .replace(/"/g, '&quot;');
 }
 
+// Kodo error handler middleware (must be after all routes)
+app.use(kodoErrorHandler);
+
 // Start server
 app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
   console.log(`📦 Mode: ${isProduction ? 'production' : 'development'}`);
   console.log(`🔍 SSR: Enabled for public pages`);
   console.log(`⚡ SPA: Enabled for dashboard pages`);
+
+  // Send startup heartbeat to Kodo
+  if (isProduction) {
+    sendHeartbeat({
+      status: 'up',
+      message: 'Server started successfully',
+    }).then(() => {
+      console.log('📊 Kodo heartbeat sent on startup');
+    }).catch(() => {
+      console.warn('⚠️ Failed to send Kodo startup heartbeat');
+    });
+  }
 });

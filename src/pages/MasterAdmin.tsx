@@ -50,11 +50,13 @@ import {
   GitCommit,
   GitBranch,
   Code,
-  FileDiff
+  FileDiff,
+  Radio
 } from "lucide-react";
 import { format } from "date-fns";
 import { OrganizationDetailModal } from "@/components/OrganizationDetailModal";
 import { EnquiryDetailModal } from "@/components/EnquiryDetailModal";
+import { StatusPageManager } from "@/components/StatusPageManager";
 
 const MasterAdmin = () => {
   // All hooks must be at the top, before any return
@@ -1226,6 +1228,17 @@ const MasterAdmin = () => {
             System Health
           </button>
           <button
+            onClick={() => setActiveTab("statuspage")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "statuspage"
+                ? "bg-primary text-primary-foreground"
+                : "hover:bg-accent text-foreground"
+            }`}
+          >
+            <Radio className="w-4 h-4" />
+            Status Page
+          </button>
+          <button
             onClick={() => setActiveTab("settings")}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
               activeTab === "settings"
@@ -1283,6 +1296,7 @@ const MasterAdmin = () => {
               {activeTab === "announcements" && "Announcement Banners"}
               {activeTab === "health" && "Organization Health Scores"}
               {activeTab === "system" && "System Health & Monitoring"}
+              {activeTab === "statuspage" && "Status Page Management"}
               {activeTab === "settings" && "Platform Settings"}
             </h2>
           </div>
@@ -3367,6 +3381,11 @@ const MasterAdmin = () => {
                 </>
               )}
             </div>
+          )}
+
+          {/* Status Page Tab */}
+          {activeTab === "statuspage" && (
+            <StatusPageManager />
           )}
 
           {/* Settings Tab */}

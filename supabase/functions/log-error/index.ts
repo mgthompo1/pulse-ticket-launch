@@ -62,10 +62,34 @@ Deno.serve(async (req) => {
 
     console.log('✅ Error logged successfully:', data?.id)
 
-    // If this is a critical error, we could send alerts here
-    if (error.severity === 'critical') {
+    // Report critical errors to Kodo
+    if (error.severity === 'critical' || error.severity === 'error') {
       console.warn('🚨 CRITICAL ERROR LOGGED:', error.message)
-      // TODO: Add Slack/email notification for critical errors
+
+      const kodoApiKey = Deno.env.get('KODO_API_KEY')
+      const kodoUrl = Deno.env.get('KODO_URL') || 'https://kodostatus.com'
+
+      if (kodoApiKey) {
+        try {
+          await fetch(`${kodoUrl}/api/v1/incidents`, {
+            method: 'POST',
+            headers: {
+              'X-API-Key': kodoApiKey,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              title: `${context?.function_name || 'Edge Function'}: ${error.message.substring(0, 50)}`,
+              severity: error.severity === 'critical' ? 'critical' : 'major',
+              status: 'investigating',
+              message: `Function: ${context?.function_name || 'Unknown'}\n\nError: ${error.message}\n\nStack: ${error.stack?.substring(0, 500) || 'No stack trace'}`,
+              services: ['API'],
+            }),
+          })
+          console.log('📊 Error reported to Kodo')
+        } catch (kodoError) {
+          console.error('Failed to report to Kodo:', kodoError)
+        }
+      }
     }
 
     return new Response(

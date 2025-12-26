@@ -183,6 +183,46 @@ serve(async (req) => {
       console.error('Failed to log health metrics:', logError);
     }
 
+    // Report to Kodo
+    const kodoApiKey = Deno.env.get('KODO_API_KEY');
+    const kodoUrl = Deno.env.get('KODO_URL') || 'https://kodostatus.com';
+    const kodoMonitorId = Deno.env.get('KODO_MONITOR_ID') || 'ticketflo-edge-functions';
+
+    if (kodoApiKey) {
+      try {
+        // Send heartbeat with response time
+        await fetch(`${kodoUrl}/api/heartbeat/${kodoMonitorId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: apiStatus === 'operational' ? 'up' : 'down',
+            response_time_ms: avgResponseTime,
+            message: `DB: ${dbHealth.status}, Storage: ${storageHealth.status}, Functions: ${functionsHealth.status}`,
+          }),
+        });
+
+        // If degraded or down, create an incident
+        if (apiStatus !== 'operational') {
+          await fetch(`${kodoUrl}/api/v1/incidents`, {
+            method: 'POST',
+            headers: {
+              'X-API-Key': kodoApiKey,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              title: `System Health Degraded: ${apiStatus}`,
+              severity: apiStatus === 'down' ? 'critical' : 'major',
+              status: 'investigating',
+              message: `Database: ${dbHealth.status} (${dbHealth.responseTime}ms)\nStorage: ${storageHealth.status} (${storageHealth.responseTime}ms)\nFunctions: ${functionsHealth.status} (${functionsHealth.responseTime}ms)`,
+              services: ['API', 'Database'],
+            }),
+          });
+        }
+      } catch (kodoError) {
+        console.error('Failed to report to Kodo:', kodoError);
+      }
+    }
+
     return new Response(JSON.stringify({
       success: true,
       metrics: metrics,
