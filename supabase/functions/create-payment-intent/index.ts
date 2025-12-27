@@ -82,6 +82,8 @@ serve(async (req) => {
 
     if (isAttractionPayment) {
       // Handle attraction payment (simple format)
+      // NOTE: Attraction bookings are ALREADY created by the widget before payment
+      // We just need to get org info and create the Stripe payment intent
       console.log("=== PROCESSING ATTRACTION PAYMENT ===");
 
       // Get organization ID from metadata
@@ -89,6 +91,10 @@ serve(async (req) => {
       if (!organizationId) {
         throw new Error("Organization ID is required for attraction payments");
       }
+
+      // Get existing booking ID from metadata (already created by widget)
+      const existingBookingId = requestBody.metadata?.booking_id;
+      console.log("Existing booking ID from widget:", existingBookingId);
 
       // Get organization info (including Stripe Connect account) - same as events
       const { data: orgData, error: orgError } = await supabaseClient
@@ -146,38 +152,9 @@ serve(async (req) => {
         paymentType: 'attraction'
       };
 
-      // Create attraction booking in database instead of order
-      console.log("=== CREATING ATTRACTION BOOKING ===");
-      const bookingData = {
-        attraction_id: requestBody.metadata?.attraction_id,
-        booking_slot_id: requestBody.metadata?.booking_slot_id, // Fixed: use booking_slot_id instead of booking_id
-        organization_id: organizationId,
-        customer_name: requestBody.customer_name || "Unknown",
-        customer_email: requestBody.customer_email || "unknown@example.com",
-        customer_phone: null,
-        party_size: requestBody.metadata?.party_size || 1,
-        special_requests: requestBody.metadata?.special_requests || null,
-        total_amount: amountInCents / 100, // Convert back to dollars for display
-        currency: currency.toUpperCase(),
-        payment_status: "pending",
-        payment_method: "stripe",
-        stripe_payment_intent_id: null, // Will be updated after payment intent creation
-        booking_status: "pending"
-      };
-
-      const { data: booking, error: bookingError } = await supabaseClient
-        .from("attraction_bookings")
-        .insert(bookingData)
-        .select()
-        .single();
-
-      if (bookingError) {
-        console.error("Error creating attraction booking:", bookingError);
-        throw new Error("Failed to create attraction booking record");
-      }
-
-      orderId = booking.id; // Use booking ID for consistency
-      console.log("=== ATTRACTION BOOKING CREATED ===", { bookingId: booking.id });
+      // Use existing booking ID (booking already created by widget)
+      orderId = existingBookingId;
+      console.log("=== USING EXISTING ATTRACTION BOOKING ===", { bookingId: orderId });
     } else {
       // Handle event payment (existing complex format)
       console.log("=== PROCESSING EVENT PAYMENT ===");

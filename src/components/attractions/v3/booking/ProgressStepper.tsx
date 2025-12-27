@@ -57,6 +57,19 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
     typeof s === 'string' ? s : s.id
   );
 
+  // Build custom labels map from input
+  const customLabels: Partial<Record<BookingStep, string>> = {};
+  stepsInput.forEach((s) => {
+    if (typeof s !== 'string' && s.label) {
+      customLabels[s.id] = s.label;
+    }
+  });
+
+  // Get label for a step (prefer custom, fallback to default)
+  const getLabel = (step: BookingStep): string => {
+    return customLabels[step] || stepLabels[step];
+  };
+
   const currentIndex = steps.indexOf(currentStep);
 
   const getStepStatus = (step: BookingStep): 'completed' | 'active' | 'pending' => {
@@ -173,7 +186,7 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
                   status === 'pending' && 'text-muted-foreground'
                 )}
               >
-                {stepLabels[step]}
+                {getLabel(step)}
               </span>
 
               {/* Connector Line */}
@@ -202,7 +215,7 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
       <div className="sm:hidden mt-4 text-center">
         <p className="text-sm text-muted-foreground">
           Step {currentIndex + 1} of {steps.length}:{' '}
-          <span className="font-medium text-foreground">{stepLabels[currentStep]}</span>
+          <span className="font-medium text-foreground">{getLabel(currentStep)}</span>
         </p>
       </div>
     </nav>

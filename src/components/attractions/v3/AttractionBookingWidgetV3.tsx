@@ -53,6 +53,7 @@ import {
   BookingSummary,
   MobileBookingFooter,
   Confirmation,
+  GolfPassesStep,
 } from './booking';
 
 import {
@@ -148,6 +149,17 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
   const [selectedHoles, setSelectedHoles] = useState<number>(18);
   const [cartSelected, setCartSelected] = useState(false);
   const [caddieSelected, setCaddieSelected] = useState(false);
+  const [selectedPass, setSelectedPass] = useState<any>(null);
+
+  // Debug logging for golf mode
+  useEffect(() => {
+    console.log('🏌️ Golf Mode Debug:', JSON.stringify({
+      vertical_type: attraction.vertical_type,
+      isGolfMode,
+      golfConfig: golfConfig ? 'loaded' : 'not loaded',
+      golfConfigData: golfConfig,
+    }, null, 2));
+  }, [attraction.vertical_type, isGolfMode, golfConfig]);
 
   // Promo code state
   const [promoCode, setPromoCode] = useState('');
@@ -247,7 +259,7 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
     currency,
     addons,
     packages,
-    requiresStaff: showStaffSelector,
+    requiresStaff: showStaffSelector || isGolfMode, // Golf mode uses staff step for Passes
     hasAddons: showAddons && availableAddons.length > 0,
     hasPackages: showPackages && availablePackages.length > 0,
     hasRequirements: requirements.length > 0,
@@ -814,6 +826,28 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
         );
 
       case 'staff':
+        // Golf mode: show passes instead of staff
+        if (isGolfMode) {
+          return (
+            <motion.div
+              key="passes"
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              exit={{ opacity: 0, x: -20 }}
+            >
+              <GolfPassesStep
+                attractionId={attractionId}
+                basePrice={attraction.base_price}
+                currency={currency}
+                partySize={state.partySize}
+                onPassSelect={setSelectedPass}
+                selectedPassId={selectedPass?.id}
+              />
+            </motion.div>
+          );
+        }
+        // Regular mode: show staff selector
         return (
           <motion.div
             key="staff"
@@ -1400,10 +1434,10 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
 // Helper to get step labels
 function getStepLabel(step: string, isGolf?: boolean): string {
   const labels: Record<string, string> = {
-    date: isGolf ? 'Tee Time' : 'Date',
+    date: 'Date',
     time: isGolf ? 'Tee Time' : 'Time',
-    staff: 'Guide',
-    addons: 'Extras',
+    staff: isGolf ? 'Passes' : 'Guide',
+    addons: isGolf ? 'Products' : 'Extras',
     requirements: 'Requirements',
     details: 'Details',
     payment: 'Payment',

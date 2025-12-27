@@ -19,3 +19,6 @@ export { RequirementsCard, RequirementsBadges } from './RequirementsCard';
 // Checkout & confirmation
 export { CustomerForm, PartySizeSelector } from './CustomerForm';
 export { Confirmation, ConfirmationBanner } from './Confirmation';
+
+// Golf-specific
+export { GolfPassesStep } from './GolfPassesStep';
