@@ -1354,13 +1354,13 @@ const MasterAdmin = () => {
 
                   {/* Stripe Connect Revenue */}
                   <div className="grid gap-4 md:grid-cols-3">
-                    <Card className="border-2 border-green-500/20 bg-green-50/50">
+                    <Card className="border-2 border-green-500/20 bg-green-50/50 dark:bg-green-950/30 dark:border-green-500/30">
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Stripe Available Balance</CardTitle>
-                        <CreditCard className="h-4 w-4 text-green-600" />
+                        <CreditCard className="h-4 w-4 text-green-600 dark:text-green-400" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold text-green-600">
+                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                           {stripeRevenue.loading ? (
                             <Loader2 className="h-5 w-5 animate-spin" />
                           ) : (
@@ -1370,13 +1370,13 @@ const MasterAdmin = () => {
                         <p className="text-xs text-muted-foreground mt-1">Ready to pay out</p>
                       </CardContent>
                     </Card>
-                    <Card className="border-2 border-yellow-500/20 bg-yellow-50/50">
+                    <Card className="border-2 border-yellow-500/20 bg-yellow-50/50 dark:bg-yellow-950/30 dark:border-yellow-500/30">
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Stripe Pending Balance</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-yellow-600" />
+                        <TrendingUp className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold text-yellow-600">
+                        <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                           {stripeRevenue.loading ? (
                             <Loader2 className="h-5 w-5 animate-spin" />
                           ) : (
@@ -1386,13 +1386,13 @@ const MasterAdmin = () => {
                         <p className="text-xs text-muted-foreground mt-1">Processing</p>
                       </CardContent>
                     </Card>
-                    <Card className="border-2 border-blue-500/20 bg-blue-50/50">
+                    <Card className="border-2 border-blue-500/20 bg-blue-50/50 dark:bg-blue-950/30 dark:border-blue-500/30">
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Application Fees</CardTitle>
-                        <DollarSign className="h-4 w-4 text-blue-600" />
+                        <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold text-blue-600">
+                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                           {stripeRevenue.loading ? (
                             <Loader2 className="h-5 w-5 animate-spin" />
                           ) : (
@@ -2632,10 +2632,10 @@ const MasterAdmin = () => {
                             <div
                               key={banner.id}
                               className={`p-4 rounded-lg border-2 flex items-center justify-between ${
-                                banner.type === 'info' ? 'border-blue-200 bg-blue-50' :
-                                banner.type === 'warning' ? 'border-yellow-200 bg-yellow-50' :
-                                banner.type === 'success' ? 'border-green-200 bg-green-50' :
-                                'border-red-200 bg-red-50'
+                                banner.type === 'info' ? 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50' :
+                                banner.type === 'warning' ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/50' :
+                                banner.type === 'success' ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/50' :
+                                'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/50'
                               } ${!banner.active ? 'opacity-50' : ''}`}
                             >
                               <div className="flex-1">
@@ -2981,9 +2981,9 @@ const MasterAdmin = () => {
                       <div className="grid gap-4 md:grid-cols-3">
                         {/* Database Status */}
                         <div className={`flex items-center justify-between p-4 border-2 rounded-lg ${
-                          systemHealth.database.status === 'operational' ? 'border-green-200 bg-green-50' :
-                          systemHealth.database.status === 'degraded' ? 'border-yellow-200 bg-yellow-50' :
-                          'border-red-200 bg-red-50'
+                          systemHealth.database.status === 'operational' ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/50' :
+                          systemHealth.database.status === 'degraded' ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/50' :
+                          'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/50'
                         }`}>
                           <div className="flex items-center gap-3">
                             <Database className={`h-5 w-5 ${
@@ -3012,9 +3012,9 @@ const MasterAdmin = () => {
 
                         {/* Storage Status */}
                         <div className={`flex items-center justify-between p-4 border-2 rounded-lg ${
-                          systemHealth.storage.status === 'operational' ? 'border-green-200 bg-green-50' :
-                          systemHealth.storage.status === 'degraded' ? 'border-yellow-200 bg-yellow-50' :
-                          'border-red-200 bg-red-50'
+                          systemHealth.storage.status === 'operational' ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/50' :
+                          systemHealth.storage.status === 'degraded' ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/50' :
+                          'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/50'
                         }`}>
                           <div className="flex items-center gap-3">
                             <Server className={`h-5 w-5 ${
@@ -3043,9 +3043,9 @@ const MasterAdmin = () => {
 
                         {/* Functions Status */}
                         <div className={`flex items-center justify-between p-4 border-2 rounded-lg ${
-                          systemHealth.functions.status === 'operational' ? 'border-green-200 bg-green-50' :
-                          systemHealth.functions.status === 'degraded' ? 'border-yellow-200 bg-yellow-50' :
-                          'border-red-200 bg-red-50'
+                          systemHealth.functions.status === 'operational' ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/50' :
+                          systemHealth.functions.status === 'degraded' ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/50' :
+                          'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/50'
                         }`}>
                           <div className="flex items-center gap-3">
                             <Globe className={`h-5 w-5 ${
@@ -3152,20 +3152,20 @@ const MasterAdmin = () => {
                                 <div className="text-2xl font-bold">{systemLogs.authStats.total}</div>
                                 <div className="text-xs text-muted-foreground">Total Users</div>
                               </div>
-                              <div className="p-3 border rounded-lg text-center bg-green-50">
-                                <div className="text-2xl font-bold text-green-600">{systemLogs.authStats.confirmed}</div>
+                              <div className="p-3 border rounded-lg text-center bg-green-50 dark:bg-green-950/50">
+                                <div className="text-2xl font-bold text-green-600 dark:text-green-400">{systemLogs.authStats.confirmed}</div>
                                 <div className="text-xs text-muted-foreground">Confirmed</div>
                               </div>
-                              <div className="p-3 border rounded-lg text-center bg-yellow-50">
-                                <div className="text-2xl font-bold text-yellow-600">{systemLogs.authStats.unconfirmed}</div>
+                              <div className="p-3 border rounded-lg text-center bg-yellow-50 dark:bg-yellow-950/50">
+                                <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{systemLogs.authStats.unconfirmed}</div>
                                 <div className="text-xs text-muted-foreground">Unconfirmed</div>
                               </div>
-                              <div className="p-3 border rounded-lg text-center bg-blue-50">
-                                <div className="text-2xl font-bold text-blue-600">{systemLogs.authStats.last24h}</div>
+                              <div className="p-3 border rounded-lg text-center bg-blue-50 dark:bg-blue-950/50">
+                                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{systemLogs.authStats.last24h}</div>
                                 <div className="text-xs text-muted-foreground">Last 24h</div>
                               </div>
-                              <div className="p-3 border rounded-lg text-center bg-purple-50">
-                                <div className="text-2xl font-bold text-purple-600">{systemLogs.authStats.last7d}</div>
+                              <div className="p-3 border rounded-lg text-center bg-purple-50 dark:bg-purple-950/50">
+                                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{systemLogs.authStats.last7d}</div>
                                 <div className="text-xs text-muted-foreground">Last 7 days</div>
                               </div>
                               <div className="p-3 border rounded-lg text-center">
