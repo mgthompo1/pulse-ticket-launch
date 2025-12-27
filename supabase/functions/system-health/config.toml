@@ -1,2 +1,3 @@
-# Make system-health public for Kodo monitoring
-verify_jwt = false
+# Run every 5 minutes
+[schedule]
+cron = "*/5 * * * *"

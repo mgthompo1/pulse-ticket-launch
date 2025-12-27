@@ -186,23 +186,44 @@ serve(async (req) => {
     // Report to Kodo
     const kodoApiKey = Deno.env.get('KODO_API_KEY');
     const kodoUrl = Deno.env.get('KODO_URL') || 'https://kodostatus.com';
-    const kodoMonitorId = Deno.env.get('KODO_MONITOR_ID') || 'ticketflo-edge-functions';
+    const kodoMonitorId = Deno.env.get('KODO_MONITOR_ID'); // API Server monitor
+    const kodoMonitorId2 = Deno.env.get('KODO_MONITOR_ID_2'); // Edge Functions monitor
 
     if (kodoApiKey) {
       try {
-        // Send heartbeat with response time
-        await fetch(`${kodoUrl}/api/heartbeat/${kodoMonitorId}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-Key': kodoApiKey,
-          },
-          body: JSON.stringify({
-            status: apiStatus === 'operational' ? 'up' : 'down',
-            response_time_ms: avgResponseTime,
-            message: `DB: ${dbHealth.status}, Storage: ${storageHealth.status}, Functions: ${functionsHealth.status}`,
-          }),
-        });
+        // Send heartbeat to API Server monitor
+        if (kodoMonitorId) {
+          await fetch(`${kodoUrl}/api/heartbeat/${kodoMonitorId}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-API-Key': kodoApiKey,
+            },
+            body: JSON.stringify({
+              status: apiStatus === 'operational' ? 'up' : 'down',
+              response_time_ms: avgResponseTime,
+              message: `DB: ${dbHealth.status}, Storage: ${storageHealth.status}`,
+            }),
+          });
+          console.log('Sent heartbeat to API Server monitor');
+        }
+
+        // Send heartbeat to Edge Functions monitor
+        if (kodoMonitorId2) {
+          await fetch(`${kodoUrl}/api/heartbeat/${kodoMonitorId2}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-API-Key': kodoApiKey,
+            },
+            body: JSON.stringify({
+              status: functionsHealth.status === 'operational' ? 'up' : 'down',
+              response_time_ms: functionsHealth.responseTime,
+              message: `Functions: ${functionsHealth.status}`,
+            }),
+          });
+          console.log('Sent heartbeat to Edge Functions monitor');
+        }
 
         // If degraded or down, create an incident
         if (apiStatus !== 'operational') {

@@ -223,8 +223,17 @@ const AttractionEmbed = () => {
     '--primary': config.primaryColor,
   } as React.CSSProperties : undefined;
 
+  // Determine if dark mode from widget_customization
+  const isDarkMode = attractionData.widget_customization?.themeMode === 'dark' ||
+    (attractionData.widget_customization?.themeMode === 'system' &&
+     typeof window !== 'undefined' &&
+     window.matchMedia('(prefers-color-scheme: dark)').matches);
+
   return (
-    <div className="min-h-screen bg-white" style={customStyles}>
+    <div
+      className={`min-h-screen ${isDarkMode ? 'bg-gray-950 dark' : 'bg-white'}`}
+      style={customStyles}
+    >
       <AttractionBookingWidgetV3
         attractionId={attractionId!}
         attraction={{
@@ -237,6 +246,17 @@ const AttractionEmbed = () => {
           location: attractionData.venue || undefined,
           image_url: attractionData.logo_url || undefined,
           resource_label: attractionData.resource_label || undefined,
+        }}
+        theme={{
+          primaryColor: config.primaryColor || attractionData.widget_customization?.primaryColor,
+          accentColor: attractionData.widget_customization?.accentColor,
+          themeMode: attractionData.widget_customization?.themeMode || 'light',
+          borderRadius: attractionData.widget_customization?.borderRadius,
+          fontFamily: attractionData.widget_customization?.fontFamily,
+          compactMode: attractionData.widget_customization?.compactMode,
+          hidePrice: attractionData.widget_customization?.hidePrice,
+          showTrustSignals: attractionData.widget_customization?.showTrustSignals,
+          customCss: attractionData.widget_customization?.customCss,
         }}
         requirements={requirements}
         customFields={customFields}

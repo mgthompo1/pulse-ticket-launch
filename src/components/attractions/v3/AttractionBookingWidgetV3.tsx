@@ -75,6 +75,7 @@ interface ThemeSettings {
   hidePrice?: boolean;
   showTrustSignals?: boolean;
   customCss?: string;
+  themeMode?: 'light' | 'dark' | 'system';
 }
 
 interface AttractionBookingWidgetV3Props {
@@ -185,6 +186,32 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
   const accentColor = theme?.accentColor || '#10b981';
   const showTrustSignals = theme?.showTrustSignals !== false;
   const hidePrice = theme?.hidePrice || false;
+  const themeMode = theme?.themeMode || 'light';
+
+  // Determine if dark mode should be applied
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (themeMode === 'dark') return true;
+    if (themeMode === 'system' && typeof window !== 'undefined') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
+  // Listen for system theme changes when themeMode is 'system'
+  useEffect(() => {
+    if (themeMode === 'dark') {
+      setIsDarkMode(true);
+    } else if (themeMode === 'light') {
+      setIsDarkMode(false);
+    } else if (themeMode === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      setIsDarkMode(mediaQuery.matches);
+
+      const handler = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    }
+  }, [themeMode]);
 
   // Check for mobile viewport
   useEffect(() => {
@@ -1246,10 +1273,15 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
 
   return (
     <div
-      className={cn('min-h-screen bg-background', className)}
+      className={cn(
+        'min-h-screen bg-background',
+        isDarkMode && 'dark',
+        className
+      )}
       style={{
         '--primary-color': primaryColor,
         '--accent-color': accentColor,
+        colorScheme: isDarkMode ? 'dark' : 'light',
       } as React.CSSProperties}
     >
       {customStyles}
