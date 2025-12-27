@@ -15,7 +15,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Palette, Layout, Mail, Ticket, Monitor, Save, MapPin, Users, Package, Settings, Plus, Trash2, HelpCircle, Cog, Eye, Smartphone, Tag, UsersRound, Heart, Share2, FileText, Calendar, Send, ShoppingCart, ClipboardList, Target, BarChart3, Link2, Unlink, Crown, Percent, UserPlus, User, CreditCard, AlertCircle } from "lucide-react";
-import { ConditionalDisplay } from "@/types/widget";
 import { SeatMapDesigner } from "@/components/SeatMapDesigner";
 import AttendeeManagement from "@/components/AttendeeManagement";
 import MerchandiseManager from "@/components/MerchandiseManager";
@@ -126,8 +125,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     pricing_type?: 'paid' | 'free' | 'donation';
   } | null>(null);
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null);
-  const [eventVenue, setEventVenue] = useState<string>("");
-  
+
   // Widget customization state
   const [widgetCustomization, setWidgetCustomization] = useState({
     theme: {
@@ -385,7 +383,6 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
           console.warn("Could not load organization data for preview:", orgError);
         }
       }
-      setEventVenue(data?.venue || "");
 
       // Load ticket types for waitlist/upgrade managers
       try {
@@ -506,7 +503,7 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
     }
     parts.push(`</div>`);
     return parts.join('');
-  }, [emailBlocksTemplate, widgetCustomization]);
+  }, [emailBlocksTemplate]);
 
   const saveCustomizations = async () => {
     setLoading(true);
@@ -649,99 +646,6 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
       console.log("✅ Widget customization updated locally:", updated);
       return updated;
     });
-  };
-
-  // Test function to check if user can update the event
-  const testEventUpdate = async () => {
-    try {
-      console.log("🧪 Testing event update permissions...");
-      
-      // Test 1: Try to add a new field
-      const testData1 = {
-        widget_customization: {
-          ...eventData?.widget_customization,
-          testField: `test-${Date.now()}`
-        }
-      };
-      
-      console.log("🧪 Test 1 - Current widget_customization keys:", Object.keys(eventData?.widget_customization || {}));
-      console.log("🧪 Test 1 - Adding new field 'testField'");
-      
-      console.log("🧪 Test 1 - Adding new field:", testData1);
-      
-      const { data: data1, error: error1 } = await supabase
-        .from("events")
-        .update(testData1)
-        .eq("id", eventId)
-        .select("widget_customization");
-      
-      if (error1) {
-        console.error("❌ Test 1 failed:", error1);
-      } else {
-        console.log("✅ Test 1 successful:", data1);
-        
-        // Verify the new field was saved
-        const { data: verify1, error: verifyError1 } = await supabase
-          .from("events")
-          .select("widget_customization")
-          .eq("id", eventId)
-          .single();
-        
-        if (verifyError1) {
-          console.error("❌ Verification 1 failed:", verifyError1);
-        } else {
-          console.log("✅ Verification 1 - saved data:", verify1.widget_customization);
-          console.log("✅ Verification 1 - testField exists:", (verify1.widget_customization as any)?.testField);
-        }
-      }
-      
-      // Test 2: Try to update existing field
-      const testData2 = {
-        widget_customization: {
-          ...eventData?.widget_customization,
-          theme: {
-            ...(eventData?.widget_customization?.theme as any),
-            testColor: `#${Math.floor(Math.random()*16777215).toString(16)}`
-          }
-        }
-      };
-      
-      console.log("🧪 Test 2 - Updating existing field:", testData2);
-      
-      const { data: data2, error: error2 } = await supabase
-        .from("events")
-        .update(testData2)
-        .eq("id", eventId)
-        .select("widget_customization");
-      
-      if (error2) {
-        console.error("❌ Test 2 failed:", error2);
-      } else {
-        console.log("✅ Test 2 successful:", data2);
-      }
-      
-      // Test 3: Try to update a simple field
-      const testData3 = {
-        description: `Test description ${Date.now()}`
-      };
-      
-      console.log("🧪 Test 3 - Updating simple field:", testData3);
-      
-      const { data: data3, error: error3 } = await supabase
-        .from("events")
-        .update(testData3)
-        .eq("id", eventId)
-        .select("description");
-      
-      if (error3) {
-        console.error("❌ Test 3 failed:", error3);
-      } else {
-        console.log("✅ Test 3 successful:", data3);
-      }
-      
-    } catch (error) {
-      console.error("❌ Test update error:", error);
-    }
   };
 
   const updateTicketCustomization = (path: string[], value: any) => {
