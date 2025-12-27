@@ -1,11 +1,25 @@
 /**
  * Kodo Status Page API Client
  * Client-side integration for TicketFlo admin dashboard
+ * Uses Supabase edge function as proxy to keep API key server-side
  */
 
-const KODO_URL = 'https://kodostatus.com';
-const KODO_API_KEY = import.meta.env.VITE_KODO_API_KEY || '';
+import { supabase } from '@/integrations/supabase/client';
+
 const KODO_STATUS_PAGE_URL = 'https://kodostatus.com/status/ticketflo';
+
+async function callKodoProxy(action: string, params: Record<string, unknown> = {}) {
+  const { data, error } = await supabase.functions.invoke('kodo-proxy', {
+    body: { action, ...params },
+  });
+
+  if (error) {
+    console.error('Kodo proxy error:', error);
+    throw error;
+  }
+
+  return data;
+}
 
 export interface KodoService {
   id: string;
@@ -45,24 +59,8 @@ export interface UpdateIncidentParams {
  * Fetch all services from Kodo
  */
 export async function fetchServices(): Promise<KodoService[]> {
-  if (!KODO_API_KEY) {
-    console.warn('Kodo API key not configured');
-    return [];
-  }
-
   try {
-    const response = await fetch(`${KODO_URL}/api/v1/services`, {
-      headers: {
-        'X-API-Key': KODO_API_KEY,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch services: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = await callKodoProxy('fetchServices');
     return data.services || [];
   } catch (error) {
     console.error('Failed to fetch Kodo services:', error);
@@ -74,28 +72,8 @@ export async function fetchServices(): Promise<KodoService[]> {
  * Fetch all incidents from Kodo
  */
 export async function fetchIncidents(activeOnly = false): Promise<KodoIncident[]> {
-  if (!KODO_API_KEY) {
-    console.warn('Kodo API key not configured');
-    return [];
-  }
-
   try {
-    const url = activeOnly
-      ? `${KODO_URL}/api/v1/incidents?active=true`
-      : `${KODO_URL}/api/v1/incidents`;
-
-    const response = await fetch(url, {
-      headers: {
-        'X-API-Key': KODO_API_KEY,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch incidents: ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = await callKodoProxy('fetchIncidents', { activeOnly });
     return data.incidents || [];
   } catch (error) {
     console.error('Failed to fetch Kodo incidents:', error);
@@ -107,26 +85,9 @@ export async function fetchIncidents(activeOnly = false): Promise<KodoIncident[]
  * Create a new incident in Kodo
  */
 export async function createIncident(params: CreateIncidentParams): Promise<KodoIncident | null> {
-  if (!KODO_API_KEY) {
-    console.warn('Kodo API key not configured');
-    return null;
-  }
-
   try {
-    const response = await fetch(`${KODO_URL}/api/v1/incidents`, {
-      method: 'POST',
-      headers: {
-        'X-API-Key': KODO_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(params),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to create incident: ${response.status}`);
-    }
-
-    return await response.json();
+    const data = await callKodoProxy('createIncident', params);
+    return data;
   } catch (error) {
     console.error('Failed to create Kodo incident:', error);
     return null;
@@ -137,25 +98,8 @@ export async function createIncident(params: CreateIncidentParams): Promise<Kodo
  * Update an existing incident
  */
 export async function updateIncident(id: string, params: UpdateIncidentParams): Promise<boolean> {
-  if (!KODO_API_KEY) {
-    console.warn('Kodo API key not configured');
-    return false;
-  }
-
   try {
-    const response = await fetch(`${KODO_URL}/api/v1/incidents/${id}`, {
-      method: 'PATCH',
-      headers: {
-        'X-API-Key': KODO_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(params),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to update incident: ${response.status}`);
-    }
-
+    await callKodoProxy('updateIncident', { id, ...params });
     return true;
   } catch (error) {
     console.error('Failed to update Kodo incident:', error);
@@ -180,25 +124,8 @@ export async function updateServiceStatus(
   serviceId: string,
   status: 'operational' | 'degraded' | 'partial_outage' | 'major_outage' | 'maintenance'
 ): Promise<boolean> {
-  if (!KODO_API_KEY) {
-    console.warn('Kodo API key not configured');
-    return false;
-  }
-
   try {
-    const response = await fetch(`${KODO_URL}/api/v1/services/${serviceId}`, {
-      method: 'PATCH',
-      headers: {
-        'X-API-Key': KODO_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ status }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to update service status: ${response.status}`);
-    }
-
+    await callKodoProxy('updateServiceStatus', { serviceId, status });
     return true;
   } catch (error) {
     console.error('Failed to update Kodo service status:', error);
@@ -219,13 +146,13 @@ export function getStatusPageUrl(): string {
 export function getSeverityColor(severity: 'minor' | 'major' | 'critical'): string {
   switch (severity) {
     case 'critical':
-      return 'text-red-600 bg-red-50 border-red-200';
+      return 'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-950/50 dark:border-red-900';
     case 'major':
-      return 'text-orange-600 bg-orange-50 border-orange-200';
+      return 'text-orange-600 bg-orange-50 border-orange-200 dark:text-orange-400 dark:bg-orange-950/50 dark:border-orange-900';
     case 'minor':
-      return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      return 'text-yellow-600 bg-yellow-50 border-yellow-200 dark:text-yellow-400 dark:bg-yellow-950/50 dark:border-yellow-900';
     default:
-      return 'text-gray-600 bg-gray-50 border-gray-200';
+      return 'text-muted-foreground bg-muted border-border';
   }
 }
 
@@ -235,17 +162,17 @@ export function getSeverityColor(severity: 'minor' | 'major' | 'critical'): stri
 export function getStatusColor(status: string): string {
   switch (status) {
     case 'operational':
-      return 'text-green-600 bg-green-50 border-green-200';
+      return 'text-green-600 bg-green-50 border-green-200 dark:text-green-400 dark:bg-green-950/50 dark:border-green-900';
     case 'degraded':
-      return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      return 'text-yellow-600 bg-yellow-50 border-yellow-200 dark:text-yellow-400 dark:bg-yellow-950/50 dark:border-yellow-900';
     case 'partial_outage':
-      return 'text-orange-600 bg-orange-50 border-orange-200';
+      return 'text-orange-600 bg-orange-50 border-orange-200 dark:text-orange-400 dark:bg-orange-950/50 dark:border-orange-900';
     case 'major_outage':
-      return 'text-red-600 bg-red-50 border-red-200';
+      return 'text-red-600 bg-red-50 border-red-200 dark:text-red-400 dark:bg-red-950/50 dark:border-red-900';
     case 'maintenance':
-      return 'text-blue-600 bg-blue-50 border-blue-200';
+      return 'text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-400 dark:bg-blue-950/50 dark:border-blue-900';
     default:
-      return 'text-gray-600 bg-gray-50 border-gray-200';
+      return 'text-muted-foreground bg-muted border-border';
   }
 }
 
