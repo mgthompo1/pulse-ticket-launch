@@ -1812,15 +1812,15 @@ const MasterAdmin = () => {
                             <div className="flex items-center gap-2">
                               <span className={`px-2 py-1 rounded text-xs ${
                                 enquiry.enquiry_type === 'support'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-gray-100 text-gray-800'
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'
+                                  : 'bg-muted text-muted-foreground'
                               }`}>
                                 {enquiry.enquiry_type === 'support' ? 'Support Ticket' : 'General Enquiry'}
                               </span>
                               <span className={`px-2 py-1 rounded text-xs ${
-                                enquiry.status === 'open' ? 'bg-yellow-100 text-yellow-800' :
-                                enquiry.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                                'bg-green-100 text-green-800'
+                                enquiry.status === 'open' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' :
+                                enquiry.status === 'in_progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' :
+                                'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300'
                               }`}>
                                 {enquiry.status.replace('_', ' ')}
                               </span>
@@ -1943,7 +1943,7 @@ const MasterAdmin = () => {
                                 {stage.count} ({stage.percentage}%)
                               </span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-8 overflow-hidden">
+                            <div className="w-full bg-muted rounded-full h-8 overflow-hidden">
                               <div
                                 className="h-8 rounded-full flex items-center justify-end pr-3 text-white text-sm font-medium transition-all duration-500"
                                 style={{
@@ -1957,7 +1957,7 @@ const MasterAdmin = () => {
                             </div>
                             {index < onboardingFunnel.stages.length - 1 && (
                               <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
-                                <ArrowDownToLine className="w-4 h-4 text-gray-400" />
+                                <ArrowDownToLine className="w-4 h-4 text-muted-foreground" />
                               </div>
                             )}
                           </div>
@@ -1968,40 +1968,40 @@ const MasterAdmin = () => {
 
                   {/* Drop-off Stats */}
                   <div className="grid gap-4 md:grid-cols-4">
-                    <Card className="border-red-200 bg-red-50">
+                    <Card className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/50">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-red-800">Signup → Verified</CardTitle>
+                        <CardTitle className="text-sm font-medium text-red-800 dark:text-red-300">Signup → Verified</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold text-red-600">{onboardingFunnel.dropoffs.signupToVerified}</div>
-                        <p className="text-xs text-red-600">dropped off</p>
+                        <div className="text-2xl font-bold text-red-600 dark:text-red-400">{onboardingFunnel.dropoffs.signupToVerified}</div>
+                        <p className="text-xs text-red-600 dark:text-red-400">dropped off</p>
                       </CardContent>
                     </Card>
-                    <Card className="border-orange-200 bg-orange-50">
+                    <Card className="border-orange-200 bg-orange-50 dark:border-orange-900 dark:bg-orange-950/50">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-orange-800">Verified → Org Created</CardTitle>
+                        <CardTitle className="text-sm font-medium text-orange-800 dark:text-orange-300">Verified → Org Created</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold text-orange-600">{onboardingFunnel.dropoffs.verifiedToOrg}</div>
-                        <p className="text-xs text-orange-600">dropped off</p>
+                        <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{onboardingFunnel.dropoffs.verifiedToOrg}</div>
+                        <p className="text-xs text-orange-600 dark:text-orange-400">dropped off</p>
                       </CardContent>
                     </Card>
-                    <Card className="border-yellow-200 bg-yellow-50">
+                    <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/50">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-yellow-800">Org → Event Created</CardTitle>
+                        <CardTitle className="text-sm font-medium text-yellow-800 dark:text-yellow-300">Org → Event Created</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold text-yellow-600">{onboardingFunnel.dropoffs.orgToEvent}</div>
-                        <p className="text-xs text-yellow-600">dropped off</p>
+                        <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{onboardingFunnel.dropoffs.orgToEvent}</div>
+                        <p className="text-xs text-yellow-600 dark:text-yellow-400">dropped off</p>
                       </CardContent>
                     </Card>
-                    <Card className="border-blue-200 bg-blue-50">
+                    <Card className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/50">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-blue-800">Event → First Sale</CardTitle>
+                        <CardTitle className="text-sm font-medium text-blue-800 dark:text-blue-300">Event → First Sale</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold text-blue-600">{onboardingFunnel.dropoffs.eventToSale}</div>
-                        <p className="text-xs text-blue-600">no sales yet</p>
+                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{onboardingFunnel.dropoffs.eventToSale}</div>
+                        <p className="text-xs text-blue-600 dark:text-blue-400">no sales yet</p>
                       </CardContent>
                     </Card>
                   </div>
