@@ -3,13 +3,22 @@
  * Minimal wrapper for embedding on external sites
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, AlertCircle } from "lucide-react";
 import { AttractionBookingWidgetV3 } from "@/components/attractions/v3";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AttractionStripePayment } from "@/components/payment/AttractionStripePayment";
+
+// Helper to determine dark mode
+const shouldUseDarkMode = (themeMode: string | undefined): boolean => {
+  if (themeMode === 'dark') return true;
+  if (themeMode === 'system' && typeof window !== 'undefined') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  return false;
+};
 
 interface AttractionData {
   id: string;
@@ -115,6 +124,31 @@ const AttractionEmbed = () => {
 
     loadData();
   }, [attractionId]);
+
+  // Override document theme based on widget_customization
+  // This ensures embed uses attraction theme, not dashboard theme from localStorage
+  useEffect(() => {
+    if (!attractionData) return;
+
+    const themeMode = attractionData.widget_customization?.themeMode;
+    const isDark = shouldUseDarkMode(themeMode);
+    const root = document.documentElement;
+
+    // Remove existing theme classes and apply the correct one
+    root.classList.remove('light', 'dark');
+    root.classList.add(isDark ? 'dark' : 'light');
+
+    // Listen for system preference changes if themeMode is 'system'
+    if (themeMode === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = (e: MediaQueryListEvent) => {
+        root.classList.remove('light', 'dark');
+        root.classList.add(e.matches ? 'dark' : 'light');
+      };
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    }
+  }, [attractionData]);
 
   // Send message to parent window
   const postMessage = (type: string, data: any) => {
