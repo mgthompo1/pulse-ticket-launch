@@ -28,7 +28,7 @@ import {
   Settings,
   Award,
 } from 'lucide-react';
-import { useGolfConfig, useUpdateGolfConfig } from '@/hooks/useGolfConfig';
+import { useGolfConfig, useUpsertGolfConfig } from '@/hooks/useGolfConfig';
 import type { GolfCourseConfig } from '@/types/verticals';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -41,7 +41,7 @@ interface GolfConfigEditorProps {
 export function GolfConfigEditor({ attractionId, className }: GolfConfigEditorProps) {
   const { toast } = useToast();
   const { data: config, isLoading } = useGolfConfig(attractionId);
-  const updateConfig = useUpdateGolfConfig();
+  const upsertConfig = useUpsertGolfConfig();
 
   const [formData, setFormData] = useState<Partial<GolfCourseConfig>>({
     tee_time_interval: 10,
@@ -107,8 +107,8 @@ export function GolfConfigEditor({ attractionId, className }: GolfConfigEditorPr
 
   const handleSave = async () => {
     try {
-      await updateConfig.mutateAsync({
-        attractionId,
+      await upsertConfig.mutateAsync({
+        attraction_id: attractionId,
         ...formData,
       });
       setHasChanges(false);
@@ -150,7 +150,7 @@ export function GolfConfigEditor({ attractionId, className }: GolfConfigEditorPr
               Configure tee times, player limits, and course details
             </CardDescription>
           </div>
-          <Button onClick={handleSave} disabled={!hasChanges || updateConfig.isPending}>
+          <Button onClick={handleSave} disabled={!hasChanges || upsertConfig.isPending}>
             <Save className="w-4 h-4 mr-2" />
             Save Changes
           </Button>
