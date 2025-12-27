@@ -34,6 +34,7 @@ import HubSpotCallback from "./pages/HubSpotCallback";
 import LinkedInCallback from "./pages/LinkedInCallback";
 import FacebookCallback from "./pages/FacebookCallback";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 import Contact from "./pages/Contact";
 import Support from "./pages/Support";
 import Tickets from "./pages/Tickets";
@@ -108,6 +109,7 @@ const App = () => (
                 <Route path="/auth/linkedin/callback" element={<LinkedInCallback />} />
                 <Route path="/auth/facebook/callback" element={<FacebookCallback />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsOfService />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/tickets" element={<Tickets />} />
                 <Route path="/help" element={<KnowledgeBase />} />
