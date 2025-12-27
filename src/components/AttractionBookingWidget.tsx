@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import DOMPurify from "dompurify";
 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +48,7 @@ interface AttractionData {
     payment_provider?: string | null;
     currency?: string | null;
     logo_url?: string | null;
+    windcave_endpoint?: string | null;
   }; // Organization data
 }
 
@@ -94,6 +96,7 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
   const [showCalendar, setShowCalendar] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
+  const windcaveDropInRef = useRef<any>(null);
   
   const [attractionData, setAttractionData] = useState<AttractionData | null>(null);
   const [availableSlots, setAvailableSlots] = useState<BookingSlot[]>([]);
@@ -279,6 +282,25 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
     }
   }, [windcaveSessionData, paymentProvider, bookingStep]);
 
+  // Cleanup Windcave drop-in on unmount or modal close
+  useEffect(() => {
+    return () => {
+      if (windcaveDropInRef.current) {
+        try {
+          // Try destroy first (newer API), fall back to close
+          if (typeof windcaveDropInRef.current.destroy === 'function') {
+            windcaveDropInRef.current.destroy();
+          } else if (typeof windcaveDropInRef.current.close === 'function') {
+            windcaveDropInRef.current.close();
+          }
+        } catch (e) {
+          console.warn('Error cleaning up Windcave drop-in:', e);
+        }
+        windcaveDropInRef.current = null;
+      }
+    };
+  }, []);
+
   const initializeWindcaveDropIn = async (retryCount = 0) => {
     if (!windcaveSessionData || !window.WindcavePayments) {
       console.error("Windcave session data or WindcavePayments not available");
@@ -315,16 +337,24 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
         onSuccess: async (status: string) => {
           console.log("=== WINDCAVE SUCCESS CALLBACK ===");
           console.log("Status:", status);
-          
+
           if (status === "done") {
             console.log("Windcave transaction finished");
-            if (window.windcaveDropIn) {
-              window.windcaveDropIn.close();
-              window.windcaveDropIn = null;
+            if (windcaveDropInRef.current) {
+              try {
+                if (typeof windcaveDropInRef.current.destroy === 'function') {
+                  windcaveDropInRef.current.destroy();
+                } else if (typeof windcaveDropInRef.current.close === 'function') {
+                  windcaveDropInRef.current.close();
+                }
+              } catch (e) {
+                console.warn('Error closing Windcave drop-in:', e);
+              }
+              windcaveDropInRef.current = null;
             }
             return;
           }
-          
+
           // Handle payment success
           await handlePaymentSuccess();
         },
@@ -346,8 +376,8 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
           enableCardFormatting: true
         }
       } as any);
-      window.windcaveDropIn = dropIn;
-      
+      windcaveDropInRef.current = dropIn;
+
     } catch (error) {
       console.error("Error initializing Windcave Drop-In:", error);
       toast({
@@ -431,7 +461,8 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
             payment_provider,
             currency,
             name,
-            logo_url
+            logo_url,
+            windcave_endpoint
           )
         `)
         .eq("id", attractionId)
@@ -447,8 +478,9 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
         
         // Load appropriate Windcave scripts if Windcave is the payment provider
         if (data.organizations.payment_provider === "windcave") {
-          console.log("🔍 Loading Windcave scripts...");
-          await loadWindcaveScripts("UAT"); // Default to UAT for public widgets
+          const endpoint = data.organizations.windcave_endpoint || "SEC"; // Default to SEC (production) for public widgets
+          console.log("🔍 Loading Windcave scripts for endpoint:", endpoint);
+          await loadWindcaveScripts(endpoint);
         }
       } else {
         console.log("⚠️ No organizations data found in attraction data");
@@ -890,10 +922,10 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
 
               {/* Custom Header Text */}
               {(attractionData?.widget_customization?.branding as any)?.customHeaderText && (
-                <div 
+                <div
                   className="text-xl leading-relaxed"
                   style={{ color: bodyTextColor }}
-                  dangerouslySetInnerHTML={{ __html: (attractionData?.widget_customization?.branding as any)?.customHeaderText || '' }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize((attractionData?.widget_customization?.branding as any)?.customHeaderText || '') }}
                 />
               )}
 
@@ -926,10 +958,10 @@ const AttractionBookingWidget: React.FC<AttractionBookingWidgetProps> = ({
               <h2 className="text-2xl font-bold mb-6" style={{ color: headerTextColor }}>
                 Experience description
               </h2>
-              <div 
+              <div
                 className="text-lg leading-relaxed prose prose-lg max-w-none [&>p]:mb-4 [&>p]:leading-relaxed [&>h1]:text-2xl [&>h2]:text-xl [&>h3]:text-lg [&>ul]:ml-6 [&>ol]:ml-6 [&>li]:mb-2"
                 style={{ color: bodyTextColor }}
-                dangerouslySetInnerHTML={{ __html: attractionData.description }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(attractionData.description) }}
               />
             </div>
           </div>

@@ -131,6 +131,8 @@ interface TemplateSettings {
   // Two-column styling
   twoColumnLeftBgColor?: string;
   twoColumnRightBgColor?: string;
+  twoColumnLeftCardBgColor?: string;
+  twoColumnRightCardBgColor?: string;
   twoColumnLeftTextColor?: string;
   twoColumnRightTextColor?: string;
   twoColumnLeftContent?: string;
@@ -316,6 +318,26 @@ const CATEGORY_INFO: Record<ElementCategory, { label: string; icon: React.ReactN
   content: { label: 'Content', icon: <Type className="h-4 w-4" />, description: 'Text, images, and layout' },
   advanced: { label: 'Advanced', icon: <Settings className="h-4 w-4" />, description: 'Extra features and widgets' },
 };
+
+// Helper function to determine if a color is dark (for card styling on colored backgrounds)
+function isColorDark(color: string | undefined): boolean {
+  if (!color || color === "transparent") return false;
+
+  // Parse hex color
+  let hex = color.replace('#', '');
+  if (hex.length === 3) {
+    hex = hex.split('').map(c => c + c).join('');
+  }
+  if (hex.length !== 6) return false;
+
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+
+  // Calculate relative luminance (WCAG formula)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.5;
+}
 
 // Element definitions with categories and search keywords
 const AVAILABLE_ELEMENTS: ElementDefinition[] = [
@@ -598,6 +620,8 @@ function VisualCanvasElement({
   canDelete,
   renderPreview,
   isDark = false,
+  columnBgColor,
+  cardBgColor,
   allElements,
   onUpdateElementConfig,
 }: {
@@ -607,8 +631,10 @@ function VisualCanvasElement({
   onRemove: () => void;
   onDuplicate: () => void;
   canDelete: boolean;
-  renderPreview: (element: CheckoutElement, isDark: boolean) => React.ReactNode;
+  renderPreview: (element: CheckoutElement, isDark: boolean, columnBgColor?: string, cardBgColor?: string) => React.ReactNode;
   isDark?: boolean;
+  columnBgColor?: string;
+  cardBgColor?: string;
   allElements?: CheckoutElement[];
   onUpdateElementConfig?: (elementId: string, config: Record<string, unknown>) => void;
 }) {
@@ -692,7 +718,7 @@ function VisualCanvasElement({
 
       {/* Visual Preview of Element */}
       <div className="p-3">
-        {renderPreview(element, isDark)}
+        {renderPreview(element, isDark, columnBgColor, cardBgColor)}
       </div>
     </div>
   );
@@ -859,7 +885,7 @@ function PageCanvas({
   onUpdatePageTitle: (title: string) => void;
   onRemovePage: () => void;
   canDeleteElement: (elementId: string) => boolean;
-  renderPreview: (element: CheckoutElement, isDark: boolean) => React.ReactNode;
+  renderPreview: (element: CheckoutElement, isDark: boolean, columnBgColor?: string) => React.ReactNode;
   visualMode?: boolean;
   allElements: CheckoutElement[];
   onUpdateElementConfig: (elementId: string, config: Record<string, unknown>) => void;
@@ -871,6 +897,8 @@ function PageCanvas({
   twoColumnStyling?: {
     leftBgColor?: string;
     rightBgColor?: string;
+    leftCardBgColor?: string;
+    rightCardBgColor?: string;
     leftTextColor?: string;
     rightTextColor?: string;
     leftContent?: string;
@@ -918,13 +946,15 @@ function PageCanvas({
   // Two-column styling
   const leftBgColor = twoColumnStyling?.leftBgColor || "transparent";
   const rightBgColor = twoColumnStyling?.rightBgColor || "transparent";
+  const leftCardBgColor = twoColumnStyling?.leftCardBgColor;
+  const rightCardBgColor = twoColumnStyling?.rightCardBgColor;
   const leftTextColor = twoColumnStyling?.leftTextColor || "";
   const rightTextColor = twoColumnStyling?.rightTextColor || "";
   const leftContent = twoColumnStyling?.leftContent || "";
   const rightContent = twoColumnStyling?.rightContent || "";
   const isDarkMode = themeMode === "dark";
 
-  const renderElementsList = (elements: CheckoutElement[]) => {
+  const renderElementsList = (elements: CheckoutElement[], columnBgColor?: string, cardBgColor?: string) => {
     if (visualMode) {
       return elements.map((element) => (
         <VisualCanvasElement
@@ -937,6 +967,8 @@ function PageCanvas({
           canDelete={canDeleteElement(element.id)}
           renderPreview={renderPreview}
           isDark={isDarkMode}
+          columnBgColor={columnBgColor}
+          cardBgColor={cardBgColor}
           allElements={allElements}
           onUpdateElementConfig={onUpdateElementConfig}
         />
@@ -1021,7 +1053,7 @@ function PageCanvas({
                     <p className="text-xs">Drop elements here</p>
                   </div>
                 ) : (
-                  renderElementsList(leftElements)
+                  renderElementsList(leftElements, leftBgColor, leftCardBgColor)
                 )}
               </SortableContext>
             </div>
@@ -1058,7 +1090,7 @@ function PageCanvas({
                     <p className="text-xs">Drop elements here</p>
                   </div>
                 ) : (
-                  renderElementsList(rightElements)
+                  renderElementsList(rightElements, rightBgColor, rightCardBgColor)
                 )}
               </SortableContext>
             </div>
@@ -2206,15 +2238,29 @@ function QuestionTemplateSelector({
 }
 
 // Preview Element Component - Renders realistic mockups
-function PreviewElement({ element, isDark = false }: { element: CheckoutElement; isDark?: boolean }) {
+function PreviewElement({ element, isDark = false, columnBgColor, cardBgColor }: { element: CheckoutElement; isDark?: boolean; columnBgColor?: string; cardBgColor?: string }) {
   const elementDef = AVAILABLE_ELEMENTS.find((e) => e.type === element.type);
 
-  // Theme-aware classes
-  const cardBg = isDark ? "bg-zinc-700 border-zinc-600" : "bg-white border-gray-200";
-  const inputBg = isDark ? "bg-zinc-600 border-zinc-500 text-white placeholder:text-zinc-400" : "bg-gray-50 border-gray-200";
-  const mutedText = isDark ? "text-zinc-400" : "text-gray-500";
-  const headingText = isDark ? "text-white" : "text-gray-900";
-  const bodyText = isDark ? "text-zinc-200" : "text-gray-700";
+  // Determine if cards should use dark styling based on card background color or column background
+  const effectiveCardBg = cardBgColor || columnBgColor;
+  const cardIsDark = isColorDark(effectiveCardBg);
+  const useInvertedStyle = cardIsDark && !isDark; // Card background is dark but theme is light
+
+  // Theme-aware classes - adapt to card background if needed
+  // If a specific card background color is set, use inline style instead of class
+  const hasCustomCardBg = cardBgColor && cardBgColor !== "transparent";
+  const cardBgClass = hasCustomCardBg
+    ? `border ${cardIsDark ? "border-white/20" : "border-gray-200"}`
+    : (isDark || useInvertedStyle)
+      ? "bg-zinc-700 border-zinc-600"
+      : "bg-white border-gray-200";
+  const cardBgStyle = hasCustomCardBg ? { backgroundColor: cardBgColor } : undefined;
+  const inputBg = (isDark || useInvertedStyle || cardIsDark)
+    ? "bg-zinc-600 border-zinc-500 text-white placeholder:text-zinc-400"
+    : "bg-gray-50 border-gray-200";
+  const mutedText = (isDark || useInvertedStyle || cardIsDark) ? "text-zinc-400" : "text-gray-500";
+  const headingText = (isDark || useInvertedStyle || cardIsDark) ? "text-white" : "text-gray-900";
+  const bodyText = (isDark || useInvertedStyle || cardIsDark) ? "text-zinc-200" : "text-gray-700";
 
   switch (element.type) {
     case "logo":
@@ -2255,7 +2301,7 @@ function PreviewElement({ element, isDark = false }: { element: CheckoutElement;
         <div className="space-y-3">
           <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
           {/* Mock Ticket 1 */}
-          <div className={`flex items-center justify-between p-4 rounded-lg border ${cardBg}`}>
+          <div className={`flex items-center justify-between p-4 rounded-lg border ${cardBgClass}`} style={cardBgStyle}>
             <div>
               <div className={`font-medium ${bodyText}`}>General Admission</div>
               {element.config.showDescription && (
@@ -2277,7 +2323,7 @@ function PreviewElement({ element, isDark = false }: { element: CheckoutElement;
             </div>
           </div>
           {/* Mock Ticket 2 */}
-          <div className={`flex items-center justify-between p-4 rounded-lg border ${cardBg}`}>
+          <div className={`flex items-center justify-between p-4 rounded-lg border ${cardBgClass}`} style={cardBgStyle}>
             <div>
               <div className={`font-medium ${bodyText}`}>VIP Pass</div>
               {element.config.showDescription && (
@@ -2370,7 +2416,7 @@ function PreviewElement({ element, isDark = false }: { element: CheckoutElement;
             </div>
           </div>
           {/* Mock Attendee 2 */}
-          <div className={`rounded-lg border p-4 ${cardBg}`}>
+          <div className={`rounded-lg border p-4 ${cardBgClass}`} style={cardBgStyle}>
             <div className="pb-2">
               <Badge variant="outline" className={`text-xs w-fit ${isDark ? "border-zinc-500 text-zinc-300" : ""}`}>Ticket 2</Badge>
             </div>
@@ -2397,7 +2443,7 @@ function PreviewElement({ element, isDark = false }: { element: CheckoutElement;
       return (
         <div className="space-y-4">
           <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
-          <div className={`p-4 rounded-lg border space-y-4 ${cardBg}`}>
+          <div className={`p-4 rounded-lg border space-y-4 ${cardBgClass}`} style={cardBgStyle}>
             <div className={`flex items-center gap-3 pb-3 border-b ${isDark ? "border-zinc-600" : ""}`}>
               <CreditCard className={`h-5 w-5 ${isDark ? "text-blue-400" : "text-primary"}`} />
               <span className={`font-medium ${bodyText}`}>Pay with Card</span>
@@ -2436,7 +2482,7 @@ function PreviewElement({ element, isDark = false }: { element: CheckoutElement;
       return (
         <div className="space-y-3">
           <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
-          <div className={`rounded-lg border p-4 ${cardBg}`}>
+          <div className={`rounded-lg border p-4 ${cardBgClass}`} style={cardBgStyle}>
             <div className="space-y-3">
               {element.config.showItemized && (
                 <>
@@ -2899,8 +2945,8 @@ export function CheckoutTemplateBuilder({
   }, [open, initialTemplate]);
 
   // Helper function to render element preview for WYSIWYG canvas
-  const renderPreviewElement = (element: CheckoutElement, isDark: boolean): React.ReactNode => {
-    return <PreviewElement element={element} isDark={isDark} />;
+  const renderPreviewElement = (element: CheckoutElement, isDark: boolean, columnBgColor?: string, cardBgColor?: string): React.ReactNode => {
+    return <PreviewElement element={element} isDark={isDark} columnBgColor={columnBgColor} cardBgColor={cardBgColor} />;
   };
 
   const sensors = useSensors(
@@ -3487,6 +3533,8 @@ export function CheckoutTemplateBuilder({
 
                     const leftBgColor = template.settings.twoColumnLeftBgColor || (isDark ? "#27272a" : "#ffffff");
                     const rightBgColor = template.settings.twoColumnRightBgColor || (isDark ? "#18181b" : "#f4f4f5");
+                    const leftCardBgColor = template.settings.twoColumnLeftCardBgColor;
+                    const rightCardBgColor = template.settings.twoColumnRightCardBgColor;
                     const leftTextColor = template.settings.twoColumnLeftTextColor || (isDark ? "#ffffff" : "#000000");
                     const rightTextColor = template.settings.twoColumnRightTextColor || (isDark ? "#ffffff" : "#000000");
                     const leftContent = template.settings.twoColumnLeftContent || "";
@@ -3539,7 +3587,7 @@ export function CheckoutTemplateBuilder({
                           <div className="space-y-6 flex-1">
                             {leftElements.length > 0 ? (
                               leftElements.map((element) => (
-                                <PreviewElement key={element.id} element={element} isDark={isDark} />
+                                <PreviewElement key={element.id} element={element} isDark={isDark} columnBgColor={leftBgColor} cardBgColor={leftCardBgColor} />
                               ))
                             ) : !leftContent ? (
                               <div className="rounded-lg border-2 border-dashed border-current/20 p-8 text-center opacity-50 h-full flex items-center justify-center">
@@ -3568,7 +3616,7 @@ export function CheckoutTemplateBuilder({
                           <div className="space-y-6 flex-1">
                             {rightElements.length > 0 ? (
                               rightElements.map((element) => (
-                                <PreviewElement key={element.id} element={element} isDark={isDark} />
+                                <PreviewElement key={element.id} element={element} isDark={isDark} columnBgColor={rightBgColor} cardBgColor={rightCardBgColor} />
                               ))
                             ) : !rightContent ? (
                               <div className="rounded-lg border-2 border-dashed border-current/20 p-8 text-center opacity-50 h-full flex items-center justify-center">
@@ -3939,6 +3987,8 @@ export function CheckoutTemplateBuilder({
                                 twoColumnStyling={{
                                   leftBgColor: template.settings.twoColumnLeftBgColor,
                                   rightBgColor: template.settings.twoColumnRightBgColor,
+                                  leftCardBgColor: template.settings.twoColumnLeftCardBgColor,
+                                  rightCardBgColor: template.settings.twoColumnRightCardBgColor,
                                   leftTextColor: template.settings.twoColumnLeftTextColor,
                                   rightTextColor: template.settings.twoColumnRightTextColor,
                                   leftContent: template.settings.twoColumnLeftContent,
@@ -4264,6 +4314,20 @@ export function CheckoutTemplateBuilder({
                                 />
                               </div>
                               <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Card Background</Label>
+                                <ColorPicker
+                                  value={template.settings.twoColumnLeftCardBgColor || "transparent"}
+                                  onChange={(color) =>
+                                    setTemplate((prev) => ({
+                                      ...prev,
+                                      settings: { ...prev.settings, twoColumnLeftCardBgColor: color },
+                                    }))
+                                  }
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                              <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground">Text Color</Label>
                                 <ColorPicker
                                   value={template.settings.twoColumnLeftTextColor || "#000000"}
@@ -4307,6 +4371,20 @@ export function CheckoutTemplateBuilder({
                                   }
                                 />
                               </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Card Background</Label>
+                                <ColorPicker
+                                  value={template.settings.twoColumnRightCardBgColor || "transparent"}
+                                  onChange={(color) =>
+                                    setTemplate((prev) => ({
+                                      ...prev,
+                                      settings: { ...prev.settings, twoColumnRightCardBgColor: color },
+                                    }))
+                                  }
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
                               <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground">Text Color</Label>
                                 <ColorPicker

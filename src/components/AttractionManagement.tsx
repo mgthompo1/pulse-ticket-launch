@@ -29,6 +29,7 @@ import {
   TrendingUp,
   Sparkles,
   Monitor,
+  AlertCircle,
   // Attraction type icons
   Target,
   Mic2,
@@ -120,7 +121,7 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
   });
 
   // Fetch attractions with React Query
-  const { data: attractions = [], isLoading } = useQuery({
+  const { data: attractions = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ['org-attractions', organizationId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -216,6 +217,25 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card className="border-destructive/50 bg-destructive/5">
+        <CardContent className="py-8 text-center">
+          <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="w-6 h-6 text-destructive" />
+          </div>
+          <h3 className="text-lg font-semibold text-foreground mb-2">Failed to load attractions</h3>
+          <p className="text-muted-foreground mb-4 text-sm">
+            {error instanceof Error ? error.message : 'An unexpected error occurred'}
+          </p>
+          <Button variant="outline" onClick={() => refetch()}>
+            Try Again
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -496,7 +516,7 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
                       className="flex-1 border-border/50 hover:bg-muted/50"
                       onClick={(e) => {
                         e.stopPropagation();
-                        window.open(`/attraction/${attraction.id}`, '_blank');
+                        window.open(`/attraction/${attraction.id}`, '_blank', 'noopener,noreferrer');
                       }}
                     >
                       <Eye className="w-4 h-4 mr-1.5" />
@@ -509,7 +529,7 @@ const AttractionManagement: React.FC<AttractionManagementProps> = ({
                         className="flex-1 border-border/50 hover:bg-muted/50"
                         onClick={(e) => {
                           e.stopPropagation();
-                          window.open(`/ticketflolive/attraction/${attraction.id}`, '_blank');
+                          window.open(`/ticketflolive/attraction/${attraction.id}`, '_blank', 'noopener,noreferrer');
                         }}
                       >
                         <Monitor className="w-4 h-4 mr-1.5" />

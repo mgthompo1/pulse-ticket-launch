@@ -38,20 +38,33 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
           console.error('Error getting session:', error);
+          // Clear invalid session if refresh token is expired/invalid (400 error)
+          if (error.message?.includes('refresh_token') || error.status === 400) {
+            console.log('Clearing invalid session due to expired refresh token');
+            await supabase.auth.signOut();
+          }
         }
-        
+
         if (isMounted) {
           if (typeof window !== 'undefined') {
             console.log("=== Initial session loaded ===", !!session?.user);
           }
-          setSession(session);
-          setUser(session?.user ?? null);
+          setSession(error ? null : session);
+          setUser(error ? null : session?.user ?? null);
           setLoading(false);
           setInitialized(true);
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
+        // Also handle unexpected errors by clearing potentially corrupted state
+        try {
+          await supabase.auth.signOut();
+        } catch {
+          // Ignore signOut errors during cleanup
+        }
         if (isMounted) {
+          setSession(null);
+          setUser(null);
           setLoading(false);
           setInitialized(true);
         }

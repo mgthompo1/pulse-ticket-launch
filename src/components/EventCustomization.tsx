@@ -241,6 +241,9 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
   // New block-based template state (backward compatible)
   const [emailBlocksTemplate, setEmailBlocksTemplate] = useState<EmailTemplate>(createDefaultTemplate());
 
+  // Separate state for test email recipient (not persisted to DB)
+  const [testEmailRecipient, setTestEmailRecipient] = useState("");
+
   // Modern Professional Email Theme Presets - matching backend
   const emailThemePresets = {
     professional: {
@@ -3064,13 +3067,16 @@ const EventCustomization: React.FC<EventCustomizationProps> = ({ eventId, onSave
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex gap-2">
-                    <Input placeholder="you@example.com" value={(emailCustomization as any)._testRecipient || ''} onChange={(e) => setEmailCustomization((prev:any) => ({...prev, _testRecipient: e.target.value}))} />
+                    <Input placeholder="you@example.com" value={testEmailRecipient} onChange={(e) => setTestEmailRecipient(e.target.value)} />
                     <Button onClick={async () => {
-                      const to = (emailCustomization as any)._testRecipient;
-                      if (!to) return;
+                      if (!testEmailRecipient) return;
                       const html = renderBlocksHtml();
-                      await supabase.functions.invoke('test-resend-email', { body: { to, subject: emailBlocksTemplate.subject, html } });
-                      toast({ title: 'Sent', description: `Test email sent to ${to}` });
+                      const { error } = await supabase.functions.invoke('test-resend-email', { body: { to: testEmailRecipient, subject: emailBlocksTemplate.subject, html } });
+                      if (error) {
+                        toast({ title: 'Error', description: error.message || 'Failed to send test email', variant: 'destructive' });
+                      } else {
+                        toast({ title: 'Sent', description: `Test email sent to ${testEmailRecipient}` });
+                      }
                     }}>Send</Button>
                   </div>
                 </CardContent>

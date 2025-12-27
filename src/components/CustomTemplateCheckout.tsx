@@ -120,6 +120,8 @@ interface CheckoutTemplate {
     // Two-column styling
     twoColumnLeftBgColor?: string;
     twoColumnRightBgColor?: string;
+    twoColumnLeftCardBgColor?: string;
+    twoColumnRightCardBgColor?: string;
     twoColumnLeftTextColor?: string;
     twoColumnRightTextColor?: string;
     twoColumnLeftContent?: string;
@@ -1162,15 +1164,35 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
     return false;
   };
 
-  const renderElement = (element: CheckoutElement) => {
+  // Helper to determine if a color is dark
+  const isColorDark = (color: string | undefined): boolean => {
+    if (!color || color === "transparent") return false;
+    let hex = color.replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+    if (hex.length !== 6) return false;
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance < 0.5;
+  };
+
+  const renderElement = (element: CheckoutElement, customCardBgColor?: string) => {
     const isDarkMode = computeIsDark();
 
+    // If a custom card background is provided, use it; otherwise use theme defaults
+    const hasCustomCardBg = customCardBgColor && customCardBgColor !== "transparent";
+    const cardIsDark = hasCustomCardBg ? isColorDark(customCardBgColor) : isDarkMode;
+
     // Theme-aware class helpers
-    const cardBg = isDarkMode ? "bg-zinc-800 border-zinc-700" : "bg-white border-gray-200";
-    const inputBg = isDarkMode ? "bg-zinc-700 border-zinc-600 text-white" : "bg-white border-gray-300";
-    const mutedText = isDarkMode ? "text-zinc-400" : "text-gray-500";
-    const headingText = isDarkMode ? "text-white" : "text-gray-900";
-    const bodyText = isDarkMode ? "text-zinc-200" : "text-gray-700";
+    const cardBg = hasCustomCardBg
+      ? `border ${cardIsDark ? "border-white/20" : "border-gray-200"}`
+      : (isDarkMode ? "bg-zinc-800 border-zinc-700" : "bg-white border-gray-200");
+    const cardStyle = hasCustomCardBg ? { backgroundColor: customCardBgColor } : undefined;
+    const inputBg = (isDarkMode || cardIsDark) ? "bg-zinc-700 border-zinc-600 text-white" : "bg-white border-gray-300";
+    const mutedText = (isDarkMode || cardIsDark) ? "text-zinc-400" : "text-gray-500";
+    const headingText = (isDarkMode || cardIsDark) ? "text-white" : "text-gray-900";
+    const bodyText = (isDarkMode || cardIsDark) ? "text-zinc-200" : "text-gray-700";
 
     switch (element.type) {
       case "logo": {
@@ -1251,6 +1273,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
               <div
                 key={ticket.id}
                 className={`flex items-center justify-between p-4 rounded-lg border ${cardBg}`}
+                style={cardStyle}
               >
                 <div className="flex-1">
                   <div className={`font-medium ${bodyText}`}>{ticket.name}</div>
@@ -1436,7 +1459,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
           return (
             <div key={element.id} className="space-y-4">
               <h3 className={`font-semibold ${headingText}`}>Complete Registration</h3>
-              <Card className={cardBg}>
+              <Card className={cardBg} style={cardStyle}>
                 <CardContent className="pt-6">
                   <div className="text-center space-y-4">
                     <CheckCircle className={`h-12 w-12 mx-auto ${isDarkMode ? "text-green-400" : "text-green-500"}`} />
@@ -1474,7 +1497,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
           return (
             <div key={element.id} className="space-y-4">
               <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
-              <Card className={cardBg}>
+              <Card className={cardBg} style={cardStyle}>
                 <CardContent className="pt-6">
                   {/* Loading state while initializing Windcave (auto-initializes when conditions met) */}
                   {(isInitializingWindcave || (!windcaveInitialized && !showWindcavePaymentForm)) && (
@@ -1543,7 +1566,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
         return (
           <div key={element.id} className="space-y-4">
             <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
-            <Card className={cardBg}>
+            <Card className={cardBg} style={cardStyle}>
               <CardContent className="pt-6">
                 <div className="flex justify-between text-sm mb-4 px-1">
                   <span className={mutedText}>Total to pay</span>
@@ -1578,7 +1601,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
         return (
           <div key={element.id} className="space-y-4">
             <h3 className={`font-semibold ${headingText}`}>{element.config.label || element.label}</h3>
-            <Card className={cardBg}>
+            <Card className={cardBg} style={cardStyle}>
               <CardContent className="pt-4 space-y-3">
                 {element.config.showItemized &&
                   Object.entries(selectedTickets)
@@ -1648,7 +1671,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
 
       case "terms_checkbox":
         return (
-          <div key={element.id} className={`flex items-start gap-3 p-4 rounded-lg border ${cardBg}`}>
+          <div key={element.id} className={`flex items-start gap-3 p-4 rounded-lg border ${cardBg}`} style={cardStyle}>
             <Checkbox
               id="terms"
               checked={termsAccepted}
@@ -1854,7 +1877,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
             ) : (
               <div className="space-y-4">
                 {attendeeDetails.map((attendee, index) => (
-                  <Card key={index} className={`${cardBg} ${index === 0 ? (isDarkMode ? "border-blue-500/30" : "border-primary/30") : ""}`}>
+                  <Card key={index} className={`${cardBg} ${index === 0 ? (isDarkMode ? "border-blue-500/30" : "border-primary/30") : ""}`} style={cardStyle}>
                     <CardHeader className="pb-2">
                       <div className="flex items-center gap-2">
                         <Badge variant={index === 0 ? "secondary" : "outline"} className={`text-xs ${isDarkMode ? (index === 0 ? "bg-zinc-700 text-zinc-200" : "border-zinc-600 text-zinc-300") : ""}`}>
@@ -2234,6 +2257,8 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
     // Get column colors with defaults
     const leftBgColor = template.settings.twoColumnLeftBgColor || (isDark ? "#27272a" : "#ffffff");
     const rightBgColor = template.settings.twoColumnRightBgColor || (isDark ? "#18181b" : "#f4f4f5");
+    const leftCardBgColor = template.settings.twoColumnLeftCardBgColor;
+    const rightCardBgColor = template.settings.twoColumnRightCardBgColor;
     const leftTextColor = template.settings.twoColumnLeftTextColor || (isDark ? "#ffffff" : "#000000");
     const rightTextColor = template.settings.twoColumnRightTextColor || (isDark ? "#ffffff" : "#000000");
     const leftContent = template.settings.twoColumnLeftContent || "";
@@ -2283,7 +2308,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
 
             {/* Left column elements */}
             <div className="space-y-6 flex-1">
-              {leftElements.map((element) => renderElement(element))}
+              {leftElements.map((element) => renderElement(element, leftCardBgColor))}
             </div>
           </div>
 
@@ -2301,7 +2326,7 @@ export function CustomTemplateCheckout({ eventId }: CustomTemplateCheckoutProps)
 
             {/* Right column elements */}
             <div className="space-y-6 flex-1">
-              {rightElements.map((element) => renderElement(element))}
+              {rightElements.map((element) => renderElement(element, rightCardBgColor))}
             </div>
 
             {/* Navigation buttons at bottom of right column */}
