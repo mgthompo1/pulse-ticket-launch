@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Save, Eye, ExternalLink, Settings, Users, Clock, Package, FileText, Palette, Image, Star, AlertTriangle, Zap, Layout, Type, Shield, Square, RectangleHorizontal, FileSignature, Trash2, Settings2, Flag, CreditCard, ShoppingBag, Moon, Sun } from 'lucide-react';
+import { Loader2, Save, Eye, ExternalLink, Settings, Users, Clock, Package, FileText, Palette, Image, Star, AlertTriangle, Zap, Layout, Type, Shield, Square, RectangleHorizontal, FileSignature, Trash2, Settings2, Flag, CreditCard, ShoppingBag, Moon, Sun, Mail } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { AttractionWaiverConfig } from '../waivers';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -37,6 +37,9 @@ import {
   ProductCatalog,
 } from '@/components/verticals';
 import type { VerticalType, VerticalFeatures } from '@/types/verticals';
+import { EmailTemplateBuilder } from '@/components/EmailTemplateBuilder';
+import { EmailTemplatePreview } from '@/components/EmailTemplatePreview';
+import type { EmailTemplate } from '@/types/email-template';
 
 interface AttractionEditorV3Props {
   attractionId: string;
@@ -147,6 +150,44 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
     },
   });
 
+  // Email customization state
+  const [emailCustomization, setEmailCustomization] = useState<Record<string, any>>({
+    subject: 'Your Booking Confirmation',
+    template: {
+      headerColor: '#3b82f6',
+      buttonColor: '#3b82f6',
+      backgroundColor: '#ffffff',
+      textColor: '#333333',
+      accentColor: '#f8f9fa',
+      borderColor: '#e5e7eb',
+      fontFamily: 'Arial, sans-serif',
+      theme: 'modern',
+    },
+    useCustomColors: false,
+  });
+
+  // Block-based email template state
+  const [emailBlocksTemplate, setEmailBlocksTemplate] = useState<EmailTemplate>({
+    version: 1,
+    subject: 'Your Booking Confirmation',
+    theme: {
+      backgroundColor: '#ffffff',
+      headerColor: '#3b82f6',
+      textColor: '#333333',
+      buttonColor: '#3b82f6',
+      accentColor: '#f8f9fa',
+      borderColor: '#e5e7eb',
+      fontFamily: 'Arial, sans-serif',
+    },
+    blocks: [
+      { id: '1', type: 'header', title: 'Booking Confirmed!', subtitle: 'Thank you for your reservation' },
+      { id: '2', type: 'event_details', showDate: true, showTime: true, showLocation: true, showDescription: false },
+      { id: '3', type: 'ticket_list', showQR: true, showBarcode: false },
+      { id: '4', type: 'button', text: 'View Your Booking', url: '{{booking_url}}', style: 'primary' },
+      { id: '5', type: 'footer', text: 'Questions? Contact us anytime.' },
+    ],
+  });
+
   // Update form when attraction loads
   useEffect(() => {
     if (attraction) {
@@ -205,6 +246,28 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
           ],
         },
       });
+
+      // Load email customization
+      const emailConfig = attraction.email_customization as Record<string, any> || {};
+      if (emailConfig.template) {
+        setEmailCustomization(emailConfig);
+      }
+      if (emailConfig.blocks && Array.isArray(emailConfig.blocks)) {
+        setEmailBlocksTemplate({
+          version: 1,
+          subject: emailConfig.subject || 'Your Booking Confirmation',
+          theme: emailConfig.theme || {
+            backgroundColor: '#ffffff',
+            headerColor: '#3b82f6',
+            textColor: '#333333',
+            buttonColor: '#3b82f6',
+            accentColor: '#f8f9fa',
+            borderColor: '#e5e7eb',
+            fontFamily: 'Arial, sans-serif',
+          },
+          blocks: emailConfig.blocks as any,
+        });
+      }
     }
   }, [attraction]);
 
@@ -247,10 +310,17 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
   };
 
   const handleSave = () => {
-    // Merge form data with theme data
+    // Merge form data with theme data and email customization
+    const combinedEmailCustomization = {
+      ...emailCustomization,
+      blocks: emailBlocksTemplate.blocks,
+      theme: emailBlocksTemplate.theme,
+      subject: emailBlocksTemplate.subject,
+    };
     const dataToSave = {
       ...formData,
       widget_customization: themeData,
+      email_customization: combinedEmailCustomization,
     };
     saveMutation.mutate(dataToSave);
   };
@@ -374,6 +444,10 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
           <TabsTrigger value="fields" className="flex items-center gap-2">
             <FileText className="w-4 h-4" />
             <span className="hidden sm:inline">Fields</span>
+          </TabsTrigger>
+          <TabsTrigger value="emails" className="flex items-center gap-2">
+            <Mail className="w-4 h-4" />
+            <span className="hidden sm:inline">Emails</span>
           </TabsTrigger>
           <TabsTrigger value="theme" className="flex items-center gap-2">
             <Palette className="w-4 h-4" />
@@ -636,6 +710,140 @@ export const AttractionEditorV3: React.FC<AttractionEditorV3Props> = ({
         {/* Custom Fields Tab */}
         <TabsContent value="fields">
           <CustomFieldsSection attractionId={attractionId} />
+        </TabsContent>
+
+        {/* Emails Tab */}
+        <TabsContent value="emails" className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="space-y-6">
+              {/* Block-based Email Builder */}
+              <EmailTemplateBuilder
+                template={emailBlocksTemplate}
+                onChange={(t) => {
+                  setEmailBlocksTemplate(t);
+                  setHasChanges(true);
+                }}
+                isAttractionMode={true}
+              />
+
+              {/* Email Theme Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Palette className="w-5 h-5" />
+                    Email Theme
+                  </CardTitle>
+                  <CardDescription>Choose a pre-designed theme for your confirmation emails</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 gap-3">
+                    {[
+                      { value: 'professional', label: 'Professional', description: 'Clean slate design with refined typography' },
+                      { value: 'modern', label: 'Modern', description: 'Contemporary blue with polished spacing' },
+                      { value: 'elegant', label: 'Elegant', description: 'Sophisticated purple with serif typography' },
+                      { value: 'minimal', label: 'Minimal', description: 'Ultra-clean monochrome design' },
+                    ].map(theme => (
+                      <div
+                        key={theme.value}
+                        className={cn(
+                          'p-3 border rounded-lg cursor-pointer transition-colors',
+                          emailCustomization.template?.theme === theme.value
+                            ? 'border-primary bg-primary/5'
+                            : 'border-muted hover:border-primary/50'
+                        )}
+                        onClick={() => {
+                          setEmailCustomization(prev => ({
+                            ...prev,
+                            template: { ...prev.template, theme: theme.value }
+                          }));
+                          setHasChanges(true);
+                        }}
+                      >
+                        <div className="font-medium">{theme.label}</div>
+                        <div className="text-sm text-muted-foreground">{theme.description}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Use Widget Theme Option */}
+                  <div className="mt-4 p-3 border rounded-lg bg-muted/30">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="font-medium">Use Widget Theme</Label>
+                        <p className="text-xs text-muted-foreground">Match your widget's color scheme</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEmailBlocksTemplate(prev => ({
+                            ...prev,
+                            theme: {
+                              ...prev.theme,
+                              headerColor: themeData.primaryColor,
+                              buttonColor: themeData.primaryColor,
+                            }
+                          }));
+                          setEmailCustomization(prev => ({
+                            ...prev,
+                            template: {
+                              ...prev.template,
+                              headerColor: themeData.primaryColor,
+                              buttonColor: themeData.primaryColor,
+                            }
+                          }));
+                          setHasChanges(true);
+                        }}
+                        className="shrink-0"
+                      >
+                        Apply Widget Colors
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Email Subject */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Email Subject</CardTitle>
+                  <CardDescription>Customize the subject line of your confirmation emails</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Input
+                    value={emailBlocksTemplate.subject}
+                    onChange={(e) => {
+                      setEmailBlocksTemplate(prev => ({ ...prev, subject: e.target.value }));
+                      setHasChanges(true);
+                    }}
+                    placeholder="Your Booking Confirmation"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Available variables: {'{{customer_name}}'}, {'{{booking_date}}'}, {'{{attraction_name}}'}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Email Preview */}
+            <div className="hidden lg:block lg:sticky lg:top-6 max-h-screen overflow-y-auto">
+              <EmailTemplatePreview
+                emailCustomization={emailCustomization}
+                blocksTemplate={emailBlocksTemplate}
+                eventDetails={{
+                  name: formData.name || "Sample Attraction",
+                  venue: formData.venue || "Sample Venue",
+                  event_date: new Date().toISOString(),
+                  event_end_date: null,
+                  logo_url: formData.logo_url || undefined
+                }}
+                organizationDetails={{
+                  name: attraction?.organizations?.name || "Your Organization",
+                  logo_url: undefined
+                }}
+              />
+            </div>
+          </div>
         </TabsContent>
 
         {/* Theme Tab */}
