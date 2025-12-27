@@ -106,7 +106,7 @@ export const ReminderEmailCampaigns: React.FC<ReminderEmailCampaignsProps> = ({ 
       try {
         // Get user's organization
         const { data: orgMember } = await supabase
-          .from('organization_members')
+          .from('organization_users')
           .select('organization_id')
           .eq('user_id', user.id)
           .single();
@@ -214,7 +214,7 @@ export const ReminderEmailCampaigns: React.FC<ReminderEmailCampaignsProps> = ({ 
     try {
       // Get user's organization
       const { data: orgMember } = await supabase
-        .from('organization_members')
+        .from('organization_users')
         .select('organization_id')
         .eq('user_id', user.id)
         .single();
