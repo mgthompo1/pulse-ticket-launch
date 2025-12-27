@@ -22,3 +22,6 @@ export { ProductCatalog } from './products';
 
 // Pass/Membership Components
 export { PassSelector } from './passes';
+
+// Entertainment Components
+export { EntertainmentConfigEditor } from './entertainment';
