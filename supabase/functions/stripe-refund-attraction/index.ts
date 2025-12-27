@@ -214,26 +214,27 @@ serve(async (req) => {
         })
         .eq("id", booking.booking_slot_id);
 
-      // Alternative: direct SQL
-      await supabaseClient.rpc('decrement_slot_bookings', {
+      // Try RPC first, fallback to manual update
+      const { error: rpcError } = await supabaseClient.rpc('decrement_slot_bookings', {
         p_slot_id: booking.booking_slot_id,
         p_amount: booking.party_size
-      }).catch(() => {
+      });
+
+      if (rpcError) {
         // If RPC doesn't exist, do it manually
-        supabaseClient
+        const { data } = await supabaseClient
           .from("booking_slots")
           .select("current_bookings")
           .eq("id", booking.booking_slot_id)
-          .single()
-          .then(({ data }) => {
-            if (data) {
-              supabaseClient
-                .from("booking_slots")
-                .update({ current_bookings: Math.max(0, data.current_bookings - booking.party_size) })
-                .eq("id", booking.booking_slot_id);
-            }
-          });
-      });
+          .single();
+
+        if (data) {
+          await supabaseClient
+            .from("booking_slots")
+            .update({ current_bookings: Math.max(0, data.current_bookings - booking.party_size) })
+            .eq("id", booking.booking_slot_id);
+        }
+      }
     }
 
     // Create audit log entry
