@@ -70,12 +70,13 @@ export const useOnboarding = (options?: UseOnboardingOptions): OnboardingState =
       try {
         const { data: orgData, error: orgError } = await supabase
           .from("organizations")
-          .select("stripe_connected_account_id, windcave_user_id")
+          .select("stripe_account_id, payment_provider")
           .eq("id", organizationId)
           .single();
 
         if (!orgError) {
-          const hasPayment = !!(orgData?.stripe_connected_account_id || orgData?.windcave_user_id);
+          // Check if Stripe is connected or any payment provider is configured
+          const hasPayment = !!(orgData?.stripe_account_id || orgData?.payment_provider);
           setHasPaymentSetup(hasPayment);
         }
       } catch (e) {
