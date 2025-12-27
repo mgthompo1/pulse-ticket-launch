@@ -71,10 +71,10 @@ export function useReviewsV3({
         .from('attraction_rating_summary')
         .select('*')
         .eq('attraction_id', attractionId)
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        // If materialized view doesn't exist, calculate manually
+      if (error || !data) {
+        // If materialized view doesn't exist or no data, calculate manually
         return calculateSummary(attractionId);
       }
 
