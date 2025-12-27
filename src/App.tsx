@@ -67,22 +67,31 @@ const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemeProvider>
-          <TooltipProvider>
-            <ClientOnlyToaster />
-              <Routes>
-                {/* Public routes */}
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/auth/confirm" element={<AuthConfirm />} />
-                <Route path="/auth/check-email" element={<EmailConfirmation />} />
-                <Route path="/auth/givvv" element={<GivvvAuth />} />
-                <Route path="/widget/:eventId" element={<WidgetRouter />} />
-                <Route path="/group/:slug/widget" element={<GroupPublicWidget />} />
-                <Route path="/attraction/:attractionId" element={<AttractionWidget />} />
-                <Route path="/embed/attraction/:attractionId" element={<AttractionEmbed />} />
-                <Route path="/booking-demo" element={<AttractionBookingDemo />} />
-                <Route path="/attraction-v3-demo" element={<AttractionV3Demo />} />
+        <Routes>
+          {/* Embed routes - outside ThemeProvider to use their own theme settings */}
+          <Route path="/embed/attraction/:attractionId" element={
+            <TooltipProvider>
+              <AttractionEmbed />
+            </TooltipProvider>
+          } />
+
+          {/* All other routes wrapped in ThemeProvider */}
+          <Route path="/*" element={
+            <ThemeProvider>
+              <TooltipProvider>
+                <ClientOnlyToaster />
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/auth/confirm" element={<AuthConfirm />} />
+                  <Route path="/auth/check-email" element={<EmailConfirmation />} />
+                  <Route path="/auth/givvv" element={<GivvvAuth />} />
+                  <Route path="/widget/:eventId" element={<WidgetRouter />} />
+                  <Route path="/group/:slug/widget" element={<GroupPublicWidget />} />
+                  <Route path="/attraction/:attractionId" element={<AttractionWidget />} />
+                  <Route path="/booking-demo" element={<AttractionBookingDemo />} />
+                  <Route path="/attraction-v3-demo" element={<AttractionV3Demo />} />
                 <Route path="/topup/:token" element={<TopUpPage />} />
                 {/* DEPRECATED: /admin-auth has been removed due to hardcoded credentials security vulnerability */}
                 {/* Use /secure-admin instead which has database-backed authentication with TOTP support */}
@@ -154,11 +163,13 @@ const App = () => (
                 } />
                 <Route path="/group/:slug" element={<GroupPortal />} />
 
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-          </TooltipProvider>
-        </ThemeProvider>
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </TooltipProvider>
+            </ThemeProvider>
+          } />
+        </Routes>
       </AuthProvider>
     </QueryClientProvider>
   </HelmetProvider>
