@@ -244,27 +244,28 @@ export function useProductCategories(attractionId: string) {
   return useQuery({
     queryKey: ['productCategories', attractionId],
     queryFn: async () => {
+      // Get unique categories from products (simple text-based categories)
       const { data, error } = await supabase
-        .from('product_categories')
-        .select('*')
+        .from('attraction_products')
+        .select('category')
         .eq('attraction_id', attractionId)
-        .eq('is_active', true)
-        .order('display_order');
+        .not('category', 'is', null);
 
       if (error) throw error;
 
-      // Build tree structure
-      const categories = data as ProductCategory[];
-      const rootCategories = categories.filter(c => !c.parent_id);
+      // Extract unique category names
+      const uniqueCategories = [...new Set(
+        (data || [])
+          .map(p => p.category)
+          .filter((c): c is string => !!c)
+      )];
 
-      const buildTree = (parent: ProductCategory): ProductCategory => ({
-        ...parent,
-        children: categories
-          .filter(c => c.parent_id === parent.id)
-          .map(buildTree),
-      });
+      // Always include 'General' as default
+      if (!uniqueCategories.includes('General')) {
+        uniqueCategories.unshift('General');
+      }
 
-      return rootCategories.map(buildTree);
+      return uniqueCategories.sort();
     },
     enabled: !!attractionId,
   });

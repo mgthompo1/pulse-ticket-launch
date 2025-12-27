@@ -64,7 +64,7 @@ interface ProductFormData {
   sku: string;
   price: number;
   cost: number | null;
-  quantity_in_stock: number;
+  inventory_count: number;
   low_stock_threshold: number;
   track_inventory: boolean;
   is_active: boolean;
@@ -79,7 +79,7 @@ const defaultFormData: ProductFormData = {
   sku: '',
   price: 0,
   cost: null,
-  quantity_in_stock: 0,
+  inventory_count: 0,
   low_stock_threshold: 5,
   track_inventory: true,
   is_active: true,
@@ -125,7 +125,7 @@ export function ProductCatalog({ attractionId, verticalType = 'golf', className 
   const lowStockProducts = React.useMemo(() => {
     if (!products) return [];
     return products.filter(
-      (p) => p.track_inventory && p.quantity_in_stock <= p.low_stock_threshold
+      (p) => p.track_inventory && p.inventory_count <= p.low_stock_threshold
     );
   }, [products]);
 
@@ -139,7 +139,7 @@ export function ProductCatalog({ attractionId, verticalType = 'golf', className 
         sku: product.sku || '',
         price: product.price,
         cost: product.cost,
-        quantity_in_stock: product.quantity_in_stock,
+        inventory_count: product.inventory_count,
         low_stock_threshold: product.low_stock_threshold,
         track_inventory: product.track_inventory,
         is_active: product.is_active,
@@ -341,9 +341,9 @@ export function ProductCatalog({ attractionId, verticalType = 'golf', className 
                           id="quantity"
                           type="number"
                           min="0"
-                          value={formData.quantity_in_stock}
+                          value={formData.inventory_count}
                           onChange={(e) =>
-                            setFormData({ ...formData, quantity_in_stock: parseInt(e.target.value) || 0 })
+                            setFormData({ ...formData, inventory_count: parseInt(e.target.value) || 0 })
                           }
                         />
                       </div>
@@ -475,7 +475,7 @@ export function ProductCatalog({ attractionId, verticalType = 'golf', className 
               {filteredProducts.map((product) => {
                 const isLowStock =
                   product.track_inventory &&
-                  product.quantity_in_stock <= product.low_stock_threshold;
+                  product.inventory_count <= product.low_stock_threshold;
 
                 return (
                   <TableRow key={product.id}>
@@ -523,7 +523,7 @@ export function ProductCatalog({ attractionId, verticalType = 'golf', className 
                         <div className={cn('flex items-center gap-1', isLowStock && 'text-amber-600')}>
                           {isLowStock && <AlertTriangle className="w-4 h-4" />}
                           <Box className="w-4 h-4 text-muted-foreground" />
-                          {product.quantity_in_stock}
+                          {product.inventory_count}
                         </div>
                       ) : (
                         <span className="text-muted-foreground">-</span>
