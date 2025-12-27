@@ -20,6 +20,7 @@ interface AttractionData {
   description: string | null;
   venue: string | null;
   attraction_type: string;
+  vertical_type?: string;
   duration_minutes: number;
   base_price: number;
   max_concurrent_bookings: number;
@@ -311,6 +312,7 @@ const AttractionWidget = () => {
           image_url: attractionData.logo_url || undefined,
           resource_label: attractionData.widget_customization?.resourceLabel || undefined,
           timezone: attractionData.timezone || 'Pacific/Auckland',
+          vertical_type: attractionData.vertical_type as any,
           hero_settings: attractionData.widget_customization ? {
             layout: attractionData.widget_customization.heroLayout || 'fullwidth',
             showGallery: true,

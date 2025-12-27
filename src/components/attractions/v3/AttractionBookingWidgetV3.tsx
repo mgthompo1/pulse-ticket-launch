@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, X, Loader2, Flag, Users, Shirt, Car, MapPin, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -16,6 +16,13 @@ import { useAvailabilityV3 } from '@/hooks/attractions/useAvailabilityV3';
 import { useAddonsV3 } from '@/hooks/attractions/useAddonsV3';
 import { useStaffProfilesV3 } from '@/hooks/attractions/useStaffProfilesV3';
 import { useReviewsV3 } from '@/hooks/attractions/useReviewsV3';
+import { useGolfConfig } from '@/hooks/useGolfConfig';
+
+// Golf components
+import { TeeTimeSelector } from '@/components/verticals/golf/TeeTimeSelector';
+
+// Types
+import type { VerticalType, GolfCourseConfig } from '@/types/verticals';
 
 // Payment
 import { AttractionStripePayment } from '@/components/payment/AttractionStripePayment';
@@ -85,6 +92,7 @@ interface AttractionBookingWidgetV3Props {
     resource_label?: string;
     hero_settings?: HeroSettings;
     timezone?: string;
+    vertical_type?: VerticalType;
   };
   theme?: ThemeSettings;
   trustSignals?: {
@@ -134,6 +142,13 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
   const [reservationId, setReservationId] = useState<string | null>(null);
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
 
+  // Golf mode state
+  const isGolfMode = attraction.vertical_type === 'golf';
+  const { data: golfConfig } = useGolfConfig(isGolfMode ? attractionId : '');
+  const [selectedHoles, setSelectedHoles] = useState<number>(18);
+  const [cartSelected, setCartSelected] = useState(false);
+  const [caddieSelected, setCaddieSelected] = useState(false);
+
   // Promo code state
   const [promoCode, setPromoCode] = useState('');
   const [promoCodeValidating, setPromoCodeValidating] = useState(false);
@@ -166,6 +181,16 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Set default holes from golf config
+  useEffect(() => {
+    if (golfConfig?.default_holes) {
+      setSelectedHoles(golfConfig.default_holes);
+    }
+    if (golfConfig?.cart_included) {
+      setCartSelected(true);
+    }
+  }, [golfConfig]);
 
   // Check for online waivers
   useEffect(() => {
@@ -277,14 +302,29 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
     enabled: showReviews,
   });
 
+  // Calculate golf extras (cart + caddie)
+  const golfExtrasTotal = useMemo(() => {
+    if (!isGolfMode || !golfConfig) return 0;
+    let extras = 0;
+    // Cart fee (if not included and selected)
+    if (!golfConfig.cart_included && cartSelected && golfConfig.cart_fee) {
+      extras += golfConfig.cart_fee * state.partySize;
+    }
+    // Caddie fee (if available and selected)
+    if (golfConfig.caddie_available && caddieSelected && golfConfig.caddie_fee) {
+      extras += golfConfig.caddie_fee;
+    }
+    return extras;
+  }, [isGolfMode, golfConfig, cartSelected, caddieSelected, state.partySize]);
+
   // Calculate subtotal (before promo)
   const subtotalPrice = useMemo(() => {
     if (selectedPackageId) {
       const pkg = packages.find((p) => p.id === selectedPackageId);
-      return (pkg?.price || 0) + getAddonTotal();
+      return (pkg?.price || 0) + getAddonTotal() + golfExtrasTotal;
     }
-    return (attraction.base_price * state.partySize) + getAddonTotal();
-  }, [attraction.base_price, state.partySize, selectedPackageId, packages, getAddonTotal]);
+    return (attraction.base_price * state.partySize) + getAddonTotal() + golfExtrasTotal;
+  }, [attraction.base_price, state.partySize, selectedPackageId, packages, getAddonTotal, golfExtrasTotal]);
 
   // Calculate total (after promo discount)
   const totalPrice = useMemo(() => {
@@ -576,15 +616,147 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
-            {/* Party Size */}
+            {/* Golf Course Info */}
+            {isGolfMode && golfConfig && (
+              <motion.div variants={staggerItem}>
+                <div className="p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Flag className="w-5 h-5 text-green-600" />
+                    <h3 className="font-semibold text-green-900 dark:text-green-100">Course Information</h3>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                    {golfConfig.par && (
+                      <div className="text-center p-2 bg-white/60 dark:bg-black/20 rounded-lg">
+                        <div className="text-lg font-bold text-green-700 dark:text-green-300">{golfConfig.par}</div>
+                        <div className="text-xs text-green-600 dark:text-green-400">Par</div>
+                      </div>
+                    )}
+                    {golfConfig.total_yards && (
+                      <div className="text-center p-2 bg-white/60 dark:bg-black/20 rounded-lg">
+                        <div className="text-lg font-bold text-green-700 dark:text-green-300">{golfConfig.total_yards.toLocaleString()}</div>
+                        <div className="text-xs text-green-600 dark:text-green-400">Yards</div>
+                      </div>
+                    )}
+                    {golfConfig.course_rating && (
+                      <div className="text-center p-2 bg-white/60 dark:bg-black/20 rounded-lg">
+                        <div className="text-lg font-bold text-green-700 dark:text-green-300">{golfConfig.course_rating}</div>
+                        <div className="text-xs text-green-600 dark:text-green-400">Rating</div>
+                      </div>
+                    )}
+                    {golfConfig.slope_rating && (
+                      <div className="text-center p-2 bg-white/60 dark:bg-black/20 rounded-lg">
+                        <div className="text-lg font-bold text-green-700 dark:text-green-300">{golfConfig.slope_rating}</div>
+                        <div className="text-xs text-green-600 dark:text-green-400">Slope</div>
+                      </div>
+                    )}
+                  </div>
+                  {golfConfig.dress_code && (
+                    <div className="mt-3 flex items-start gap-2 text-sm text-green-700 dark:text-green-300">
+                      <Shirt className="w-4 h-4 mt-0.5 shrink-0" />
+                      <span><strong>Dress Code:</strong> {golfConfig.dress_code}</span>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Holes Selection for Golf */}
+            {isGolfMode && golfConfig && (
+              <motion.div variants={staggerItem}>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Number of Holes</label>
+                  <div className="flex gap-3">
+                    {(golfConfig.holes_options || [9, 18]).map((holes) => (
+                      <button
+                        key={holes}
+                        onClick={() => setSelectedHoles(holes)}
+                        className={cn(
+                          'flex-1 p-4 rounded-xl border-2 font-semibold transition-all',
+                          selectedHoles === holes
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border hover:border-primary/50 text-foreground'
+                        )}
+                      >
+                        <div className="text-2xl">{holes}</div>
+                        <div className="text-xs text-muted-foreground">
+                          ~{holes === 9 ? golfConfig.nine_hole_duration || 120 : golfConfig.eighteen_hole_duration || 240} min
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Party Size - labeled as "Players" for golf */}
             <motion.div variants={staggerItem}>
               <PartySizeSelector
                 value={state.partySize}
                 onChange={handlePartySizeChange}
                 pricePerPerson={attraction.base_price}
                 currency={currency}
+                label={isGolfMode ? 'Players' : undefined}
+                maxSize={isGolfMode && golfConfig ? golfConfig.max_players_per_tee : undefined}
               />
             </motion.div>
+
+            {/* Cart & Caddie Options for Golf */}
+            {isGolfMode && golfConfig && (
+              <motion.div variants={staggerItem}>
+                <div className="space-y-3">
+                  {/* Cart Option */}
+                  {!golfConfig.cart_included && golfConfig.cart_fee && (
+                    <label className="flex items-center justify-between p-4 rounded-xl border-2 border-border hover:border-primary/50 cursor-pointer transition-all">
+                      <div className="flex items-center gap-3">
+                        <Car className="w-5 h-5 text-muted-foreground" />
+                        <div>
+                          <div className="font-medium">Golf Cart</div>
+                          <div className="text-sm text-muted-foreground">
+                            {formatPrice(golfConfig.cart_fee, currency)} per player
+                          </div>
+                        </div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={cartSelected}
+                        onChange={(e) => setCartSelected(e.target.checked)}
+                        className="w-5 h-5 rounded border-border text-primary focus:ring-primary"
+                      />
+                    </label>
+                  )}
+                  {golfConfig.cart_included && (
+                    <div className="flex items-center gap-3 p-4 rounded-xl bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+                      <Car className="w-5 h-5 text-green-600" />
+                      <div>
+                        <div className="font-medium text-green-700 dark:text-green-300">Golf Cart Included</div>
+                        <div className="text-sm text-green-600 dark:text-green-400">Cart is included with your green fee</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Caddie Option */}
+                  {golfConfig.caddie_available && golfConfig.caddie_fee && (
+                    <label className="flex items-center justify-between p-4 rounded-xl border-2 border-border hover:border-primary/50 cursor-pointer transition-all">
+                      <div className="flex items-center gap-3">
+                        <Users className="w-5 h-5 text-muted-foreground" />
+                        <div>
+                          <div className="font-medium">Caddie Service</div>
+                          <div className="text-sm text-muted-foreground">
+                            {formatPrice(golfConfig.caddie_fee, currency)} per round
+                          </div>
+                        </div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={caddieSelected}
+                        onChange={(e) => setCaddieSelected(e.target.checked)}
+                        className="w-5 h-5 rounded border-border text-primary focus:ring-primary"
+                      />
+                    </label>
+                  )}
+                </div>
+              </motion.div>
+            )}
 
             {/* Calendar */}
             <motion.div variants={staggerItem}>
@@ -809,12 +981,42 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
                 {/* Base Booking */}
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
-                    {attraction.name} x {state.partySize}
+                    {isGolfMode ? `Green Fee (${selectedHoles} holes)` : attraction.name} x {state.partySize}
                   </span>
                   <span className="font-medium">
                     {formatPrice(attraction.base_price * state.partySize, currency)}
                   </span>
                 </div>
+
+                {/* Golf Extras */}
+                {isGolfMode && golfConfig && (
+                  <>
+                    {!golfConfig.cart_included && cartSelected && golfConfig.cart_fee && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Golf Cart x {state.partySize}
+                        </span>
+                        <span className="font-medium">
+                          {formatPrice(golfConfig.cart_fee * state.partySize, currency)}
+                        </span>
+                      </div>
+                    )}
+                    {golfConfig.cart_included && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Golf Cart (Included)</span>
+                        <span>Free</span>
+                      </div>
+                    )}
+                    {golfConfig.caddie_available && caddieSelected && golfConfig.caddie_fee && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Caddie Service</span>
+                        <span className="font-medium">
+                          {formatPrice(golfConfig.caddie_fee, currency)}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
 
                 {/* Add-ons */}
                 {Array.from(selectedAddons.entries()).map(([addonId, qty]) => {
@@ -986,6 +1188,15 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
               addon: addons.find((a) => a.id === id)!,
               quantity: qty,
             })).filter((a) => a.addon)}
+            golfDetails={isGolfMode && golfConfig ? {
+              holes: selectedHoles,
+              cartIncluded: golfConfig.cart_included || cartSelected,
+              caddieSelected,
+              dressCode: golfConfig.dress_code,
+              par: golfConfig.par,
+              courseRating: golfConfig.course_rating,
+              slopeRating: golfConfig.slope_rating,
+            } : undefined}
           />
         );
 
@@ -1064,7 +1275,7 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
                 <ProgressStepper
                   steps={steps.filter((s) => s !== 'confirmation').map((step) => ({
                     id: step,
-                    label: getStepLabel(step),
+                    label: getStepLabel(step, isGolfMode),
                   }))}
                   currentStep={currentStep}
                   onStepClick={(stepId) => goToStep(stepId as any)}
@@ -1187,10 +1398,10 @@ export const AttractionBookingWidgetV3: React.FC<AttractionBookingWidgetV3Props>
 };
 
 // Helper to get step labels
-function getStepLabel(step: string): string {
+function getStepLabel(step: string, isGolf?: boolean): string {
   const labels: Record<string, string> = {
-    date: 'Date',
-    time: 'Time',
+    date: isGolf ? 'Tee Time' : 'Date',
+    time: isGolf ? 'Tee Time' : 'Time',
     staff: 'Guide',
     addons: 'Extras',
     requirements: 'Requirements',

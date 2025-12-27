@@ -193,7 +193,10 @@ serve(async (req) => {
         // Send heartbeat with response time
         await fetch(`${kodoUrl}/api/heartbeat/${kodoMonitorId}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': kodoApiKey,
+          },
           body: JSON.stringify({
             status: apiStatus === 'operational' ? 'up' : 'down',
             response_time_ms: avgResponseTime,

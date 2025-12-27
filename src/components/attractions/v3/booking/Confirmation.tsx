@@ -21,6 +21,9 @@ import {
   QrCode,
   Smartphone,
   Printer,
+  Flag,
+  Car,
+  Shirt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -39,6 +42,16 @@ import {
   cardHover,
   buttonTap,
 } from '@/lib/animations';
+
+interface GolfDetails {
+  holes: number;
+  cartIncluded: boolean;
+  caddieSelected: boolean;
+  dressCode?: string | null;
+  par?: number;
+  courseRating?: number | null;
+  slopeRating?: number | null;
+}
 
 interface ConfirmationProps {
   booking: {
@@ -61,6 +74,7 @@ interface ConfirmationProps {
   selectedPackage?: AttractionPackage | null;
   selectedAddons?: { addon: AttractionAddon; quantity: number }[];
   staffName?: string;
+  golfDetails?: GolfDetails;
   upsells?: {
     id: string;
     title: string;
@@ -80,6 +94,7 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
   selectedPackage,
   selectedAddons,
   staffName,
+  golfDetails,
   upsells = [],
   onAddUpsell,
   onDownloadTicket,
@@ -235,14 +250,21 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
             />
             <DetailItem
               icon={<Clock className="w-5 h-5" />}
-              label="Time"
+              label={golfDetails ? 'Tee Time' : 'Time'}
               value={formatTime(booking.time)}
             />
             <DetailItem
               icon={<Users className="w-5 h-5" />}
-              label="Guests"
-              value={`${booking.partySize} ${booking.partySize === 1 ? 'person' : 'people'}`}
+              label={golfDetails ? 'Players' : 'Guests'}
+              value={`${booking.partySize} ${booking.partySize === 1 ? (golfDetails ? 'player' : 'person') : (golfDetails ? 'players' : 'people')}`}
             />
+            {golfDetails && (
+              <DetailItem
+                icon={<Flag className="w-5 h-5" />}
+                label="Round"
+                value={`${golfDetails.holes} holes`}
+              />
+            )}
             {staffName && (
               <DetailItem
                 icon={<Star className="w-5 h-5" />}
@@ -251,6 +273,58 @@ export const Confirmation: React.FC<ConfirmationProps> = ({
               />
             )}
           </div>
+
+          {/* Golf-specific details */}
+          {golfDetails && (
+            <div className="mt-6 pt-6 border-t border-border">
+              <h3 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                <Flag className="w-4 h-4 text-green-600" />
+                Golf Details
+              </h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <Car className="w-4 h-4" />
+                    Golf Cart
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {golfDetails.cartIncluded ? 'Included' : 'Not included'}
+                  </span>
+                </div>
+                {golfDetails.caddieSelected && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Caddie Service</span>
+                    <span className="font-medium text-foreground">Yes</span>
+                  </div>
+                )}
+                {golfDetails.par && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Course Par</span>
+                    <span className="font-medium text-foreground">{golfDetails.par}</span>
+                  </div>
+                )}
+                {golfDetails.courseRating && golfDetails.slopeRating && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Rating / Slope</span>
+                    <span className="font-medium text-foreground">
+                      {golfDetails.courseRating} / {golfDetails.slopeRating}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {golfDetails.dressCode && (
+                <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-start gap-2 text-amber-700 dark:text-amber-300">
+                    <Shirt className="w-4 h-4 mt-0.5 shrink-0" />
+                    <div>
+                      <span className="font-medium text-sm">Dress Code: </span>
+                      <span className="text-sm">{golfDetails.dressCode}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Package & Add-ons */}
           {(selectedPackage || (selectedAddons && selectedAddons.length > 0)) && (

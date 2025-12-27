@@ -1,0 +1,2 @@
+# Make system-health public for Kodo monitoring
+verify_jwt = false

@@ -547,14 +547,17 @@ export const PartySizeSelector: React.FC<{
   value: number;
   min?: number;
   max?: number;
+  maxSize?: number; // Alias for max to support golf config
   onChange: (size: number) => void;
   pricePerPerson?: number;
   currency?: string;
+  label?: string;
   className?: string;
-}> = ({ value, min = 1, max = 20, onChange, pricePerPerson, currency = 'USD', className }) => {
+}> = ({ value, min = 1, max = 20, maxSize, onChange, pricePerPerson, currency = 'USD', label, className }) => {
+  const effectiveMax = maxSize || max;
   return (
     <div className={cn('space-y-2', className)}>
-      <label className="text-sm font-medium text-muted-foreground">Number of Guests</label>
+      <label className="text-sm font-medium text-muted-foreground">{label || 'Number of Guests'}</label>
       <div className="flex items-center gap-4">
         <div className="flex items-center border-2 border-border rounded-xl overflow-hidden">
           <button
@@ -568,8 +571,8 @@ export const PartySizeSelector: React.FC<{
           <span className="w-12 text-center font-semibold text-foreground">{value}</span>
           <button
             type="button"
-            onClick={() => onChange(Math.min(max, value + 1))}
-            disabled={value >= max}
+            onClick={() => onChange(Math.min(effectiveMax, value + 1))}
+            disabled={value >= effectiveMax}
             className="px-4 py-2 text-muted-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
           >
             +
