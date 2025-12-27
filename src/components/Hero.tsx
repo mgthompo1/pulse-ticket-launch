@@ -13,8 +13,16 @@ export const Hero = () => {
 
   return (
     <section className="relative pt-24 pb-0 overflow-hidden">
+      {/* Background hero image underlay */}
+      <div className="absolute inset-0">
+        <img
+          src="/images/hero-background.png"
+          alt=""
+          className="w-full h-full object-cover object-top opacity-50"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
+      </div>
       {/* Background with subtle gradient */}
-      <div className="absolute inset-0 bg-black" />
       <div className="absolute inset-0 bg-gradient-to-b from-[#ff4d00]/5 via-transparent to-transparent" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -218,8 +226,8 @@ export const Hero = () => {
         </div>
       </div>
 
-      {/* Gradient fade to white for features section */}
-      <div className="h-32 bg-gradient-to-b from-black to-white mt-16" />
+      {/* Gradient fade to features section */}
+      <div className="h-32 bg-gradient-to-b from-black to-[#FFFAF8] mt-16" />
     </section>
   );
 };

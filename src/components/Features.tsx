@@ -94,13 +94,10 @@ export const Features = () => {
   const regularFeatures = features.filter(f => !f.highlight);
 
   return (
-    <section id="features" className="py-20 bg-white">
+    <section id="features" className="py-20 bg-[#FFFAF8]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <div className="text-center mb-16">
-          <Badge variant="secondary" className="mb-4 px-4 py-2 text-sm font-medium bg-[#ff4d00]/10 text-[#ff4d00] border border-[#ff4d00]/20 font-manrope">
-            ✨ Powerful Features
-          </Badge>
           <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6 font-dm-sans">
             Everything you need to
             <span className="block bg-gradient-to-r from-[#ff4d00] to-[#ff6b2c] bg-clip-text text-transparent">
