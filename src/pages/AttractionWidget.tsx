@@ -14,6 +14,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { AttractionStripePayment } from "@/components/payment/AttractionStripePayment";
 import { AttractionWindcavePayment } from "@/components/payment/AttractionWindcavePayment";
 
+// Helper to determine dark mode
+const shouldUseDarkMode = (themeMode: string | undefined): boolean => {
+  if (themeMode === 'dark') return true;
+  if (themeMode === 'system' && typeof window !== 'undefined') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  return false;
+};
+
 interface AttractionData {
   id: string;
   name: string;
@@ -151,6 +160,31 @@ const AttractionWidget = () => {
       loadAttractionData();
     }
   }, [attractionId]);
+
+  // Override document theme based on widget_customization
+  // This ensures widget uses attraction theme, not dashboard theme from localStorage
+  useEffect(() => {
+    if (!attractionData) return;
+
+    const themeMode = attractionData.widget_customization?.themeMode;
+    const isDark = shouldUseDarkMode(themeMode);
+    const root = document.documentElement;
+
+    // Remove existing theme classes and apply the correct one
+    root.classList.remove('light', 'dark');
+    root.classList.add(isDark ? 'dark' : 'light');
+
+    // Listen for system preference changes if themeMode is 'system'
+    if (themeMode === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = (e: MediaQueryListEvent) => {
+        root.classList.remove('light', 'dark');
+        root.classList.add(e.matches ? 'dark' : 'light');
+      };
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    }
+  }, [attractionData]);
 
   // Handle booking completion - triggers payment modal
   const handleBookingComplete = (booking: any) => {
@@ -326,6 +360,7 @@ const AttractionWidget = () => {
         theme={attractionData.widget_customization ? {
           primaryColor: attractionData.widget_customization.primaryColor,
           accentColor: attractionData.widget_customization.accentColor,
+          themeMode: attractionData.widget_customization.themeMode || 'light',
           borderRadius: attractionData.widget_customization.borderRadius,
           fontFamily: attractionData.widget_customization.fontFamily,
           compactMode: attractionData.widget_customization.compactMode,
