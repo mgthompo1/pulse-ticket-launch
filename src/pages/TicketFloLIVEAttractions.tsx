@@ -45,6 +45,8 @@ import {
   RotateCcw,
   AlertTriangle,
   CalendarClock,
+  Store,
+  Trash2,
 } from "lucide-react";
 import { AttractionWaiverSigning, AttractionWaiverConfig } from "@/components/attractions/waivers";
 import { SignedWaivers } from "@/components/SignedWaivers";
@@ -82,6 +84,23 @@ interface WindcaveHITConfig {
   windcave_hit_username: string | null;
   windcave_hit_key: string | null;
   windcave_station_id: string | null;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  image_url: string | null;
+  category: string | null;
+  inventory_count: number;
+  track_inventory: boolean;
+  is_active: boolean;
+}
+
+interface CartItem {
+  product: Product;
+  quantity: number;
 }
 
 type PaymentMethod = "stripe_terminal" | "windcave_hit" | "cash";
@@ -148,6 +167,14 @@ const TicketFloLIVEAttractions = () => {
   // Add-ons/Merchandise state
   const [addons, setAddons] = useState<AttractionAddon[]>([]);
   const [selectedAddons, setSelectedAddons] = useState<Map<string, number>>(new Map());
+
+  // Products/Retail state
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productCart, setProductCart] = useState<CartItem[]>([]);
+  const [productSearchQuery, setProductSearchQuery] = useState("");
+  const [selectedProductCategory, setSelectedProductCategory] = useState<string>("all");
+  const [productSaleProcessing, setProductSaleProcessing] = useState(false);
+  const [productPaymentMethod, setProductPaymentMethod] = useState<PaymentMethod>("cash");
 
   // Payment state
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
@@ -342,6 +369,29 @@ const TicketFloLIVEAttractions = () => {
     };
 
     loadAddons();
+  }, [attractionId]);
+
+  // Load products for retail sales
+  useEffect(() => {
+    const loadProducts = async () => {
+      if (!attractionId) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('attraction_products')
+          .select('*')
+          .eq('attraction_id', attractionId)
+          .eq('is_active', true)
+          .order('display_order');
+
+        if (error) throw error;
+        setProducts(data || []);
+      } catch (error) {
+        console.error('Error loading products:', error);
+      }
+    };
+
+    loadProducts();
   }, [attractionId]);
 
   // Handle check-in
@@ -1031,10 +1081,146 @@ const TicketFloLIVEAttractions = () => {
     }
   };
 
+  // Product cart helper functions
+  const addToProductCart = (product: Product) => {
+    setProductCart((prev) => {
+      const existing = prev.find((item) => item.product.id === product.id);
+      if (existing) {
+        return prev.map((item) =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      return [...prev, { product, quantity: 1 }];
+    });
+  };
+
+  const removeFromProductCart = (productId: string) => {
+    setProductCart((prev) => prev.filter((item) => item.product.id !== productId));
+  };
+
+  const updateProductCartQuantity = (productId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeFromProductCart(productId);
+      return;
+    }
+    setProductCart((prev) =>
+      prev.map((item) =>
+        item.product.id === productId ? { ...item, quantity } : item
+      )
+    );
+  };
+
+  const getProductCartTotal = () => {
+    return productCart.reduce(
+      (sum, item) => sum + item.product.price * item.quantity,
+      0
+    );
+  };
+
+  const clearProductCart = () => {
+    setProductCart([]);
+  };
+
+  // Get unique product categories
+  const productCategories = [...new Set(products.map((p) => p.category).filter(Boolean))] as string[];
+
+  // Filter products
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch =
+      !productSearchQuery ||
+      product.name.toLowerCase().includes(productSearchQuery.toLowerCase());
+    const matchesCategory =
+      selectedProductCategory === "all" || product.category === selectedProductCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  // Process product sale
+  const handleProductSale = async () => {
+    if (productCart.length === 0) {
+      toast({
+        title: "Empty Cart",
+        description: "Add products to the cart before processing sale",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setProductSaleProcessing(true);
+    try {
+      // Create product sales records
+      const salesRecords = productCart.map((item) => ({
+        attraction_id: attractionId,
+        product_id: item.product.id,
+        product_name: item.product.name,
+        quantity: item.quantity,
+        unit_price: item.product.price,
+        total_price: item.product.price * item.quantity,
+        payment_status: "paid",
+        fulfillment_status: "fulfilled",
+        fulfilled_at: new Date().toISOString(),
+        sold_by: user?.id,
+        sale_channel: "pos",
+      }));
+
+      const { error } = await supabase.from("product_sales").insert(salesRecords);
+
+      if (error) throw error;
+
+      // Update inventory for tracked products
+      for (const item of productCart) {
+        if (item.product.track_inventory) {
+          await supabase
+            .from("attraction_products")
+            .update({
+              inventory_count: item.product.inventory_count - item.quantity,
+            })
+            .eq("id", item.product.id);
+        }
+      }
+
+      toast({
+        title: "Sale Complete",
+        description: `${productCart.length} item(s) sold for ${formatPrice(
+          getProductCartTotal(),
+          attractionData?.currency || "USD"
+        )}`,
+      });
+
+      // Refresh products and clear cart
+      const { data: updatedProducts } = await supabase
+        .from("attraction_products")
+        .select("*")
+        .eq("attraction_id", attractionId)
+        .eq("is_active", true)
+        .order("display_order");
+
+      setProducts(updatedProducts || []);
+      clearProductCart();
+
+      // Update analytics
+      setAnalytics((prev) => ({
+        ...prev,
+        todayRevenue: prev.todayRevenue + getProductCartTotal(),
+      }));
+    } catch (error) {
+      console.error("Product sale error:", error);
+      toast({
+        title: "Sale Failed",
+        description: "Failed to process product sale",
+        variant: "destructive",
+      });
+    } finally {
+      setProductSaleProcessing(false);
+    }
+  };
+
   // Sidebar navigation items
   const navItems = [
     { id: 'checkin', label: 'Check-In', icon: UserCheck },
     { id: 'walkup', label: 'Walk-Up Sales', icon: ShoppingCart },
+    { id: 'products', label: 'Pro Shop', icon: Store },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
     { id: 'waivers', label: 'Waivers', icon: FileSignature },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
@@ -1685,6 +1871,240 @@ const TicketFloLIVEAttractions = () => {
                         </Button>
                       )}
                     </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Pro Shop / Products Tab */}
+          {activeTab === 'products' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Product Grid */}
+              <div className="lg:col-span-2 space-y-4">
+                {/* Search and Filter */}
+                <div className="flex gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      placeholder="Search products..."
+                      value={productSearchQuery}
+                      onChange={(e) => setProductSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select
+                    value={selectedProductCategory}
+                    onValueChange={setSelectedProductCategory}
+                  >
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="All Categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {productCategories.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Products Grid */}
+                {products.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-12 text-center">
+                      <Store className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+                      <p className="text-gray-500">No products available</p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        Add products in the attraction admin panel
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {filteredProducts.map((product) => {
+                      const isLowStock =
+                        product.track_inventory && product.inventory_count <= 5;
+                      const isOutOfStock =
+                        product.track_inventory && product.inventory_count <= 0;
+
+                      return (
+                        <button
+                          key={product.id}
+                          onClick={() => !isOutOfStock && addToProductCart(product)}
+                          disabled={isOutOfStock}
+                          className={`p-3 border rounded-lg text-left transition-all ${
+                            isOutOfStock
+                              ? "opacity-50 cursor-not-allowed bg-gray-50"
+                              : "hover:border-blue-500 hover:shadow-md cursor-pointer"
+                          }`}
+                        >
+                          {product.image_url ? (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="w-full h-20 object-cover rounded-md mb-2"
+                            />
+                          ) : (
+                            <div className="w-full h-20 bg-gray-100 rounded-md mb-2 flex items-center justify-center">
+                              <Package className="w-8 h-8 text-gray-300" />
+                            </div>
+                          )}
+                          <p className="font-medium text-sm truncate">{product.name}</p>
+                          <p className="text-sm font-semibold text-blue-600">
+                            {formatPrice(product.price, attractionData?.currency || "USD")}
+                          </p>
+                          {isOutOfStock ? (
+                            <Badge variant="destructive" className="mt-1 text-xs">
+                              Out of Stock
+                            </Badge>
+                          ) : isLowStock ? (
+                            <Badge variant="outline" className="mt-1 text-xs text-orange-600">
+                              Low Stock ({product.inventory_count})
+                            </Badge>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Cart Panel */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2">
+                    <ShoppingCart className="w-5 h-5" />
+                    Cart
+                    {productCart.length > 0 && (
+                      <Badge variant="secondary" className="ml-auto">
+                        {productCart.reduce((sum, item) => sum + item.quantity, 0)} items
+                      </Badge>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {productCart.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400">
+                      <ShoppingCart className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>Cart is empty</p>
+                      <p className="text-sm">Tap products to add</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Cart Items */}
+                      <div className="space-y-3 max-h-64 overflow-y-auto">
+                        {productCart.map((item) => (
+                          <div
+                            key={item.product.id}
+                            className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">
+                                {item.product.name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {formatPrice(item.product.price, attractionData?.currency || "USD")} each
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() =>
+                                  updateProductCartQuantity(
+                                    item.product.id,
+                                    item.quantity - 1
+                                  )
+                                }
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="w-6 text-center text-sm font-medium">
+                                {item.quantity}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() =>
+                                  updateProductCartQuantity(
+                                    item.product.id,
+                                    item.quantity + 1
+                                  )
+                                }
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-red-500 hover:text-red-700"
+                                onClick={() => removeFromProductCart(item.product.id)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Cart Total */}
+                      <div className="border-t pt-4">
+                        <div className="flex justify-between font-bold text-lg mb-4">
+                          <span>Total:</span>
+                          <span>
+                            {formatPrice(getProductCartTotal(), attractionData?.currency || "USD")}
+                          </span>
+                        </div>
+
+                        {/* Payment Method */}
+                        <div className="space-y-2 mb-4">
+                          <Label>Payment Method</Label>
+                          <Select
+                            value={productPaymentMethod}
+                            onValueChange={(v: PaymentMethod) => setProductPaymentMethod(v)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="cash">Cash</SelectItem>
+                              <SelectItem value="stripe_terminal">Card (Stripe)</SelectItem>
+                              <SelectItem value="windcave_hit">Card (Windcave)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="space-y-2">
+                          <Button
+                            className="w-full"
+                            onClick={handleProductSale}
+                            disabled={productSaleProcessing}
+                          >
+                            {productSaleProcessing ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <DollarSign className="w-4 h-4 mr-2" />
+                            )}
+                            Complete Sale
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={clearProductCart}
+                            disabled={productSaleProcessing}
+                          >
+                            <X className="w-4 h-4 mr-2" />
+                            Clear Cart
+                          </Button>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </CardContent>
               </Card>
