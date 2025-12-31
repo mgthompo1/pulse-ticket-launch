@@ -7,6 +7,7 @@ import SwiftUI
 class AuthService: ObservableObject {
     @Published var isAuthenticated = false
     @Published var isLoading = false
+    @Published var errorMessage: String?
 
     private let supabaseService = SupabaseService.shared
 
@@ -16,6 +17,8 @@ class AuthService: ObservableObject {
             .assign(to: &$isAuthenticated)
         supabaseService.$isLoading
             .assign(to: &$isLoading)
+        supabaseService.$error
+            .assign(to: &$errorMessage)
     }
 
     func signIn() {
@@ -31,10 +34,13 @@ class AuthService: ObservableObject {
     }
 
     func signInWithCredentials(email: String, password: String) {
+        print("🔐 Starting sign in for: \(email)")
         Task {
             let success = await supabaseService.signIn(email: email, password: password)
             if !success {
-                print("Authentication failed")
+                print("❌ Authentication failed")
+            } else {
+                print("✅ Authentication succeeded")
             }
         }
     }
@@ -101,107 +107,327 @@ struct LoginView: View {
     @EnvironmentObject var authService: AuthService
     @State private var email = ""
     @State private var password = ""
+    @State private var showPassword = false
+    @State private var isAnimating = false
+    @State private var showError = false
+    @State private var errorMessage = ""
+    @FocusState private var focusedField: Field?
+
+    enum Field {
+        case email, password
+    }
 
     var body: some View {
         ZStack {
-            // Black background to match brand
-            Color.black
-                .ignoresSafeArea()
+            // Gradient background
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(red: 0.05, green: 0.05, blue: 0.1),
+                    Color.black
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
-            VStack(spacing: 40) {
-                Spacer()
+            // Animated background circles
+            GeometryReader { geo in
+                Circle()
+                    .fill(Color.ticketFloOrange.opacity(0.1))
+                    .frame(width: 300, height: 300)
+                    .blur(radius: 60)
+                    .offset(x: isAnimating ? geo.size.width * 0.3 : geo.size.width * 0.1,
+                            y: isAnimating ? geo.size.height * 0.1 : geo.size.height * 0.2)
+                    .animation(.easeInOut(duration: 8).repeatForever(autoreverses: true), value: isAnimating)
 
-                VStack(spacing: 24) {
-                    // TicketFlo logo in brand orange
-                    VStack(spacing: 16) {
-                        Image(systemName: "ticket.fill")
-                            .font(.system(size: 80, weight: .medium))
-                            .foregroundColor(.ticketFloOrange)
+                Circle()
+                    .fill(Color.blue.opacity(0.08))
+                    .frame(width: 250, height: 250)
+                    .blur(radius: 50)
+                    .offset(x: isAnimating ? geo.size.width * 0.5 : geo.size.width * 0.7,
+                            y: isAnimating ? geo.size.height * 0.6 : geo.size.height * 0.5)
+                    .animation(.easeInOut(duration: 6).repeatForever(autoreverses: true), value: isAnimating)
+            }
+            .ignoresSafeArea()
 
-                        Text("TicketFlo")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundColor(.ticketFloOrange)
+            ScrollView {
+                VStack(spacing: 32) {
+                    Spacer().frame(height: 60)
 
-                        Text("LIVE")
-                            .font(.system(size: 18, weight: .semibold, design: .rounded))
-                            .foregroundColor(.white)
-                            .tracking(2)
-                    }
+                    // Logo and branding
+                    VStack(spacing: 20) {
+                        // Animated logo
+                        ZStack {
+                            // Glow effect
+                            Circle()
+                                .fill(Color.ticketFloOrange.opacity(0.3))
+                                .frame(width: 120, height: 120)
+                                .blur(radius: 20)
 
-                    Text("Event Management")
-                        .font(.system(size: 17, weight: .medium))
-                        .foregroundColor(.white.opacity(0.8))
-                }
+                            // Icon background
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.ticketFloOrange,
+                                            Color.ticketFloOrange.opacity(0.8)
+                                        ]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 100, height: 100)
+                                .shadow(color: Color.ticketFloOrange.opacity(0.5), radius: 20, x: 0, y: 10)
 
-                VStack(spacing: 24) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Email")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white)
-
-                        TextField("Enter your email", text: $email)
-                            .font(.system(size: 16))
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 16)
-                            .background(Color.white.opacity(0.1))
-                            .cornerRadius(12)
-                            .foregroundColor(.white)
-                            .autocapitalization(.none)
-                            .keyboardType(.emailAddress)
-                    }
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Password")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white)
-
-                        SecureField("Enter your password", text: $password)
-                            .font(.system(size: 16))
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 16)
-                            .background(Color.white.opacity(0.1))
-                            .cornerRadius(12)
-                            .foregroundColor(.white)
-                    }
-
-                    Button(action: {
-                        if !email.isEmpty && !password.isEmpty {
-                            authService.signInWithCredentials(email: email, password: password)
-                        } else {
-                            authService.signIn()
+                            Image(systemName: "ticket.fill")
+                                .font(.system(size: 48, weight: .medium))
+                                .foregroundColor(.white)
+                                .rotationEffect(.degrees(isAnimating ? -10 : 10))
+                                .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: isAnimating)
                         }
-                    }) {
-                        HStack {
-                            if authService.isLoading {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                    .scaleEffect(0.8)
-                            } else {
-                                Text("Sign In")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundColor(.white)
+
+                        VStack(spacing: 8) {
+                            Text("TicketFlo")
+                                .font(.system(size: 40, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+
+                            HStack(spacing: 8) {
+                                Rectangle()
+                                    .fill(Color.ticketFloOrange)
+                                    .frame(width: 20, height: 2)
+
+                                Text("LIVE")
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundColor(.ticketFloOrange)
+                                    .tracking(4)
+
+                                Rectangle()
+                                    .fill(Color.ticketFloOrange)
+                                    .frame(width: 20, height: 2)
                             }
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(Color.ticketFloOrange)
-                        .cornerRadius(12)
-                    }
-                    .disabled(authService.isLoading)
-                    .opacity(authService.isLoading ? 0.8 : 1.0)
 
-                    Button(action: { authService.signIn() }) {
-                        Text("Try Demo Mode")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white.opacity(0.7))
-                            .underline()
+                        Text("Check-In & Event Management")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.white.opacity(0.6))
                     }
-                    .padding(.top, 8)
+                    .padding(.bottom, 20)
+
+                    // Login form
+                    VStack(spacing: 20) {
+                        // Email field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Email")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.8))
+
+                            HStack(spacing: 12) {
+                                Image(systemName: "envelope.fill")
+                                    .foregroundColor(.white.opacity(0.5))
+                                    .frame(width: 20)
+
+                                TextField("", text: $email)
+                                    .placeholder(when: email.isEmpty) {
+                                        Text("Enter your email").foregroundColor(.white.opacity(0.3))
+                                    }
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.white)
+                                    .autocapitalization(.none)
+                                    .keyboardType(.emailAddress)
+                                    .textContentType(.emailAddress)
+                                    .focused($focusedField, equals: .email)
+                                    .submitLabel(.next)
+                                    .onSubmit { focusedField = .password }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color.white.opacity(0.08))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .stroke(focusedField == .email ? Color.ticketFloOrange : Color.white.opacity(0.1), lineWidth: 1)
+                                    )
+                            )
+                        }
+
+                        // Password field
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Password")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.8))
+
+                            HStack(spacing: 12) {
+                                Image(systemName: "lock.fill")
+                                    .foregroundColor(.white.opacity(0.5))
+                                    .frame(width: 20)
+
+                                Group {
+                                    if showPassword {
+                                        TextField("", text: $password)
+                                            .placeholder(when: password.isEmpty) {
+                                                Text("Enter your password").foregroundColor(.white.opacity(0.3))
+                                            }
+                                    } else {
+                                        SecureField("", text: $password)
+                                            .placeholder(when: password.isEmpty) {
+                                                Text("Enter your password").foregroundColor(.white.opacity(0.3))
+                                            }
+                                    }
+                                }
+                                .font(.system(size: 16))
+                                .foregroundColor(.white)
+                                .focused($focusedField, equals: .password)
+                                .submitLabel(.go)
+                                .onSubmit { signIn() }
+
+                                Button(action: { showPassword.toggle() }) {
+                                    Image(systemName: showPassword ? "eye.slash.fill" : "eye.fill")
+                                        .foregroundColor(.white.opacity(0.5))
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .fill(Color.white.opacity(0.08))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .stroke(focusedField == .password ? Color.ticketFloOrange : Color.white.opacity(0.1), lineWidth: 1)
+                                    )
+                            )
+                        }
+
+                        // Sign In button
+                        Button(action: signIn) {
+                            HStack(spacing: 12) {
+                                if authService.isLoading {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(0.9)
+                                } else {
+                                    Image(systemName: "arrow.right.circle.fill")
+                                        .font(.system(size: 20))
+                                    Text("Sign In")
+                                        .font(.system(size: 18, weight: .semibold))
+                                }
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color.ticketFloOrange,
+                                        Color.ticketFloOrange.opacity(0.85)
+                                    ]),
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(14)
+                            .shadow(color: Color.ticketFloOrange.opacity(0.4), radius: 10, x: 0, y: 5)
+                        }
+                        .disabled(authService.isLoading)
+                        .opacity(authService.isLoading ? 0.7 : 1.0)
+                        .padding(.top, 8)
+
+                        // Divider
+                        HStack {
+                            Rectangle()
+                                .fill(Color.white.opacity(0.2))
+                                .frame(height: 1)
+                            Text("OR")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white.opacity(0.4))
+                                .padding(.horizontal, 16)
+                            Rectangle()
+                                .fill(Color.white.opacity(0.2))
+                                .frame(height: 1)
+                        }
+                        .padding(.vertical, 8)
+
+                        // Demo mode button
+                        Button(action: { authService.signIn() }) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "play.circle.fill")
+                                    .font(.system(size: 18))
+                                Text("Try Demo Mode")
+                                    .font(.system(size: 16, weight: .medium))
+                            }
+                            .foregroundColor(.ticketFloOrange)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 50)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(Color.ticketFloOrange.opacity(0.5), lineWidth: 1.5)
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 28)
+
+                    Spacer().frame(height: 40)
+
+                    // Footer
+                    VStack(spacing: 8) {
+                        Text("Powered by TicketFlo")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white.opacity(0.3))
+
+                        Text("v1.0")
+                            .font(.system(size: 11))
+                            .foregroundColor(.white.opacity(0.2))
+                    }
+                    .padding(.bottom, 30)
                 }
-                .padding(.horizontal, 30)
-
-                Spacer()
             }
+        }
+        .onAppear {
+            isAnimating = true
+        }
+        .alert("Sign In Error", isPresented: $showError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
+        }
+        .onChange(of: authService.errorMessage) { newError in
+            if let error = newError, !error.isEmpty {
+                errorMessage = error
+                showError = true
+            }
+        }
+    }
+
+    private func signIn() {
+        focusedField = nil
+        if !email.isEmpty && !password.isEmpty {
+            authService.signInWithCredentials(email: email, password: password)
+        } else if email.isEmpty && password.isEmpty {
+            authService.signIn()
+        } else {
+            showError = true
+            errorMessage = "Please enter both email and password, or use Demo Mode."
+        }
+    }
+}
+
+// Extension to show auth errors
+extension LoginView {
+    var hasAuthError: Bool {
+        authService.errorMessage != nil && !authService.errorMessage!.isEmpty
+    }
+}
+
+// MARK: - Placeholder Extension
+extension View {
+    func placeholder<Content: View>(
+        when shouldShow: Bool,
+        alignment: Alignment = .leading,
+        @ViewBuilder placeholder: () -> Content
+    ) -> some View {
+        ZStack(alignment: alignment) {
+            placeholder().opacity(shouldShow ? 1 : 0)
+            self
         }
     }
 }

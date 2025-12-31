@@ -119,21 +119,25 @@ class SupabaseService: ObservableObject {
     @Published var isAuthenticated = false
     @Published var userOrganizationId: String?
     @Published var userEmail: String?
+    @Published var userId: String?  // Store user UUID for API calls
+
+    // Store the user's JWT access token for authenticated API calls
+    private var userAccessToken: String?
 
     private init() {}
 
     // MARK: - Caching
     private var guestCache: [String: (guests: [SupabaseGuest], timestamp: Date)] = [:]
-    private var ticketTypesCache: [String: (types: [TicketType], timestamp: Date)] = [:]
-    private var merchandiseCache: [String: (items: [MerchandiseItem], timestamp: Date)] = [:]
+    private var ticketTypesCache: [String: (types: [SupabaseTicketType], timestamp: Date)] = [:]
+    private var merchandiseCache: [String: (items: [SupabaseMerchandise], timestamp: Date)] = [:]
 
     private let guestCacheExpiry: TimeInterval = 30 // 30 seconds for dynamic guest data
     private let staticDataCacheExpiry: TimeInterval = 300 // 5 minutes for ticket types & merchandise
 
     // MARK: - Request Deduplication
     private var ongoingGuestFetches: [String: Task<[SupabaseGuest], Error>] = [:]
-    private var ongoingTicketTypeFetches: [String: Task<[TicketType], Error>] = [:]
-    private var ongoingMerchandiseFetches: [String: Task<[MerchandiseItem], Error>] = [:]
+    private var ongoingTicketTypeFetches: [String: Task<[SupabaseTicketType], Error>] = [:]
+    private var ongoingMerchandiseFetches: [String: Task<[SupabaseMerchandise], Error>] = [:]
 
     func shouldUseCache(for eventId: String) -> Bool {
         guard let cached = guestCache[eventId] else { return false }
@@ -181,31 +185,74 @@ class SupabaseService: ObservableObject {
                 }
 
                 if httpResponse.statusCode == 200 {
-                    // Parse auth response to get user ID
-                    if let authResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let user = authResponse["user"] as? [String: Any],
-                       let userId = user["id"] as? String,
-                       let userEmail = user["email"] as? String {
-
-                        // Get user's organization ID
-                        let orgId = await fetchUserOrganizationId(userId: userId)
-
+                    // Parse auth response to get user ID and access token
+                    guard let authResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                        print("❌ Failed to parse auth response as JSON")
                         await MainActor.run {
-                            self.isAuthenticated = true
-                            self.userEmail = userEmail
-                            self.userOrganizationId = orgId
+                            self.error = "Failed to parse login response"
                             self.isLoading = false
                         }
-
-                        if orgId == nil {
-                            await MainActor.run {
-                                self.error = "User is not associated with any organization. Please contact support."
-                            }
-                            print("⚠️ User \(userEmail) authenticated but has no organization association")
-                        }
-
-                        return true
+                        return false
                     }
+
+                    print("📦 Auth response keys: \(authResponse.keys)")
+
+                    guard let user = authResponse["user"] as? [String: Any] else {
+                        print("❌ No 'user' object in auth response")
+                        await MainActor.run {
+                            self.error = "Invalid login response - no user data"
+                            self.isLoading = false
+                        }
+                        return false
+                    }
+
+                    guard let userId = user["id"] as? String else {
+                        print("❌ No user ID in response")
+                        await MainActor.run {
+                            self.error = "Invalid login response - no user ID"
+                            self.isLoading = false
+                        }
+                        return false
+                    }
+
+                    let userEmail = user["email"] as? String ?? "unknown"
+
+                    // Get access token - this is critical for authenticated API calls
+                    guard let accessToken = authResponse["access_token"] as? String else {
+                        print("❌ No access_token in auth response")
+                        print("📦 Available keys: \(authResponse.keys)")
+                        await MainActor.run {
+                            self.error = "Login succeeded but no access token received"
+                            self.isLoading = false
+                        }
+                        return false
+                    }
+
+                    print("✅ Got access token from login response (length: \(accessToken.count))")
+
+                    // Store access token and user ID first
+                    self.userAccessToken = accessToken
+
+                    // Get user's organization ID (use access token for this request)
+                    let orgId = await fetchUserOrganizationId(userId: userId)
+
+                    await MainActor.run {
+                        self.isAuthenticated = true
+                        self.userEmail = userEmail
+                        self.userId = userId  // Store user UUID for check-in API
+                        self.userOrganizationId = orgId
+                        self.isLoading = false
+                    }
+
+                    if orgId == nil {
+                        await MainActor.run {
+                            self.error = "User is not associated with any organization. Please contact support."
+                        }
+                        print("⚠️ User \(userEmail) authenticated but has no organization association")
+                    }
+
+                    print("✅ Login successful for user: \(userEmail)")
+                    return true
                 }
             }
 
@@ -226,49 +273,23 @@ class SupabaseService: ObservableObject {
     }
 
     private func fetchUserOrganizationId(userId: String) async -> String? {
-        // First try organization_users table
+        // Use the stored access token for authenticated requests
+        let authToken = userAccessToken ?? supabaseKey
+
+        // FIRST: Check organizations table (where user is OWNER) - prioritize this
         do {
-            let url = URL(string: "\(supabaseURL)/rest/v1/organization_users?select=organization_id&user_id=eq.\(userId)")!
+            let url = URL(string: "\(supabaseURL)/rest/v1/organizations?select=id,name&user_id=eq.\(userId)")!
             var request = URLRequest(url: url)
-            request.setValue("Bearer \(supabaseKey)", forHTTPHeaderField: "Authorization")
+            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
             request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
             let (data, response) = try await URLSession.shared.data(for: request)
 
             if let httpResponse = response as? HTTPURLResponse {
-                print("Organization users lookup API Response Status: \(httpResponse.statusCode)")
+                print("🏢 Organizations (owned) lookup API Response Status: \(httpResponse.statusCode)")
                 if let responseString = String(data: data, encoding: .utf8) {
-                    print("Organization users lookup API Response: \(responseString)")
-                }
-
-                if httpResponse.statusCode == 200,
-                   let orgUsers = try JSONSerialization.jsonObject(with: data) as? [[String: Any]],
-                   !orgUsers.isEmpty,
-                   let firstOrgUser = orgUsers.first,
-                   let organizationId = firstOrgUser["organization_id"] as? String {
-                    print("✅ Found organization ID via organization_users: \(organizationId) for user: \(userId)")
-                    return organizationId
-                }
-            }
-        } catch {
-            print("❌ Error fetching organization ID from organization_users: \(error)")
-        }
-
-        // Fallback: Try organizations table (user_id = owner)
-        do {
-            let url = URL(string: "\(supabaseURL)/rest/v1/organizations?select=id&user_id=eq.\(userId)")!
-            var request = URLRequest(url: url)
-            request.setValue("Bearer \(supabaseKey)", forHTTPHeaderField: "Authorization")
-            request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            if let httpResponse = response as? HTTPURLResponse {
-                print("Organizations lookup API Response Status: \(httpResponse.statusCode)")
-                if let responseString = String(data: data, encoding: .utf8) {
-                    print("Organizations lookup API Response: \(responseString)")
+                    print("🏢 Organizations (owned) lookup API Response: \(responseString)")
                 }
 
                 if httpResponse.statusCode == 200,
@@ -276,12 +297,42 @@ class SupabaseService: ObservableObject {
                    !orgs.isEmpty,
                    let firstOrg = orgs.first,
                    let organizationId = firstOrg["id"] as? String {
-                    print("✅ Found organization ID via organizations table: \(organizationId) for user: \(userId)")
+                    let orgName = firstOrg["name"] as? String ?? "Unknown"
+                    print("✅ Found OWNED organization: \(orgName) (ID: \(organizationId)) for user: \(userId)")
                     return organizationId
                 }
             }
         } catch {
-            print("❌ Error fetching organization ID from organizations: \(error)")
+            print("❌ Error fetching owned organizations: \(error)")
+        }
+
+        // FALLBACK: Try organization_users table (where user is member but not owner)
+        do {
+            let url = URL(string: "\(supabaseURL)/rest/v1/organization_users?select=organization_id&user_id=eq.\(userId)")!
+            var request = URLRequest(url: url)
+            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+            request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            if let httpResponse = response as? HTTPURLResponse {
+                print("👥 Organization users lookup API Response Status: \(httpResponse.statusCode)")
+                if let responseString = String(data: data, encoding: .utf8) {
+                    print("👥 Organization users lookup API Response: \(responseString)")
+                }
+
+                if httpResponse.statusCode == 200,
+                   let orgUsers = try JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+                   !orgUsers.isEmpty,
+                   let firstOrgUser = orgUsers.first,
+                   let organizationId = firstOrgUser["organization_id"] as? String {
+                    print("✅ Found organization ID via organization_users (member): \(organizationId) for user: \(userId)")
+                    return organizationId
+                }
+            }
+        } catch {
+            print("❌ Error fetching organization ID from organization_users: \(error)")
         }
 
         print("❌ No organization found for user ID: \(userId)")
@@ -292,6 +343,8 @@ class SupabaseService: ObservableObject {
         isAuthenticated = false
         userOrganizationId = nil
         userEmail = nil
+        userId = nil  // Clear user ID on sign out
+        userAccessToken = nil  // Clear access token on sign out
         events = []
         guests = []
         ticketTypes = []
@@ -321,11 +374,14 @@ class SupabaseService: ObservableObject {
             return
         }
 
+        // Use access token for authenticated requests
+        let authToken = userAccessToken ?? supabaseKey
+
         do {
             // Apply organization filter to prevent RLS violation
             let url = URL(string: "\(supabaseURL)/rest/v1/events?select=*&organization_id=eq.\(organizationId)")!
             var request = URLRequest(url: url)
-            request.setValue("Bearer \(supabaseKey)", forHTTPHeaderField: "Authorization")
+            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
             request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -434,84 +490,69 @@ class SupabaseService: ObservableObject {
         ongoingGuestFetches.removeValue(forKey: cacheKey)
     }
 
-    // MARK: - Actual Fetch Logic (separated for deduplication)
+    // MARK: - Actual Fetch Logic (using RPC function like web app)
     private func performGuestFetch(for eventId: String?) async throws -> [SupabaseGuest] {
-        do {
-            // Build the URL with event filtering using proper PostgREST embedding syntax
-            // Using !inner twice to ensure ONLY tickets with valid order_items AND orders are returned
-            var urlString = "\(supabaseURL)/rest/v1/tickets?select=*,order_items!inner(id,order_id,orders!inner(customer_name,customer_email,event_id))"
+        guard let eventId = eventId else {
+            print("❌ No eventId provided for guest fetch")
+            return []
+        }
 
-            // Add event filter if provided - this filters at the orders level
-            if let eventId = eventId {
-                urlString += "&order_items.orders.event_id=eq.\(eventId)"
+        do {
+            // Use the same RPC function as the web app for consistency
+            let urlString = "\(supabaseURL)/rest/v1/rpc/get_guest_status_for_event"
+            print("🌐 Fetching guests via RPC: \(urlString)")
+
+            // CRITICAL: Use user's access token for authenticated RPC calls
+            guard let accessToken = userAccessToken else {
+                print("❌ No access token available - user needs to re-authenticate")
+                return []
             }
 
-            // CRITICAL: Add not.is.null filters to ensure orders data exists
-            // This ensures we don't get tickets where orders is null
-            // Filter by both customer_name and customer_email to ensure complete order data
-            urlString += "&order_items.orders.customer_name=not.is.null"
-            urlString += "&order_items.orders.customer_email=not.is.null"
-
-            print("🌐 Fetching guests from URL: \(urlString)")
-
-            let ticketsURL = URL(string: urlString)!
-            var request = URLRequest(url: ticketsURL)
-            request.setValue("Bearer \(supabaseKey)", forHTTPHeaderField: "Authorization")
+            let rpcURL = URL(string: urlString)!
+            var request = URLRequest(url: rpcURL)
+            request.httpMethod = "POST"
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
             request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue("application/json", forHTTPHeaderField: "Accept")
 
+            // RPC body with event ID parameter
+            let body: [String: Any] = ["p_event_id": eventId]
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
             let (data, response) = try await URLSession.shared.data(for: request)
 
             if let httpResponse = response as? HTTPURLResponse {
-                print("🎫 Tickets API Response Status: \(httpResponse.statusCode)")
+                print("🎫 RPC Response Status: \(httpResponse.statusCode)")
                 if let responseString = String(data: data, encoding: .utf8) {
-                    print("🎫 Tickets API Response: \(responseString)")
+                    let preview = responseString.prefix(500)
+                    print("🎫 RPC Response Preview: \(preview)...")
                 }
             }
 
-            // Parse the real ticket data
-            let ticketData = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] ?? []
-            print("🎫 Found \(ticketData.count) tickets in response")
+            // Parse the RPC response
+            let guestData = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] ?? []
+            print("🎫 Found \(guestData.count) guests in RPC response")
 
             var parsedGuests: [SupabaseGuest] = []
 
-            for (index, ticketDict) in ticketData.enumerated() {
-                print("🎫 Processing ticket \(index + 1)/\(ticketData.count)")
-
-                // Extract ticket info
-                guard let ticketId = ticketDict["id"] as? String,
-                      let ticketCode = ticketDict["ticket_code"] as? String else {
-                    print("❌ Ticket \(index + 1) missing required fields (id or ticket_code)")
+            for (index, guestDict) in guestData.enumerated() {
+                // RPC returns: ticket_id, ticket_code, customer_name, customer_email, checked_in, ticket_type, price, quantity, etc.
+                guard let ticketId = guestDict["ticket_id"] as? String,
+                      let ticketCode = guestDict["ticket_code"] as? String else {
+                    print("❌ Guest \(index + 1) missing required fields")
                     continue
                 }
 
-                let checkedIn = ticketDict["checked_in"] as? Bool ?? false
-                let checkedInAt = ticketDict["used_at"] as? String
-
-                // Extract customer info - NO FALLBACK!
-                var customerName: String?
-                var customerEmail: String?
-
-                if let orderItemData = ticketDict["order_items"] as? [String: Any],
-                   let ordersData = orderItemData["orders"] as? [String: Any] {
-                    customerName = ordersData["customer_name"] as? String
-                    customerEmail = ordersData["customer_email"] as? String
-                }
-
-                // ✅ SKIP tickets without valid customer data
-                guard let name = customerName, !name.isEmpty,
-                      let email = customerEmail, !email.isEmpty else {
-                    print("⚠️ Skipping ticket \(ticketCode) - incomplete data")
-                    continue
-                }
-
-                print("✅ Ticket \(index + 1): \(name) (\(email))")
+                let customerName = guestDict["customer_name"] as? String ?? "Unknown"
+                let customerEmail = guestDict["customer_email"] as? String ?? ""
+                let checkedIn = guestDict["checked_in"] as? Bool ?? false
+                let checkedInAt = guestDict["checked_in_at"] as? String
 
                 let guest = SupabaseGuest(
                     id: ticketId,
-                    name: name,
-                    email: email,
+                    name: customerName,
+                    email: customerEmail,
                     ticketCode: ticketCode,
                     checkedIn: checkedIn,
                     checkedInAt: checkedInAt
@@ -520,10 +561,11 @@ class SupabaseService: ObservableObject {
                 parsedGuests.append(guest)
             }
 
+            print("✅ Successfully parsed \(parsedGuests.count) guests from RPC")
             return parsedGuests
 
         } catch {
-            print("Error in performGuestFetch: \(error)")
+            print("Error in performGuestFetch RPC: \(error)")
             throw error
         }
     }
@@ -550,18 +592,24 @@ class SupabaseService: ObservableObject {
     func checkInGuest(ticketCode: String) async -> Bool {
         print("🎫 Starting check-in for ticket code: \(ticketCode)")
 
+        // CRITICAL: Use user's access token for authenticated calls
+        guard let accessToken = userAccessToken else {
+            print("❌ No access token available for check-in - user needs to re-authenticate")
+            return false
+        }
+
         do {
             // Use the edge function for check-in to ensure proper validation and logging
             let url = URL(string: "\(supabaseURL)/functions/v1/check-in-guest")!
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
-            request.setValue("Bearer \(supabaseKey)", forHTTPHeaderField: "Authorization")
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
             request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
             let checkInData: [String: Any] = [
                 "ticketCode": ticketCode,
-                "staffId": userEmail ?? "ios-app", // Use logged in user email or fallback
+                "staffId": userId ?? "", // Use logged in user UUID (required by edge function)
                 "notes": "Checked in via iOS app"
             ]
 
@@ -691,10 +739,13 @@ class SupabaseService: ObservableObject {
     }
 
     private func performTicketTypesFetch(for eventId: String) async throws -> [SupabaseTicketType] {
+        // Use access token for authenticated requests
+        let authToken = userAccessToken ?? supabaseKey
+
         do {
             let url = URL(string: "\(supabaseURL)/rest/v1/ticket_types?select=*&event_id=eq.\(eventId)")!
             var request = URLRequest(url: url)
-            request.setValue("Bearer \(supabaseKey)", forHTTPHeaderField: "Authorization")
+            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
             request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -806,10 +857,13 @@ class SupabaseService: ObservableObject {
     }
 
     private func performMerchandiseFetch(for eventId: String) async throws -> [SupabaseMerchandise] {
+        // Use access token for authenticated requests
+        let authToken = userAccessToken ?? supabaseKey
+
         do {
             let url = URL(string: "\(supabaseURL)/rest/v1/merchandise?select=*&event_id=eq.\(eventId)")!
             var request = URLRequest(url: url)
-            request.setValue("Bearer \(supabaseKey)", forHTTPHeaderField: "Authorization")
+            request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
             request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue("application/json", forHTTPHeaderField: "Accept")

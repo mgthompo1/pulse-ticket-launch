@@ -1,0 +1,46 @@
+{
+  "" : {
+    "const-values" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVE-primary.swiftconstvalues",
+    "dependencies" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVE-primary.d",
+    "diagnostics" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVE-primary.dia",
+    "emit-module-dependencies" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVE-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVE-primary-emit-module.dia",
+    "pch" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVE-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVE-primary.swiftdeps"
+  },
+  "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/TicketFloLIVE/ContentView.swift" : {
+    "index-unit-output-path" : "/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/ContentView.o",
+    "llvm-bc" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/ContentView.bc",
+    "object" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/ContentView.o"
+  },
+  "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/TicketFloLIVE/EventSelectionView.swift" : {
+    "index-unit-output-path" : "/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/EventSelectionView.o",
+    "llvm-bc" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/EventSelectionView.bc",
+    "object" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/EventSelectionView.o"
+  },
+  "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/TicketFloLIVE/ModernDashboardView.swift" : {
+    "index-unit-output-path" : "/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/ModernDashboardView.o",
+    "llvm-bc" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/ModernDashboardView.bc",
+    "object" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/ModernDashboardView.o"
+  },
+  "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/TicketFloLIVE/ScannerView.swift" : {
+    "index-unit-output-path" : "/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/ScannerView.o",
+    "llvm-bc" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/ScannerView.bc",
+    "object" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/ScannerView.o"
+  },
+  "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/TicketFloLIVE/SupabaseService.swift" : {
+    "index-unit-output-path" : "/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/SupabaseService.o",
+    "llvm-bc" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/SupabaseService.bc",
+    "object" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/SupabaseService.o"
+  },
+  "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/TicketFloLIVE/TicketFloLIVEApp.swift" : {
+    "index-unit-output-path" : "/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVEApp.o",
+    "llvm-bc" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVEApp.bc",
+    "object" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVEApp.o"
+  },
+  "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "index-unit-output-path" : "/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/GeneratedAssetSymbols.o"
+  }
+}

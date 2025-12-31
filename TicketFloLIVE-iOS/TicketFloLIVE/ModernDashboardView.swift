@@ -382,105 +382,132 @@ struct ModernGuestRow: View {
     let guest: SupabaseGuest
     @StateObject private var supabaseService = SupabaseService.shared
     @State private var isCheckingIn = false
+    @State private var showingDetail = false
 
     var body: some View {
-        HStack(spacing: 16) {
-            // Avatar/Status
-            ZStack {
-                Circle()
-                    .fill(guest.checkedIn ? Color.green.opacity(0.1) : Color.gray.opacity(0.1))
-                    .frame(width: 44, height: 44)
+        Button(action: { showingDetail = true }) {
+            HStack(spacing: 16) {
+                // Avatar/Status
+                ZStack {
+                    Circle()
+                        .fill(guest.checkedIn ? Color.green.opacity(0.1) : Color.gray.opacity(0.1))
+                        .frame(width: 50, height: 50)
 
-                if guest.checkedIn {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(.green)
-                } else {
-                    Text(guest.initials)
-                        .font(.caption)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            // Guest Info
-            VStack(alignment: .leading, spacing: 4) {
-                Text(guest.name)
-                    .font(.body)
-                    .fontWeight(.medium)
-                    .foregroundColor(.primary)
-
-                Text(guest.email)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                Text(guest.ticketCode)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.webPrimary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.ticketFloOrange.opacity(0.1))
-                    .cornerRadius(4)
-            }
-
-            Spacer()
-
-            // Action Button
-            if guest.checkedIn {
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("Checked In")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.green)
-
-                    if let checkedInAt = guest.checkedInAt {
-                        Text(formatCheckInTime(checkedInAt))
-                            .font(.caption2)
+                    if guest.checkedIn {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor(.green)
+                    } else {
+                        Text(guest.initials)
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.secondary)
                     }
                 }
-            } else {
-                Button(action: {
-                    checkInGuest()
-                }) {
-                    if isCheckingIn {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    } else {
-                        Text("Check In")
-                            .font(.caption)
-                            .fontWeight(.medium)
+
+                // Guest Info
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(guest.name)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    Text(guest.email)
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+
+                    HStack(spacing: 6) {
+                        Image(systemName: "ticket.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.ticketFloOrange)
+                        Text(guest.ticketCode)
+                            .font(.system(size: 12, weight: .medium, design: .monospaced))
+                            .foregroundColor(.ticketFloOrange)
                     }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.ticketFloOrange.opacity(0.1))
+                    .cornerRadius(6)
                 }
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.ticketFloOrange)
-                .cornerRadius(16)
-                .disabled(isCheckingIn)
+
+                Spacer()
+
+                // Status/Action
+                VStack(alignment: .trailing, spacing: 4) {
+                    if guest.checkedIn {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 12))
+                            Text("Checked In")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        .foregroundColor(.green)
+
+                        if let checkedInAt = guest.checkedInAt {
+                            Text(formatCheckInTime(checkedInAt))
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                    } else {
+                        HStack(spacing: 4) {
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 12))
+                            Text("Pending")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        .foregroundColor(.orange)
+                    }
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary.opacity(0.5))
+                }
             }
+            .padding(16)
+            .background(Color(.systemBackground))
+            .cornerRadius(14)
+            .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
         }
-        .padding(16)
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.03), radius: 2, x: 0, y: 1)
+        .buttonStyle(PlainButtonStyle())
+        .sheet(isPresented: $showingDetail) {
+            GuestDetailSheet(
+                guest: guest,
+                isCheckingIn: $isCheckingIn,
+                onCheckIn: checkInGuest
+            )
+            .presentationDetents([.height(420)])
+            .presentationDragIndicator(.visible)
+        }
     }
 
     private func checkInGuest() {
         guard !isCheckingIn else { return }
 
         isCheckingIn = true
+
+        // Haptic feedback
+        let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+        impactFeedback.impactOccurred()
+
         Task {
             let success = await supabaseService.checkInGuest(ticketCode: guest.ticketCode)
             await MainActor.run {
                 isCheckingIn = false
                 if success {
+                    // Success haptic
+                    let notificationFeedback = UINotificationFeedbackGenerator()
+                    notificationFeedback.notificationOccurred(.success)
+
+                    // Close the sheet
+                    showingDetail = false
+
                     // Refresh the guest list
                     Task {
                         await supabaseService.fetchGuests()
                     }
+                } else {
+                    // Error haptic
+                    let notificationFeedback = UINotificationFeedbackGenerator()
+                    notificationFeedback.notificationOccurred(.error)
                 }
             }
         }
@@ -494,6 +521,154 @@ struct ModernGuestRow: View {
             formatter.dateStyle = .none
             formatter.timeStyle = .short
             return formatter.string(from: date)
+        }
+        return timeString
+    }
+}
+
+// MARK: - Guest Detail Sheet
+struct GuestDetailSheet: View {
+    let guest: SupabaseGuest
+    @Binding var isCheckingIn: Bool
+    let onCheckIn: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            VStack(spacing: 16) {
+                // Avatar
+                ZStack {
+                    Circle()
+                        .fill(guest.checkedIn ? Color.green.opacity(0.15) : Color.ticketFloOrange.opacity(0.15))
+                        .frame(width: 80, height: 80)
+
+                    if guest.checkedIn {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 44))
+                            .foregroundColor(.green)
+                    } else {
+                        Text(guest.initials)
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundColor(.ticketFloOrange)
+                    }
+                }
+
+                VStack(spacing: 4) {
+                    Text(guest.name)
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.primary)
+
+                    Text(guest.email)
+                        .font(.system(size: 15))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.top, 24)
+
+            // Ticket Code
+            VStack(spacing: 8) {
+                Text("TICKET CODE")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .tracking(1)
+
+                HStack(spacing: 8) {
+                    Image(systemName: "ticket.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(.ticketFloOrange)
+
+                    Text(guest.ticketCode)
+                        .font(.system(size: 20, weight: .bold, design: .monospaced))
+                        .foregroundColor(.primary)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+            }
+            .padding(.top, 24)
+
+            // Status
+            HStack(spacing: 12) {
+                Image(systemName: guest.checkedIn ? "checkmark.circle.fill" : "clock.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(guest.checkedIn ? .green : .orange)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(guest.checkedIn ? "Checked In" : "Pending Check-in")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(guest.checkedIn ? .green : .orange)
+
+                    if guest.checkedIn, let checkedInAt = guest.checkedInAt {
+                        Text("at \(formatCheckInTime(checkedInAt))")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Spacer()
+            }
+            .padding(16)
+            .background(guest.checkedIn ? Color.green.opacity(0.1) : Color.orange.opacity(0.1))
+            .cornerRadius(12)
+            .padding(.horizontal, 24)
+            .padding(.top, 20)
+
+            Spacer()
+
+            // Action Button
+            if !guest.checkedIn {
+                Button(action: onCheckIn) {
+                    HStack(spacing: 10) {
+                        if isCheckingIn {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(0.9)
+                        } else {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 20))
+                            Text("Check In Now")
+                                .font(.system(size: 18, weight: .semibold))
+                        }
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [Color.ticketFloOrange, Color.ticketFloOrange.opacity(0.85)]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(14)
+                    .shadow(color: Color.ticketFloOrange.opacity(0.4), radius: 10, x: 0, y: 5)
+                }
+                .disabled(isCheckingIn)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
+            } else {
+                VStack(spacing: 8) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 32))
+                        .foregroundColor(.green)
+                    Text("Already Checked In")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.green)
+                }
+                .padding(.bottom, 32)
+            }
+        }
+    }
+
+    private func formatCheckInTime(_ timeString: String) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+
+        if let date = formatter.date(from: timeString) {
+            let displayFormatter = DateFormatter()
+            displayFormatter.dateFormat = "h:mm a"
+            return displayFormatter.string(from: date)
         }
         return timeString
     }

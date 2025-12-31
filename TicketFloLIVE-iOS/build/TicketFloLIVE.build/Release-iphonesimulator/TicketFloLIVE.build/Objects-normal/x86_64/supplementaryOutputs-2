@@ -1,0 +1,12 @@
+{
+  "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/TicketFloLIVE/ContentView.swift" : {
+    "abi-baseline-json" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVE.abi.json",
+    "const-values" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVE-primary.swiftconstvalues",
+    "dependencies" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVE-primary.d",
+    "diagnostics" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVE-primary.dia",
+    "objc-header" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVE-Swift.h",
+    "swiftdoc" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVE.swiftdoc",
+    "swiftmodule" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVE.swiftmodule",
+    "swiftsourceinfo" : "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/build/TicketFloLIVE.build/Release-iphonesimulator/TicketFloLIVE.build/Objects-normal/x86_64/TicketFloLIVE.swiftsourceinfo"
+  }
+}

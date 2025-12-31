@@ -1,42 +1,22 @@
 #!/usr/bin/env python3
 """
-Generate basic app icons for iOS app
-Creates simple colored squares for all required icon sizes
+Generate iOS app icons from the existing TicketFlo logo
+Resizes the apple-touch-icon.png to all required iOS icon sizes
 """
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 import os
 
-# TicketFlo brand color (from the web app)
-BRAND_COLOR = (34, 197, 94)  # Green color from the web app
+# Source logo
+SOURCE_LOGO = "/Users/mitchellthompson/Desktop/pulse-ticket-launch/dist/apple-touch-icon.png"
 
-def create_icon(size, filename):
-    """Create a simple icon with the TicketFlo 'T' logo"""
-    # Create image
-    img = Image.new('RGB', (size, size), BRAND_COLOR)
-    draw = ImageDraw.Draw(img)
-
-    # Add a simple "T" for TicketFlo
-    try:
-        # Try to use a system font
-        font_size = size // 2
-        font = ImageFont.truetype("/System/Library/Fonts/SF-Pro-Display-Bold.otf", font_size)
-    except:
-        # Fallback to default font
-        font = ImageFont.load_default()
-
-    # Draw white "T" in center
-    text = "T"
-    text_bbox = draw.textbbox((0, 0), text, font=font)
-    text_width = text_bbox[2] - text_bbox[0]
-    text_height = text_bbox[3] - text_bbox[1]
-
-    x = (size - text_width) // 2
-    y = (size - text_height) // 2
-
-    draw.text((x, y), text, fill=(255, 255, 255), font=font)
-
-    return img
+def create_icon(source_img, size, filename, output_dir):
+    """Resize the source logo to the specified size"""
+    # High quality resize
+    resized = source_img.resize((size, size), Image.Resampling.LANCZOS)
+    filepath = os.path.join(output_dir, filename)
+    resized.save(filepath, "PNG")
+    print(f"Created {filename} ({size}x{size})")
 
 # Icon sizes required for iOS
 icon_specs = [
@@ -63,15 +43,25 @@ icon_specs = [
     (1024, "icon-1024x1024@1x.png") # 1024x1024@1x
 ]
 
-# Create icons directory
+# Output directory
 icon_dir = "/Users/mitchellthompson/Desktop/pulse-ticket-launch/TicketFloLIVE-iOS/TicketFloLIVE/Assets.xcassets/AppIcon.appiconset"
+
+print(f"Loading source logo: {SOURCE_LOGO}")
+source_img = Image.open(SOURCE_LOGO)
+
+# Convert to RGB if necessary (remove alpha for app icons)
+if source_img.mode in ('RGBA', 'LA') or (source_img.mode == 'P' and 'transparency' in source_img.info):
+    # Create white background
+    background = Image.new('RGB', source_img.size, (255, 255, 255))
+    if source_img.mode == 'P':
+        source_img = source_img.convert('RGBA')
+    background.paste(source_img, mask=source_img.split()[-1] if source_img.mode == 'RGBA' else None)
+    source_img = background
 
 print(f"Creating app icons in {icon_dir}")
 
 for size, filename in icon_specs:
-    icon = create_icon(size, filename)
-    filepath = os.path.join(icon_dir, filename)
-    icon.save(filepath, "PNG")
-    print(f"Created {filename} ({size}x{size})")
+    create_icon(source_img, size, filename, icon_dir)
 
-print("✅ All app icons created successfully!")
+print("\n✅ All app icons created successfully!")
+print("Now open Xcode and the icons should appear in Assets.xcassets > AppIcon")

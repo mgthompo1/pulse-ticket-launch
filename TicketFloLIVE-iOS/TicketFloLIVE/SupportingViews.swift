@@ -1,7 +1,9 @@
 import SwiftUI
 
-// MARK: - Models
-struct Event: Identifiable {
+// MARK: - Legacy Models (for backward compatibility with sample data)
+// Note: Main models are in ContentView.swift and SupabaseService.swift
+
+struct LegacyEvent: Identifiable {
     let id = UUID()
     let name: String
     let date: String
@@ -9,48 +11,22 @@ struct Event: Identifiable {
     let status: String
 }
 
-struct Guest: Identifiable {
-    let id = UUID()
-    let name: String
-    let email: String
-    let checkedIn: Bool
-
-    var initials: String {
-        let components = name.components(separatedBy: " ")
-        return components.compactMap { $0.first?.uppercased() }.joined()
-    }
-}
-
-// MARK: - Point of Sale Models
-struct Product: Identifiable {
+struct LegacyProduct: Identifiable {
     let id = UUID()
     let name: String
     let price: Double
     let stock: Int
 }
 
-struct CartItem: Identifiable {
+struct LegacyCartItem: Identifiable {
     let id = UUID()
-    let product: Product
+    let product: LegacyProduct
     var quantity: Int
-}
-
-// MARK: - Auth Service
-class AuthService: ObservableObject {
-    @Published var isAuthenticated = false
-
-    func signIn() {
-        isAuthenticated = true
-    }
-
-    func signOut() {
-        isAuthenticated = false
-    }
 }
 
 // MARK: - Supporting Views
 struct ProductCardModern: View {
-    let product: Product
+    let product: LegacyProduct
     let onTap: () -> Void
 
     var body: some View {
@@ -139,27 +115,19 @@ struct LanyardPreviewSimple: View {
 }
 
 
-// MARK: - Sample Data
-let sampleEvents = [
-    Event(name: "Summer Music Festival", date: "Sep 15, 2024", location: "Central Park", status: "Live"),
-    Event(name: "Tech Conference 2024", date: "Sep 20, 2024", location: "Convention Center", status: "Upcoming"),
-    Event(name: "Food & Wine Expo", date: "Sep 25, 2024", location: "Harbor View", status: "Upcoming"),
-    Event(name: "Charity Gala", date: "Oct 1, 2024", location: "Grand Hotel", status: "Upcoming")
+// MARK: - Sample Data (Legacy - for testing only)
+let legacySampleEvents = [
+    LegacyEvent(name: "Summer Music Festival", date: "Sep 15, 2024", location: "Central Park", status: "Live"),
+    LegacyEvent(name: "Tech Conference 2024", date: "Sep 20, 2024", location: "Convention Center", status: "Upcoming"),
+    LegacyEvent(name: "Food & Wine Expo", date: "Sep 25, 2024", location: "Harbor View", status: "Upcoming"),
+    LegacyEvent(name: "Charity Gala", date: "Oct 1, 2024", location: "Grand Hotel", status: "Upcoming")
 ]
 
-let sampleGuests = [
-    Guest(name: "John Smith", email: "john@example.com", checkedIn: true),
-    Guest(name: "Sarah Johnson", email: "sarah@example.com", checkedIn: true),
-    Guest(name: "Mike Wilson", email: "mike@example.com", checkedIn: false),
-    Guest(name: "Emily Davis", email: "emily@example.com", checkedIn: false),
-    Guest(name: "David Brown", email: "david@example.com", checkedIn: true)
-]
-
-let sampleProducts = [
-    Product(name: "T-Shirt", price: 25.00, stock: 50),
-    Product(name: "Poster", price: 15.00, stock: 25),
-    Product(name: "Drink", price: 5.00, stock: 100),
-    Product(name: "Snack", price: 3.50, stock: 75),
-    Product(name: "Program", price: 10.00, stock: 30),
-    Product(name: "Lanyard", price: 8.00, stock: 20)
+let legacySampleProducts = [
+    LegacyProduct(name: "T-Shirt", price: 25.00, stock: 50),
+    LegacyProduct(name: "Poster", price: 15.00, stock: 25),
+    LegacyProduct(name: "Drink", price: 5.00, stock: 100),
+    LegacyProduct(name: "Snack", price: 3.50, stock: 75),
+    LegacyProduct(name: "Program", price: 10.00, stock: 30),
+    LegacyProduct(name: "Lanyard", price: 8.00, stock: 20)
 ]
