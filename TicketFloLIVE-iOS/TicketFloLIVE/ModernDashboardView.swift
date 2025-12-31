@@ -12,6 +12,7 @@ extension Color {
 struct ModernDashboardView: View {
     @EnvironmentObject var authService: AuthService
     @StateObject private var supabaseService = SupabaseService.shared
+    @StateObject private var appSettings = AppSettings.shared
     @State private var showingScanner = false
     @State private var searchText = ""
     @State private var selectedFilter: GuestFilter = .all
@@ -20,8 +21,19 @@ struct ModernDashboardView: View {
 
     let selectedEvent: SupabaseEvent
 
+    // Computed property for visible tabs based on settings
+    var visibleTabs: [DashboardTab] {
+        DashboardTab.allCases.filter { tab in
+            if tab == .schedule {
+                return appSettings.showEventSchedule
+            }
+            return true
+        }
+    }
+
     enum DashboardTab: String, CaseIterable {
         case checkIn = "Check-In"
+        case schedule = "Schedule"
         case pointOfSale = "Point of Sale"
         case analytics = "Analytics"
         case settings = "Settings"
@@ -29,6 +41,7 @@ struct ModernDashboardView: View {
         var icon: String {
             switch self {
             case .checkIn: return "checkmark.circle"
+            case .schedule: return "calendar.badge.clock"
             case .pointOfSale: return "creditcard"
             case .analytics: return "chart.bar"
             case .settings: return "gearshape"
@@ -38,6 +51,7 @@ struct ModernDashboardView: View {
         var displayName: String {
             switch self {
             case .checkIn: return "Check-In"
+            case .schedule: return "Schedule"
             case .pointOfSale: return "Point of\nSale"
             case .analytics: return "Analytics"
             case .settings: return "Settings"
@@ -121,6 +135,12 @@ struct ModernDashboardView: View {
                     )
                     .tag(DashboardTab.checkIn)
 
+                    // Schedule Tab (conditionally shown)
+                    if appSettings.showEventSchedule {
+                        EventScheduleTabView(selectedEvent: selectedEvent)
+                            .tag(DashboardTab.schedule)
+                    }
+
                     // Point of Sale Tab
                     PointOfSaleTabView(selectedEvent: selectedEvent)
                         .tag(DashboardTab.pointOfSale)
@@ -137,7 +157,7 @@ struct ModernDashboardView: View {
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
 
                 // Custom Tab Bar
-                CustomTabBar(selectedTab: $selectedTab)
+                CustomTabBar(selectedTab: $selectedTab, visibleTabs: visibleTabs)
             }
             .background(
                 LinearGradient(
@@ -1941,6 +1961,19 @@ struct SettingsTabView: View {
                             }
                         }
                         .padding(16)
+
+                        Divider()
+                            .padding(.leading, 56)
+
+                        Toggle(isOn: $appSettings.showEventSchedule) {
+                            HStack {
+                                Image(systemName: "calendar.badge.clock")
+                                    .foregroundColor(.webPrimary)
+                                    .frame(width: 24)
+                                Text("Show Event Schedule")
+                            }
+                        }
+                        .padding(16)
                     }
                     .background(Color(.systemBackground))
                     .cornerRadius(12)
@@ -2021,6 +2054,335 @@ struct SettingsTabView: View {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .full
         return formatter.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+// MARK: - Event Schedule Tab View
+
+struct EventScheduleTabView: View {
+    let selectedEvent: SupabaseEvent
+    @StateObject private var supabaseService = SupabaseService.shared
+    @State private var isLoading = false
+    @State private var showingAddItem = false
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                // Header
+                VStack(spacing: 8) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 48))
+                        .foregroundColor(.webPrimary)
+
+                    Text("Event Schedule")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text("Timeline of activities")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.top, 20)
+
+                // Event Date & Venue
+                VStack(spacing: 12) {
+                    HStack(spacing: 16) {
+                        Circle()
+                            .fill(Color.webPrimary.opacity(0.1))
+                            .frame(width: 44, height: 44)
+                            .overlay(
+                                Image(systemName: "calendar")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(.webPrimary)
+                            )
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Event Date")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text(formatEventDate(selectedEvent.event_date))
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                        }
+
+                        Spacer()
+                    }
+
+                    if let venue = selectedEvent.venue, !venue.isEmpty {
+                        HStack(spacing: 16) {
+                            Circle()
+                                .fill(Color.ticketFloOrange.opacity(0.1))
+                                .frame(width: 44, height: 44)
+                                .overlay(
+                                    Image(systemName: "mappin.circle")
+                                        .font(.system(size: 18))
+                                        .foregroundColor(.ticketFloOrange)
+                                )
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Venue")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(venue)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                            }
+
+                            Spacer()
+                        }
+                    }
+                }
+                .padding(16)
+                .background(Color(.systemBackground))
+                .cornerRadius(12)
+                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                .padding(.horizontal, 20)
+
+                // Schedule Timeline
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Text("Schedule")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+
+                        Spacer()
+
+                        Button(action: { showingAddItem = true }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 14))
+                                Text("Add")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                            }
+                            .foregroundColor(.webPrimary)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+
+                    if isLoading {
+                        ProgressView()
+                            .padding(.vertical, 40)
+                    } else if supabaseService.scheduleItems.isEmpty {
+                        // Empty state
+                        VStack(spacing: 16) {
+                            Image(systemName: "calendar.badge.plus")
+                                .font(.system(size: 48))
+                                .foregroundColor(.secondary)
+
+                            Text("No Schedule Items")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+
+                            Text("Add schedule items to display the event timeline to your team")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+
+                            Button(action: { showingAddItem = true }) {
+                                HStack {
+                                    Image(systemName: "plus.circle.fill")
+                                    Text("Add Schedule Item")
+                                }
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(Color.webPrimary)
+                                .cornerRadius(20)
+                            }
+                        }
+                        .padding(.vertical, 40)
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        // Schedule items list
+                        VStack(spacing: 0) {
+                            ForEach(supabaseService.scheduleItems) { item in
+                                ScheduleItemRow(item: item, onDelete: {
+                                    Task {
+                                        _ = await supabaseService.deleteScheduleItem(id: item.id)
+                                    }
+                                })
+                            }
+                        }
+                        .background(Color(.systemBackground))
+                        .cornerRadius(12)
+                        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                        .padding(.horizontal, 20)
+                    }
+                }
+
+                Spacer(minLength: 100)
+            }
+        }
+        .onAppear {
+            Task {
+                isLoading = true
+                await supabaseService.fetchScheduleItems(for: selectedEvent.id)
+                isLoading = false
+            }
+        }
+        .sheet(isPresented: $showingAddItem) {
+            AddScheduleItemSheet(eventId: selectedEvent.id)
+        }
+    }
+
+    private func formatEventDate(_ dateString: String) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+
+        if let date = formatter.date(from: dateString) {
+            let displayFormatter = DateFormatter()
+            displayFormatter.dateFormat = "EEEE, MMMM d, yyyy 'at' h:mm a"
+            return displayFormatter.string(from: date)
+        }
+        return dateString
+    }
+}
+
+// MARK: - Schedule Item Row
+struct ScheduleItemRow: View {
+    let item: SupabaseScheduleItem
+    var onDelete: (() -> Void)?
+
+    var body: some View {
+        HStack(spacing: 16) {
+            // Time column
+            VStack(spacing: 4) {
+                Text(item.time)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(item.is_highlight ? .ticketFloOrange : .webPrimary)
+
+                Circle()
+                    .fill(item.is_highlight ? Color.ticketFloOrange : Color.webPrimary)
+                    .frame(width: 8, height: 8)
+            }
+            .frame(width: 60)
+
+            // Content
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+
+                if let description = item.description, !description.isEmpty {
+                    Text(description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                if let location = item.location, !location.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "mappin")
+                            .font(.system(size: 10))
+                        Text(location)
+                            .font(.caption)
+                    }
+                    .foregroundColor(.secondary)
+                }
+            }
+
+            Spacer()
+
+            if item.is_highlight {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 12))
+                    .foregroundColor(.ticketFloOrange)
+            }
+
+            // Delete button
+            if let onDelete = onDelete {
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14))
+                        .foregroundColor(.red.opacity(0.7))
+                }
+                .buttonStyle(BorderlessButtonStyle())
+            }
+        }
+        .padding(16)
+        .background(item.is_highlight ? Color.ticketFloOrange.opacity(0.05) : Color.clear)
+    }
+}
+
+// MARK: - Add Schedule Item Sheet
+struct AddScheduleItemSheet: View {
+    let eventId: String
+    @StateObject private var supabaseService = SupabaseService.shared
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var time = ""
+    @State private var title = ""
+    @State private var description = ""
+    @State private var location = ""
+    @State private var isHighlight = false
+    @State private var isSaving = false
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Time")) {
+                    TextField("e.g., 7:00 PM", text: $time)
+                }
+
+                Section(header: Text("Details")) {
+                    TextField("Title", text: $title)
+                    TextField("Description (optional)", text: $description)
+                    TextField("Location (optional)", text: $location)
+                }
+
+                Section {
+                    Toggle("Highlight Item", isOn: $isHighlight)
+                }
+            }
+            .navigationTitle("Add Schedule Item")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .disabled(isSaving)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Button("Add") {
+                            addItem()
+                        }
+                        .disabled(time.isEmpty || title.isEmpty)
+                    }
+                }
+            }
+        }
+    }
+
+    private func addItem() {
+        isSaving = true
+
+        let newItem = SupabaseScheduleItem(
+            event_id: eventId,
+            time: time,
+            title: title,
+            description: description.isEmpty ? nil : description,
+            location: location.isEmpty ? nil : location,
+            is_highlight: isHighlight,
+            sort_order: supabaseService.scheduleItems.count
+        )
+
+        Task {
+            let success = await supabaseService.addScheduleItem(newItem)
+            await MainActor.run {
+                isSaving = false
+                if success {
+                    dismiss()
+                }
+            }
+        }
     }
 }
 
@@ -2356,10 +2718,11 @@ struct AnalyticsMetricCard: View {
 
 struct CustomTabBar: View {
     @Binding var selectedTab: ModernDashboardView.DashboardTab
+    var visibleTabs: [ModernDashboardView.DashboardTab]
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(ModernDashboardView.DashboardTab.allCases, id: \.rawValue) { tab in
+            ForEach(visibleTabs, id: \.rawValue) { tab in
                 Button(action: {
                     selectedTab = tab
                 }) {

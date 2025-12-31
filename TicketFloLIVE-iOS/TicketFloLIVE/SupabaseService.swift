@@ -85,6 +85,38 @@ struct SupabaseMerchandise: Identifiable, Codable {
     }
 }
 
+// MARK: - Event Schedule Model
+struct SupabaseScheduleItem: Identifiable, Codable {
+    let id: String
+    let event_id: String
+    var time: String
+    var title: String
+    var description: String?
+    var location: String?
+    var is_highlight: Bool
+    var sort_order: Int
+    let created_at: String?
+    let updated_at: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, event_id, time, title, description, location
+        case is_highlight, sort_order, created_at, updated_at
+    }
+
+    init(id: String = UUID().uuidString, event_id: String, time: String, title: String, description: String? = nil, location: String? = nil, is_highlight: Bool = false, sort_order: Int = 0) {
+        self.id = id
+        self.event_id = event_id
+        self.time = time
+        self.title = title
+        self.description = description
+        self.location = location
+        self.is_highlight = is_highlight
+        self.sort_order = sort_order
+        self.created_at = nil
+        self.updated_at = nil
+    }
+}
+
 // MARK: - POS Sale Model for Analytics
 struct POSSale: Identifiable {
     let id: String
@@ -152,6 +184,7 @@ class SupabaseService: ObservableObject {
     @Published var ticketTypes: [SupabaseTicketType] = []
     @Published var merchandise: [SupabaseMerchandise] = []
     @Published var posSales: [POSSale] = []  // Track POS sales for analytics
+    @Published var scheduleItems: [SupabaseScheduleItem] = []  // Event schedule items
     @Published var isLoading = false
     @Published var error: String?
 
@@ -1432,6 +1465,184 @@ class SupabaseService: ObservableObject {
             print("❌ Error in performMerchandiseFetch: \(error)")
             throw error
         }
+    }
+
+    // MARK: - Event Schedule CRUD Operations
+
+    /// Fetch schedule items for an event
+    func fetchScheduleItems(for eventId: String) async {
+        print("📅 Fetching schedule items for event: \(eventId)")
+
+        guard let token = userAccessToken else {
+            print("❌ No access token for fetching schedule")
+            return
+        }
+
+        let urlString = "\(supabaseURL)/rest/v1/event_schedules?event_id=eq.\(eventId)&order=sort_order.asc,time.asc"
+        guard let url = URL(string: urlString) else { return }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            if let httpResponse = response as? HTTPURLResponse {
+                print("📅 Schedule fetch response: \(httpResponse.statusCode)")
+            }
+
+            let items = try JSONDecoder().decode([SupabaseScheduleItem].self, from: data)
+
+            await MainActor.run {
+                self.scheduleItems = items
+            }
+            print("✅ Fetched \(items.count) schedule items")
+        } catch {
+            print("❌ Error fetching schedule: \(error)")
+        }
+    }
+
+    /// Add a new schedule item
+    func addScheduleItem(_ item: SupabaseScheduleItem) async -> Bool {
+        print("📅 Adding schedule item: \(item.title)")
+
+        guard let token = userAccessToken else {
+            print("❌ No access token for adding schedule item")
+            return false
+        }
+
+        let urlString = "\(supabaseURL)/rest/v1/event_schedules"
+        guard let url = URL(string: urlString) else { return false }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("return=representation", forHTTPHeaderField: "Prefer")
+
+        let body: [String: Any] = [
+            "event_id": item.event_id,
+            "time": item.time,
+            "title": item.title,
+            "description": item.description as Any,
+            "location": item.location as Any,
+            "is_highlight": item.is_highlight,
+            "sort_order": item.sort_order
+        ]
+
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            if let httpResponse = response as? HTTPURLResponse {
+                print("📅 Add schedule item response: \(httpResponse.statusCode)")
+
+                if httpResponse.statusCode == 201 {
+                    // Parse the created item and add to local state
+                    if let createdItems = try? JSONDecoder().decode([SupabaseScheduleItem].self, from: data),
+                       let createdItem = createdItems.first {
+                        await MainActor.run {
+                            self.scheduleItems.append(createdItem)
+                            self.scheduleItems.sort { ($0.sort_order, $0.time) < ($1.sort_order, $1.time) }
+                        }
+                        print("✅ Added schedule item: \(createdItem.title)")
+                        return true
+                    }
+                }
+            }
+        } catch {
+            print("❌ Error adding schedule item: \(error)")
+        }
+
+        return false
+    }
+
+    /// Update a schedule item
+    func updateScheduleItem(_ item: SupabaseScheduleItem) async -> Bool {
+        print("📅 Updating schedule item: \(item.id)")
+
+        guard let token = userAccessToken else {
+            print("❌ No access token for updating schedule item")
+            return false
+        }
+
+        let urlString = "\(supabaseURL)/rest/v1/event_schedules?id=eq.\(item.id)"
+        guard let url = URL(string: urlString) else { return false }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let body: [String: Any] = [
+            "time": item.time,
+            "title": item.title,
+            "description": item.description as Any,
+            "location": item.location as Any,
+            "is_highlight": item.is_highlight,
+            "sort_order": item.sort_order
+        ]
+
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 204 {
+                await MainActor.run {
+                    if let index = self.scheduleItems.firstIndex(where: { $0.id == item.id }) {
+                        self.scheduleItems[index] = item
+                        self.scheduleItems.sort { ($0.sort_order, $0.time) < ($1.sort_order, $1.time) }
+                    }
+                }
+                print("✅ Updated schedule item")
+                return true
+            }
+        } catch {
+            print("❌ Error updating schedule item: \(error)")
+        }
+
+        return false
+    }
+
+    /// Delete a schedule item
+    func deleteScheduleItem(id: String) async -> Bool {
+        print("📅 Deleting schedule item: \(id)")
+
+        guard let token = userAccessToken else {
+            print("❌ No access token for deleting schedule item")
+            return false
+        }
+
+        let urlString = "\(supabaseURL)/rest/v1/event_schedules?id=eq.\(id)"
+        guard let url = URL(string: urlString) else { return false }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 204 {
+                await MainActor.run {
+                    self.scheduleItems.removeAll { $0.id == id }
+                }
+                print("✅ Deleted schedule item")
+                return true
+            }
+        } catch {
+            print("❌ Error deleting schedule item: \(error)")
+        }
+
+        return false
     }
 
     // MARK: - Create POS Transaction

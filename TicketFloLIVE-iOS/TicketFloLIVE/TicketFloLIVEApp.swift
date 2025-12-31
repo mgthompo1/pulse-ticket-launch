@@ -7,6 +7,7 @@ class AppSettings: ObservableObject {
     @AppStorage("hapticFeedbackEnabled") var hapticFeedbackEnabled: Bool = true
     @AppStorage("autoRefreshEnabled") var autoRefreshEnabled: Bool = true
     @AppStorage("showTicketCodes") var showTicketCodes: Bool = true
+    @AppStorage("showEventSchedule") var showEventSchedule: Bool = false
     @AppStorage("lastSelectedEventId") var lastSelectedEventId: String = ""
     @AppStorage("stripeLocationId") var stripeLocationId: String = "tml_FOaDYKjqAd0mIM"
 
