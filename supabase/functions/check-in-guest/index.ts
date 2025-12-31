@@ -33,14 +33,18 @@ serve(async (req) => {
       );
     }
 
-    if (ticket.status !== "valid") {
+    // Check if already checked in (check both the flag and check_ins table)
+    if (ticket.checked_in === true) {
       return new Response(
-        JSON.stringify({ error: "Ticket is not valid" }),
+        JSON.stringify({
+          error: "Guest already checked in",
+          checkedInAt: ticket.used_at
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Check if already checked in
+    // Also check check_ins table for consistency
     const { data: existingCheckin } = await supabase
       .from("check_ins")
       .select("*")
@@ -49,10 +53,18 @@ serve(async (req) => {
 
     if (existingCheckin) {
       return new Response(
-        JSON.stringify({ 
-          error: "Guest already checked in", 
-          checkedInAt: existingCheckin.checked_in_at 
+        JSON.stringify({
+          error: "Guest already checked in",
+          checkedInAt: existingCheckin.checked_in_at
         }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check ticket status - must be valid (not cancelled, refunded, etc.)
+    if (ticket.status !== "valid" && ticket.status !== "used") {
+      return new Response(
+        JSON.stringify({ error: `Ticket status is '${ticket.status}' - cannot check in` }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -70,11 +82,12 @@ serve(async (req) => {
 
     if (checkinError) throw checkinError;
 
-    // Update ticket status to used
+    // Update ticket status to used AND checked_in flag
     const { error: updateError } = await supabase
       .from("tickets")
       .update({
         status: 'used',
+        checked_in: true,
         used_at: new Date().toISOString()
       })
       .eq("id", ticket.id);
