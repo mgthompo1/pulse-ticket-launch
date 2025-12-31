@@ -85,6 +85,23 @@ struct SupabaseMerchandise: Identifiable, Codable {
     }
 }
 
+// MARK: - POS Sale Model for Analytics
+struct POSSale: Identifiable {
+    let id: String
+    let eventId: String
+    let itemName: String
+    let itemType: String // "ticket" or "merchandise"
+    let quantity: Int
+    let unitPrice: Double
+    let totalAmount: Double
+    let customerName: String
+    let timestamp: Date
+
+    var total: Double {
+        return Double(quantity) * unitPrice
+    }
+}
+
 // MARK: - Combined Guest Model for UI
 struct SupabaseGuest: Identifiable {
     let id: String
@@ -93,11 +110,33 @@ struct SupabaseGuest: Identifiable {
     let ticketCode: String
     let checkedIn: Bool
     let checkedInAt: String?
+    var notes: String?
 
     var initials: String {
         let components = name.components(separatedBy: " ")
         return components.compactMap { $0.first?.uppercased() }.joined()
     }
+}
+
+// MARK: - Realtime Message Types
+struct RealtimePayload: Codable {
+    let type: String
+    let event: String?
+    let topic: String?
+    let payload: RealtimeData?
+    let ref: String?
+}
+
+struct RealtimeData: Codable {
+    let data: RealtimeRecord?
+    let errors: [String]?
+}
+
+struct RealtimeRecord: Codable {
+    let id: String?
+    let ticket_code: String?
+    let checked_in: Bool?
+    let used_at: String?
 }
 
 // MARK: - Supabase Service
@@ -112,6 +151,7 @@ class SupabaseService: ObservableObject {
     @Published var guests: [SupabaseGuest] = []
     @Published var ticketTypes: [SupabaseTicketType] = []
     @Published var merchandise: [SupabaseMerchandise] = []
+    @Published var posSales: [POSSale] = []  // Track POS sales for analytics
     @Published var isLoading = false
     @Published var error: String?
 
@@ -120,11 +160,115 @@ class SupabaseService: ObservableObject {
     @Published var userOrganizationId: String?
     @Published var userEmail: String?
     @Published var userId: String?  // Store user UUID for API calls
+    @Published var sessionExpired = false  // Notify UI when session expires
+    @Published var stripeTerminalLocationId: String?  // Stripe Terminal location for Tap to Pay
+
+    // Realtime sync status
+    @Published var isRealtimeConnected = false
+    @Published var isSyncing = false
+    @Published var lastRealtimeUpdate: Date?
 
     // Store the user's JWT access token for authenticated API calls
     private var userAccessToken: String?
+    private var refreshToken: String?
+    private var tokenExpiresAt: Date?
 
-    private init() {}
+    // Realtime WebSocket
+    private var realtimeTask: URLSessionWebSocketTask?
+    private var realtimeSession: URLSession?
+    private var heartbeatTimer: Timer?
+    private var currentRealtimeEventId: String?
+
+    private init() {
+        // Load persisted POS sales on init
+        loadPersistedSales()
+    }
+
+    private func loadPersistedSales() {
+        let persistedSales = LocalPersistence.shared.getAllPOSSales()
+        if !persistedSales.isEmpty {
+            posSales = persistedSales
+            print("📦 Loaded \(persistedSales.count) persisted POS sales")
+        }
+    }
+
+    // MARK: - Token Management
+    private func isTokenExpired() -> Bool {
+        guard let expiresAt = tokenExpiresAt else { return true }
+        // Consider token expired 60 seconds before actual expiry to avoid edge cases
+        return Date().addingTimeInterval(60) >= expiresAt
+    }
+
+    func refreshAccessToken() async -> Bool {
+        guard let refreshToken = refreshToken else {
+            print("❌ No refresh token available")
+            await handleSessionExpiry()
+            return false
+        }
+
+        print("🔄 Refreshing access token...")
+
+        do {
+            let url = URL(string: "\(supabaseURL)/auth/v1/token?grant_type=refresh_token")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            let body: [String: Any] = ["refresh_token": refreshToken]
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let newAccessToken = json["access_token"] as? String,
+                   let newRefreshToken = json["refresh_token"] as? String,
+                   let expiresIn = json["expires_in"] as? Int {
+
+                    await MainActor.run {
+                        self.userAccessToken = newAccessToken
+                        self.refreshToken = newRefreshToken
+                        self.tokenExpiresAt = Date().addingTimeInterval(TimeInterval(expiresIn))
+                        self.sessionExpired = false
+                    }
+                    print("✅ Access token refreshed successfully")
+                    return true
+                }
+            }
+
+            print("❌ Token refresh failed")
+            await handleSessionExpiry()
+            return false
+
+        } catch {
+            print("❌ Token refresh error: \(error)")
+            await handleSessionExpiry()
+            return false
+        }
+    }
+
+    private func handleSessionExpiry() async {
+        await MainActor.run {
+            self.sessionExpired = true
+            self.isAuthenticated = false
+            self.userAccessToken = nil
+            self.refreshToken = nil
+            self.tokenExpiresAt = nil
+            self.error = "Your session has expired. Please sign in again."
+        }
+    }
+
+    /// Ensures we have a valid access token, refreshing if needed
+    func ensureValidToken() async -> String? {
+        if isTokenExpired() {
+            let refreshed = await refreshAccessToken()
+            if !refreshed {
+                return nil
+            }
+        }
+        return userAccessToken
+    }
 
     // MARK: - Caching
     private var guestCache: [String: (guests: [SupabaseGuest], timestamp: Date)] = [:]
@@ -230,14 +374,20 @@ class SupabaseService: ObservableObject {
 
                     print("✅ Got access token from login response (length: \(accessToken.count))")
 
-                    // Store access token and user ID first
+                    // Store access token, refresh token, and expiry
                     self.userAccessToken = accessToken
+                    self.refreshToken = authResponse["refresh_token"] as? String
+                    if let expiresIn = authResponse["expires_in"] as? Int {
+                        self.tokenExpiresAt = Date().addingTimeInterval(TimeInterval(expiresIn))
+                        print("📅 Token expires at: \(self.tokenExpiresAt?.description ?? "unknown")")
+                    }
 
                     // Get user's organization ID (use access token for this request)
                     let orgId = await fetchUserOrganizationId(userId: userId)
 
                     await MainActor.run {
                         self.isAuthenticated = true
+                        self.sessionExpired = false
                         self.userEmail = userEmail
                         self.userId = userId  // Store user UUID for check-in API
                         self.userOrganizationId = orgId
@@ -278,7 +428,7 @@ class SupabaseService: ObservableObject {
 
         // FIRST: Check organizations table (where user is OWNER) - prioritize this
         do {
-            let url = URL(string: "\(supabaseURL)/rest/v1/organizations?select=id,name&user_id=eq.\(userId)")!
+            let url = URL(string: "\(supabaseURL)/rest/v1/organizations?select=id,name,stripe_terminal_location_id&user_id=eq.\(userId)")!
             var request = URLRequest(url: url)
             request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
             request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
@@ -299,6 +449,17 @@ class SupabaseService: ObservableObject {
                    let organizationId = firstOrg["id"] as? String {
                     let orgName = firstOrg["name"] as? String ?? "Unknown"
                     print("✅ Found OWNED organization: \(orgName) (ID: \(organizationId)) for user: \(userId)")
+
+                    // Store Stripe Terminal location ID if configured
+                    if let terminalLocationId = firstOrg["stripe_terminal_location_id"] as? String {
+                        await MainActor.run {
+                            self.stripeTerminalLocationId = terminalLocationId
+                        }
+                        print("💳 Found Stripe Terminal Location ID: \(terminalLocationId)")
+                    } else {
+                        print("⚠️ No Stripe Terminal Location ID configured for this organization")
+                    }
+
                     return organizationId
                 }
             }
@@ -341,15 +502,305 @@ class SupabaseService: ObservableObject {
 
     func signOut() {
         isAuthenticated = false
+        sessionExpired = false
         userOrganizationId = nil
         userEmail = nil
         userId = nil  // Clear user ID on sign out
         userAccessToken = nil  // Clear access token on sign out
+        refreshToken = nil  // Clear refresh token
+        tokenExpiresAt = nil  // Clear token expiry
         events = []
         guests = []
         ticketTypes = []
         merchandise = []
+        posSales = []  // Clear POS sales on sign out
+        disconnectRealtime()
         clearCaches()
+    }
+
+    // MARK: - Realtime Subscriptions
+    func connectRealtime(for eventId: String) {
+        // Disconnect existing connection if any
+        disconnectRealtime()
+
+        currentRealtimeEventId = eventId
+        print("🔌 Connecting to Supabase Realtime for event: \(eventId)")
+
+        // Build WebSocket URL for Supabase Realtime
+        // Format: wss://<project>.supabase.co/realtime/v1/websocket?apikey=<key>&vsn=1.0.0
+        let wsURLString = supabaseURL
+            .replacingOccurrences(of: "https://", with: "wss://")
+            + "/realtime/v1/websocket?apikey=\(supabaseKey)&vsn=1.0.0"
+
+        guard let wsURL = URL(string: wsURLString) else {
+            print("❌ Invalid WebSocket URL")
+            return
+        }
+
+        realtimeSession = URLSession(configuration: .default)
+        realtimeTask = realtimeSession?.webSocketTask(with: wsURL)
+        realtimeTask?.resume()
+
+        // Start receiving messages
+        receiveRealtimeMessage()
+
+        // Send initial join message after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.joinTicketsChannel(eventId: eventId)
+        }
+
+        // Start heartbeat to keep connection alive
+        startHeartbeat()
+
+        DispatchQueue.main.async {
+            self.isRealtimeConnected = true
+        }
+    }
+
+    private func joinTicketsChannel(eventId: String) {
+        // Subscribe to ticket updates for this event
+        // Topic format: realtime:public:tickets
+        let joinPayload: [String: Any] = [
+            "topic": "realtime:public:tickets",
+            "event": "phx_join",
+            "payload": [
+                "config": [
+                    "broadcast": ["self": false],
+                    "presence": ["key": ""],
+                    "postgres_changes": [
+                        [
+                            "event": "UPDATE",
+                            "schema": "public",
+                            "table": "tickets",
+                            "filter": ""  // We'll filter client-side
+                        ]
+                    ]
+                ]
+            ],
+            "ref": "1"
+        ]
+
+        sendRealtimeMessage(joinPayload)
+        print("📡 Joined tickets realtime channel")
+    }
+
+    private func sendRealtimeMessage(_ message: [String: Any]) {
+        guard let data = try? JSONSerialization.data(withJSONObject: message),
+              let jsonString = String(data: data, encoding: .utf8) else {
+            print("❌ Failed to serialize realtime message")
+            return
+        }
+
+        realtimeTask?.send(.string(jsonString)) { error in
+            if let error = error {
+                print("❌ Failed to send realtime message: \(error)")
+            }
+        }
+    }
+
+    private func receiveRealtimeMessage() {
+        realtimeTask?.receive { [weak self] result in
+            switch result {
+            case .success(let message):
+                switch message {
+                case .string(let text):
+                    self?.handleRealtimeMessage(text)
+                case .data(let data):
+                    if let text = String(data: data, encoding: .utf8) {
+                        self?.handleRealtimeMessage(text)
+                    }
+                @unknown default:
+                    break
+                }
+                // Continue receiving
+                self?.receiveRealtimeMessage()
+
+            case .failure(let error):
+                print("❌ Realtime receive error: \(error)")
+                DispatchQueue.main.async {
+                    self?.isRealtimeConnected = false
+                }
+                // Try to reconnect after a delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+                    if let eventId = self?.currentRealtimeEventId {
+                        self?.connectRealtime(for: eventId)
+                    }
+                }
+            }
+        }
+    }
+
+    private func handleRealtimeMessage(_ text: String) {
+        guard let data = text.data(using: .utf8) else { return }
+
+        // Parse the message
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return
+        }
+
+        let event = json["event"] as? String ?? ""
+
+        // Handle different event types
+        switch event {
+        case "phx_reply":
+            // Join acknowledgment
+            if let payload = json["payload"] as? [String: Any],
+               let status = payload["status"] as? String,
+               status == "ok" {
+                print("✅ Successfully joined realtime channel")
+            }
+
+        case "postgres_changes":
+            // Database change event
+            if let payload = json["payload"] as? [String: Any],
+               let changeData = payload["data"] as? [String: Any] {
+                handleTicketUpdate(changeData)
+            }
+
+        case "phx_error":
+            print("❌ Realtime channel error")
+
+        default:
+            break
+        }
+    }
+
+    private func handleTicketUpdate(_ data: [String: Any]) {
+        guard let record = data["record"] as? [String: Any],
+              let ticketCode = record["ticket_code"] as? String,
+              let checkedIn = record["checked_in"] as? Bool else {
+            return
+        }
+
+        print("📡 Received realtime update: ticket \(ticketCode) checked_in=\(checkedIn)")
+
+        // Update local guest state
+        Task { @MainActor in
+            if let index = guests.firstIndex(where: { $0.ticketCode == ticketCode }) {
+                let oldGuest = guests[index]
+                // Only update if state actually changed
+                if oldGuest.checkedIn != checkedIn {
+                    let updatedGuest = SupabaseGuest(
+                        id: oldGuest.id,
+                        name: oldGuest.name,
+                        email: oldGuest.email,
+                        ticketCode: oldGuest.ticketCode,
+                        checkedIn: checkedIn,
+                        checkedInAt: checkedIn ? (record["used_at"] as? String ?? ISO8601DateFormatter().string(from: Date())) : nil,
+                        notes: oldGuest.notes
+                    )
+                    guests[index] = updatedGuest
+                    lastRealtimeUpdate = Date()
+                    print("✅ Updated guest \(oldGuest.name) via realtime sync")
+
+                    // Update cache as well
+                    if let eventId = currentRealtimeEventId {
+                        LocalPersistence.shared.updateCachedGuestCheckIn(ticketCode: ticketCode, eventId: eventId)
+                    }
+                }
+            }
+        }
+    }
+
+    private func startHeartbeat() {
+        heartbeatTimer?.invalidate()
+        heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            let heartbeat: [String: Any] = [
+                "topic": "phoenix",
+                "event": "heartbeat",
+                "payload": [:],
+                "ref": String(Int.random(in: 1000...9999))
+            ]
+            self?.sendRealtimeMessage(heartbeat)
+        }
+    }
+
+    func disconnectRealtime() {
+        heartbeatTimer?.invalidate()
+        heartbeatTimer = nil
+        realtimeTask?.cancel(with: .goingAway, reason: nil)
+        realtimeTask = nil
+        realtimeSession = nil
+        currentRealtimeEventId = nil
+        DispatchQueue.main.async {
+            self.isRealtimeConnected = false
+        }
+        print("🔌 Disconnected from Supabase Realtime")
+    }
+
+    // MARK: - Sync Pending Offline Check-Ins
+    func syncPendingCheckIns() async {
+        let pendingCheckIns = LocalPersistence.shared.getPendingCheckIns()
+
+        guard !pendingCheckIns.isEmpty else {
+            print("📤 No pending check-ins to sync")
+            return
+        }
+
+        print("📤 Syncing \(pendingCheckIns.count) pending offline check-ins...")
+
+        await MainActor.run {
+            isSyncing = true
+        }
+
+        for checkIn in pendingCheckIns {
+            // Attempt to sync each check-in
+            let success = await syncSingleCheckIn(checkIn)
+
+            if success {
+                LocalPersistence.shared.markCheckInSynced(id: checkIn.id)
+                print("✅ Synced offline check-in: \(checkIn.guestName)")
+            } else {
+                LocalPersistence.shared.markCheckInFailed(id: checkIn.id, error: "Sync failed")
+                print("❌ Failed to sync check-in: \(checkIn.guestName)")
+            }
+        }
+
+        await MainActor.run {
+            isSyncing = false
+        }
+
+        LocalPersistence.shared.updateLastSyncTime()
+        print("📤 Sync complete")
+    }
+
+    private func syncSingleCheckIn(_ checkIn: OfflineCheckIn) async -> Bool {
+        guard let accessToken = userAccessToken else {
+            return false
+        }
+
+        do {
+            let url = URL(string: "\(supabaseURL)/functions/v1/check-in-guest")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+            request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            let checkInData: [String: Any] = [
+                "ticketCode": checkIn.ticketCode,
+                "staffId": userId ?? "",
+                "notes": "Checked in offline via iOS app at \(checkIn.timestamp)"
+            ]
+
+            request.httpBody = try JSONSerialization.data(withJSONObject: checkInData)
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            if let httpResponse = response as? HTTPURLResponse,
+               httpResponse.statusCode == 200 {
+                if let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let success = responseJSON["success"] as? Bool {
+                    return success
+                }
+            }
+
+            return false
+
+        } catch {
+            print("❌ Error syncing check-in: \(error)")
+            return false
+        }
     }
 
     // MARK: - Clear Caches
@@ -497,6 +948,9 @@ class SupabaseService: ObservableObject {
             return []
         }
 
+        // Store current event ID for caching
+        currentEventId = eventId
+
         do {
             // Use the same RPC function as the web app for consistency
             let urlString = "\(supabaseURL)/rest/v1/rpc/get_guest_status_for_event"
@@ -548,6 +1002,7 @@ class SupabaseService: ObservableObject {
                 let customerEmail = guestDict["customer_email"] as? String ?? ""
                 let checkedIn = guestDict["checked_in"] as? Bool ?? false
                 let checkedInAt = guestDict["checked_in_at"] as? String
+                let notes = guestDict["notes"] as? String
 
                 let guest = SupabaseGuest(
                     id: ticketId,
@@ -555,17 +1010,30 @@ class SupabaseService: ObservableObject {
                     email: customerEmail,
                     ticketCode: ticketCode,
                     checkedIn: checkedIn,
-                    checkedInAt: checkedInAt
+                    checkedInAt: checkedInAt,
+                    notes: notes
                 )
 
                 parsedGuests.append(guest)
             }
 
             print("✅ Successfully parsed \(parsedGuests.count) guests from RPC")
+
+            // Cache guests for offline access
+            LocalPersistence.shared.cacheGuests(parsedGuests, for: eventId)
+            LocalPersistence.shared.updateLastSyncTime()
+
             return parsedGuests
 
         } catch {
             print("Error in performGuestFetch RPC: \(error)")
+
+            // Try to return cached guests if available
+            if let cachedGuests = LocalPersistence.shared.getCachedGuests(for: eventId) {
+                print("📦 Returning cached guests due to network error")
+                return cachedGuests
+            }
+
             throw error
         }
     }
@@ -591,6 +1059,10 @@ class SupabaseService: ObservableObject {
     // MARK: - Check In Guest
     func checkInGuest(ticketCode: String) async -> Bool {
         print("🎫 Starting check-in for ticket code: \(ticketCode)")
+
+        // Get guest name for offline queue
+        let guestName = guests.first(where: { $0.ticketCode == ticketCode })?.name ?? "Guest"
+        let currentEventId = currentEventId
 
         // CRITICAL: Use user's access token for authenticated calls
         guard let accessToken = userAccessToken else {
@@ -629,8 +1101,11 @@ class SupabaseService: ObservableObject {
                     if let responseJSON = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                        let success = responseJSON["success"] as? Bool {
 
-                        // ✅ Just update the local guest state instead of refetching
+                        // ✅ Update local guest state and cache
                         await updateLocalGuest(ticketCode: ticketCode, checkedIn: true)
+                        if let eventId = currentEventId {
+                            LocalPersistence.shared.updateCachedGuestCheckIn(ticketCode: ticketCode, eventId: eventId)
+                        }
 
                         return success
                     }
@@ -648,7 +1123,68 @@ class SupabaseService: ObservableObject {
             return false
 
         } catch {
-            print("❌ Error checking in guest: \(error)")
+            // Network error - queue for offline sync
+            print("❌ Network error checking in guest: \(error)")
+            print("📤 Queueing check-in for offline sync...")
+
+            LocalPersistence.shared.queueOfflineCheckIn(ticketCode: ticketCode, guestName: guestName)
+
+            // Update local state optimistically
+            await updateLocalGuest(ticketCode: ticketCode, checkedIn: true)
+            if let eventId = currentEventId {
+                LocalPersistence.shared.updateCachedGuestCheckIn(ticketCode: ticketCode, eventId: eventId)
+            }
+
+            return true // Return true for optimistic UI update
+        }
+    }
+
+    // Track current event for caching
+    private var currentEventId: String?
+
+    // MARK: - Update Guest Notes
+    func updateGuestNotes(ticketId: String, notes: String) async -> Bool {
+        print("📝 Updating notes for ticket ID: \(ticketId)")
+
+        guard let accessToken = userAccessToken else {
+            print("❌ No access token available for notes update")
+            return false
+        }
+
+        do {
+            // Update the ticket's notes field directly via REST API
+            let url = URL(string: "\(supabaseURL)/rest/v1/tickets?id=eq.\(ticketId)")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "PATCH"
+            request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+            request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("return=minimal", forHTTPHeaderField: "Prefer")
+
+            let updateData: [String: Any] = ["notes": notes]
+            request.httpBody = try JSONSerialization.data(withJSONObject: updateData)
+
+            let (_, response) = try await URLSession.shared.data(for: request)
+
+            if let httpResponse = response as? HTTPURLResponse {
+                print("📝 Notes update response status: \(httpResponse.statusCode)")
+
+                if httpResponse.statusCode == 204 || httpResponse.statusCode == 200 {
+                    // Update local guest state
+                    await MainActor.run {
+                        if let index = guests.firstIndex(where: { $0.id == ticketId }) {
+                            guests[index].notes = notes
+                        }
+                    }
+                    print("✅ Notes updated successfully")
+                    return true
+                }
+            }
+
+            return false
+
+        } catch {
+            print("❌ Error updating notes: \(error)")
             return false
         }
     }
@@ -921,6 +1457,36 @@ class SupabaseService: ObservableObject {
             try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
 
             let transactionId = UUID().uuidString
+
+            // Record sales for analytics and persist locally
+            await MainActor.run {
+                for item in items {
+                    // Find item name from ticket types or merchandise
+                    var itemName = "Unknown Item"
+                    if item.type == "ticket" {
+                        itemName = ticketTypes.first(where: { $0.id == item.id })?.name ?? "Ticket"
+                    } else {
+                        itemName = merchandise.first(where: { $0.id == item.id })?.name ?? "Merchandise"
+                    }
+
+                    let sale = POSSale(
+                        id: UUID().uuidString,
+                        eventId: eventId,
+                        itemName: itemName,
+                        itemType: item.type,
+                        quantity: item.quantity,
+                        unitPrice: item.price,
+                        totalAmount: item.price * Double(item.quantity),
+                        customerName: customerName,
+                        timestamp: Date()
+                    )
+                    posSales.append(sale)
+
+                    // Persist sale locally
+                    LocalPersistence.shared.savePOSSale(sale, synced: true)
+                }
+            }
+
             print("✅ POS transaction completed successfully: \(transactionId)")
             return transactionId
 
@@ -928,6 +1494,23 @@ class SupabaseService: ObservableObject {
             print("❌ Error creating POS transaction: \(error)")
             return nil
         }
+    }
+
+    // MARK: - POS Analytics Helpers
+    func getPOSSalesTotal(for eventId: String) -> Double {
+        return posSales.filter { $0.eventId == eventId }.reduce(0) { $0 + $1.totalAmount }
+    }
+
+    func getPOSSalesCount(for eventId: String) -> Int {
+        return posSales.filter { $0.eventId == eventId }.count
+    }
+
+    func getTicketSalesTotal(for eventId: String) -> Double {
+        return posSales.filter { $0.eventId == eventId && $0.itemType == "ticket" }.reduce(0) { $0 + $1.totalAmount }
+    }
+
+    func getMerchandiseSalesTotal(for eventId: String) -> Double {
+        return posSales.filter { $0.eventId == eventId && $0.itemType == "merchandise" }.reduce(0) { $0 + $1.totalAmount }
     }
 }
 

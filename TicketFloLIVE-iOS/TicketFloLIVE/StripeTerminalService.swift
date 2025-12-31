@@ -5,7 +5,7 @@ import StripeTerminal
 // MARK: - Stripe Terminal Service
 // This service handles Tap to Pay on iPhone functionality using Stripe Terminal SDK
 @available(iOS 16.0, *)
-class StripeTerminalService: NSObject, ObservableObject, DiscoveryDelegate, ReaderDelegate {
+class StripeTerminalService: NSObject, ObservableObject, DiscoveryDelegate, TapToPayReaderDelegate {
 
     // MARK: - Published Properties
     static let shared = StripeTerminalService()
@@ -22,6 +22,13 @@ class StripeTerminalService: NSObject, ObservableObject, DiscoveryDelegate, Read
     private var paymentIntentClientSecret: String?
     private var currentLocationId: String?
     private var connectionPromise: ((Result<Void, Error>) -> Void)?
+    private var cachedLocationId: String? // Cache location to skip reconnection
+
+    // Merchant display name for Apple TOS and payment prompts (set during initialization)
+    private var merchantDisplayName: String = "TicketFlo"
+
+    // Connected Stripe account ID for Stripe Connect (optional)
+    private var connectedAccountId: String?
 
     // Supabase configuration - from SupabaseService
     private let supabaseURL = "https://yoxsewbpoqxscsutqlcb.supabase.co"
@@ -30,6 +37,18 @@ class StripeTerminalService: NSObject, ObservableObject, DiscoveryDelegate, Read
     private override init() {
         super.init()
         print("🔵 StripeTerminalService initialized")
+    }
+
+    // MARK: - Configuration
+    /// Configure merchant details for Apple TOS and payment display
+    /// Call this before processing payments to set the merchant name and Stripe Connect account
+    func configure(merchantName: String, stripeConnectAccountId: String? = nil) {
+        self.merchantDisplayName = merchantName
+        self.connectedAccountId = stripeConnectAccountId
+        print("🔵 Configured merchant: \(merchantName)")
+        if let accountId = stripeConnectAccountId {
+            print("🔗 Stripe Connect account: \(accountId)")
+        }
     }
 
     // MARK: - Initialization
@@ -70,7 +89,7 @@ class StripeTerminalService: NSObject, ObservableObject, DiscoveryDelegate, Read
     }
 
     // MARK: - Reader Discovery & Connection
-    /// Discover and connect to Tap to Pay on iPhone reader
+    /// Discover and connect to Tap to Pay on iPhone reader (optimized with caching)
     private func discoverAndConnectTapToPayReader(locationId: String) -> AnyPublisher<Void, Error> {
         return Future<Void, Error> { [weak self] promise in
             guard let self = self else {
@@ -78,9 +97,18 @@ class StripeTerminalService: NSObject, ObservableObject, DiscoveryDelegate, Read
                 return
             }
 
-            // Check if already connected to a reader
-            if let connectedReader = Terminal.shared.connectedReader {
-                print("✅ Reader already connected: \(connectedReader.label ?? "iPhone")")
+            // Check if already connected to a reader with the same location - FAST PATH
+            if let connectedReader = Terminal.shared.connectedReader,
+               self.cachedLocationId == locationId {
+                print("✅ Reader already connected (cached): \(connectedReader.label ?? "iPhone")")
+                promise(.success(()))
+                return
+            }
+
+            // If connected but different location, cache the new location
+            if Terminal.shared.connectedReader != nil {
+                print("✅ Reader connected, updating location cache")
+                self.cachedLocationId = locationId
                 promise(.success(()))
                 return
             }
@@ -90,11 +118,43 @@ class StripeTerminalService: NSObject, ObservableObject, DiscoveryDelegate, Read
             // Store locationId for use when connecting
             self.currentLocationId = locationId
 
-            // Create discovery configuration for Tap to Pay on iPhone
-            // Note: Tap to Pay uses built-in reader - no physical discovery needed
-            // For now, we'll simulate success and proceed to payment
-            print("✅ Tap to Pay ready - using iPhone as reader")
-            promise(.success(()))
+            // Create discovery configuration for Tap to Pay on iPhone using Builder pattern
+            do {
+                let discoveryConfig = try TapToPayDiscoveryConfigurationBuilder()
+                    .setSimulated(false)
+                    .build()
+
+                // Store the promise to complete when connection finishes
+                self.connectionPromise = { result in
+                    switch result {
+                    case .success:
+                        promise(.success(()))
+                    case .failure(let error):
+                        promise(.failure(error))
+                    }
+                }
+
+                // Reduced timeout to 5 seconds for faster failure detection
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+                    if let connectionPromise = self?.connectionPromise {
+                        print("⚠️ Reader connection timeout after 5 seconds")
+                        connectionPromise(.failure(TapToPayError.deviceNotSupported))
+                        self?.connectionPromise = nil
+                    }
+                }
+
+                // Start discovery
+                self.cancelable = Terminal.shared.discoverReaders(discoveryConfig, delegate: self) { [weak self] error in
+                    if let error = error {
+                        print("❌ Tap to Pay discovery failed: \(error.localizedDescription)")
+                        self?.connectionPromise = nil
+                        promise(.failure(error))
+                    }
+                }
+            } catch {
+                print("❌ Failed to create discovery configuration: \(error.localizedDescription)")
+                promise(.failure(error))
+            }
         }.eraseToAnyPublisher()
     }
 
@@ -110,64 +170,89 @@ class StripeTerminalService: NSObject, ObservableObject, DiscoveryDelegate, Read
 
         print("🔵 Connecting to Tap to Pay reader: \(reader.label ?? "iPhone")")
 
-        // Connect to the reader using LocalMobileConnectionConfiguration with Builder pattern
         guard let locationId = currentLocationId else {
             print("❌ No location ID available for connection")
             currentStatus = "Connection failed: No location"
             return
         }
 
-        // For Tap to Pay, the iPhone itself is the reader
-        print("✅ Using iPhone as Tap to Pay reader")
-        DispatchQueue.main.async {
-            self.currentStatus = "Reader ready"
+        do {
+            // Create connection configuration with self as delegate
+            // Include TOS acceptance and merchant display name for Apple compliance
+            var configBuilder = try TapToPayConnectionConfigurationBuilder(delegate: self, locationId: locationId)
+                .setMerchantDisplayName(merchantDisplayName)
+                .setTosAcceptancePermitted(true) // Allow Apple TOS to be presented on first connection
+
+            // Add connected account ID for Stripe Connect if available
+            if let accountId = connectedAccountId {
+                configBuilder = try configBuilder.setOnBehalfOf(accountId)
+            }
+
+            let connectionConfig = try configBuilder.build()
+
+            Terminal.shared.connectReader(reader, connectionConfig: connectionConfig) { [weak self] connectedReader, error in
+                if let error = error {
+                    print("❌ Failed to connect Tap to Pay reader: \(error.localizedDescription)")
+                    DispatchQueue.main.async {
+                        self?.currentStatus = "Connection failed"
+                    }
+                    self?.connectionPromise?(.failure(error))
+                    self?.connectionPromise = nil
+                } else if let connectedReader = connectedReader {
+                    print("✅ Connected to Tap to Pay reader: \(connectedReader.label ?? "iPhone")")
+                    self?.reader = connectedReader
+                    self?.cachedLocationId = locationId
+                    DispatchQueue.main.async {
+                        self?.currentStatus = "Reader ready"
+                    }
+                    self?.connectionPromise?(.success(()))
+                    self?.connectionPromise = nil
+                }
+            }
+        } catch {
+            print("❌ Failed to create connection configuration: \(error.localizedDescription)")
+            currentStatus = "Connection failed"
         }
-        self.connectionPromise?(.success(()))
-        self.connectionPromise = nil
     }
 
-    // MARK: - ReaderDelegate
-    func reader(_ reader: Reader, didReportAvailableUpdate update: ReaderSoftwareUpdate) {
-        print("🔵 Reader software update available")
-    }
-
-    func reader(_ reader: Reader, didStartInstallingUpdate update: ReaderSoftwareUpdate, cancelable: Cancelable?) {
-        print("🔵 Reader started installing update")
+    // MARK: - TapToPayReaderDelegate
+    func tapToPayReader(_ reader: Reader, didStartInstallingUpdate update: ReaderSoftwareUpdate, cancelable: Cancelable?) {
+        print("🔵 Tap to Pay reader started installing update")
         DispatchQueue.main.async {
             self.currentStatus = "Updating reader..."
         }
     }
 
-    func reader(_ reader: Reader, didReportReaderSoftwareUpdateProgress progress: Float) {
+    func tapToPayReader(_ reader: Reader, didReportReaderSoftwareUpdateProgress progress: Float) {
         let progressPercent = Int(progress * 100)
-        print("🔵 Reader update progress: \(progressPercent)%")
+        print("🔵 Tap to Pay reader update progress: \(progressPercent)%")
         DispatchQueue.main.async {
             self.currentStatus = "Updating reader: \(progressPercent)%"
         }
     }
 
-    func reader(_ reader: Reader, didFinishInstallingUpdate update: ReaderSoftwareUpdate?, error: Error?) {
+    func tapToPayReader(_ reader: Reader, didFinishInstallingUpdate update: ReaderSoftwareUpdate?, error: Error?) {
         if let error = error {
-            print("❌ Reader update failed: \(error.localizedDescription)")
+            print("❌ Tap to Pay reader update failed: \(error.localizedDescription)")
             DispatchQueue.main.async {
                 self.currentStatus = "Update failed"
             }
         } else {
-            print("✅ Reader update completed successfully")
+            print("✅ Tap to Pay reader update completed successfully")
             DispatchQueue.main.async {
                 self.currentStatus = "Update completed"
             }
         }
     }
 
-    func reader(_ reader: Reader, didRequestReaderInput inputOptions: ReaderInputOptions = []) {
+    func tapToPayReader(_ reader: Reader, didRequestReaderInput inputOptions: ReaderInputOptions) {
         print("🔵 Reader requesting input: \(inputOptions)")
         DispatchQueue.main.async {
-            self.currentStatus = "Waiting for card..."
+            self.currentStatus = "Waiting for input..."
         }
     }
 
-    func reader(_ reader: Reader, didRequestReaderDisplayMessage displayMessage: ReaderDisplayMessage) {
+    func tapToPayReader(_ reader: Reader, didRequestReaderDisplayMessage displayMessage: ReaderDisplayMessage) {
         print("🔵 Reader display message: \(displayMessage)")
         DispatchQueue.main.async {
             self.currentStatus = "Ready for payment"
@@ -303,7 +388,7 @@ class StripeTerminalService: NSObject, ObservableObject, DiscoveryDelegate, Read
             .eraseToAnyPublisher()
     }
 
-    /// Create PaymentIntent on backend
+    /// Create PaymentIntent on backend using Terminal-specific endpoint with Stripe Connect support
     private func createPaymentIntent(amount: Int, currency: String, description: String, organizationId: String) -> AnyPublisher<String, Error> {
         return Future<String, Error> { [weak self] promise in
             guard let self = self else {
@@ -311,7 +396,8 @@ class StripeTerminalService: NSObject, ObservableObject, DiscoveryDelegate, Read
                 return
             }
 
-            let url = URL(string: "\(self.supabaseURL)/functions/v1/create-payment-intent")!
+            // Use the terminal-specific endpoint that handles Stripe Connect and platform fees
+            let url = URL(string: "\(self.supabaseURL)/functions/v1/create-terminal-payment-intent")!
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -322,7 +408,10 @@ class StripeTerminalService: NSObject, ObservableObject, DiscoveryDelegate, Read
                 "currency": currency,
                 "description": description,
                 "organization_id": organizationId,
-                "capture_method": "manual" // Manual capture for Terminal
+                "metadata": [
+                    "source": "ticketflo_ios_tap_to_pay",
+                    "app_version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+                ]
             ]
 
             request.httpBody = try? JSONSerialization.data(withJSONObject: body)
@@ -355,6 +444,15 @@ class StripeTerminalService: NSObject, ObservableObject, DiscoveryDelegate, Read
                         // Check for success response
                         if let clientSecret = json["client_secret"] as? String {
                             print("✅ Got client secret: \(clientSecret.prefix(20))...")
+
+                            // Log Connect mode info if available
+                            if let mode = json["mode"] as? String {
+                                print("💳 Payment mode: \(mode)")
+                            }
+                            if let platformFee = json["platform_fee"] as? Int, platformFee > 0 {
+                                print("💰 Platform fee: \(platformFee) cents")
+                            }
+
                             promise(.success(clientSecret))
                         } else {
                             print("❌ Response JSON: \(json)")

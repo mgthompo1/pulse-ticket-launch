@@ -13,69 +13,139 @@ serve(async (req) => {
   }
 
   try {
-    // Get auth header
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      throw new Error('No authorization header provided')
-    }
-
-    // Create Supabase client
+    // Create Supabase client with service role for all operations
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseKey, {
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false }
     })
 
-    // Set the auth token
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    let organizationId: string | null = null
 
-    if (authError || !user) {
-      throw new Error('Invalid authentication token')
+    // Try to get organization_id from request body first (for iOS app)
+    try {
+      const body = await req.json()
+      if (body.organization_id) {
+        organizationId = body.organization_id
+        console.log('📱 Using organization_id from request body:', organizationId)
+      }
+    } catch {
+      // No JSON body, try auth header
     }
 
-    // Get user's organization
-    const { data: orgData, error: orgError } = await supabase
+    // If no org_id in body, try to get from authenticated user
+    if (!organizationId) {
+      const authHeader = req.headers.get('Authorization')
+      if (authHeader) {
+        const token = authHeader.replace('Bearer ', '')
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+
+        if (!authError && user) {
+          // Get user's organization
+          const { data: orgData, error: orgError } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('user_id', user.id)
+            .single()
+
+          if (!orgError && orgData) {
+            organizationId = orgData.id
+            console.log('🔐 Using organization from auth:', organizationId)
+          }
+        }
+      }
+    }
+
+    if (!organizationId) {
+      throw new Error('No organization_id provided and unable to determine from auth')
+    }
+
+    // Get organization's Stripe Connect account info
+    const { data: org, error: orgError } = await supabase
       .from('organizations')
-      .select('id')
-      .eq('user_id', user.id)
+      .select('id, stripe_account_id, stripe_test_mode')
+      .eq('id', organizationId)
       .single()
 
-    if (orgError || !orgData) {
-      throw new Error('No organization found for user')
+    if (orgError) {
+      console.error('Error fetching organization:', orgError)
+      throw new Error('Organization not found')
     }
 
-    // Get organization's payment configuration
-    const { data: paymentConfig, error: paymentError } = await supabase
-      .from('organization_payment_configs')
-      .select('stripe_secret_key, stripe_publishable_key')
-      .eq('organization_id', orgData.id)
-      .single()
+    console.log('📊 Organization:', org.id)
+    console.log('🔗 Has Stripe Connect:', org.stripe_account_id ? 'YES' : 'NO')
+    console.log('🧪 Test mode:', org.stripe_test_mode ? 'YES' : 'NO')
 
-    if (paymentError || !paymentConfig || !paymentConfig.stripe_secret_key) {
-      throw new Error('No Stripe configuration found for organization. Please configure payment settings first.')
+    let stripeSecretKey: string
+    let connectionTokenParams: Record<string, any> = {}
+
+    // Determine which Stripe key to use
+    if (org.stripe_account_id) {
+      // Organization has Stripe Connect - use platform key and create token for connected account
+      const platformKey = org.stripe_test_mode
+        ? Deno.env.get('STRIPE_SECRET_KEY_TEST')
+        : (Deno.env.get('STRIPE_SECRET_KEY_LIVE') || Deno.env.get('STRIPE_SECRET_KEY'))
+
+      if (!platformKey) {
+        throw new Error('Platform Stripe key not configured')
+      }
+
+      stripeSecretKey = platformKey
+
+      // For Terminal with Connect, we need to specify the connected account
+      // The location must belong to the connected account
+      console.log('🔗 Creating connection token for connected account:', org.stripe_account_id)
+
+      // Note: For Terminal with Connect, the connection token is created on the connected account
+      // We'll use the Stripe-Account header to make the request on behalf of the connected account
+    } else {
+      // No Connect - use organization's direct API key
+      const { data: paymentConfig, error: paymentError } = await supabase
+        .from('organization_payment_configs')
+        .select('stripe_secret_key')
+        .eq('organization_id', organizationId)
+        .single()
+
+      if (paymentError || !paymentConfig?.stripe_secret_key) {
+        throw new Error('No Stripe configuration found. Please connect Stripe or add API keys.')
+      }
+
+      stripeSecretKey = paymentConfig.stripe_secret_key
+      console.log('🔑 Using organization\'s direct Stripe API key')
     }
 
-    // Create connection token for Stripe Terminal using user's Stripe key
+    // Create connection token
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${stripeSecretKey}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    }
+
+    // If using Connect, add the Stripe-Account header to act on behalf of connected account
+    if (org.stripe_account_id) {
+      headers['Stripe-Account'] = org.stripe_account_id
+    }
+
     const response = await fetch('https://api.stripe.com/v1/terminal/connection_tokens', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${paymentConfig.stripe_secret_key}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers,
     })
 
     if (!response.ok) {
       const errorText = await response.text()
+      console.error('Stripe API error:', response.status, errorText)
       throw new Error(`Stripe API error: ${response.status} - ${errorText}`)
     }
 
     const connectionToken = await response.json()
+    console.log('✅ Connection token created successfully')
 
     return new Response(
       JSON.stringify({
         secret: connectionToken.secret,
         created: connectionToken.created,
+        // Include info about the mode for debugging
+        mode: org.stripe_account_id ? 'connect' : 'direct',
+        test_mode: org.stripe_test_mode || false,
       }),
       {
         headers: {

@@ -23,17 +23,15 @@ struct ModernDashboardView: View {
     enum DashboardTab: String, CaseIterable {
         case checkIn = "Check-In"
         case pointOfSale = "Point of Sale"
-        case guestStatus = "Guest Status"
-        case manageItems = "Manage Items"
         case analytics = "Analytics"
+        case settings = "Settings"
 
         var icon: String {
             switch self {
             case .checkIn: return "checkmark.circle"
             case .pointOfSale: return "creditcard"
-            case .guestStatus: return "person.2"
-            case .manageItems: return "list.bullet"
             case .analytics: return "chart.bar"
+            case .settings: return "gearshape"
             }
         }
 
@@ -41,9 +39,8 @@ struct ModernDashboardView: View {
             switch self {
             case .checkIn: return "Check-In"
             case .pointOfSale: return "Point of\nSale"
-            case .guestStatus: return "Guest\nStatus"
-            case .manageItems: return "Manage\nItems"
             case .analytics: return "Analytics"
+            case .settings: return "Settings"
             }
         }
     }
@@ -128,17 +125,14 @@ struct ModernDashboardView: View {
                     PointOfSaleTabView(selectedEvent: selectedEvent)
                         .tag(DashboardTab.pointOfSale)
 
-                    // Guest Status Tab
-                    GuestStatusTabView(analytics: analytics, guests: supabaseService.guests)
-                        .tag(DashboardTab.guestStatus)
-
-                    // Manage Items Tab
-                    ManageItemsTabView(selectedEvent: selectedEvent)
-                        .tag(DashboardTab.manageItems)
-
                     // Analytics Tab
                     AnalyticsTabView(analytics: analytics, guests: supabaseService.guests, selectedEvent: selectedEvent)
                         .tag(DashboardTab.analytics)
+
+                    // Settings Tab
+                    SettingsTabView(selectedEvent: selectedEvent)
+                        .environmentObject(authService)
+                        .tag(DashboardTab.settings)
                 }
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
 
@@ -164,9 +158,21 @@ struct ModernDashboardView: View {
             print("📱 ModernDashboardView .task started - about to fetch guests for event: \(selectedEvent.id)")
             await supabaseService.fetchGuests(for: selectedEvent.id)
             print("📱 ModernDashboardView .task completed - guest fetching finished")
+
+            // Connect to realtime for live multi-device sync
+            supabaseService.connectRealtime(for: selectedEvent.id)
+
+            // Sync any pending offline check-ins
+            await supabaseService.syncPendingCheckIns()
         }
         .refreshable {
             await supabaseService.fetchGuests(for: selectedEvent.id)
+            // Sync pending check-ins on manual refresh
+            await supabaseService.syncPendingCheckIns()
+        }
+        .onDisappear {
+            // Disconnect realtime when leaving the view
+            supabaseService.disconnectRealtime()
         }
     }
 
@@ -189,6 +195,8 @@ struct ModernDashboardHeader: View {
     let analytics: (total: Int, checkedIn: Int, pending: Int)
     let onBack: () -> Void
     let onScan: () -> Void
+    @StateObject private var supabaseService = SupabaseService.shared
+    @StateObject private var localPersistence = LocalPersistence.shared
 
     var body: some View {
         VStack(spacing: 16) {
@@ -206,6 +214,9 @@ struct ModernDashboardHeader: View {
                 }
 
                 Spacer()
+
+                // Sync Status Indicator
+                SyncStatusIndicator()
 
                 Button(action: onScan) {
                     HStack(spacing: 6) {
@@ -263,6 +274,46 @@ struct ModernDashboardHeader: View {
         .padding(.top, 8)
         .padding(.bottom, 16)
         .background(Color(.systemBackground))
+    }
+}
+
+// MARK: - Sync Status Indicator
+struct SyncStatusIndicator: View {
+    @StateObject private var supabaseService = SupabaseService.shared
+    @StateObject private var localPersistence = LocalPersistence.shared
+
+    var body: some View {
+        HStack(spacing: 6) {
+            // Realtime connection indicator
+            if supabaseService.isSyncing {
+                ProgressView()
+                    .scaleEffect(0.7)
+            } else if supabaseService.isRealtimeConnected {
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 12))
+                    .foregroundColor(.green)
+            } else {
+                Image(systemName: "bolt.slash")
+                    .font(.system(size: 12))
+                    .foregroundColor(.orange)
+            }
+
+            // Pending check-ins badge
+            if localPersistence.pendingCheckInsCount > 0 {
+                HStack(spacing: 3) {
+                    Image(systemName: "arrow.up.circle")
+                        .font(.system(size: 10))
+                    Text("\(localPersistence.pendingCheckInsCount)")
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.orange)
+                .cornerRadius(8)
+            }
+        }
+        .padding(.trailing, 8)
     }
 }
 
@@ -415,18 +466,33 @@ struct ModernGuestRow: View {
                         .foregroundColor(.secondary)
                         .lineLimit(1)
 
-                    HStack(spacing: 6) {
-                        Image(systemName: "ticket.fill")
-                            .font(.system(size: 10))
-                            .foregroundColor(.ticketFloOrange)
-                        Text(guest.ticketCode)
-                            .font(.system(size: 12, weight: .medium, design: .monospaced))
-                            .foregroundColor(.ticketFloOrange)
+                    HStack(spacing: 8) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "ticket.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.ticketFloOrange)
+                            Text(guest.ticketCode)
+                                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                                .foregroundColor(.ticketFloOrange)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.ticketFloOrange.opacity(0.1))
+                        .cornerRadius(6)
+
+                        // Notes indicator
+                        if let notes = guest.notes, !notes.isEmpty {
+                            HStack(spacing: 4) {
+                                Image(systemName: "note.text")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.webPrimary)
+                            }
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 4)
+                            .background(Color.webPrimary.opacity(0.1))
+                            .cornerRadius(6)
+                        }
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.ticketFloOrange.opacity(0.1))
-                    .cornerRadius(6)
                 }
 
                 Spacer()
@@ -472,10 +538,21 @@ struct ModernGuestRow: View {
             GuestDetailSheet(
                 guest: guest,
                 isCheckingIn: $isCheckingIn,
-                onCheckIn: checkInGuest
+                onCheckIn: checkInGuest,
+                onSaveNotes: saveGuestNotes
             )
-            .presentationDetents([.height(420)])
+            .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
+        }
+    }
+
+    private func saveGuestNotes(_ notes: String) {
+        Task {
+            let success = await supabaseService.updateGuestNotes(ticketId: guest.id, notes: notes)
+            if success {
+                let notificationFeedback = UINotificationFeedbackGenerator()
+                notificationFeedback.notificationOccurred(.success)
+            }
         }
     }
 
@@ -531,133 +608,213 @@ struct GuestDetailSheet: View {
     let guest: SupabaseGuest
     @Binding var isCheckingIn: Bool
     let onCheckIn: () -> Void
+    let onSaveNotes: (String) -> Void
+
+    @State private var notesText: String = ""
+    @State private var isEditingNotes = false
+    @State private var isSavingNotes = false
+    @FocusState private var isNotesFocused: Bool
+
+    init(guest: SupabaseGuest, isCheckingIn: Binding<Bool>, onCheckIn: @escaping () -> Void, onSaveNotes: @escaping (String) -> Void = { _ in }) {
+        self.guest = guest
+        self._isCheckingIn = isCheckingIn
+        self.onCheckIn = onCheckIn
+        self.onSaveNotes = onSaveNotes
+        self._notesText = State(initialValue: guest.notes ?? "")
+    }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            VStack(spacing: 16) {
-                // Avatar
-                ZStack {
-                    Circle()
-                        .fill(guest.checkedIn ? Color.green.opacity(0.15) : Color.ticketFloOrange.opacity(0.15))
-                        .frame(width: 80, height: 80)
+        ScrollView {
+            VStack(spacing: 0) {
+                // Header
+                VStack(spacing: 16) {
+                    // Avatar
+                    ZStack {
+                        Circle()
+                            .fill(guest.checkedIn ? Color.green.opacity(0.15) : Color.ticketFloOrange.opacity(0.15))
+                            .frame(width: 80, height: 80)
 
-                    if guest.checkedIn {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 44))
-                            .foregroundColor(.green)
-                    } else {
-                        Text(guest.initials)
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(.ticketFloOrange)
+                        if guest.checkedIn {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 44))
+                                .foregroundColor(.green)
+                        } else {
+                            Text(guest.initials)
+                                .font(.system(size: 28, weight: .bold))
+                                .foregroundColor(.ticketFloOrange)
+                        }
                     }
-                }
 
-                VStack(spacing: 4) {
-                    Text(guest.name)
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.primary)
+                    VStack(spacing: 4) {
+                        Text(guest.name)
+                            .font(.system(size: 24, weight: .bold))
+                            .foregroundColor(.primary)
 
-                    Text(guest.email)
-                        .font(.system(size: 15))
-                        .foregroundColor(.secondary)
-                }
-            }
-            .padding(.top, 24)
-
-            // Ticket Code
-            VStack(spacing: 8) {
-                Text("TICKET CODE")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .tracking(1)
-
-                HStack(spacing: 8) {
-                    Image(systemName: "ticket.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(.ticketFloOrange)
-
-                    Text(guest.ticketCode)
-                        .font(.system(size: 20, weight: .bold, design: .monospaced))
-                        .foregroundColor(.primary)
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-            }
-            .padding(.top, 24)
-
-            // Status
-            HStack(spacing: 12) {
-                Image(systemName: guest.checkedIn ? "checkmark.circle.fill" : "clock.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(guest.checkedIn ? .green : .orange)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(guest.checkedIn ? "Checked In" : "Pending Check-in")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(guest.checkedIn ? .green : .orange)
-
-                    if guest.checkedIn, let checkedInAt = guest.checkedInAt {
-                        Text("at \(formatCheckInTime(checkedInAt))")
-                            .font(.system(size: 13))
+                        Text(guest.email)
+                            .font(.system(size: 15))
                             .foregroundColor(.secondary)
                     }
                 }
+                .padding(.top, 24)
 
-                Spacer()
-            }
-            .padding(16)
-            .background(guest.checkedIn ? Color.green.opacity(0.1) : Color.orange.opacity(0.1))
-            .cornerRadius(12)
-            .padding(.horizontal, 24)
-            .padding(.top, 20)
+                // Ticket Code
+                VStack(spacing: 8) {
+                    Text("TICKET CODE")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .tracking(1)
 
-            Spacer()
+                    HStack(spacing: 8) {
+                        Image(systemName: "ticket.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.ticketFloOrange)
 
-            // Action Button
-            if !guest.checkedIn {
-                Button(action: onCheckIn) {
-                    HStack(spacing: 10) {
-                        if isCheckingIn {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .scaleEffect(0.9)
-                        } else {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 20))
-                            Text("Check In Now")
-                                .font(.system(size: 18, weight: .semibold))
+                        Text(guest.ticketCode)
+                            .font(.system(size: 20, weight: .bold, design: .monospaced))
+                            .foregroundColor(.primary)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                }
+                .padding(.top, 24)
+
+                // Status
+                HStack(spacing: 12) {
+                    Image(systemName: guest.checkedIn ? "checkmark.circle.fill" : "clock.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(guest.checkedIn ? .green : .orange)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(guest.checkedIn ? "Checked In" : "Pending Check-in")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(guest.checkedIn ? .green : .orange)
+
+                        if guest.checkedIn, let checkedInAt = guest.checkedInAt {
+                            Text("at \(formatCheckInTime(checkedInAt))")
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
                         }
                     }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: [Color.ticketFloOrange, Color.ticketFloOrange.opacity(0.85)]),
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .cornerRadius(14)
-                    .shadow(color: Color.ticketFloOrange.opacity(0.4), radius: 10, x: 0, y: 5)
+
+                    Spacer()
                 }
-                .disabled(isCheckingIn)
+                .padding(16)
+                .background(guest.checkedIn ? Color.green.opacity(0.1) : Color.orange.opacity(0.1))
+                .cornerRadius(12)
                 .padding(.horizontal, 24)
-                .padding(.bottom, 24)
-            } else {
-                VStack(spacing: 8) {
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 32))
-                        .foregroundColor(.green)
-                    Text("Already Checked In")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.green)
+                .padding(.top, 20)
+
+                // Notes Section
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image(systemName: "note.text")
+                            .font(.system(size: 16))
+                            .foregroundColor(.webPrimary)
+                        Text("Notes")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primary)
+                        Spacer()
+
+                        if !notesText.isEmpty && notesText != (guest.notes ?? "") {
+                            Button(action: saveNotes) {
+                                if isSavingNotes {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Text("Save")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.webPrimary)
+                                }
+                            }
+                            .disabled(isSavingNotes)
+                        }
+                    }
+
+                    TextEditor(text: $notesText)
+                        .font(.system(size: 15))
+                        .frame(minHeight: 80)
+                        .padding(12)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                        .focused($isNotesFocused)
+                        .overlay(
+                            Group {
+                                if notesText.isEmpty && !isNotesFocused {
+                                    Text("Add notes about this guest...")
+                                        .font(.system(size: 15))
+                                        .foregroundColor(.secondary)
+                                        .padding(.leading, 16)
+                                        .padding(.top, 20)
+                                        .allowsHitTesting(false)
+                                }
+                            },
+                            alignment: .topLeading
+                        )
                 }
-                .padding(.bottom, 32)
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+
+                Spacer(minLength: 20)
+
+                // Action Button
+                if !guest.checkedIn {
+                    Button(action: onCheckIn) {
+                        HStack(spacing: 10) {
+                            if isCheckingIn {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(0.9)
+                            } else {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 20))
+                                Text("Check In Now")
+                                    .font(.system(size: 18, weight: .semibold))
+                            }
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 56)
+                        .background(
+                            LinearGradient(
+                                gradient: Gradient(colors: [Color.ticketFloOrange, Color.ticketFloOrange.opacity(0.85)]),
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .cornerRadius(14)
+                        .shadow(color: Color.ticketFloOrange.opacity(0.4), radius: 10, x: 0, y: 5)
+                    }
+                    .disabled(isCheckingIn)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 24)
+                } else {
+                    VStack(spacing: 8) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 32))
+                            .foregroundColor(.green)
+                        Text("Already Checked In")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.green)
+                    }
+                    .padding(.bottom, 32)
+                }
             }
+        }
+        .onTapGesture {
+            isNotesFocused = false
+        }
+    }
+
+    private func saveNotes() {
+        isSavingNotes = true
+        isNotesFocused = false
+        onSaveNotes(notesText)
+
+        // Reset saving state after a delay (the actual save is handled by the parent)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            isSavingNotes = false
         }
     }
 
@@ -863,6 +1020,7 @@ struct CheckInTabView: View {
 
 struct PointOfSaleTabView: View {
     @StateObject private var supabaseService = SupabaseService.shared
+    @StateObject private var appSettings = AppSettings.shared
     @State private var selectedItems: [CartItem] = []
     @State private var customerName = ""
     @State private var customerEmail = ""
@@ -966,27 +1124,20 @@ struct PointOfSaleTabView: View {
             Text("Transaction completed successfully.")
         }
         .sheet(isPresented: $showingTapToPay) {
-            // Placeholder for Tap to Pay view
-            VStack(spacing: 24) {
-                Image(systemName: "iphone.and.arrow.forward")
-                    .font(.system(size: 48))
-                    .foregroundColor(.ticketFloOrange)
-
-                Text("Tap to Pay on iPhone")
-                    .font(.title2)
-                    .fontWeight(.bold)
-
-                Text("Coming soon! This feature requires Apple entitlements and Stripe Terminal SDK integration.")
-                    .multilineTextAlignment(.center)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal)
-
-                Button("Close") {
-                    showingTapToPay = false
-                }
-                .padding(.top)
-            }
-            .padding()
+            // Tap to Pay on iPhone using Stripe Terminal
+            // Use organization's configured location ID, fallback to app settings default
+            TapToPayView(
+                items: selectedItems.map { item in
+                    TapToPayCartItem(
+                        name: item.name,
+                        price: Int(item.total * 100), // Convert to cents
+                        quantity: item.quantity
+                    )
+                },
+                totalAmount: Int(cartTotal * 100), // Convert to cents
+                organizationId: supabaseService.userOrganizationId ?? "",
+                locationId: supabaseService.stripeTerminalLocationId ?? appSettings.stripeLocationId
+            )
         }
     }
 
@@ -1497,394 +1648,379 @@ struct CartItemRow: View {
     }
 }
 
-struct GuestStatusTabView: View {
-    let analytics: (total: Int, checkedIn: Int, pending: Int)
-    let guests: [SupabaseGuest]
+// MARK: - Settings Tab View
 
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                // Summary Cards
-                VStack(spacing: 16) {
-                    HStack(spacing: 16) {
-                        GuestStatusCard(
-                            title: "Total Guests",
-                            value: "\(analytics.total)",
-                            icon: "person.2.fill",
-                            color: .blue
-                        )
-
-                        GuestStatusCard(
-                            title: "Checked In",
-                            value: "\(analytics.checkedIn)",
-                            icon: "checkmark.circle.fill",
-                            color: .green
-                        )
-                    }
-
-                    HStack(spacing: 16) {
-                        GuestStatusCard(
-                            title: "Pending",
-                            value: "\(analytics.pending)",
-                            icon: "clock.fill",
-                            color: .orange
-                        )
-
-                        GuestStatusCard(
-                            title: "Check-in Rate",
-                            value: analytics.total > 0 ? "\(Int((Double(analytics.checkedIn) / Double(analytics.total)) * 100))%" : "0%",
-                            icon: "chart.bar.fill",
-                            color: .purple
-                        )
-                    }
-                }
-                .padding(.horizontal, 20)
-
-                // Recent Check-ins
-                if !guests.filter({ $0.checkedIn }).isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Recent Check-ins")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .padding(.horizontal, 20)
-
-                        ForEach(guests.filter({ $0.checkedIn }).prefix(5)) { guest in
-                            RecentCheckInRow(guest: guest)
-                        }
-                        .padding(.horizontal, 20)
-                    }
-                }
-            }
-            .padding(.vertical, 20)
-        }
-    }
-}
-
-struct ManageItemsTabView: View {
+struct SettingsTabView: View {
+    @EnvironmentObject var authService: AuthService
     @StateObject private var supabaseService = SupabaseService.shared
-    @State private var selectedSegment = 0 // 0 for tickets, 1 for merchandise
-    @State private var showingEditAlert = false
-    @State private var editingTicketType: SupabaseTicketType?
-    @State private var editingMerchandise: SupabaseMerchandise?
+    @StateObject private var appSettings = AppSettings.shared
+    @StateObject private var localPersistence = LocalPersistence.shared
+    @State private var showingLogoutConfirmation = false
+    @Environment(\.dismiss) private var dismiss
 
     let selectedEvent: SupabaseEvent
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            VStack(spacing: 8) {
-                Image(systemName: "list.bullet")
-                    .font(.system(size: 48))
-                    .foregroundColor(.webPrimary)
-
-                Text("Manage Items")
-                    .font(.title2)
-                    .fontWeight(.bold)
-
-                Text("View and monitor ticket types & merchandise")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            .padding(.top, 20)
-            .padding(.bottom, 16)
-
-            // Segmented Control
-            Picker("Item Type", selection: $selectedSegment) {
-                Text("Ticket Types").tag(0)
-                Text("Merchandise").tag(1)
-            }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding(.horizontal, 20)
-            .padding(.bottom, 16)
-
-            ScrollView {
-                VStack(spacing: 16) {
-                    if selectedSegment == 0 {
-                        ticketTypesSection
-                    } else {
-                        merchandiseSection
-                    }
-                }
-                .padding(.bottom, 100)
-            }
-        }
-        .task {
-            await loadItemsData()
-        }
-        .refreshable {
-            await loadItemsData()
-        }
-        .alert("Editing Not Available", isPresented: $showingEditAlert) {
-            Button("OK") { }
-        } message: {
-            Text("Item editing is available in the web dashboard. This view is for monitoring only.")
-        }
-    }
-
-    // MARK: - Ticket Types Section
-    private var ticketTypesSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Ticket Types")
-                .font(.headline)
-                .fontWeight(.semibold)
-                .padding(.horizontal, 20)
-
-            if supabaseService.isLoading {
-                ProgressView("Loading ticket types...")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-            } else if supabaseService.ticketTypes.isEmpty {
-                emptyTicketTypesView
-            } else {
-                ForEach(supabaseService.ticketTypes) { ticketType in
-                    ManageTicketTypeCard(ticketType: ticketType) {
-                        editingTicketType = ticketType
-                        showingEditAlert = true
-                    }
-                    .padding(.horizontal, 20)
-                }
-            }
-        }
-    }
-
-    // MARK: - Merchandise Section
-    private var merchandiseSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Merchandise")
-                .font(.headline)
-                .fontWeight(.semibold)
-                .padding(.horizontal, 20)
-
-            if supabaseService.isLoading {
-                ProgressView("Loading merchandise...")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-            } else if supabaseService.merchandise.isEmpty {
-                emptyMerchandiseView
-            } else {
-                ForEach(supabaseService.merchandise) { merchandise in
-                    ManageMerchandiseCard(merchandise: merchandise) {
-                        editingMerchandise = merchandise
-                        showingEditAlert = true
-                    }
-                    .padding(.horizontal, 20)
-                }
-            }
-        }
-    }
-
-    // MARK: - Empty States
-    private var emptyTicketTypesView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "ticket")
-                .font(.system(size: 48))
-                .foregroundColor(.secondary)
-            Text("No ticket types configured")
-                .font(.headline)
-            Text("Add ticket types in the web dashboard")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding(.horizontal, 32)
-        .padding(.vertical, 24)
-    }
-
-    private var emptyMerchandiseView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "bag")
-                .font(.system(size: 48))
-                .foregroundColor(.secondary)
-            Text("No merchandise configured")
-                .font(.headline)
-            Text("Add merchandise items in the web dashboard")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding(.horizontal, 32)
-        .padding(.vertical, 24)
-    }
-
-    // MARK: - Helper Methods
-    private func loadItemsData() async {
-        async let ticketTypesTask = supabaseService.fetchTicketTypes(for: selectedEvent.id)
-        async let merchandiseTask = supabaseService.fetchMerchandise(for: selectedEvent.id)
-
-        await ticketTypesTask
-        await merchandiseTask
-    }
-}
-
-// MARK: - Manage Items Component Views
-
-struct ManageTicketTypeCard: View {
-    let ticketType: SupabaseTicketType
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(ticketType.name)
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.primary)
-
-                        if let description = ticketType.description {
-                            Text(description)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-
-                    Spacer()
-
-                    Text("$\(ticketType.price, specifier: "%.2f")")
-                        .font(.title3)
-                        .fontWeight(.bold)
+        ScrollView {
+            VStack(spacing: 24) {
+                // Header
+                VStack(spacing: 8) {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 48))
                         .foregroundColor(.webPrimary)
+
+                    Text("Settings")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text("Configure app preferences")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.top, 20)
+
+                // Sync Status Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Sync Status")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 20)
+
+                    VStack(spacing: 0) {
+                        // Realtime Connection
+                        HStack(spacing: 16) {
+                            Circle()
+                                .fill(supabaseService.isRealtimeConnected ? Color.green.opacity(0.1) : Color.orange.opacity(0.1))
+                                .frame(width: 40, height: 40)
+                                .overlay(
+                                    Image(systemName: supabaseService.isRealtimeConnected ? "bolt.fill" : "bolt.slash")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(supabaseService.isRealtimeConnected ? .green : .orange)
+                                )
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Live Sync")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+
+                                Text(supabaseService.isRealtimeConnected ? "Connected - receiving updates" : "Disconnected")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            if supabaseService.isRealtimeConnected {
+                                Text("Live")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.green)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.green.opacity(0.1))
+                                    .cornerRadius(8)
+                            }
+                        }
+                        .padding(16)
+
+                        Divider()
+                            .padding(.leading, 72)
+
+                        // Pending Check-ins
+                        HStack(spacing: 16) {
+                            Circle()
+                                .fill(localPersistence.pendingCheckInsCount > 0 ? Color.orange.opacity(0.1) : Color.green.opacity(0.1))
+                                .frame(width: 40, height: 40)
+                                .overlay(
+                                    Image(systemName: localPersistence.pendingCheckInsCount > 0 ? "arrow.up.circle" : "checkmark.circle.fill")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(localPersistence.pendingCheckInsCount > 0 ? .orange : .green)
+                                )
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Pending Check-ins")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+
+                                Text(localPersistence.pendingCheckInsCount > 0
+                                    ? "\(localPersistence.pendingCheckInsCount) check-in(s) waiting to sync"
+                                    : "All check-ins synced")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            if localPersistence.pendingCheckInsCount > 0 {
+                                Button(action: {
+                                    Task {
+                                        await supabaseService.syncPendingCheckIns()
+                                    }
+                                }) {
+                                    if supabaseService.isSyncing {
+                                        ProgressView()
+                                            .scaleEffect(0.8)
+                                    } else {
+                                        Text("Sync")
+                                            .font(.caption)
+                                            .fontWeight(.medium)
+                                    }
+                                }
+                                .foregroundColor(.webPrimary)
+                                .disabled(supabaseService.isSyncing)
+                            }
+                        }
+                        .padding(16)
+
+                        Divider()
+                            .padding(.leading, 72)
+
+                        // Last Sync Time
+                        HStack(spacing: 16) {
+                            Circle()
+                                .fill(Color.webPrimary.opacity(0.1))
+                                .frame(width: 40, height: 40)
+                                .overlay(
+                                    Image(systemName: "clock")
+                                        .font(.system(size: 16))
+                                        .foregroundColor(.webPrimary)
+                                )
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Last Sync")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+
+                                if let lastSync = localPersistence.lastSyncTime {
+                                    Text(formatLastSyncTime(lastSync))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    Text("Never synced")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+
+                            Spacer()
+                        }
+                        .padding(16)
+                    }
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                    .padding(.horizontal, 20)
                 }
 
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Available")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text("\(ticketType.remainingQuantity)")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundColor(ticketType.remainingQuantity > 0 ? .green : .red)
-                    }
+                // Account Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Account")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 20)
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Sold")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text("\(ticketType.quantity_sold)")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                    }
+                    VStack(spacing: 0) {
+                        // User Info
+                        HStack(spacing: 16) {
+                            Circle()
+                                .fill(Color.webPrimary.opacity(0.1))
+                                .frame(width: 50, height: 50)
+                                .overlay(
+                                    Text(supabaseService.userEmail?.prefix(1).uppercased() ?? "U")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.webPrimary)
+                                )
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Total")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text("\(ticketType.quantity_available)")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                    }
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(supabaseService.userEmail ?? "Unknown User")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
 
-                    Spacer()
+                                if let orgId = supabaseService.userOrganizationId {
+                                    Text("Organization: \(orgId.prefix(8))...")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
 
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("Sales Progress")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        let progress = Double(ticketType.quantity_sold) / Double(ticketType.quantity_available)
-                        Text("\(Int(progress * 100))%")
-                            .font(.subheadline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.webPrimary)
+                            Spacer()
+                        }
+                        .padding(16)
+                        .background(Color(.systemBackground))
                     }
+                    .cornerRadius(12)
+                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                    .padding(.horizontal, 20)
                 }
+
+                // Event Info Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Current Event")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 20)
+
+                    VStack(spacing: 0) {
+                        HStack(spacing: 16) {
+                            Circle()
+                                .fill(Color.ticketFloOrange.opacity(0.1))
+                                .frame(width: 50, height: 50)
+                                .overlay(
+                                    Image(systemName: "calendar")
+                                        .font(.title2)
+                                        .foregroundColor(.ticketFloOrange)
+                                )
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(selectedEvent.name)
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+
+                                if let venue = selectedEvent.venue {
+                                    Text(venue)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Text("Capacity: \(selectedEvent.capacity)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+                        }
+                        .padding(16)
+                        .background(Color(.systemBackground))
+                    }
+                    .cornerRadius(12)
+                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                    .padding(.horizontal, 20)
+                }
+
+                // Preferences Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Preferences")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 20)
+
+                    VStack(spacing: 0) {
+                        Toggle(isOn: $appSettings.hapticFeedbackEnabled) {
+                            HStack {
+                                Image(systemName: "hand.tap")
+                                    .foregroundColor(.webPrimary)
+                                    .frame(width: 24)
+                                Text("Haptic Feedback")
+                            }
+                        }
+                        .padding(16)
+
+                        Divider()
+                            .padding(.leading, 56)
+
+                        Toggle(isOn: $appSettings.autoRefreshEnabled) {
+                            HStack {
+                                Image(systemName: "arrow.clockwise")
+                                    .foregroundColor(.webPrimary)
+                                    .frame(width: 24)
+                                Text("Auto-Refresh Data")
+                            }
+                        }
+                        .padding(16)
+
+                        Divider()
+                            .padding(.leading, 56)
+
+                        Toggle(isOn: $appSettings.showTicketCodes) {
+                            HStack {
+                                Image(systemName: "ticket")
+                                    .foregroundColor(.webPrimary)
+                                    .frame(width: 24)
+                                Text("Show Ticket Codes")
+                            }
+                        }
+                        .padding(16)
+                    }
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                    .padding(.horizontal, 20)
+                }
+
+                // App Info Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("About")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 20)
+
+                    VStack(spacing: 0) {
+                        HStack {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(.webPrimary)
+                                .frame(width: 24)
+                            Text("Version")
+                            Spacer()
+                            Text("1.0.0")
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(16)
+
+                        Divider()
+                            .padding(.leading, 56)
+
+                        HStack {
+                            Image(systemName: "building.2")
+                                .foregroundColor(.webPrimary)
+                                .frame(width: 24)
+                            Text("TicketFlo LIVE")
+                            Spacer()
+                            Text("Check-in App")
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(16)
+                    }
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                    .padding(.horizontal, 20)
+                }
+
+                // Logout Button
+                Button(action: {
+                    showingLogoutConfirmation = true
+                }) {
+                    HStack {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                        Text("Sign Out")
+                    }
+                    .foregroundColor(.red)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(12)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+
+                Spacer(minLength: 100)
             }
-            .padding(16)
-            .background(Color(.systemBackground))
-            .cornerRadius(12)
-            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
         }
-        .buttonStyle(PlainButtonStyle())
+        .alert("Sign Out?", isPresented: $showingLogoutConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Sign Out", role: .destructive) {
+                authService.logout()
+            }
+        } message: {
+            Text("Are you sure you want to sign out of TicketFlo LIVE?")
+        }
     }
-}
 
-struct ManageMerchandiseCard: View {
-    let merchandise: SupabaseMerchandise
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(merchandise.name)
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.primary)
-
-                        if let description = merchandise.description {
-                            Text(description)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-
-                        if let category = merchandise.category {
-                            Text(category.capitalized)
-                                .font(.caption)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                                .background(Color.blue.opacity(0.1))
-                                .foregroundColor(.blue)
-                                .cornerRadius(4)
-                        }
-                    }
-
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("$\(merchandise.price, specifier: "%.2f")")
-                            .font(.title3)
-                            .fontWeight(.bold)
-                            .foregroundColor(.webPrimary)
-
-                        if let active = merchandise.is_active {
-                            Text(active ? "Active" : "Inactive")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                                .foregroundColor(active ? .green : .red)
-                        }
-                    }
-                }
-
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Stock")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        if let stock = merchandise.stock_quantity {
-                            Text("\(stock)")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(stock > 0 ? .green : .red)
-                        } else {
-                            Text("N/A")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-
-                    if let sizeOptions = merchandise.size_options, !sizeOptions.isEmpty {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Sizes")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text(sizeOptions.joined(separator: ", "))
-                                .font(.caption)
-                                .foregroundColor(.primary)
-                        }
-                    }
-
-                    Spacer()
-                }
-            }
-            .padding(16)
-            .background(Color(.systemBackground))
-            .cornerRadius(12)
-            .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
-        }
-        .buttonStyle(PlainButtonStyle())
+    private func formatLastSyncTime(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 }
 
@@ -1892,6 +2028,29 @@ struct AnalyticsTabView: View {
     let analytics: (total: Int, checkedIn: Int, pending: Int)
     let guests: [SupabaseGuest]
     let selectedEvent: SupabaseEvent
+    @StateObject private var supabaseService = SupabaseService.shared
+
+    var posSalesTotal: Double {
+        supabaseService.getPOSSalesTotal(for: selectedEvent.id)
+    }
+
+    var posSalesCount: Int {
+        supabaseService.getPOSSalesCount(for: selectedEvent.id)
+    }
+
+    var ticketSalesTotal: Double {
+        supabaseService.getTicketSalesTotal(for: selectedEvent.id)
+    }
+
+    var merchandiseSalesTotal: Double {
+        supabaseService.getMerchandiseSalesTotal(for: selectedEvent.id)
+    }
+
+    var recentSales: [POSSale] {
+        supabaseService.posSales
+            .filter { $0.eventId == selectedEvent.id }
+            .sorted { $0.timestamp > $1.timestamp }
+    }
 
     var body: some View {
         ScrollView {
@@ -1915,6 +2074,64 @@ struct AnalyticsTabView: View {
                 // Quick Stats
                 QuickStatsView(analytics: analytics)
                     .padding(.horizontal, 20)
+
+                // POS Sales Summary
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Point of Sale")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 20)
+
+                    LazyVGrid(columns: [
+                        GridItem(.flexible()),
+                        GridItem(.flexible())
+                    ], spacing: 12) {
+                        POSSalesCard(
+                            title: "Total Sales",
+                            value: String(format: "$%.2f", posSalesTotal),
+                            icon: "dollarsign.circle.fill",
+                            color: .green
+                        )
+
+                        POSSalesCard(
+                            title: "Transactions",
+                            value: "\(posSalesCount)",
+                            icon: "creditcard.fill",
+                            color: .webPrimary
+                        )
+
+                        POSSalesCard(
+                            title: "Ticket Sales",
+                            value: String(format: "$%.2f", ticketSalesTotal),
+                            icon: "ticket.fill",
+                            color: .ticketFloOrange
+                        )
+
+                        POSSalesCard(
+                            title: "Merchandise",
+                            value: String(format: "$%.2f", merchandiseSalesTotal),
+                            icon: "bag.fill",
+                            color: .purple
+                        )
+                    }
+                    .padding(.horizontal, 20)
+
+                    // Recent Sales
+                    if !recentSales.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Recent Sales")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+
+                            ForEach(recentSales.prefix(5)) { sale in
+                                RecentSaleRow(sale: sale)
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                    }
+                }
 
                 // Check-in Timeline
                 VStack(alignment: .leading, spacing: 16) {
@@ -1970,40 +2187,98 @@ struct AnalyticsTabView: View {
     }
 }
 
-// MARK: - Supporting Components
-
-struct GuestStatusCard: View {
+// MARK: - POS Sales Card
+struct POSSalesCard: View {
     let title: String
     let value: String
     let icon: String
     let color: Color
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: icon)
-                    .font(.title3)
+                    .font(.system(size: 16))
                     .foregroundColor(color)
                 Spacer()
             }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(value)
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
-                Text(title)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            Text(value)
+                .font(.title3)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
-        .padding(16)
+        .padding(12)
         .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
     }
 }
+
+// MARK: - Recent Sale Row
+struct RecentSaleRow: View {
+    let sale: POSSale
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(sale.itemType == "ticket" ? Color.ticketFloOrange.opacity(0.1) : Color.purple.opacity(0.1))
+                .frame(width: 36, height: 36)
+                .overlay(
+                    Image(systemName: sale.itemType == "ticket" ? "ticket.fill" : "bag.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(sale.itemType == "ticket" ? .ticketFloOrange : .purple)
+                )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(sale.itemName)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+
+                HStack(spacing: 4) {
+                    Text("\(sale.quantity)x")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("•")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text(sale.customerName)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(String(format: "$%.2f", sale.totalAmount))
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.green)
+
+                Text(formatSaleTime(sale.timestamp))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(12)
+        .background(Color(.systemBackground))
+        .cornerRadius(10)
+        .shadow(color: .black.opacity(0.03), radius: 2, x: 0, y: 1)
+    }
+
+    private func formatSaleTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+}
+
+// MARK: - Supporting Components
 
 struct RecentCheckInRow: View {
     let guest: SupabaseGuest

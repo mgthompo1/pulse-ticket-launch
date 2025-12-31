@@ -8,6 +8,7 @@ class AuthService: ObservableObject {
     @Published var isAuthenticated = false
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var sessionExpired = false
 
     private let supabaseService = SupabaseService.shared
 
@@ -19,6 +20,8 @@ class AuthService: ObservableObject {
             .assign(to: &$isLoading)
         supabaseService.$error
             .assign(to: &$errorMessage)
+        supabaseService.$sessionExpired
+            .assign(to: &$sessionExpired)
     }
 
     func signIn() {
@@ -45,8 +48,22 @@ class AuthService: ObservableObject {
         }
     }
 
+    func logout() {
+        supabaseService.signOut()
+    }
+
     func signOut() {
         supabaseService.signOut()
+    }
+
+    /// Attempt to refresh the access token
+    func refreshSession() {
+        Task {
+            let success = await supabaseService.refreshAccessToken()
+            if !success {
+                print("❌ Session refresh failed - user needs to sign in again")
+            }
+        }
     }
 }
 
