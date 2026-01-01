@@ -597,10 +597,8 @@ struct ModernGuestRow: View {
                     // Close the sheet
                     showingDetail = false
 
-                    // Refresh the guest list
-                    Task {
-                        await supabaseService.fetchGuests()
-                    }
+                    // Note: Local guest state is already updated by checkInGuest
+                    // No need to refetch all guests
                 } else {
                     // Error haptic
                     let notificationFeedback = UINotificationFeedbackGenerator()
@@ -1048,6 +1046,12 @@ struct PointOfSaleTabView: View {
     @State private var showingPaymentSuccess = false
     @State private var showingTapToPay = false
     @State private var selectedSegment = 0 // 0 for tickets, 1 for merchandise
+    @State private var showingAddMerchandise = false
+    @State private var showingReceipt = false
+    @State private var lastTransactionId: String?
+    @State private var receiptItems: [CartItem] = []
+    @State private var receiptCustomerName = ""
+    @State private var receiptTotal: Double = 0
 
     let selectedEvent: SupabaseEvent
 
@@ -1137,11 +1141,25 @@ struct PointOfSaleTabView: View {
             await loadPOSData()
         }
         .alert("Payment Successful!", isPresented: $showingPaymentSuccess) {
-            Button("OK") {
+            Button("View Receipt") {
+                showingReceipt = true
+            }
+            Button("Done", role: .cancel) {
                 resetForm()
             }
         } message: {
-            Text("Transaction completed successfully.")
+            Text("Transaction completed successfully. Would you like to view the receipt?")
+        }
+        .sheet(isPresented: $showingReceipt) {
+            if let txId = lastTransactionId {
+                ReceiptView(
+                    transactionId: txId,
+                    items: receiptItems,
+                    customerName: receiptCustomerName,
+                    totalAmount: receiptTotal,
+                    eventName: selectedEvent.name
+                )
+            }
         }
         .sheet(isPresented: $showingTapToPay) {
             // Tap to Pay on iPhone using Stripe Terminal
@@ -1191,10 +1209,25 @@ struct PointOfSaleTabView: View {
     // MARK: - Merchandise Section
     private var merchandiseSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Available Merchandise")
-                .font(.headline)
-                .fontWeight(.semibold)
-                .padding(.horizontal, 20)
+            HStack {
+                Text("Available Merchandise")
+                    .font(.headline)
+                    .fontWeight(.semibold)
+
+                Spacer()
+
+                Button(action: { showingAddMerchandise = true }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 14))
+                        Text("Add Item")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                    }
+                    .foregroundColor(.webPrimary)
+                }
+            }
+            .padding(.horizontal, 20)
 
             if supabaseService.isLoading {
                 ProgressView("Loading merchandise...")
@@ -1205,13 +1238,17 @@ struct PointOfSaleTabView: View {
             } else {
                 ForEach(supabaseService.merchandise) { merchandise in
                     POSMerchandiseCard(
-                        merchandise: merchandise
+                        merchandise: merchandise,
+                        isOutOfStock: merchandise.isOutOfStock
                     ) { quantity in
                         addMerchandiseToCart(merchandise, quantity: quantity)
                     }
                     .padding(.horizontal, 20)
                 }
             }
+        }
+        .sheet(isPresented: $showingAddMerchandise) {
+            AddMerchandiseSheet(eventId: selectedEvent.id)
         }
     }
 
@@ -1339,10 +1376,24 @@ struct PointOfSaleTabView: View {
                 .foregroundColor(.secondary)
             Text("No merchandise available")
                 .font(.headline)
-            Text("Add merchandise items in the web dashboard")
+            Text("Add items to sell at your event")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
+
+            Button(action: { showingAddMerchandise = true }) {
+                HStack {
+                    Image(systemName: "plus.circle.fill")
+                    Text("Add Merchandise")
+                }
+                .font(.subheadline)
+                .fontWeight(.medium)
+                .foregroundColor(.white)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(Color.webPrimary)
+                .cornerRadius(20)
+            }
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 24)
@@ -1394,6 +1445,11 @@ struct PointOfSaleTabView: View {
     private func processPayment() {
         isProcessingPayment = true
 
+        // Store receipt data before processing
+        receiptItems = selectedItems
+        receiptCustomerName = customerName
+        receiptTotal = cartTotal
+
         Task {
             let items = selectedItems.map { item in
                 (type: item.type == .ticket ? "ticket" : "merchandise",
@@ -1412,7 +1468,8 @@ struct PointOfSaleTabView: View {
 
             await MainActor.run {
                 isProcessingPayment = false
-                if transactionId != nil {
+                if let txId = transactionId {
+                    lastTransactionId = txId
                     showingPaymentSuccess = true
                 }
             }
@@ -1512,6 +1569,7 @@ struct POSTicketTypeCard: View {
 
 struct POSMerchandiseCard: View {
     let merchandise: SupabaseMerchandise
+    var isOutOfStock: Bool = false
     let onAddToCart: (Int) -> Void
     @State private var quantity = 1
 
@@ -1519,10 +1577,23 @@ struct POSMerchandiseCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(merchandise.name)
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
+                    HStack(spacing: 8) {
+                        Text(merchandise.name)
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(isOutOfStock ? .secondary : .primary)
+
+                        if isOutOfStock {
+                            Text("OUT OF STOCK")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.red)
+                                .cornerRadius(4)
+                        }
+                    }
 
                     if let description = merchandise.description {
                         Text(description)
@@ -1542,7 +1613,7 @@ struct POSMerchandiseCard: View {
 
                     Text(merchandise.stockDisplay)
                         .font(.caption)
-                        .foregroundColor(.webPrimary)
+                        .foregroundColor(isOutOfStock ? .red : .webPrimary)
                 }
 
                 Spacer()
@@ -1553,46 +1624,58 @@ struct POSMerchandiseCard: View {
                     .foregroundColor(.webPrimary)
             }
 
-            HStack {
-                // Quantity Selector
-                HStack(spacing: 12) {
-                    Button(action: {
-                        if quantity > 1 { quantity -= 1 }
-                    }) {
-                        Image(systemName: "minus.circle.fill")
-                            .foregroundColor(quantity > 1 ? .ticketFloOrange : .gray)
-                    }
-                    .disabled(quantity <= 1)
-
-                    Text("\(quantity)")
-                        .font(.headline)
-                        .fontWeight(.medium)
-                        .frame(minWidth: 30)
-
-                    Button(action: {
-                        let maxQuantity = min(10, merchandise.stock_quantity ?? 0)
-                        if quantity < maxQuantity { quantity += 1 }
-                    }) {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundColor(quantity < min(10, merchandise.stock_quantity ?? 0) ? .ticketFloOrange : .gray)
-                    }
-                    .disabled(quantity >= min(10, merchandise.stock_quantity ?? 0))
-                }
-
-                Spacer()
-
-                Button(action: {
-                    onAddToCart(quantity)
-                    quantity = 1
-                }) {
-                    Text("Add to Cart")
+            if isOutOfStock {
+                // Out of stock message
+                HStack {
+                    Spacer()
+                    Text("Currently Unavailable")
                         .font(.subheadline)
                         .fontWeight(.medium)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.webPrimary)
-                        .cornerRadius(8)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+            } else {
+                HStack {
+                    // Quantity Selector
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            if quantity > 1 { quantity -= 1 }
+                        }) {
+                            Image(systemName: "minus.circle.fill")
+                                .foregroundColor(quantity > 1 ? .ticketFloOrange : .gray)
+                        }
+                        .disabled(quantity <= 1)
+
+                        Text("\(quantity)")
+                            .font(.headline)
+                            .fontWeight(.medium)
+                            .frame(minWidth: 30)
+
+                        Button(action: {
+                            let maxQuantity = min(10, merchandise.stock_quantity ?? 0)
+                            if quantity < maxQuantity { quantity += 1 }
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundColor(quantity < min(10, merchandise.stock_quantity ?? 0) ? .ticketFloOrange : .gray)
+                        }
+                        .disabled(quantity >= min(10, merchandise.stock_quantity ?? 0))
+                    }
+
+                    Spacer()
+
+                    Button(action: {
+                        onAddToCart(quantity)
+                        quantity = 1
+                    }) {
+                        Text("Add to Cart")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.webPrimary)
+                            .cornerRadius(8)
+                    }
                 }
             }
         }
@@ -1600,6 +1683,7 @@ struct POSMerchandiseCard: View {
         .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+        .opacity(isOutOfStock ? 0.7 : 1.0)
     }
 }
 
@@ -2755,6 +2839,278 @@ struct CustomTabBar: View {
                 )
         )
         .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: -4)
+    }
+}
+
+// MARK: - Add Merchandise Sheet
+
+struct AddMerchandiseSheet: View {
+    let eventId: String
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var supabaseService = SupabaseService.shared
+
+    @State private var name = ""
+    @State private var description = ""
+    @State private var price = ""
+    @State private var stockQuantity = ""
+    @State private var category = ""
+    @State private var isSaving = false
+    @State private var showingError = false
+    @State private var errorMessage = ""
+
+    private var isFormValid: Bool {
+        !name.isEmpty && Double(price) != nil && (Double(price) ?? 0) > 0
+    }
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Item Details")) {
+                    TextField("Name", text: $name)
+
+                    TextField("Description (optional)", text: $description)
+
+                    TextField("Category (optional)", text: $category)
+                        .autocapitalization(.words)
+                }
+
+                Section(header: Text("Pricing")) {
+                    HStack {
+                        Text("$")
+                            .foregroundColor(.secondary)
+                        TextField("Price", text: $price)
+                            .keyboardType(.decimalPad)
+                    }
+                }
+
+                Section(header: Text("Inventory")) {
+                    HStack {
+                        TextField("Stock Quantity", text: $stockQuantity)
+                            .keyboardType(.numberPad)
+                        Text("items")
+                            .foregroundColor(.secondary)
+                    }
+
+                    Text("Leave empty for unlimited stock")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Add Merchandise")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        saveMerchandise()
+                    }
+                    .disabled(!isFormValid || isSaving)
+                }
+            }
+            .alert("Error", isPresented: $showingError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMessage)
+            }
+        }
+    }
+
+    private func saveMerchandise() {
+        guard isFormValid else { return }
+        isSaving = true
+
+        Task {
+            let priceValue = Double(price) ?? 0
+            let stockValue = Int(stockQuantity)
+
+            let success = await supabaseService.addMerchandise(
+                eventId: eventId,
+                name: name,
+                description: description.isEmpty ? nil : description,
+                price: priceValue,
+                stockQuantity: stockValue,
+                category: category.isEmpty ? "general" : category
+            )
+
+            await MainActor.run {
+                isSaving = false
+                if success {
+                    dismiss()
+                } else {
+                    errorMessage = "Failed to add merchandise. Please try again."
+                    showingError = true
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Receipt View
+
+struct ReceiptView: View {
+    let transactionId: String
+    let items: [PointOfSaleTabView.CartItem]
+    let customerName: String
+    let totalAmount: Double
+    let eventName: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Receipt Header
+                    VStack(spacing: 12) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(.green)
+
+                        Text("Payment Successful")
+                            .font(.title2)
+                            .fontWeight(.bold)
+
+                        Text("Transaction #\(transactionId.prefix(8).uppercased())")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.top, 20)
+
+                    Divider()
+                        .padding(.horizontal, 20)
+
+                    // Customer Info
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Customer")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(customerName)
+                            .font(.headline)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+
+                    // Event Info
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Event")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(eventName)
+                            .font(.headline)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+
+                    Divider()
+                        .padding(.horizontal, 20)
+
+                    // Items
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Items")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .padding(.horizontal, 20)
+
+                        ForEach(items) { item in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.name)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    Text("Qty: \(item.quantity) × $\(item.price, specifier: "%.2f")")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Spacer()
+
+                                Text("$\(item.total, specifier: "%.2f")")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                    }
+
+                    Divider()
+                        .padding(.horizontal, 20)
+
+                    // Total
+                    HStack {
+                        Text("Total")
+                            .font(.headline)
+                        Spacer()
+                        Text("$\(totalAmount, specifier: "%.2f")")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.webPrimary)
+                    }
+                    .padding(.horizontal, 20)
+
+                    // Timestamp
+                    Text(Date(), style: .date)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    Spacer(minLength: 40)
+
+                    // Done Button
+                    Button(action: { dismiss() }) {
+                        Text("Done")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(Color.webPrimary)
+                            .cornerRadius(12)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
+                }
+            }
+            .navigationTitle("Receipt")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: shareReceipt) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                }
+            }
+        }
+    }
+
+    private func shareReceipt() {
+        // Format receipt as text for sharing
+        var receiptText = """
+        TicketFlo Receipt
+        ==================
+        Transaction: #\(transactionId.prefix(8).uppercased())
+        Date: \(Date().formatted(date: .abbreviated, time: .shortened))
+
+        Customer: \(customerName)
+        Event: \(eventName)
+
+        Items:
+        """
+
+        for item in items {
+            receiptText += "\n  • \(item.name) (x\(item.quantity)) - $\(String(format: "%.2f", item.total))"
+        }
+
+        receiptText += "\n\nTotal: $\(String(format: "%.2f", totalAmount))"
+        receiptText += "\n\nThank you for your purchase!"
+
+        let activityVC = UIActivityViewController(activityItems: [receiptText], applicationActivities: nil)
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.rootViewController?.present(activityVC, animated: true)
+        }
     }
 }
 

@@ -122,12 +122,15 @@ struct ContentView: View {
 // MARK: - Login View
 struct LoginView: View {
     @EnvironmentObject var authService: AuthService
+    @StateObject private var passkeyManager = PasskeyManager.shared
     @State private var email = ""
     @State private var password = ""
     @State private var showPassword = false
     @State private var isAnimating = false
     @State private var showError = false
     @State private var errorMessage = ""
+    @State private var hasPasskeys = false
+    @State private var isCheckingPasskeys = false
     @FocusState private var focusedField: Field?
 
     enum Field {
@@ -349,6 +352,59 @@ struct LoginView: View {
                         .opacity(authService.isLoading ? 0.7 : 1.0)
                         .padding(.top, 8)
 
+                        // Passkey Sign In button (iOS 16+)
+                        if #available(iOS 16.0, *), passkeyManager.isSupported {
+                            Button(action: signInWithPasskey) {
+                                HStack(spacing: 12) {
+                                    if passkeyManager.isLoading {
+                                        ProgressView()
+                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                            .scaleEffect(0.9)
+                                    } else {
+                                        Image(systemName: "person.badge.key.fill")
+                                            .font(.system(size: 20))
+                                        Text(hasPasskeys ? "Sign In with Passkey" : "Sign In with Passkey")
+                                            .font(.system(size: 18, weight: .semibold))
+                                    }
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 56)
+                                .background(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [
+                                            Color.blue,
+                                            Color.blue.opacity(0.85)
+                                        ]),
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .cornerRadius(14)
+                                .shadow(color: Color.blue.opacity(0.4), radius: 10, x: 0, y: 5)
+                            }
+                            .disabled(passkeyManager.isLoading || email.isEmpty)
+                            .opacity((passkeyManager.isLoading || email.isEmpty) ? 0.5 : 1.0)
+
+                            // Show passkey status hint
+                            if !email.isEmpty {
+                                HStack(spacing: 6) {
+                                    if isCheckingPasskeys {
+                                        ProgressView()
+                                            .scaleEffect(0.7)
+                                    } else if hasPasskeys {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(.green)
+                                            .font(.system(size: 12))
+                                        Text("Passkey available for this account")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.green.opacity(0.8))
+                                    }
+                                }
+                                .frame(height: 20)
+                            }
+                        }
+
                         // Divider
                         HStack {
                             Rectangle()
@@ -413,6 +469,14 @@ struct LoginView: View {
                 showError = true
             }
         }
+        .onChange(of: email) { newEmail in
+            // Debounce passkey status check
+            if newEmail.contains("@") && newEmail.contains(".") {
+                checkPasskeyStatus()
+            } else {
+                hasPasskeys = false
+            }
+        }
     }
 
     private func signIn() {
@@ -424,6 +488,73 @@ struct LoginView: View {
         } else {
             showError = true
             errorMessage = "Please enter both email and password, or use Demo Mode."
+        }
+    }
+
+    @available(iOS 16.0, *)
+    private func signInWithPasskey() {
+        focusedField = nil
+        guard !email.isEmpty else {
+            showError = true
+            errorMessage = "Please enter your email to sign in with passkey."
+            return
+        }
+
+        Task {
+            // Get the key window for presentation
+            guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = windowScene.windows.first(where: { $0.isKeyWindow }) else {
+                await MainActor.run {
+                    showError = true
+                    errorMessage = "Unable to present passkey prompt."
+                }
+                return
+            }
+
+            let result = await passkeyManager.authenticateWithPasskey(email: email, anchor: window)
+
+            await MainActor.run {
+                switch result {
+                case .success(let authResult):
+                    // Use the magic link token to establish session
+                    print("✅ Passkey authentication successful for: \(authResult.email)")
+                    Task {
+                        let success = await SupabaseService.shared.verifyPasskeyToken(
+                            email: authResult.email,
+                            token: authResult.token
+                        )
+                        if !success {
+                            showError = true
+                            errorMessage = "Failed to establish session after passkey authentication."
+                        }
+                    }
+
+                case .failure(let error):
+                    if case .cancelled = error {
+                        // User cancelled, don't show error
+                        print("🔐 Passkey authentication cancelled by user")
+                    } else {
+                        showError = true
+                        errorMessage = error.localizedDescription
+                    }
+                }
+            }
+        }
+    }
+
+    private func checkPasskeyStatus() {
+        guard !email.isEmpty, email.contains("@") else {
+            hasPasskeys = false
+            return
+        }
+
+        isCheckingPasskeys = true
+        Task {
+            let status = await passkeyManager.checkPasskeyStatus(email: email)
+            await MainActor.run {
+                hasPasskeys = status.hasPasskeys
+                isCheckingPasskeys = false
+            }
         }
     }
 }

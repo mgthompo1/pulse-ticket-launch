@@ -18,6 +18,7 @@
 		A01FBAAA2C94A3E900123463 /* StripeTerminalService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01FBAA82C94A3E800123463 /* StripeTerminalService.swift */; };
 		A01FBAAA2C94A3E900123464 /* StripeConnectionTokenProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01FBAA82C94A3E800123464 /* StripeConnectionTokenProvider.swift */; };
 		A01FBAAA2C94A3E900123465 /* DeviceCapabilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01FBAA82C94A3E800123465 /* DeviceCapabilities.swift */; };
+		A01FBAAA2C94A3E900123466 /* PasskeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01FBAA82C94A3E800123466 /* PasskeyManager.swift */; };
 		A01FBAAA2C94A3E900123456 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A01FBAA92C94A3E900123456 /* Assets.xcassets */; };
 		A01FBAAD2C94A3E900123456 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A01FBAAC2C94A3E900123456 /* Preview Assets.xcassets */; };
 		A01FBAAA2C94A3E900123470 /* StripeTerminal in Frameworks */ = {isa = PBXBuildFile; productRef = A01FBAAA2C94A3E900123471 /* StripeTerminal */; };
@@ -36,6 +37,7 @@
 		A01FBAA82C94A3E800123463 /* StripeTerminalService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StripeTerminalService.swift; sourceTree = "<group>"; };
 		A01FBAA82C94A3E800123464 /* StripeConnectionTokenProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StripeConnectionTokenProvider.swift; sourceTree = "<group>"; };
 		A01FBAA82C94A3E800123465 /* DeviceCapabilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceCapabilities.swift; sourceTree = "<group>"; };
+		A01FBAA82C94A3E800123466 /* PasskeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PasskeyManager.swift; sourceTree = "<group>"; };
 		A01FBAA92C94A3E900123456 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A01FBAAC2C94A3E900123456 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -82,6 +84,7 @@
 				A01FBAA82C94A3E800123463 /* StripeTerminalService.swift */,
 				A01FBAA82C94A3E800123464 /* StripeConnectionTokenProvider.swift */,
 				A01FBAA82C94A3E800123465 /* DeviceCapabilities.swift */,
+				A01FBAA82C94A3E800123466 /* PasskeyManager.swift */,
 				A01FBAA92C94A3E900123456 /* Assets.xcassets */,
 				A01FBAAB2C94A3E900123456 /* Preview Content */,
 			);
@@ -182,6 +185,7 @@
 				A01FBAAA2C94A3E900123463 /* StripeTerminalService.swift in Sources */,
 				A01FBAAA2C94A3E900123464 /* StripeConnectionTokenProvider.swift in Sources */,
 				A01FBAAA2C94A3E900123465 /* DeviceCapabilities.swift in Sources */,
+				A01FBAAA2C94A3E900123466 /* PasskeyManager.swift in Sources */,
 				A01FBAA62C94A3E800123456 /* TicketFloLIVEApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -320,7 +324,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = DA3U3FH5FZ;
 				DEVELOPMENT_ASSET_PATHS = "\"TicketFloLIVE/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
@@ -329,6 +333,8 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_CFBundleIconName = AppIcon;
 				INFOPLIST_KEY_NSCameraUsageDescription = "TicketFloLIVE uses the camera to scan QR codes on tickets for event check-in and validation.";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "TicketFlo uses Bluetooth to connect to card readers for payment processing.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "TicketFlo needs your location to process payments securely and comply with payment regulations.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -351,7 +357,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = DA3U3FH5FZ;
 				DEVELOPMENT_ASSET_PATHS = "\"TicketFloLIVE/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
@@ -360,6 +366,8 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_CFBundleIconName = AppIcon;
 				INFOPLIST_KEY_NSCameraUsageDescription = "TicketFloLIVE uses the camera to scan QR codes on tickets for event check-in and validation.";
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "TicketFlo uses Bluetooth to connect to card readers for payment processing.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "TicketFlo needs your location to process payments securely and comply with payment regulations.";
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";

@@ -6,6 +6,8 @@
 	<array>
 		<string>applinks:ticketflo.org</string>
 		<string>applinks:www.ticketflo.org</string>
+		<string>webcredentials:ticketflo.org</string>
+		<string>webcredentials:www.ticketflo.org</string>
 	</array>
 	<key>com.apple.developer.nfc.readersession.formats</key>
 	<array>

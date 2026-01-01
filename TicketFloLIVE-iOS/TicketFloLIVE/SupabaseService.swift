@@ -75,8 +75,14 @@ struct SupabaseMerchandise: Identifiable, Codable {
     let updated_at: String
 
     var isAvailable: Bool {
-        guard let stock = stock_quantity, let active = is_active else { return false }
-        return active && stock > 0
+        guard let active = is_active, active else { return false }
+        guard let stock = stock_quantity else { return true } // If no stock tracking, assume available
+        return stock > 0
+    }
+
+    var isOutOfStock: Bool {
+        guard let stock = stock_quantity else { return false }
+        return stock <= 0
     }
 
     var stockDisplay: String {
@@ -202,7 +208,7 @@ class SupabaseService: ObservableObject {
     @Published var lastRealtimeUpdate: Date?
 
     // Store the user's JWT access token for authenticated API calls
-    private var userAccessToken: String?
+    private(set) var userAccessToken: String?
     private var refreshToken: String?
     private var tokenExpiresAt: Date?
 
@@ -451,6 +457,126 @@ class SupabaseService: ObservableObject {
                 self.isLoading = false
             }
             print("Auth error: \(error)")
+            return false
+        }
+    }
+
+    // MARK: - Passkey Token Verification
+    /// Verify a passkey authentication token (magic link) to establish a session
+    func verifyPasskeyToken(email: String, token: String) async -> Bool {
+        await MainActor.run {
+            isLoading = true
+            error = nil
+        }
+
+        do {
+            // Supabase OTP verification endpoint
+            let url = URL(string: "\(supabaseURL)/auth/v1/verify")!
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+            let verifyData: [String: Any] = [
+                "email": email,
+                "token": token,
+                "type": "magiclink"
+            ]
+
+            request.httpBody = try JSONSerialization.data(withJSONObject: verifyData)
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            if let httpResponse = response as? HTTPURLResponse {
+                print("🔐 Passkey Token Verify Response Status: \(httpResponse.statusCode)")
+
+                if httpResponse.statusCode == 200 {
+                    // Parse auth response
+                    guard let authResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                        print("❌ Failed to parse passkey verify response")
+                        await MainActor.run {
+                            self.error = "Failed to parse authentication response"
+                            self.isLoading = false
+                        }
+                        return false
+                    }
+
+                    // Extract access token
+                    if let accessToken = authResponse["access_token"] as? String {
+                        print("✅ Got access token from passkey verify (length: \(accessToken.count))")
+
+                        // Extract user email from response
+                        var userEmail = email
+                        if let user = authResponse["user"] as? [String: Any],
+                           let responseEmail = user["email"] as? String {
+                            userEmail = responseEmail
+                        }
+
+                        // Extract user ID
+                        var userId = ""
+                        if let user = authResponse["user"] as? [String: Any],
+                           let id = user["id"] as? String {
+                            userId = id
+                        }
+
+                        // Store access token
+                        await MainActor.run {
+                            self.userAccessToken = accessToken
+                            self.isAuthenticated = true
+                            self.isLoading = false
+                        }
+
+                        // Fetch organization
+                        let orgId = await fetchUserOrganizationId(userId: userId)
+
+                        if orgId == nil {
+                            await MainActor.run {
+                                self.error = "User is not associated with any organization. Please contact support."
+                            }
+                            print("⚠️ User \(userEmail) authenticated via passkey but has no organization association")
+                        }
+
+                        print("✅ Passkey login successful for user: \(userEmail)")
+                        return true
+                    } else {
+                        print("❌ No access token in passkey verify response")
+                        await MainActor.run {
+                            self.error = "Authentication failed - no access token"
+                            self.isLoading = false
+                        }
+                        return false
+                    }
+                } else {
+                    // Handle error
+                    if let errorResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let errorMessage = errorResponse["error_description"] as? String ?? errorResponse["error"] as? String ?? errorResponse["msg"] as? String {
+                        print("❌ Passkey verify error: \(errorMessage)")
+                        await MainActor.run {
+                            self.error = errorMessage
+                            self.isLoading = false
+                        }
+                    } else {
+                        await MainActor.run {
+                            self.error = "Authentication failed"
+                            self.isLoading = false
+                        }
+                    }
+                    return false
+                }
+            }
+
+            await MainActor.run {
+                self.error = "Authentication failed"
+                self.isLoading = false
+            }
+            return false
+
+        } catch {
+            await MainActor.run {
+                self.error = "Authentication error: \(error.localizedDescription)"
+                self.isLoading = false
+            }
+            print("Passkey verify error: \(error)")
             return false
         }
     }
@@ -1448,12 +1574,12 @@ class SupabaseService: ObservableObject {
 
             let merchandise = try JSONDecoder().decode([SupabaseMerchandise].self, from: data)
 
-            // Filter out merchandise with null/invalid data and only show available items
+            // Filter out merchandise with null/invalid data - show active items even if out of stock
             let validItems = merchandise.filter { item in
-                // Basic validation
+                // Basic validation - show if active (even if out of stock)
                 guard !item.name.isEmpty,
                       item.price > 0,
-                      item.isAvailable else {
+                      item.is_active == true else {
                     return false
                 }
                 return true
@@ -1642,6 +1768,137 @@ class SupabaseService: ObservableObject {
             print("❌ Error deleting schedule item: \(error)")
         }
 
+        return false
+    }
+
+    // MARK: - Merchandise CRUD Operations
+
+    /// Add a new merchandise item
+    func addMerchandise(eventId: String, name: String, description: String?, price: Double, stockQuantity: Int?, category: String = "general") async -> Bool {
+        print("🛍️ Adding merchandise: \(name)")
+
+        guard let token = userAccessToken else {
+            print("❌ No access token for adding merchandise")
+            return false
+        }
+
+        let urlString = "\(supabaseURL)/rest/v1/merchandise"
+        guard let url = URL(string: urlString) else { return false }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("return=representation", forHTTPHeaderField: "Prefer")
+
+        var body: [String: Any] = [
+            "event_id": eventId,
+            "name": name,
+            "price": price,
+            "category": category,
+            "is_active": true
+        ]
+
+        if let desc = description, !desc.isEmpty {
+            body["description"] = desc
+        }
+
+        if let stock = stockQuantity {
+            body["stock_quantity"] = stock
+        }
+
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            if let httpResponse = response as? HTTPURLResponse {
+                print("🛍️ Add merchandise response: \(httpResponse.statusCode)")
+
+                if httpResponse.statusCode == 201 {
+                    if let createdItems = try? JSONDecoder().decode([SupabaseMerchandise].self, from: data),
+                       let createdItem = createdItems.first {
+                        await MainActor.run {
+                            self.merchandise.append(createdItem)
+                        }
+                        print("✅ Added merchandise: \(createdItem.name)")
+                        return true
+                    }
+                }
+            }
+        } catch {
+            print("❌ Error adding merchandise: \(error)")
+        }
+
+        return false
+    }
+
+    /// Update merchandise stock quantity
+    func updateMerchandiseStock(id: String, newQuantity: Int) async -> Bool {
+        guard let token = userAccessToken else { return false }
+
+        let urlString = "\(supabaseURL)/rest/v1/merchandise?id=eq.\(id)"
+        guard let url = URL(string: urlString) else { return false }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let body: [String: Any] = ["stock_quantity": newQuantity]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 204 {
+                await MainActor.run {
+                    if let index = self.merchandise.firstIndex(where: { $0.id == id }) {
+                        // Update local state (create new item with updated stock)
+                        let old = self.merchandise[index]
+                        let updated = SupabaseMerchandise(
+                            id: old.id, event_id: old.event_id, name: old.name,
+                            description: old.description, price: old.price,
+                            image_url: old.image_url, stock_quantity: newQuantity,
+                            category: old.category, size_options: old.size_options,
+                            color_options: old.color_options, is_active: old.is_active,
+                            created_at: old.created_at, updated_at: old.updated_at
+                        )
+                        self.merchandise[index] = updated
+                    }
+                }
+                return true
+            }
+        } catch {
+            print("❌ Error updating merchandise stock: \(error)")
+        }
+        return false
+    }
+
+    /// Delete merchandise item
+    func deleteMerchandise(id: String) async -> Bool {
+        guard let token = userAccessToken else { return false }
+
+        let urlString = "\(supabaseURL)/rest/v1/merchandise?id=eq.\(id)"
+        guard let url = URL(string: urlString) else { return false }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue(supabaseKey, forHTTPHeaderField: "apikey")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 204 {
+                await MainActor.run {
+                    self.merchandise.removeAll { $0.id == id }
+                }
+                return true
+            }
+        } catch {
+            print("❌ Error deleting merchandise: \(error)")
+        }
         return false
     }
 

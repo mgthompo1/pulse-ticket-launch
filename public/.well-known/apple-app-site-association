@@ -1,0 +1,16 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "DA3U3FH5FZ.com.ticketflo.live",
+        "paths": ["*"]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "DA3U3FH5FZ.com.ticketflo.live"
+    ]
+  }
+}
